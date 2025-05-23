@@ -3,7 +3,7 @@
 version       = "0.0.0"
 author        = "jasagiri"
 description   = "A Nim implementation of the Model Context Protocol (MCP)"
-license       = "Apache-2.0"
+license       = "MIT"
 srcDir        = "src"
 
 # Dependencies
