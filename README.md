@@ -1,6 +1,15 @@
 # MCP Nim SDK
 
-Model Context Protocol (MCP) implementation in Nim, conforming to the MCP specification version 2025-03-26.
+Model Context Protocol (MCP) implementation in Nim, conforming to the MCP specification version 2025-11-25.
+
+## Supported Protocol Versions
+
+This SDK supports multiple MCP protocol versions:
+
+- **2025-11-25** (latest) - Current default version with task augmentation and enhanced progress notifications
+- **2025-06-18** - Added elicitation capabilities and audio content support
+- **2025-03-26** - Date-based versioning format
+- **2024-11-05** - Original semantic versioning format
 
 ## Overview
 

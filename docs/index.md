@@ -1,6 +1,6 @@
 # Model Context Protocol (MCP) SDK for Nim
 
-This is a complete Nim implementation of the Model Context Protocol (MCP), an open protocol that enables secure, controlled interactions between AI applications and local or remote resources. MCP acts as a standardized interface ("USB-C port for AI applications") that connects AI models with various data sources and tools. This implementation conforms to the MCP specification version 2025-03-26.
+This is a complete Nim implementation of the Model Context Protocol (MCP), an open protocol that enables secure, controlled interactions between AI applications and local or remote resources. MCP acts as a standardized interface ("USB-C port for AI applications") that connects AI models with various data sources and tools. This implementation conforms to the MCP specification version 2025-11-25 (latest stable).
 
 ## Overview
 
@@ -22,7 +22,7 @@ This SDK provides both client and server implementations of the MCP, allowing Ni
 
 ## Features
 
-- Full implementation of the MCP protocol (version 2025-03-26)
+- Full implementation of the MCP protocol (versions 2024-11-05, 2025-03-26, 2025-06-18, 2025-11-25)
 - Support for resources (text and binary)
 - Support for tools (executable functions)
 - Support for sampling (LLM completions)

@@ -184,6 +184,53 @@ suite "Protocol Version Tests":
     check(parsedNotif2025["method"].getStr() == "$/initialized")
     check(parsedNotif2024["method"].getStr() == "initialized")
 
+  test "All supported versions":
+    # Test all supported version constants
+    check(VERSION_20241105.kind == VersionSemver)
+    check(VERSION_20241105.major == 1)
+    check(VERSION_20241105.minor == 0)
+    check(VERSION_20241105.patch == 0)
+
+    check(VERSION_20250326.kind == VersionDate)
+    check(VERSION_20250326.version == "2025-03-26")
+
+    check(VERSION_20250618.kind == VersionDate)
+    check(VERSION_20250618.version == "2025-06-18")
+
+    check(VERSION_20251125.kind == VersionDate)
+    check(VERSION_20251125.version == "2025-11-25")
+
+    # Current version should be the latest
+    check(CURRENT_VERSION.kind == VersionDate)
+    check(CURRENT_VERSION.version == "2025-11-25")
+
+  test "Version comparison with all versions":
+    # Test version ordering
+    check(VERSION_20241105 < VERSION_20250326)
+    check(VERSION_20250326 < VERSION_20250618)
+    check(VERSION_20250618 < VERSION_20251125)
+    check(VERSION_20251125 == CURRENT_VERSION)
+
+    # All date-based versions should be greater than semver
+    check(VERSION_20250326 > VERSION_20241105)
+    check(VERSION_20250618 > VERSION_20241105)
+    check(VERSION_20251125 > VERSION_20241105)
+
+  test "Protocol with new versions":
+    # Test creating protocol with newer versions
+    let v20250618 = createVersion("2025-06-18")
+    check(v20250618.kind == VersionDate)
+    check(v20250618.version == "2025-06-18")
+
+    let v20251125 = createVersion("2025-11-25")
+    check(v20251125.kind == VersionDate)
+    check(v20251125.version == "2025-11-25")
+
+    # Test protocol initialization with new versions
+    var protocol = newProtocol(v20251125)
+    check(protocol.version.kind == VersionDate)
+    check(protocol.version.version == "2025-11-25")
+
 when isMainModule:
   # Run the tests
   echo "Running protocol version tests..."

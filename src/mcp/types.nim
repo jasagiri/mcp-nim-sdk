@@ -196,3 +196,36 @@ type
     ## Result of a tool invocation
     isError*: bool         ## Whether an error occurred
     content*: seq[JsonNode] ## Content of the result
+
+  # Task augmentation types (Added in 2025-11-25)
+  TaskState* = enum
+    ## State of a long-running task
+    TaskPending = "pending"
+    TaskRunning = "running"
+    TaskCompleted = "completed"
+    TaskFailed = "failed"
+    TaskCancelled = "cancelled"
+
+  Task* = object
+    ## A long-running task
+    id*: string
+    state*: TaskState
+    progress*: Option[float]  ## 0.0 to 1.0
+    message*: Option[string]  ## Status message
+    result*: Option[JsonNode] ## Task result when completed
+
+  CreateTaskResult* = object
+    ## Result of creating a task
+    taskId*: string
+
+  TaskResultRequest* = object
+    ## Request to get task result
+    taskId*: string
+
+  # Progress notification types
+  ProgressNotification* = object
+    ## Progress update for a long-running operation
+    progressToken*: string
+    progress*: float  ## 0.0 to 1.0
+    total*: Option[float]
+    message*: Option[string]

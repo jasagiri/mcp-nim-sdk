@@ -8,6 +8,8 @@ MCP (Model Context Protocol) evolves over time, with different versions being us
 
 1. **2024-11-05** - The original standard version (using semantic versioning format)
 2. **2025-03-26** - Updated version (using date-based versioning)
+3. **2025-06-18** - Added elicitation capabilities and audio content support
+4. **2025-11-25** - Latest stable version with task augmentation and enhanced progress notifications
 
 The SDK is designed to support multiple protocol versions simultaneously to maintain compatibility with clients and servers using different versions.
 
