@@ -77,8 +77,8 @@ type
     activeNotificationHandlers*: Table[string, NotificationCallback]
 
 const
-  CURRENT_VERSION* = MCPVersion(kind: VersionDate, version: "2025-11-25")  ## Current protocol version (2025-11-25)
-  VERSION_20241105* = MCPVersion(kind: VersionSemver, major: 1, minor: 0, patch: 0)  ## Earlier version (2024-11-05)
+  CURRENT_VERSION* = MCPVersion(kind: VersionDate, version: "2025-03-26")  ## Current protocol version (2025-03-26)
+  VERSION_20241105* = MCPVersion(kind: VersionSemver, major: 1, minor: 0, patch: 0)  ## Version 2024-11-05
   VERSION_20250326* = MCPVersion(kind: VersionDate, version: "2025-03-26")  ## Version 2025-03-26
   VERSION_20250618* = MCPVersion(kind: VersionDate, version: "2025-06-18")  ## Version 2025-06-18
   VERSION_20251125* = MCPVersion(kind: VersionDate, version: "2025-11-25")  ## Version 2025-11-25 (latest)
