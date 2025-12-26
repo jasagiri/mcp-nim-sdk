@@ -77,8 +77,10 @@ type
     activeNotificationHandlers*: Table[string, NotificationCallback]
 
 const
-  CURRENT_VERSION* = MCPVersion(kind: VersionDate, version: "2025-03-26")  ## Current protocol version (2025-03-26)
+  CURRENT_VERSION* = MCPVersion(kind: VersionDate, version: "2025-06-18")  ## Current protocol version (2025-06-18)
   VERSION_20241105* = MCPVersion(kind: VersionSemver, major: 1, minor: 0, patch: 0)  ## Earlier version (2024-11-05)
+  VERSION_20250326* = MCPVersion(kind: VersionDate, version: "2025-03-26")  ## Version 2025-03-26
+  VERSION_20250618* = MCPVersion(kind: VersionDate, version: "2025-06-18")  ## Version 2025-06-18
   
   # Standard JSON-RPC error codes
   ERR_PARSE* = -32700          ## Parse error
@@ -114,7 +116,7 @@ proc activateVersion*(p: Protocol, version: MCPVersion) =
   p.activeRequestHandlers = p.versionMethods[version.kind].requestHandlers
   p.activeNotificationHandlers = p.versionMethods[version.kind].notificationHandlers
 
-proc newProtocol*(version = CURRENT_VERSION, supportedVersions: seq[MCPVersion] = @[CURRENT_VERSION, VERSION_20241105]): Protocol =
+proc newProtocol*(version = CURRENT_VERSION, supportedVersions: seq[MCPVersion] = @[CURRENT_VERSION, VERSION_20250326, VERSION_20241105]): Protocol =
   ## Create a new Protocol instance
   # Initialize with empty tables
   var versionMethodsTable = initTable[MCPVersionSpec, ProtocolMethods]()

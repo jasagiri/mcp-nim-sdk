@@ -132,6 +132,7 @@ type
   ContentType* = enum
     Text = "text"
     Image = "image"
+    Audio = "audio"  ## Added in 2025-06-18
 
   Content* = object
     case kind*: ContentType
@@ -140,6 +141,29 @@ type
     of Image:
       data*: string
       mimeType*: string
+    of Audio:
+      audioData*: string  ## Base64 encoded audio data
+      audioMimeType*: string  ## MIME type (e.g., "audio/wav", "audio/mp3")
+
+  # Elicitation types (Added in 2025-06-18)
+  ElicitationSchemaType* = enum
+    ElicitString = "string"
+    ElicitNumber = "number"
+    ElicitBoolean = "boolean"
+    ElicitEnum = "enum"
+
+  ElicitationSchema* = object
+    schemaType*: ElicitationSchemaType
+    description*: Option[string]
+    enumValues*: Option[seq[string]]  ## Only for ElicitEnum type
+
+  ElicitationRequest* = object
+    message*: string
+    schema*: ElicitationSchema
+
+  ElicitationResult* = object
+    action*: string  ## "accept", "reject", "cancel"
+    content*: Option[JsonNode]
 
   # Sampling types
   ModelHint* = object
