@@ -4,7 +4,7 @@
 # providing functionality for root resource discovery and navigation.
 
 import json, tables, asyncdispatch, options, strformat, sequtils, strutils, uri
-import types, logger, protocol, resources
+import types, protocol, resources
 
 proc debug(message: string, args: varargs[string, `$`]) =
   # Placeholder for actual debug logging

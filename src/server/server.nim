@@ -1,6 +1,6 @@
 ## MCP server implementation
 
-import asyncdispatch, json, options, tables, strutils, chronicles, uuid
+import asyncdispatch, json, options, tables, strutils, uuids
 import ../protocol/types
 import ../protocol/lifecycle
 import ../transport/transport
@@ -18,28 +18,38 @@ type
     promptHandlers*: McpPromptHandlers
     requestHandlers*: Table[string, proc(request: JsonRpcRequest): Future[JsonRpcResponse] {.async.}]
     notificationHandlers*: Table[string, proc(notification: JsonRpcNotification): Future[void] {.async.}]
-    
+
   McpResourceHandlers* = object
     listHandler*: Option[proc(): Future[seq[JsonNode]] {.async.}]
     readHandler*: Option[proc(uri: string): Future[JsonNode] {.async.}]
     listTemplatesHandler*: Option[proc(): Future[seq[JsonNode]] {.async.}]
     subscribeHandler*: Option[proc(uri: string): Future[void] {.async.}]
     unsubscribeHandler*: Option[proc(uri: string): Future[void] {.async.}]
-    
+
   McpToolHandlers* = object
     listHandler*: Option[proc(): Future[seq[JsonNode]] {.async.}]
     callHandler*: Option[proc(name: string, arguments: JsonNode): Future[JsonNode] {.async.}]
-    
+
   McpPromptHandlers* = object
     listHandler*: Option[proc(): Future[seq[JsonNode]] {.async.}]
     getHandler*: Option[proc(name: string, arguments: JsonNode): Future[JsonNode] {.async.}]
+
+# Forward declarations
+proc registerRequestHandler*(server: McpServer, methodName: string,
+    handler: proc(request: JsonRpcRequest): Future[JsonRpcResponse] {.async.})
+proc registerNotificationHandler*(server: McpServer, methodName: string,
+    handler: proc(notification: JsonRpcNotification): Future[void] {.async.})
+proc handleInitialize(server: McpServer, request: JsonRpcRequest): Future[JsonRpcResponse] {.async.}
+proc handleInitialized(server: McpServer, notification: JsonRpcNotification): Future[void] {.async.}
+proc handleCancelled(server: McpServer, notification: JsonRpcNotification): Future[void] {.async.}
+proc extractClientCapabilities(json: JsonNode): McpClientCapabilities
 
 proc newMcpServer*(
   serverInfo: McpServerInfo,
   protocolVersion: McpProtocolVersion = mpv20250326,
   capabilities: McpServerCapabilities = McpServerCapabilities()
 ): McpServer =
-  result = McpServer(
+  let server = McpServer(
     state: mlsUninitialized,
     protocolVersion: protocolVersion,
     serverInfo: serverInfo,
@@ -48,35 +58,37 @@ proc newMcpServer*(
     requestHandlers: initTable[string, proc(request: JsonRpcRequest): Future[JsonRpcResponse] {.async.}](),
     notificationHandlers: initTable[string, proc(notification: JsonRpcNotification): Future[void] {.async.}]()
   )
-  
+
   # Register built-in request handlers
-  result.registerRequestHandler("initialize", proc(request: JsonRpcRequest): Future[JsonRpcResponse] {.async.} =
-    return await result.handleInitialize(request)
+  server.registerRequestHandler("initialize", proc(request: JsonRpcRequest): Future[JsonRpcResponse] {.async.} =
+    return await server.handleInitialize(request)
   )
-  
-  result.registerRequestHandler("ping", proc(request: JsonRpcRequest): Future[JsonRpcResponse] {.async.} =
+
+  server.registerRequestHandler("ping", proc(request: JsonRpcRequest): Future[JsonRpcResponse] {.async.} =
     return createPingResponse(request.id)
   )
-  
+
   # Register built-in notification handlers
-  result.registerNotificationHandler("notifications/initialized", proc(notification: JsonRpcNotification): Future[void] {.async.} =
-    await result.handleInitialized(notification)
-  )
-  
-  result.registerNotificationHandler("notifications/cancelled", proc(notification: JsonRpcNotification): Future[void] {.async.} =
-    await result.handleCancelled(notification)
+  server.registerNotificationHandler("notifications/initialized", proc(notification: JsonRpcNotification): Future[void] {.async.} =
+    await server.handleInitialized(notification)
   )
 
-proc registerRequestHandler*(server: McpServer, method: string, 
+  server.registerNotificationHandler("notifications/cancelled", proc(notification: JsonRpcNotification): Future[void] {.async.} =
+    await server.handleCancelled(notification)
+  )
+
+  return server
+
+proc registerRequestHandler*(server: McpServer, methodName: string,
     handler: proc(request: JsonRpcRequest): Future[JsonRpcResponse] {.async.}) =
-  server.requestHandlers[method] = handler
+  server.requestHandlers[methodName] = handler
 
-proc registerNotificationHandler*(server: McpServer, method: string,
+proc registerNotificationHandler*(server: McpServer, methodName: string,
     handler: proc(notification: JsonRpcNotification): Future[void] {.async.}) =
-  server.notificationHandlers[method] = handler
+  server.notificationHandlers[methodName] = handler
 
 proc handleInitialize(server: McpServer, request: JsonRpcRequest): Future[JsonRpcResponse] {.async.} =
-  if server.state \!= mlsUninitialized:
+  if server.state != mlsUninitialized:
     return newJsonRpcErrorResponse(
       request.id,
       -32600,
@@ -90,7 +102,7 @@ proc handleInitialize(server: McpServer, request: JsonRpcRequest): Future[JsonRp
   )
   
   # Check protocol version compatibility
-  if clientProtocolVersion \!= server.protocolVersion:
+  if clientProtocolVersion != server.protocolVersion:
     echo "Protocol version mismatch: client=", clientProtocolVersion, 
       " server=", server.protocolVersion
       
@@ -112,7 +124,7 @@ proc handleInitialize(server: McpServer, request: JsonRpcRequest): Future[JsonRp
   )
 
 proc handleInitialized(server: McpServer, notification: JsonRpcNotification): Future[void] {.async.} =
-  if server.state \!= mlsInitializing:
+  if server.state != mlsInitializing:
     echo "Received initialized notification in wrong state: ", server.state
     return
     
@@ -145,13 +157,13 @@ proc extractClientCapabilities(json: JsonNode): McpClientCapabilities =
     result.experimental = some(json["experimental"])
 
 proc processRequest(server: McpServer, request: JsonRpcRequest): Future[void] {.async.} =
-  if request.method in server.requestHandlers:
-    let handler = server.requestHandlers[request.method]
+  if request.`method` in server.requestHandlers:
+    let handler = server.requestHandlers[request.`method`]
     let response = await handler(request)
     await server.transport.sendResponse(response)
   else:
     # Handle standard MCP methods based on capabilities
-    case request.method:
+    case request.`method`:
     of "resources/list":
       if server.capabilities.resources.isSome and server.resourceHandlers.listHandler.isSome:
         let handler = server.resourceHandlers.listHandler.get
@@ -319,13 +331,13 @@ proc processRequest(server: McpServer, request: JsonRpcRequest): Future[void] {.
       let response = newJsonRpcErrorResponse(
         request.id, 
         -32601, 
-        "Method not found: " & request.method
+        "Method not found: " & request.`method`
       )
       await server.transport.sendResponse(response)
 
 proc processNotification(server: McpServer, notification: JsonRpcNotification): Future[void] {.async.} =
-  if notification.method in server.notificationHandlers:
-    let handler = server.notificationHandlers[notification.method]
+  if notification.`method` in server.notificationHandlers:
+    let handler = server.notificationHandlers[notification.`method`]
     await handler(notification)
   # If no handler, silently ignore
 
@@ -346,8 +358,8 @@ proc processMessages*(server: McpServer): Future[void] {.async.} =
     let e = getCurrentException()
     echo "Error processing messages: ", e.msg
 
-proc sendNotification*(server: McpServer, method: string, params: JsonNode): Future[void] {.async.} =
-  let notification = newJsonRpcNotification(method, params)
+proc sendNotification*(server: McpServer, methodName: string, params: JsonNode): Future[void] {.async.} =
+  let notification = newJsonRpcNotification(methodName, params)
   await server.transport.sendNotification(notification)
 
 proc attachTransport*(server: McpServer, transport: McpTransport): Future[void] {.async.} =
@@ -357,7 +369,7 @@ proc attachTransport*(server: McpServer, transport: McpTransport): Future[void] 
   asyncCheck server.processMessages()
 
 proc notifyResourceListChanged*(server: McpServer): Future[void] {.async.} =
-  if server.state \!= mlsOperational:
+  if server.state != mlsOperational:
     return
     
   if server.capabilities.resources.isSome and 
@@ -365,7 +377,7 @@ proc notifyResourceListChanged*(server: McpServer): Future[void] {.async.} =
     await server.sendNotification("notifications/resources/list_changed", newJObject())
 
 proc notifyResourceUpdated*(server: McpServer, uri: string): Future[void] {.async.} =
-  if server.state \!= mlsOperational:
+  if server.state != mlsOperational:
     return
     
   if server.capabilities.resources.isSome and 
@@ -376,7 +388,7 @@ proc notifyResourceUpdated*(server: McpServer, uri: string): Future[void] {.asyn
     await server.sendNotification("notifications/resources/updated", params)
 
 proc notifyToolListChanged*(server: McpServer): Future[void] {.async.} =
-  if server.state \!= mlsOperational:
+  if server.state != mlsOperational:
     return
     
   if server.capabilities.tools.isSome and 
@@ -384,7 +396,7 @@ proc notifyToolListChanged*(server: McpServer): Future[void] {.async.} =
     await server.sendNotification("notifications/tools/list_changed", newJObject())
 
 proc notifyPromptListChanged*(server: McpServer): Future[void] {.async.} =
-  if server.state \!= mlsOperational:
+  if server.state != mlsOperational:
     return
     
   if server.capabilities.prompts.isSome and 
@@ -401,7 +413,7 @@ proc setPromptHandlers*(server: McpServer, handlers: McpPromptHandlers) =
   server.promptHandlers = handlers
 
 proc sendLogMessage*(server: McpServer, level: string, message: string, logger: string = "", data: JsonNode = nil): Future[void] {.async.} =
-  if server.state \!= mlsOperational:
+  if server.state != mlsOperational:
     return
     
   if server.capabilities.logging.isNone:

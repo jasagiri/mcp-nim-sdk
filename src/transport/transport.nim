@@ -11,13 +11,7 @@ type
 
   McpTransport* = ref object of RootObj
     ## Base transport class
-    case kind*: McpTransportKind
-    of mtkStdio:
-      inputStream*: Stream
-      outputStream*: Stream
-    of mtkHttp, mtkStreamable:
-      baseUrl*: string
-      sessionId*: Option[string]
+    kind*: McpTransportKind
 
   McpTransportError* = object of CatchableError
     code*: int
@@ -49,14 +43,14 @@ proc decodeRequest*(json: JsonNode): JsonRpcRequest =
   var request = JsonRpcRequest(
     jsonrpc: json["jsonrpc"].getStr(),
     id: json["id"].getStr(),
-    method: json["method"].getStr()
+    `method`: json["method"].getStr()
   )
-  
+
   if json.hasKey("params"):
     request.params = json["params"]
   else:
     request.params = newJObject()
-    
+
   return request
 
 proc decodeResponse*(json: JsonNode): JsonRpcResponse =
@@ -65,39 +59,39 @@ proc decodeResponse*(json: JsonNode): JsonRpcResponse =
     jsonrpc: json["jsonrpc"].getStr(),
     id: json["id"].getStr()
   )
-  
+
   if json.hasKey("result"):
     response.result = some(json["result"])
     response.error = none(JsonRpcError)
   elif json.hasKey("error"):
     let errorJson = json["error"]
-    let error = JsonRpcError(
+    var error = JsonRpcError(
       code: errorJson["code"].getInt(),
       message: errorJson["message"].getStr()
     )
-    
+
     if errorJson.hasKey("data"):
       error.data = errorJson["data"]
     else:
       error.data = newJNull()
-      
+
     response.result = none(JsonNode)
     response.error = some(error)
-    
+
   return response
 
 proc decodeNotification*(json: JsonNode): JsonRpcNotification =
   # Convert JSON to JsonRpcNotification
   var notification = JsonRpcNotification(
     jsonrpc: json["jsonrpc"].getStr(),
-    method: json["method"].getStr()
+    `method`: json["method"].getStr()
   )
-  
+
   if json.hasKey("params"):
     notification.params = json["params"]
   else:
     notification.params = newJObject()
-    
+
   return notification
 
 proc isRequest*(json: JsonNode): bool =

@@ -2,165 +2,74 @@
 #
 # File Server Example - A server that provides file resources.
 
-import asyncdispatch, json, options, os, strformat, base64, strutils
-import ../src/mcp
-import ../src/mcp/transport/stdio
+import unittest, asyncdispatch, json, options, os, tables
 import ../src/mcp/types
 import ../src/mcp/protocol
-import ../src/mcp/server
 
-# Add early exit to avoid hanging during test
-echo "Test compiled successfully. Exiting early..."
-quit(0)
+suite "File Server Tests":
+  test "Server creation with resource capabilities":
+    let metadata = types.ServerMetadata(
+      name: "file-server",
+      version: "1.0.0"
+    )
 
-# Custom implementation of the read resource handler
-proc customReadResourceHandler(server: Server, uri: string): Future[JsonNode] {.async.} =
-  if not uri.startsWith("file://"):
-    return %*{
-      "contents": []
-    }
-  
-  let path = uri.replace("file://", "")
-  
-  if not fileExists(path):
-    return %*{
-      "contents": []
-    }
-  
-  let content = readFile(path)
-  let mimeType = case path.splitFile().ext
-  of ".txt": "text/plain"
-  of ".md": "text/markdown"
-  of ".json": "application/json"
-  of ".nim": "text/x-nim"
-  of ".js": "text/javascript"
-  of ".html": "text/html"
-  of ".css": "text/css"
-  of ".png", ".jpg", ".jpeg", ".gif":
-    return %*{
-      "contents": [
-        {
-          "uri": uri,
-          "mimeType": "image/" & path.splitFile().ext.replace(".", ""),
-          "blob": encode(content)  # Base64 encode binary files
-        }
-      ]
-    }
-  else: "application/octet-stream"
-  
-  return %*{
-    "contents": [
-      {
-        "uri": uri,
-        "mimeType": mimeType,
-        "text": content
-      }
-    ]
-  }
+    let capabilities = types.ServerCapabilities(
+      resources: some(types.ResourcesCapability(listChanged: some(true)))
+    )
 
-proc main() {.async.} =
-  echo "Starting MCP File Server..."
-  
-  # Create server metadata
-  let metadata = types.ServerMetadata(
-    name: "file-server",
-    version: "1.0.0"
-  )
-  
-  # Create server capabilities
-  let capabilities = types.ServerCapabilities(
-    resources: some(types.ResourcesCapability()),
-    tools: none(types.ToolsCapability)
-  )
-  
-  # Create server instance
-  var server = newServer(metadata, capabilities)
-  
-  # Override the default read resource handler
-  server.protocol.setRequestHandler(METHOD_READ_RESOURCE,
-    proc(request: RequestMessage): ResponseMessage =
-      if not request.params.hasKey("uri"):
-        return ResponseMessage(
-          id: request.id,
-          result: none(JsonNode),
-          error: some(ErrorInfo(
-            code: -32602,  # Invalid params error code
-            message: "Missing required parameter: uri",
-            data: none(JsonNode)
-          ))
-        )
+    let server = newServer(metadata, capabilities)
 
-      let uri = request.params["uri"].getStr()
+    check(server.name == "file-server")
+    check(server.version == "1.0.0")
+    check(server.capabilities.resources.isSome)
 
-      # Create a future for the async operation
-      let future = customReadResourceHandler(server, uri)
-      try:
-        # Wait for the result - note that this blocks, which is not ideal
-        # but necessary for this test adapter
-        let content = waitFor future
+  test "File resource registration":
+    let metadata = types.ServerMetadata(name: "file-server", version: "1.0.0")
+    let capabilities = types.ServerCapabilities(
+      resources: some(types.ResourcesCapability())
+    )
+    var server = newServer(metadata, capabilities)
 
-        # Return successful response
-        return ResponseMessage(
-          id: request.id,
-          result: some(content),
-          error: none(ErrorInfo)
-        )
-      except Exception as e:
-        # Return error response
-        return ResponseMessage(
-          id: request.id,
-          result: none(JsonNode),
-          error: some(ErrorInfo(
-            code: -32603,  # Internal error code
-            message: e.msg,
-            data: none(JsonNode)
-          ))
-        )
-  )
-  
-  # Add current directory as a resource
-  let currentDir = getCurrentDir()
-  
-  # Add a resource template for file://
-  # We'll directly register the template with the registry
-  server.resourceRegistry.registerResourceTemplate(
-    "file://{path}",
-    "File System",
-    some("Access files in the file system"),
-    none(string)
-  )
-  
-  # Add some sample files as resources
-  for file in walkDir(currentDir):
-    if file.kind == pcFile:
-      let (_, name, ext) = splitFile(file.path)
-      let mimeType = case ext
-      of ".txt": "text/plain"
-      of ".md": "text/markdown"
-      of ".json": "application/json"
-      of ".nim": "text/x-nim"
-      of ".js": "text/javascript"
-      of ".html": "text/html"
-      of ".css": "text/css"
-      of ".png", ".jpg", ".jpeg", ".gif": "image/" & ext.replace(".", "")
-      else: "application/octet-stream"
-      
-      server.registerResource(
-        "file://" & file.path,
-        name & ext,
-        "File in " & currentDir,
-        mimeType
-      )
-  
-  # Create and connect to a stdio transport
-  let transport = newStdioTransport()
-  
-  # Connect the server to the transport
-  await server.connect(transport)
-  
-  # Wait forever
-  while true:
-    await sleepAsync(1000)
+    # Register a file resource
+    server.registerResource(
+      "file:///etc/hosts",
+      "Hosts File",
+      "System hosts file",
+      "text/plain"
+    )
 
-when isMainModule:
-  waitFor main()
+    check(server.resources.contains("file:///etc/hosts"))
+    check(server.resources["file:///etc/hosts"].name == "Hosts File")
+
+  test "Multiple resource registration":
+    let metadata = types.ServerMetadata(name: "file-server", version: "1.0.0")
+    let capabilities = types.ServerCapabilities(
+      resources: some(types.ResourcesCapability())
+    )
+    var server = newServer(metadata, capabilities)
+
+    server.registerResource("file:///path/to/file1.txt", "File 1", "First file", "text/plain")
+    server.registerResource("file:///path/to/file2.json", "File 2", "Second file", "application/json")
+    server.registerResource("file:///path/to/image.png", "Image", "An image", "image/png")
+
+    check(server.resources.len == 3)
+    check(server.resources.contains("file:///path/to/file1.txt"))
+    check(server.resources.contains("file:///path/to/file2.json"))
+    check(server.resources.contains("file:///path/to/image.png"))
+    check(server.resources["file:///path/to/file2.json"].mimeType == "application/json")
+
+  test "Resource with binary content type":
+    let metadata = types.ServerMetadata(name: "file-server", version: "1.0.0")
+    let capabilities = types.ServerCapabilities(
+      resources: some(types.ResourcesCapability())
+    )
+    var server = newServer(metadata, capabilities)
+
+    server.registerResource(
+      "file:///path/to/binary.bin",
+      "Binary File",
+      "A binary file",
+      "application/octet-stream"
+    )
+
+    check(server.resources["file:///path/to/binary.bin"].mimeType == "application/octet-stream")

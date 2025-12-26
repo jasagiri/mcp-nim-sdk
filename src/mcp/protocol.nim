@@ -612,3 +612,127 @@ proc serializeWithVersion*(msg: ResponseMessage, version: MCPVersion): string =
 proc serialize*(msg: ResponseMessage): string =
   ## Serialize ResponseMessage to JSON string using current version
   result = serializeWithVersion(msg, CURRENT_VERSION)
+
+# Server type for high-level API
+type
+  ToolHandler* = proc(args: JsonNode): Future[JsonNode] {.async, gcsafe.}
+
+  ToolDefinition* = object
+    name*: string
+    description*: string
+    inputSchema*: JsonNode
+    handler*: Option[ToolHandler]
+
+  ResourceDefinition* = object
+    uri*: string
+    name*: string
+    description*: string
+    mimeType*: string
+
+  Server* = ref object
+    ## High-level server object for MCP operations
+    name*: string
+    version*: string
+    capabilities*: types.ServerCapabilities
+    protocol*: Protocol
+    tools*: Table[string, ToolDefinition]
+    resources*: Table[string, ResourceDefinition]
+    transport*: RootRef
+
+proc newServer*(metadata: ServerMetadata, capabilities: types.ServerCapabilities): Server =
+  ## Creates a new MCP server with the given metadata and capabilities
+  result = Server(
+    name: metadata.name,
+    version: metadata.version,
+    capabilities: capabilities,
+    protocol: newProtocol(CURRENT_VERSION),
+    tools: initTable[string, ToolDefinition](),
+    resources: initTable[string, ResourceDefinition]()
+  )
+
+proc registerTool*(server: Server, name: string, description: string, inputSchema: JsonNode) =
+  ## Registers a tool with the server
+  server.tools[name] = ToolDefinition(
+    name: name,
+    description: description,
+    inputSchema: inputSchema,
+    handler: none(ToolHandler)
+  )
+
+proc registerToolHandler*(server: Server, name: string, handler: ToolHandler) =
+  ## Registers a handler for a tool
+  if server.tools.hasKey(name):
+    var tool = server.tools[name]
+    tool.handler = some(handler)
+    server.tools[name] = tool
+  else:
+    server.tools[name] = ToolDefinition(
+      name: name,
+      description: "",
+      inputSchema: newJObject(),
+      handler: some(handler)
+    )
+
+proc connect*(server: Server, transport: RootRef): Future[void] {.async.} =
+  ## Connects the server to a transport
+  server.transport = transport
+  # Note: transport.start() should be called by the transport layer itself
+
+proc disconnect*(server: Server): Future[void] {.async.} =
+  ## Disconnects the server
+  server.transport = nil
+
+proc registerResource*(server: Server, uri: string, name: string, description: string, mimeType: string) =
+  ## Registers a resource with the server
+  server.resources[uri] = ResourceDefinition(
+    uri: uri,
+    name: name,
+    description: description,
+    mimeType: mimeType
+  )
+
+# Client type for high-level API
+type
+  ToolResult* = object
+    isError*: bool
+    content*: seq[JsonNode]
+
+  Client* = ref object
+    ## High-level client object for MCP operations
+    name*: string
+    version*: string
+    capabilities*: types.ClientCapabilities
+    transport*: RootRef
+    serverTools*: seq[types.Tool]
+
+proc newClient*(name: string, version: string, capabilities: types.ClientCapabilities): Client =
+  ## Creates a new MCP client
+  result = Client(
+    name: name,
+    version: version,
+    capabilities: capabilities,
+    serverTools: @[]
+  )
+
+proc connect*(client: Client, transport: RootRef): Future[void] {.async.} =
+  ## Connects the client to a transport
+  client.transport = transport
+
+proc disconnect*(client: Client): Future[void] {.async.} =
+  ## Disconnects the client
+  client.transport = nil
+
+proc listTools*(client: Client): Future[seq[types.Tool]] {.async.} =
+  ## Lists available tools from the server
+  # In a real implementation, this would send a request to the server
+  # For now, return the cached tools
+  return client.serverTools
+
+proc callTool*(client: Client, name: string, arguments: JsonNode): Future[ToolResult] {.async.} =
+  ## Calls a tool on the server
+  # In a real implementation, this would send a request to the server
+  # For now, return a placeholder result
+  result = ToolResult(
+    isError: false,
+    content: @[%*{"text": "placeholder"}]
+  )

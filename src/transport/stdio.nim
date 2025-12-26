@@ -7,6 +7,8 @@ import ../protocol/types
 type
   StdioTransport* = ref object of McpTransport
     ## Standard I/O transport
+    inputStream*: Stream
+    outputStream*: Stream
 
 proc newStdioTransport*(input: Stream, output: Stream): StdioTransport =
   result = StdioTransport(
@@ -37,11 +39,11 @@ method sendResponse*(t: StdioTransport, response: JsonRpcResponse): Future[void]
 method receiveMessage*(t: StdioTransport): Future[JsonNode] {.async.} =
   if t.inputStream.atEnd():
     raise newException(McpTransportError, "EOF on input stream")
-    
+
   let line = t.inputStream.readLine()
   if line.len == 0:
     raise newException(McpTransportError, "Empty message received")
-    
+
   try:
     return parseJson(line)
   except JsonParsingError as e:

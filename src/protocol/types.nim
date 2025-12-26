@@ -7,7 +7,7 @@ type
   JsonRpcRequest* = object
     jsonrpc*: string
     id*: string
-    method*: string
+    `method`*: string
     params*: JsonNode
 
   JsonRpcResponse* = object
@@ -18,7 +18,7 @@ type
 
   JsonRpcNotification* = object
     jsonrpc*: string
-    method*: string
+    `method`*: string
     params*: JsonNode
 
   JsonRpcError* = object
@@ -80,19 +80,19 @@ type
     # Other future meta fields
 
 # Constructor functions
-proc newJsonRpcRequest*(id: string, method: string, params: JsonNode): JsonRpcRequest =
+proc newJsonRpcRequest*(id: string, methodName: string, params: JsonNode): JsonRpcRequest =
   result = JsonRpcRequest(
     jsonrpc: "2.0",
     id: id,
-    method: method,
+    `method`: methodName,
     params: params
   )
 
-proc newJsonRpcResponse*(id: string, result: JsonNode): JsonRpcResponse =
+proc newJsonRpcResponse*(id: string, resultData: JsonNode): JsonRpcResponse =
   result = JsonRpcResponse(
     jsonrpc: "2.0",
     id: id,
-    result: some(result),
+    result: some(resultData),
     error: none(JsonRpcError)
   )
 
@@ -108,9 +108,9 @@ proc newJsonRpcErrorResponse*(id: string, code: int, message: string, data: Json
     ))
   )
 
-proc newJsonRpcNotification*(method: string, params: JsonNode): JsonRpcNotification =
+proc newJsonRpcNotification*(methodName: string, params: JsonNode): JsonRpcNotification =
   result = JsonRpcNotification(
     jsonrpc: "2.0",
-    method: method,
+    `method`: methodName,
     params: params
   )
