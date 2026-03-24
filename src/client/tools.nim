@@ -5,16 +5,15 @@ import ./client
 import ../protocol/types
 
 type
-  McpTool* = object
-    name*: string
-    description*: string
-    inputSchema*: JsonNode
-    annotations*: Option[JsonNode]
-    
-  McpToolContent* = object
-    contentItems*: seq[McpToolContentItem]
-    isError*: bool
-    
+  McpToolContentKind* = enum
+    mctkText, mctkImage, mctkAudio, mctkResource
+
+  McpEmbeddedResource* = object
+    uri*: string
+    mimeType*: string
+    text*: Option[string]
+    blob*: Option[string]
+
   McpToolContentItem* = object
     case kind*: McpToolContentKind
     of mctkText:
@@ -27,15 +26,16 @@ type
       audioMimeType*: string
     of mctkResource:
       resource*: McpEmbeddedResource
-      
-  McpToolContentKind* = enum
-    mctkText, mctkImage, mctkAudio, mctkResource
-    
-  McpEmbeddedResource* = object
-    uri*: string
-    mimeType*: string
-    text*: Option[string]
-    blob*: Option[string]
+
+  McpToolContent* = object
+    contentItems*: seq[McpToolContentItem]
+    isError*: bool
+
+  McpTool* = object
+    name*: string
+    description*: string
+    inputSchema*: JsonNode
+    annotations*: Option[JsonNode]
 
 proc listTools*(client: McpClient, cursor: Option[string] = none(string)): Future[tuple[tools: seq[McpTool], nextCursor: Option[string]]] {.async.} =
   if client.serverCapabilities.isNone or client.serverCapabilities.get.tools.isNone:

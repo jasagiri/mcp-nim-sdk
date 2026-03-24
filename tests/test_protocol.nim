@@ -77,11 +77,11 @@ suite "Protocol Tests":
     
     # リクエストハンドラを登録
     protocol.setRequestHandler("test.method",
-      proc(request: RequestMessage): ResponseMessage {.gcsafe.} =
+      proc(request: RequestMessage): Future[ResponseMessage] {.async, gcsafe.} =
         handlerCalled = true
         return createSuccessResponse(request.id, %*{"result": "success"})
     )
-    
+
     # ハンドラの呼び出しをテスト（実際のメッセージ処理をシミュレート）
     let request = RequestMessage(
       id: "test-id",
@@ -90,7 +90,7 @@ suite "Protocol Tests":
     )
 
     # プロトコルのhandleRequestに渡す
-    let response = protocol.handleRequest(request)
+    let response = waitFor protocol.handleRequest(request)
     
     check handlerCalled
 
@@ -105,18 +105,18 @@ suite "Protocol Tests":
     
     # 通知ハンドラを登録
     protocol.setNotificationHandler("test.notification",
-      proc(notification: NotificationMessage) {.gcsafe.} =
+      proc(notification: NotificationMessage): Future[void] {.async, gcsafe.} =
         handlerCalled = true
     )
-    
+
     # ハンドラの呼び出しをテスト
     let notification = NotificationMessage(
       methodName: "test.notification",
       params: %*{"param": "value"}
     )
-    
+
     # プロトコルのhandleNotificationに渡す
-    protocol.handleNotification(notification)
+    waitFor protocol.handleNotification(notification)
     
     check handlerCalled
   
@@ -131,8 +131,8 @@ suite "Protocol Tests":
     )
     
     # プロトコルのhandleRequestに渡す
-    let response = protocol.handleRequest(request)
-    
+    let response = waitFor protocol.handleRequest(request)
+
     # レスポンスがエラーになっていることを確認
     check response.id == "test-id"
     check response.error.isSome

@@ -17,7 +17,7 @@ suite "Resource Registry Tests":
       "Example Text File",
       some("A simple text file example"),
       some("text/plain"),
-      proc(): JsonNode =
+      proc(): Future[JsonNode] {.async.} =
         return %*{
           "contents": [
             {
@@ -39,7 +39,7 @@ suite "Resource Registry Tests":
     check(resources[0]["mimeType"].getStr() == "text/plain")
     
     # Get resource content
-    let content = registry.getResource("file:///example.txt")
+    let content = waitFor registry.getResource("file:///example.txt")
     
     check(content.isSome)
     check(content.get()["contents"].len == 1)
@@ -54,7 +54,7 @@ suite "Resource Registry Tests":
       "Document 1",
       some("First document"),
       some("text/plain"),
-      proc(): JsonNode =
+      proc(): Future[JsonNode] {.async.} =
         return %*{
           "contents": [
             {
@@ -71,7 +71,7 @@ suite "Resource Registry Tests":
       "Document 2",
       some("Second document"),
       some("text/plain"),
-      proc(): JsonNode =
+      proc(): Future[JsonNode] {.async.} =
         return %*{
           "contents": [
             {
@@ -89,8 +89,8 @@ suite "Resource Registry Tests":
     check(resources.len == 2)
     
     # Get specific resource contents
-    let content1 = registry.getResource("file:///doc1.txt")
-    let content2 = registry.getResource("file:///doc2.txt")
+    let content1 = waitFor registry.getResource("file:///doc1.txt")
+    let content2 = waitFor registry.getResource("file:///doc2.txt")
     
     check(content1.isSome)
     check(content1.get()["contents"][0]["text"].getStr() == "Content of document 1")
@@ -105,7 +105,7 @@ suite "Resource Registry Tests":
       "Example Binary File",
       some("A binary file example"),
       some("application/octet-stream"),
-      proc(): JsonNode =
+      proc(): Future[JsonNode] {.async.} =
         return %*{
           "contents": [
             {
@@ -125,7 +125,7 @@ suite "Resource Registry Tests":
     check(resources[0]["mimeType"].getStr() == "application/octet-stream")
     
     # Get resource content
-    let content = registry.getResource("file:///example.bin")
+    let content = waitFor registry.getResource("file:///example.bin")
     
     check(content.isSome)
     check(content.get()["contents"].len == 1)
@@ -134,7 +134,7 @@ suite "Resource Registry Tests":
     check(content.get()["contents"][0]["blob"].getStr() == "SGVsbG8sIHdvcmxkIQ==")
   
   test "Unknown resource retrieval":
-    let content = registry.getResource("file:///unknown.txt")
+    let content = waitFor registry.getResource("file:///unknown.txt")
     check(content.isNone)
 
 suite "Resource URI Tests":

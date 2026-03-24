@@ -135,7 +135,7 @@ proc setupRootsHandlers*(protocol: Protocol, rootManager: RootManager): void =
   ## Sets up request handlers for roots-related methods
 
   # Handler for roots/list
-  let listHandler = proc(request: RequestMessage): ResponseMessage =
+  let listHandler = proc(request: RequestMessage): Future[ResponseMessage] {.async.} =
     let roots = rootManager.getAllRoots()
     var rootsArray = newJArray()
 

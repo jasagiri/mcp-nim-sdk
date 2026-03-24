@@ -9,6 +9,7 @@ import os
 import strutils
 import tables
 import asyncdispatch
+import asyncdispatch
 import strformat
 
 type
@@ -42,7 +43,7 @@ type
     description*: string
     mimeType*: Option[string]
 
-  ResourceContentHandler* = proc(): JsonNode
+  ResourceContentHandler* = proc(): Future[JsonNode]
 
   ResourceRegistry* = ref object
     ## Registry for resources
@@ -272,15 +273,15 @@ proc getResources*(registry: ResourceRegistry): seq[JsonNode] =
   for uri, info in registry.resources:
     result.add(info)
 
-proc getResource*(registry: ResourceRegistry, uri: string): Option[JsonNode] =
+proc getResource*(registry: ResourceRegistry, uri: string): Future[Option[JsonNode]] {.async.} =
   ## Get the content of a specific resource
   if uri notin registry.resourceHandlers:
     return none(JsonNode)
 
   try:
-    let content = registry.resourceHandlers[uri]()
+    let content = await registry.resourceHandlers[uri]()
     return some(content)
-  except:
+  except CatchableError:
     return none(JsonNode)
 
 proc registerResourceTemplate*(registry: ResourceRegistry, uriTemplate, name: string,

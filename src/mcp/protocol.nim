@@ -60,8 +60,8 @@ type
     message*: string
     data*: Option[JsonNode]
 
-  HandlerCallback* = proc(request: RequestMessage): ResponseMessage {.gcsafe.}
-  NotificationCallback* = proc(notification: NotificationMessage) {.gcsafe.}
+  HandlerCallback* = proc(request: RequestMessage): Future[ResponseMessage] {.gcsafe.}
+  NotificationCallback* = proc(notification: NotificationMessage): Future[void] {.gcsafe.}
 
   ProtocolMethods* = object
     ## Protocol methods for a specific version
@@ -174,14 +174,14 @@ proc setNotificationHandler*(p: Protocol, methodName: string, handler: Notificat
 
 proc handleInitializeRequest*(p: Protocol, request: RequestMessage): ResponseMessage {.gcsafe.}
 
-proc handleRequest*(p: Protocol, request: RequestMessage): ResponseMessage {.gcsafe.} =
+proc handleRequest*(p: Protocol, request: RequestMessage): Future[ResponseMessage] {.async, gcsafe.} =
   ## Process an incoming request and route it to the appropriate handler
   if request.methodName == "initialize":
     # Special handling for initialize to support version negotiation
     return p.handleInitializeRequest(request)
-    
+
   if request.methodName in p.activeRequestHandlers:
-    return p.activeRequestHandlers[request.methodName](request)
+    return await p.activeRequestHandlers[request.methodName](request)
   else:
     return ResponseMessage(
       id: request.id,
@@ -258,7 +258,7 @@ proc handleInitializeRequest*(p: Protocol, request: RequestMessage): ResponseMes
   
   # Call the actual initialize handler if it exists
   if "initialize" in p.activeRequestHandlers:
-    var result = p.activeRequestHandlers["initialize"](request)
+    var result = waitFor p.activeRequestHandlers["initialize"](request)
     # Ensure the response includes the negotiated version
     if result.result.isSome:
       var resultObj = result.result.get()
@@ -297,14 +297,10 @@ proc handleInitializeRequest*(p: Protocol, request: RequestMessage): ResponseMes
       error: none(ErrorInfo)
     )
 
-proc handleRequestAsync*(p: Protocol, request: RequestMessage): Future[ResponseMessage] {.async, gcsafe.} =
-  ## Async version of handleRequest
-  return p.handleRequest(request)
-
-proc handleNotification*(p: Protocol, notification: NotificationMessage) {.gcsafe.} =
+proc handleNotification*(p: Protocol, notification: NotificationMessage): Future[void] {.async, gcsafe.} =
   ## Process an incoming notification and route it to the appropriate handler
   if notification.methodName in p.activeNotificationHandlers:
-    p.activeNotificationHandlers[notification.methodName](notification)
+    await p.activeNotificationHandlers[notification.methodName](notification)
 
 proc createRequest*(methodName: string, params: JsonNode, id: string): RequestMessage =
   ## Create a new request message
