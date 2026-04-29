@@ -172,13 +172,16 @@ proc setNotificationHandler*(p: Protocol, methodName: string, handler: Notificat
   for versionSpec in p.versionMethods.keys:
     p.setNotificationHandler(methodName, handler, versionSpec)
 
-proc handleInitializeRequest*(p: Protocol, request: RequestMessage): ResponseMessage {.gcsafe.}
+proc handleInitializeRequest*(p: Protocol, request: RequestMessage): Future[ResponseMessage] {.async, gcsafe.}
 
 proc handleRequest*(p: Protocol, request: RequestMessage): Future[ResponseMessage] {.async, gcsafe.} =
   ## Process an incoming request and route it to the appropriate handler
   if request.methodName == "initialize":
-    # Special handling for initialize to support version negotiation
-    return p.handleInitializeRequest(request)
+    # Special handling for initialize to support version negotiation.
+    # `handleInitializeRequest` is async because it awaits a registered
+    # async initialize handler (audit #8): nesting `waitFor` from a sync
+    # proc inside an async caller would assert / deadlock the dispatcher.
+    return await p.handleInitializeRequest(request)
 
   if request.methodName in p.activeRequestHandlers:
     return await p.activeRequestHandlers[request.methodName](request)
@@ -193,7 +196,7 @@ proc handleRequest*(p: Protocol, request: RequestMessage): Future[ResponseMessag
       ))
     )
 
-proc handleInitializeRequest*(p: Protocol, request: RequestMessage): ResponseMessage {.gcsafe.} =
+proc handleInitializeRequest*(p: Protocol, request: RequestMessage): Future[ResponseMessage] {.async, gcsafe.} =
   ## Handle initialize request with version negotiation
   let params = request.params
   var clientVersion: MCPVersion
@@ -256,9 +259,11 @@ proc handleInitializeRequest*(p: Protocol, request: RequestMessage): ResponseMes
   # Activate the negotiated version
   p.activateVersion(negotiatedVersion)
   
-  # Call the actual initialize handler if it exists
+  # Call the actual initialize handler if it exists. Use `await` (not the
+  # original `waitFor`) so we cooperate with whatever async dispatcher the
+  # caller is running on instead of trying to drive a nested event loop.
   if "initialize" in p.activeRequestHandlers:
-    var result = waitFor p.activeRequestHandlers["initialize"](request)
+    var result = await p.activeRequestHandlers["initialize"](request)
     # Ensure the response includes the negotiated version
     if result.result.isSome:
       var resultObj = result.result.get()

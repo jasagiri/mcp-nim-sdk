@@ -18,6 +18,11 @@ type
     promptHandlers*: McpPromptHandlers
     requestHandlers*: Table[string, proc(request: JsonRpcRequest): Future[JsonRpcResponse] {.async.}]
     notificationHandlers*: Table[string, proc(notification: JsonRpcNotification): Future[void] {.async.}]
+    lastTransportError*: ref CatchableError
+      ## Set when the message-processing loop terminates due to a transport
+      ## error. `nil` if the loop has not yet ended (or ended cleanly). Lets
+      ## callers detect "silent dead" conditions instead of relying on an
+      ## asyncCheck'd future that completes with no signal.
 
   McpResourceHandlers* = object
     listHandler*: Option[proc(): Future[seq[JsonNode]] {.async.}]
@@ -342,10 +347,14 @@ proc processNotification(server: McpServer, notification: JsonRpcNotification): 
   # If no handler, silently ignore
 
 proc processMessages*(server: McpServer): Future[void] {.async.} =
+  ## Run the receive loop until the transport raises. On termination, the
+  ## raising error is stored on `server.lastTransportError` so callers can
+  ## diagnose; we do not silently swallow it. Defects (programmer errors)
+  ## are not caught and propagate normally — we only handle CatchableError.
   try:
     while true:
       let json = await server.transport.receiveMessage()
-      
+
       if isRequest(json):
         let request = decodeRequest(json)
         asyncCheck server.processRequest(request)
@@ -353,10 +362,11 @@ proc processMessages*(server: McpServer): Future[void] {.async.} =
         let notification = decodeNotification(json)
         asyncCheck server.processNotification(notification)
       else:
-        echo "Invalid message received: ", json
-  except:
-    let e = getCurrentException()
-    echo "Error processing messages: ", e.msg
+        stderr.writeLine("[mcp-server] invalid message received: " & $json)
+  except CatchableError as e:
+    server.lastTransportError = e
+    stderr.writeLine("[mcp-server] transport loop ended with " &
+                      $e.name & ": " & e.msg)
 
 proc sendNotification*(server: McpServer, methodName: string, params: JsonNode): Future[void] {.async.} =
   let notification = newJsonRpcNotification(methodName, params)

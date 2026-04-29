@@ -205,7 +205,10 @@ method stop*(t: StreamableHttpTransport): Future[void] {.async.} =
   # Close HTTP clients
   t.client.close()
   
-  # If we have a session ID, try to explicitly terminate the session
+  # If we have a session ID, try to explicitly terminate the session.
+  # This is best-effort: a network failure during shutdown does not block
+  # the local close path, but the failure must be visible (audit #7) so
+  # operators can correlate orphan-session reports on the server side.
   if t.sessionId.len > 0:
     try:
       discard await t.client.request(
@@ -215,9 +218,13 @@ method stop*(t: StreamableHttpTransport): Future[void] {.async.} =
           "Mcp-Session-Id": t.sessionId
         })
       )
-    except:
-      # warning("Error closing session")  # Comment out for GC safety
-      discard
+    except CatchableError as e:
+      # Best-effort: surface the cause on stderr so silent orphan sessions
+      # become diagnosable without crashing local teardown. (Was a bare
+      # `except: discard` swallowing IOError, OSError, and async failures
+      # without a trace.)
+      stderr.writeLine("[mcp-http] DELETE for session " & t.sessionId &
+                       " failed during close: " & $e.name & ": " & e.msg)
   
   t.state = Closed
   

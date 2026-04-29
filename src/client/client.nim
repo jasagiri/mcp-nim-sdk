@@ -19,6 +19,9 @@ type
     pendingRequests*: Table[string, Future[JsonRpcResponse]]
     requestHandlers*: Table[string, proc(request: JsonRpcRequest): Future[JsonRpcResponse] {.async.}]
     notificationHandlers*: Table[string, proc(notification: JsonRpcNotification): Future[void] {.async.}]
+    lastTransportError*: ref CatchableError
+      ## Set when the message-processing loop terminates due to a transport
+      ## error. Mirrors McpServer.lastTransportError — see audit finding #5.
 
 proc newMcpClient*(
   clientInfo: McpClientInfo,
@@ -72,6 +75,9 @@ proc processResponse(client: McpClient, response: JsonRpcResponse): Future[void]
   # If no pending request, silently ignore
 
 proc processMessages*(client: McpClient): Future[void] {.async.} =
+  ## Run the receive loop until the transport raises. On termination, the
+  ## raising error is stored on `client.lastTransportError` so callers can
+  ## diagnose the silent-dead condition. Defects propagate.
   try:
     while true:
       let json = await client.transport.receiveMessage()
@@ -86,10 +92,11 @@ proc processMessages*(client: McpClient): Future[void] {.async.} =
         let notification = decodeNotification(json)
         asyncCheck client.processNotification(notification)
       else:
-        echo "Invalid message received: ", json
-  except:
-    let e = getCurrentException()
-    echo "Error processing messages: ", e.msg
+        stderr.writeLine("[mcp-client] invalid message received: " & $json)
+  except CatchableError as e:
+    client.lastTransportError = e
+    stderr.writeLine("[mcp-client] transport loop ended with " &
+                      $e.name & ": " & e.msg)
 
 proc sendRequest*(client: McpClient, methodName: string, params: JsonNode): Future[JsonRpcResponse] {.async.} =
   let id = $genUUID()
@@ -178,13 +185,21 @@ proc initialize*(client: McpClient): Future[McpServerCapabilities] {.async.} =
 
   return capabilities
 
+proc capabilities*(client: McpClient): Option[McpServerCapabilities] =
+  ## Server capabilities negotiated during `connect()` / `initialize()`.
+  ## Returns `none` until the handshake completes successfully.
+  client.serverCapabilities
+
 proc connect*(client: McpClient, transport: McpTransport): Future[void] {.async.} =
   client.transport = transport
 
   # Start message processing
   asyncCheck client.processMessages()
 
-  # Initialize the client
+  # Initialize the client. The returned capabilities are stored on
+  # `client.serverCapabilities` (audit #9); callers can inspect them via
+  # `client.capabilities()` after `connect()` resolves, so discarding the
+  # local copy here is intentional rather than silent.
   discard await client.initialize()
 
 proc close*(client: McpClient): Future[void] {.async.} =
