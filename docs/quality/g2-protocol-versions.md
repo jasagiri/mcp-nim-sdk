@@ -15,6 +15,9 @@
 | `src/protocol/lifecycle.nim` | `tests/test_legacy_handshake.nim` | 2026-10-05 |
 | `src/server/server.nim` | `tests/test_legacy_handshake.nim`, `tests/test_era_matrix.nim` | 2026-10-05 |
 | `src/client/client.nim` | `tests/test_legacy_handshake.nim`, `tests/test_era_matrix.nim` | 2026-10-05 |
+| `src/client/{content,tools,resources,prompts,utilities}.nim` | `tests/test_client_operations.nim` | 2026-10-06 |
+| `src/client/{roots,sampling}.nim` | `tests/test_client_server_requests.nim` | 2026-10-06 |
+| `src/client/client.nim` (タイムアウト・キャンセル・進捗・接続終了・通知) | `tests/test_client_requests.nim`, `tests/test_client_server_requests.nim` | 2026-10-06 |
 | `src/transport/transport.nim` | `tests/test_era_matrix.nim` | 2026-10-05 |
 | `src/transport/event_stream.nim` | `tests/test_event_stream.nim` | 2026-10-05 |
 | `src/transport/http.nim` | `tests/test_streamable_http.nim` | 2026-10-05 |

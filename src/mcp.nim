@@ -9,6 +9,12 @@ import protocol/lifecycle
 import protocol/modern
 import server/server
 import client/client
+import client/tools
+import client/resources
+import client/prompts
+import client/utilities
+import client/roots
+import client/sampling
 import transport/transport
 import transport/stdio
 import transport/http
@@ -17,6 +23,7 @@ import transport/event_stream
 
 export types, lifecycle, modern
 export server, client
+export tools, resources, prompts, utilities, roots, sampling
 export transport, stdio, http, http_server, event_stream
 
 const
