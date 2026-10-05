@@ -10,6 +10,7 @@ import transport/transport
 import server/server
 import client/client
 import protocol/types
+import protocol/lifecycle
 
 type
   ExplodingTransport = ref object of McpTransport
@@ -32,6 +33,27 @@ method close*(t: ExplodingTransport): Future[void] {.async.} =
 
 proc newExplodingTransport(msg: string): ExplodingTransport =
   ExplodingTransport(kind: mtkStdio, msg: msg)
+
+type
+  ClosedTransport = ref object of McpTransport
+
+method receiveMessage*(t: ClosedTransport): Future[JsonNode] {.async.} =
+  raise newException(McpTransportClosedError, "EOF on input stream")
+
+suite "processMessages — the peer closing the connection":
+  test "Given a transport the peer closed When the server loop exits Then the server is shut down and no error is recorded":
+    let server = newMcpServer(McpServerInfo(name: "t", version: "0"))
+    server.transport = ClosedTransport(kind: mtkStdio)
+    waitFor server.processMessages()
+    check server.state == mlsShutdown
+    check server.lastTransportError.isNil
+
+  test "Given a transport the peer closed When the client loop exits Then the client is shut down and no error is recorded":
+    let client = newMcpClient(McpClientInfo(name: "t", version: "0"))
+    client.transport = ClosedTransport(kind: mtkStdio)
+    waitFor client.processMessages()
+    check client.state == mlsShutdown
+    check client.lastTransportError.isNil
 
 suite "Server processMessages — error visibility":
   test "Given a transport that raises When processMessages exits Then lastTransportError is set":

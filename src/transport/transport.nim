@@ -16,6 +16,10 @@ type
   McpTransportError* = object of CatchableError
     code*: int
 
+  McpTransportClosedError* = object of McpTransportError
+    ## The peer closed the connection. For a stdio server this is how a
+    ## session normally ends.
+
 # Abstract methods that must be implemented by derived types
 method sendRequest*(t: McpTransport, request: JsonRpcRequest): Future[void] {.base, async.} =
   raise newException(CatchableError, "Not implemented")

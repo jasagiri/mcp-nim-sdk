@@ -105,6 +105,8 @@ proc processMessages*(client: McpClient): Future[void] {.async.} =
         asyncCheck client.processNotification(notification)
       else:
         stderr.writeLine("[mcp-client] invalid message received: " & $json)
+  except McpTransportClosedError:
+    client.state = mlsShutdown
   except CatchableError as e:
     if client.state == mlsShutdown:
       # close() ends the loop on purpose; that is not an error.

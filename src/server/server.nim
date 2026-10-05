@@ -345,6 +345,8 @@ proc processMessages*(server: McpServer): Future[void] {.async.} =
         asyncCheck server.processNotification(notification)
       else:
         stderr.writeLine("[mcp-server] invalid message received: " & $json)
+  except McpTransportClosedError:
+    server.state = mlsShutdown
   except CatchableError as e:
     server.lastTransportError = e
     stderr.writeLine("[mcp-server] transport loop ended with " &
