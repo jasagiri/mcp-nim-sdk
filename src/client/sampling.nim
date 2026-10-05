@@ -115,6 +115,14 @@ proc toJson*(response: McpSamplingResult): JsonNode =
   if response.stopReason.isSome:
     result["stopReason"] = %response.stopReason.get
 
+proc contentOfAnswerForVersion(answer: JsonNode, version: McpProtocolVersion): JsonNode =
+  ## The one place where the content blocks of a sampling answer are fitted
+  ## to the negotiated version (for example audio before 2025-03-26).
+  ## TODO: this passes `answer` through unchanged. At integration, call
+  ## `contentBlockFor` of `src/protocol/content.nim` here for each block, so
+  ## a block the version lacks becomes text.
+  answer
+
 proc setSamplingHandler*(client: McpClient, handler: McpSamplingHandler,
                          tools = false) =
   ## Declare the sampling capability and answer sampling/createMessage from
@@ -144,7 +152,7 @@ proc setSamplingHandler*(client: McpClient, handler: McpSamplingHandler,
         try: parseSamplingRequest(request.params)
         except McpProtocolError as e:
           return newJsonRpcErrorResponse(request.id, -32602, e.msg)
-      let answer = (await handler(parsed)).toJson()
+      let answer = contentOfAnswerForVersion((await handler(parsed)).toJson(), version)
       if request.params.usesTools:
         let faults = createMessageResultProblems(answer, request.params, version)
         if faults.len > 0:
