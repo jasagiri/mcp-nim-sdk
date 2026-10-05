@@ -22,11 +22,15 @@ proc echoServer(): McpServer =
     await ctx.reportProgress(1)
     await ctx.log(mllInfo, %"working")
     let seen = ctx.traceContext
-    return %*{"content": [{"type": "text", "text": "ok"}],
-              "structuredContent": {
-                "traceparent": if seen.traceparent.isSome: %seen.traceparent.get else: newJNull(),
-                "tracestate": if seen.tracestate.isSome: %seen.tracestate.get else: newJNull(),
-                "baggage": if seen.baggage.isSome: %seen.baggage.get else: newJNull()}})
+    # As text: every version has text content, not every version has structuredContent.
+    let report = %*{
+      "traceparent": if seen.traceparent.isSome: %seen.traceparent.get else: newJNull(),
+      "tracestate": if seen.tracestate.isSome: %seen.tracestate.get else: newJNull(),
+      "baggage": if seen.baggage.isSome: %seen.baggage.get else: newJNull()}
+    return %*{"content": [{"type": "text", "text": $report}]})
+
+proc traceSeenByHandler(answer: JsonNode): JsonNode =
+  parseJson(answer["result"]["content"][0]["text"].getStr())
 
 suite "trace context values (W3C Trace Context and Baggage)":
 
@@ -106,7 +110,7 @@ suite "trace context on the server (2026-07-28 only)":
       let peer = server.connect(server.attach(), v)
       let answer = peer.ask("tools/call", %*{"name": "t"},
         meta = %*{"traceparent": Parent, "tracestate": State, "baggage": Bag})
-      let seen = answer["result"]["structuredContent"]
+      let seen = answer.traceSeenByHandler
       check seen["traceparent"].getStr() == Parent
       check seen["tracestate"].getStr() == State
       check seen["baggage"].getStr() == Bag
@@ -116,7 +120,7 @@ suite "trace context on the server (2026-07-28 only)":
       let server = echoServer()
       let peer = server.connect(server.attach(), v)
       let answer = peer.ask("tools/call", %*{"name": "t"})
-      check answer["result"]["structuredContent"]["traceparent"].kind == JNull
+      check answer.traceSeenByHandler["traceparent"].kind == JNull
 
   test "Given a request with trace context, when the handler reports progress and logs, then those notifications carry it":
     for v in versionsWith(ftTraceContext):
@@ -149,7 +153,7 @@ suite "trace context on the server (2026-07-28 only)":
       let peer = server.connect(t, v)
       let answer = peer.ask("tools/call", %*{"name": "t"},
         meta = %*{"traceparent": Parent, "progressToken": "p"})
-      check answer["result"]["structuredContent"]["traceparent"].kind == JNull
+      check answer.traceSeenByHandler["traceparent"].kind == JNull
       let progress = t.messagesOf("notifications/progress")
       check progress.len == 1
       check not progress[0].message["params"].hasKey("_meta")
