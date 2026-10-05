@@ -1,173 +1,220 @@
-## MCP HTTP transport implementation
+## Client-side Streamable HTTP transport for MCP.
 ##
-## Phase 2 completion: each `sendRequest` POSTs the JSON-RPC envelope
-## and pushes the parsed response body onto an internal queue, so that a
-## subsequent `receiveMessage` call (driven by McpClient.processMessages)
-## can pop the matching reply. The MCP HTTP profile uses a single endpoint
-## that returns the response body directly in the same HTTP exchange, so
-## the queue acts as a per-transport mailbox keeping the asynchronous
-## send/receive abstraction consistent across stdio and HTTP transports.
+## Every JSON-RPC message is POSTed to one endpoint. The server answers a
+## request either with a JSON body or with an event stream that carries
+## notifications about the request and then its response; both arrive
+## through `receiveMessage`.
+##
+## A request of protocol version 2026-07-28 carries the headers that mirror
+## its body (MCP-Protocol-Version, Mcp-Method, Mcp-Name). Requests of the
+## earlier Streamable HTTP versions carry the session id the server issued
+## and, once negotiated, the protocol version.
+##
+## TODO (versions 2025-03-26 to 2025-11-25): the GET stream for
+## server-initiated messages, resumption with Last-Event-ID, DELETE.
+## TODO (2026-07-28): Mcp-Param-* headers from x-mcp-header annotations.
 
-import asyncdispatch, httpclient, json, options, strutils, asynchttpserver,
-       deques
+import std/[asyncdispatch, httpclient, json, options, strutils, deques]
 import ./transport
+import ./event_stream
 import ../protocol/types
+import ../protocol/modern
+
+const
+  DefaultMaxResponseSize* = 16 * 1024 * 1024
+  ErrStreamClosed* = -32000
+    ## Local error (implementation-defined range): the event stream of a
+    ## request ended before its response arrived. The request is lost; the
+    ## caller may send it again.
+  SessionHeader = "Mcp-Session-Id"
+  ErrorBodyPreview = 512
 
 type
-  HttpTransport* = ref object of McpTransport
-    ## HTTP transport
-    baseUrl*: string
-    sessionId*: Option[string]
-    client*: AsyncHttpClient
-    headers*: HttpHeaders
-    responseQueue*: Deque[JsonNode]
-
   StreamableHttpTransport* = ref object of McpTransport
-    ## Streamable HTTP transport
     baseUrl*: string
-    sessionId*: Option[string]
-    client*: AsyncHttpClient
     headers*: HttpHeaders
-    sseStream*: string  # SSE stream connection URL
-    responseQueue*: Deque[JsonNode]
+      ## Sent with every request, e.g. Authorization.
+    sessionId*: Option[string]
+      ## Issued by servers of versions 2025-03-26 to 2025-11-25.
+    protocolVersion*: Option[McpProtocolVersion]
+      ## The version agreed by initialize; sent as MCP-Protocol-Version.
+    maxResponseSize*: int
+    inbox: Deque[JsonNode]
+    waiters: Deque[Future[JsonNode]]
+    streams: seq[AsyncHttpClient]
+    closed: bool
 
-proc newHttpTransport*(baseUrl: string): HttpTransport =
-  let client = newAsyncHttpClient()
-  client.headers = newHttpHeaders({
-    "Content-Type": "application/json",
-    "Accept": "application/json"
-  })
-
-  result = HttpTransport(
-    kind: mtkHttp,
-    baseUrl: baseUrl,
-    sessionId: none(string),
-    client: client,
-    headers: client.headers,
-    responseQueue: initDeque[JsonNode](),
-  )
+  HttpTransport* = StreamableHttpTransport
 
 proc newStreamableHttpTransport*(baseUrl: string): StreamableHttpTransport =
-  let client = newAsyncHttpClient()
-  client.headers = newHttpHeaders({
+  StreamableHttpTransport(
+    kind: mtkStreamable,
+    baseUrl: baseUrl,
+    headers: newHttpHeaders(),
+    sessionId: none(string),
+    protocolVersion: none(McpProtocolVersion),
+    maxResponseSize: DefaultMaxResponseSize,
+    inbox: initDeque[JsonNode](),
+    waiters: initDeque[Future[JsonNode]](),
+  )
+
+proc newHttpTransport*(baseUrl: string): HttpTransport =
+  newStreamableHttpTransport(baseUrl)
+
+proc deliver(t: StreamableHttpTransport, message: JsonNode) =
+  if t.waiters.len > 0:
+    t.waiters.popFirst().complete(message)
+  else:
+    t.inbox.addLast(message)
+
+proc parseMessage(t: StreamableHttpTransport, text: string): JsonNode =
+  if text.len > t.maxResponseSize:
+    raise newException(McpTransportError,
+      "message from " & t.baseUrl & " exceeds " & $t.maxResponseSize & " bytes")
+  try:
+    result = parseJson(text)
+  except CatchableError as e:
+    raise newException(McpTransportError,
+      "invalid JSON-RPC message from " & t.baseUrl & ": " & e.msg)
+
+func jsonRpcErrorIn(body: JsonNode): bool =
+  ## Whether an HTTP error body is a JSON-RPC error response, as opposed to
+  ## whatever an unrelated server or proxy put there.
+  body.kind == JObject and body{"jsonrpc"}.getStr() == "2.0" and
+    body{"error"}.kind == JObject and body{"error", "code"}.kind == JInt
+
+proc streamClosed(requestId: JsonNode): JsonNode =
+  %*{"jsonrpc": "2.0", "id": requestId, "error": {
+    "code": ErrStreamClosed,
+    "message": "The event stream ended before the response arrived"}}
+
+proc pump(t: StreamableHttpTransport, http: AsyncHttpClient,
+          response: AsyncResponse, requestId: JsonNode) {.async.} =
+  ## Deliver the messages of an event stream as they arrive. When the stream
+  ## of a request ends without that request's response, say so in its place.
+  var parser = initSseParser()
+  var answered = requestId.isNil
+  try:
+    while true:
+      let (hasData, chunk) = await response.bodyStream.read()
+      if not hasData:
+        break
+      for event in parser.feed(chunk):
+        let message = t.parseMessage(event.data)
+        if not answered and isResponse(message) and message{"id"} == requestId:
+          answered = true
+        t.deliver(message)
+  except CatchableError as e:
+    stderr.writeLine("[mcp-http] event stream from " & t.baseUrl &
+                      " failed with " & $e.name & ": " & e.msg)
+  finally:
+    http.close()
+    let index = t.streams.find(http)
+    if index >= 0:
+      t.streams.delete(index)
+  if not answered and not t.closed:
+    t.deliver(streamClosed(requestId))
+
+proc post(t: StreamableHttpTransport, body: string,
+          extraHeaders: seq[(string, string)], requestId: JsonNode) {.async.} =
+  if t.closed:
+    raise newException(McpTransportError, "transport is closed")
+  let headers = newHttpHeaders({
     "Content-Type": "application/json",
     "Accept": "application/json, text/event-stream"
   })
+  for name, value in t.headers.pairs:
+    headers[name] = value
+  for (name, value) in extraHeaders:
+    headers[name] = value
 
-  result = StreamableHttpTransport(
-    kind: mtkStreamable,
-    baseUrl: baseUrl,
-    sessionId: none(string),
-    client: client,
-    headers: client.headers,
-    sseStream: "",
-    responseQueue: initDeque[JsonNode](),
-  )
-
-proc enqueueResponseBody(queue: var Deque[JsonNode], body: string,
-                         baseUrl: string) {.raises: [McpTransportError].} =
-  ## Best-effort: a non-empty body is parsed and appended; an empty body
-  ## (server returned 204-equivalent for a notification ack) is ignored.
-  if body.len == 0: return
-  var parsed: JsonNode
-  try: parsed = parseJson(body)
+  let http = newAsyncHttpClient()
+  var response: AsyncResponse
+  try:
+    response = await http.request(t.baseUrl, HttpPost, body, headers)
   except CatchableError as e:
+    http.close()
     raise newException(McpTransportError,
-      "invalid JSON-RPC response from " & baseUrl & ": " & e.msg)
-  queue.addLast(parsed)
+      "POST " & t.baseUrl & " failed: " & e.msg)
 
-method sendRequest*(t: HttpTransport, request: JsonRpcRequest): Future[void] {.async.} =
-  let message = encodeMessage(request)
+  if response.headers.hasKey(SessionHeader):
+    t.sessionId = some($response.headers[SessionHeader])
 
+  let contentType = response.headers.getOrDefault("Content-Type").toLowerAscii()
+  if response.code.is2xx and contentType.startsWith("text/event-stream"):
+    t.streams.add http
+    asyncCheck t.pump(http, response, requestId)
+    return
+
+  var text: string
+  try:
+    text = await response.body
+  finally:
+    http.close()
+
+  if response.code.is2xx:
+    if text.len > 0:
+      t.deliver(t.parseMessage(text))
+    return
+
+  # 2026-07-28 servers report protocol errors with an HTTP error status and
+  # a JSON-RPC error body; that is an answer, not a transport failure.
+  if text.len > 0 and text.len <= t.maxResponseSize:
+    var errorBody: JsonNode = nil
+    try:
+      errorBody = parseJson(text)
+    except CatchableError:
+      errorBody = nil
+    if not errorBody.isNil and jsonRpcErrorIn(errorBody):
+      if errorBody{"id"}.kind == JNull and not requestId.isNil:
+        errorBody["id"] = requestId
+      t.deliver(errorBody)
+      return
+  raise newException(McpTransportError,
+    "HTTP " & $response.code & " from " & t.baseUrl & ": " &
+    text[0 ..< min(text.len, ErrorBodyPreview)])
+
+proc legacyHeaders(t: StreamableHttpTransport): seq[(string, string)] =
   if t.sessionId.isSome:
-    t.client.headers["Mcp-Session-Id"] = t.sessionId.get
+    result.add (SessionHeader, t.sessionId.get)
+  if t.protocolVersion.isSome:
+    result.add (HeaderProtocolVersion, $t.protocolVersion.get)
 
-  let resp = await t.client.post(t.baseUrl, body = message)
-  let body = await resp.body
-  if not resp.code.is2xx:
-    raise newException(McpTransportError,
-      "HTTP " & $resp.code & " from " & t.baseUrl & ": " & body)
-  enqueueResponseBody(t.responseQueue, body, t.baseUrl)
-
-method sendNotification*(t: HttpTransport, notification: JsonRpcNotification): Future[void] {.async.} =
-  let message = encodeMessage(notification)
-
-  if t.sessionId.isSome:
-    t.client.headers["Mcp-Session-Id"] = t.sessionId.get
-
-  let resp = await t.client.post(t.baseUrl, body = message)
-  let body = await resp.body
-  if not resp.code.is2xx:
-    raise newException(McpTransportError,
-      "HTTP " & $resp.code & " from " & t.baseUrl & ": " & body)
-  # Notifications carry no JSON-RPC response per spec; tolerate either
-  # an empty body or stray server output without queuing.
-  discard body
-
-method sendResponse*(t: HttpTransport, response: JsonRpcResponse): Future[void] {.async.} =
-  # Not typically used for client-side HTTP transport
-  raise newException(McpTransportError, "sendResponse not applicable for HTTP client transport")
-
-method receiveMessage*(t: HttpTransport): Future[JsonNode] {.async.} =
-  ## Pop the next queued JSON-RPC response. Yields until sendRequest puts
-  ## something in the queue. The 10ms poll matches the cadence used by
-  ## stdio transport when its underlying stream is empty.
-  while t.responseQueue.len == 0:
-    await sleepAsync(10)
-  return t.responseQueue.popFirst()
-
-method close*(t: HttpTransport): Future[void] {.async.} =
-  t.client.close()
-
-# Streamable HTTP transport methods
 method sendRequest*(t: StreamableHttpTransport, request: JsonRpcRequest): Future[void] {.async.} =
-  let message = encodeMessage(request)
-
-  if t.sessionId.isSome:
-    t.client.headers["Mcp-Session-Id"] = t.sessionId.get
-
-  let resp = await t.client.post(t.baseUrl, body = message)
-  let body = await resp.body
-  if not resp.code.is2xx:
-    raise newException(McpTransportError,
-      "HTTP " & $resp.code & " from " & t.baseUrl & ": " & body)
-  enqueueResponseBody(t.responseQueue, body, t.baseUrl)
+  let headers =
+    if isModernRequest(request.params):
+      modernRequestHeaders(request.`method`, request.params)
+    else:
+      t.legacyHeaders()
+  let wire = request.toJson()
+  await t.post($wire, headers, wire["id"])
 
 method sendNotification*(t: StreamableHttpTransport, notification: JsonRpcNotification): Future[void] {.async.} =
-  let message = encodeMessage(notification)
-
-  if t.sessionId.isSome:
-    t.client.headers["Mcp-Session-Id"] = t.sessionId.get
-
-  let resp = await t.client.post(t.baseUrl, body = message)
-  let body = await resp.body
-  if not resp.code.is2xx:
-    raise newException(McpTransportError,
-      "HTTP " & $resp.code & " from " & t.baseUrl & ": " & body)
-  discard body
+  await t.post(encodeMessage(notification), t.legacyHeaders(), nil)
 
 method sendResponse*(t: StreamableHttpTransport, response: JsonRpcResponse): Future[void] {.async.} =
-  # Not typically used for client-side HTTP transport
-  raise newException(McpTransportError, "sendResponse not applicable for HTTP client transport")
+  ## Answers a request the server sent on a stream (versions before
+  ## 2026-07-28).
+  await t.post(encodeMessage(response), t.legacyHeaders(), nil)
+
+method protocolVersionNegotiated*(t: StreamableHttpTransport, version: McpProtocolVersion) =
+  # The header exists from 2025-06-18 on.
+  if version >= mpv20250618 and not isModern(version):
+    t.protocolVersion = some(version)
 
 method receiveMessage*(t: StreamableHttpTransport): Future[JsonNode] {.async.} =
-  while t.responseQueue.len == 0:
-    await sleepAsync(10)
-  return t.responseQueue.popFirst()
-
-proc openSseStream*(t: StreamableHttpTransport): Future[void] {.async.} =
-  t.client.headers["Accept"] = "text/event-stream"
-
-  if t.sessionId.isSome:
-    t.client.headers["Mcp-Session-Id"] = t.sessionId.get
-
-  # Open GET request for SSE streaming
-  let response = await t.client.get(t.baseUrl)
-
-  if response.status.startsWith("2"):
-    t.sseStream = t.baseUrl
-  else:
-    raise newException(McpTransportError, "Failed to open SSE stream: " & response.status)
+  if t.inbox.len > 0:
+    return t.inbox.popFirst()
+  if t.closed:
+    raise newException(McpTransportError, "transport is closed")
+  let waiter = newFuture[JsonNode]("StreamableHttpTransport.receiveMessage")
+  t.waiters.addLast(waiter)
+  return await waiter
 
 method close*(t: StreamableHttpTransport): Future[void] {.async.} =
-  t.client.close()
+  t.closed = true
+  for http in t.streams:
+    http.close()
+  t.streams.setLen(0)
+  while t.waiters.len > 0:
+    t.waiters.popFirst().fail(newException(McpTransportError, "transport is closed"))

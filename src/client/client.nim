@@ -106,6 +106,9 @@ proc processMessages*(client: McpClient): Future[void] {.async.} =
       else:
         stderr.writeLine("[mcp-client] invalid message received: " & $json)
   except CatchableError as e:
+    if client.state == mlsShutdown:
+      # close() ends the loop on purpose; that is not an error.
+      return
     client.lastTransportError = e
     stderr.writeLine("[mcp-client] transport loop ended with " &
                       $e.name & ": " & e.msg)
@@ -223,6 +226,7 @@ proc initialize*(client: McpClient): Future[McpServerCapabilities] {.async.} =
       "Server chose protocol version '" & serverVersionText &
       "', which this client does not speak")
   client.negotiatedVersion = serverVersion
+  client.transport.protocolVersionNegotiated(serverVersion.get)
 
   # Extract server capabilities
   let capabilities = extractServerCapabilities(resultData{"capabilities"})

@@ -32,6 +32,11 @@ method receiveMessage*(t: McpTransport): Future[JsonNode] {.base, async.} =
 method close*(t: McpTransport): Future[void] {.base, async.} =
   raise newException(CatchableError, "Not implemented")
 
+method protocolVersionNegotiated*(t: McpTransport, version: McpProtocolVersion) {.base.} =
+  ## Called once the initialize handshake has agreed on `version`, for
+  ## transports that must state it on later messages. Most need not.
+  discard
+
 # Wire encoding
 
 proc wireId(id: string, idNode: JsonNode): JsonNode =
