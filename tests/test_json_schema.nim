@@ -3,8 +3,8 @@
 ## checked is reported instead of passing.
 
 import std/[unittest, json, strutils]
-import protocol/json_schema
-import protocol/json_schema_regex
+import jsonschema/json_schema
+import jsonschema/json_schema_regex
 
 proc violations(schema, instance: string): seq[SchemaViolation] =
   validate(parseJson(schema), parseJson(instance))

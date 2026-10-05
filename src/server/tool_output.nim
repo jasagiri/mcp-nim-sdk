@@ -7,7 +7,7 @@
 
 import std/[asyncdispatch, json, options, strutils]
 import ../protocol/content
-import ../protocol/json_schema
+import ../jsonschema/json_schema
 import ../protocol/modern
 import ./errors
 import ./server

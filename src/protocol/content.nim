@@ -8,7 +8,7 @@
 
 import std/[json, options]
 import ./features
-import ./json_schema
+import ../jsonschema/json_schema
 import ./types
 import ./version
 

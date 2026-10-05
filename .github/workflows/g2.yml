@@ -75,6 +75,14 @@ jobs:
           ../nim-muter/bin/nim-muter run --config tests/mutation/http_server.json || status=$?
           cp .nim-muter/http_server/report.json "$KURATSUGI_RESULT_DIR/http_server.report.json" || exit 1
           exit $status
+  jsonschema:
+    steps:
+      - name: nim-muter jsonschema
+        run: |
+          status=0
+          ../nim-muter/bin/nim-muter run --config tests/mutation/jsonschema.json || status=$?
+          cp .nim-muter/jsonschema/report.json "$KURATSUGI_RESULT_DIR/jsonschema.report.json" || exit 1
+          exit $status
   lifecycle:
     steps:
       - name: nim-muter lifecycle

@@ -4,7 +4,7 @@ import asyncdispatch, json, options, strutils, tables
 import ./client
 import ./content
 import ../protocol/content as wire
-import ../protocol/json_schema
+import ../jsonschema/json_schema
 export content
 export wire.McpToolAnnotations, wire.isReadOnly, wire.isDestructive,
   wire.isIdempotent, wire.isOpenWorld

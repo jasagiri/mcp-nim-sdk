@@ -8,7 +8,7 @@ import protocol/types
 import protocol/lifecycle
 import protocol/modern
 import protocol/content
-import protocol/json_schema
+import jsonschema/json_schema
 import server/server
 import server/tool_output
 import client/client
