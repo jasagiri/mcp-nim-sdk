@@ -13,5 +13,6 @@
 
 import ./tasks/wire
 import ./tasks/server
+import ./tasks/client
 
-export wire, server
+export wire, server, client
