@@ -71,6 +71,9 @@ func blockProblems(subject: string, block0: JsonNode,
     if not block0.isString("text"):
       result.add subject & ": text block without text"
   of "image", "audio":
+    if kind == "audio" and not version.has(ftAudioContent):
+      # SamplingMessage.content is TextContent | ImageContent before 2025-03-26
+      return @[subject & ": audio is not a sampling content type of protocol version " & $version]
     if not block0.isString("data") or not block0.isString("mimeType"):
       result.add subject & ": " & kind & " block without data and mimeType"
   of "tool_use", "tool_result":

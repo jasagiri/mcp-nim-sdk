@@ -5,6 +5,7 @@
 
 import std/[unittest, json, options, strutils]
 import protocol/version
+import protocol/features
 import protocol/types
 import protocol/sampling_tools
 
@@ -30,6 +31,22 @@ func request(messages: seq[JsonNode], extra: JsonNode = nil): JsonNode =
   result = %*{"messages": messages, "maxTokens": 100}
   if not extra.isNil:
     for key, value in extra.pairs: result[key] = value
+
+suite "sampling messages: content types by version":
+
+  test "Given an audio block in a message, when the request is checked, then only versions with audio content accept it":
+    let audio = %*{"role": "user", "content": {"type": "audio", "data": "AAAA", "mimeType": "audio/wav"}}
+    for v in [mpv20241105, mpv20250326, mpv20250618, mpv20251125, mpv20260728]:
+      let problems = createMessageParamsProblems(request(@[audio]), v)
+      if v.has(ftAudioContent):
+        check problems.len == 0
+      else:
+        check problems.mentions("audio")
+
+  test "Given an image block in a message, when the request is checked, then every version accepts it":
+    let image = %*{"role": "user", "content": {"type": "image", "data": "AAAA", "mimeType": "image/png"}}
+    for v in [mpv20241105, mpv20250326, mpv20250618, mpv20251125, mpv20260728]:
+      check createMessageParamsProblems(request(@[image]), v).len == 0
 
 suite "sampling with tools: what the request is allowed to hold":
 

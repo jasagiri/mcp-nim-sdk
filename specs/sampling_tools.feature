@@ -51,3 +51,9 @@ Feature: Sampling with tools
     Given a handler that answers a request with tools inconsistently
     When the server asks
     Then the server gets an internal error and not the answer
+
+  @spec:MCP-SAMPLING-TOOLS-8
+  Scenario: A sampling message holds only the content types of its version
+    Given a connection of a version before 2025-03-26
+    When a sampling/createMessage request has a message with an audio block
+    Then the request is invalid, because SamplingMessage.content is text or image there, and from 2025-03-26 on it is accepted

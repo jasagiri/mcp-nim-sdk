@@ -119,7 +119,9 @@ proc toJson*(response: McpSamplingResult): JsonNode =
 proc contentOfAnswerForVersion(answer: JsonNode, version: McpProtocolVersion): JsonNode =
   ## The answer with its content blocks fitted to the negotiated version: a
   ## block of a type the version lacks (audio before 2025-03-26) becomes
-  ## text that says so. TODO: the `messages` of the request are not fitted.
+  ## text that says so. The request's `messages` are not fitted but checked:
+  ## a block the version lacks is refused with invalid params
+  ## (`createMessageParamsProblems`).
   result = answer.copy()
   let content = answer{"content"}
   if content.isNil:

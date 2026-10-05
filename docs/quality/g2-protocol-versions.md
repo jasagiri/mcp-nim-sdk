@@ -70,3 +70,4 @@
 - `src/server/server.nim` の tools/call の出力検査 (`outputProblems`、`toolDefinition`)。
 - `src/client/content.nim` の `optionalString` (型違いを McpProtocolError にした)。
 - `src/client/icons.nim` (取得時の検査: 資格情報なし、同一オリジン、サイズ上限、マジックバイトの照合)。
+- `src/protocol/sampling_tools.nim` (sampling の messages の audio の版判定)。

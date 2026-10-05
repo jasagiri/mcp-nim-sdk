@@ -1012,3 +1012,5 @@ MCP-ICONS-6 | tests/test_icon_fetch.nim | Given a redirect inside the origin, wh
 MCP-ICONS-6 | tests/test_icon_fetch.nim | Given an icon of another origin or scheme, when fetched, then nothing is sent
 MCP-ICONS-6 | tests/test_icon_fetch.nim | Given a data URI, when fetched, then the bytes are checked like any others
 MCP-ICONS-6 | tests/test_icon_fetch.nim | Given a fetch without the server's origin, when asked for a URL, then it is refused
+MCP-SAMPLING-TOOLS-8 | tests/test_sampling_tools_payload.nim | Given an audio block in a message, when the request is checked, then only versions with audio content accept it
+MCP-SAMPLING-TOOLS-8 | tests/test_sampling_tools_payload.nim | Given an image block in a message, when the request is checked, then every version accepts it
