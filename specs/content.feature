@@ -188,3 +188,9 @@ Feature: Content of tools, resources and prompts
     Given a server whose answer has a title, description, mimeType, text, blob or nextCursor that is not a string
     When the client reads the answer
     Then it raises a protocol error naming the operation and the field, and an absent field is still none
+
+  @spec:MCP-ICONS-6 @feature:ftIcons
+  Scenario: An icon is fetched the way the security considerations ask
+    Given an icon of a server whose origin is known
+    When the client fetches it
+    Then it sends no credentials, stays on the origin of the server through redirects, limits the size, and accepts only allowed image types found in the bytes whatever the declared MIME type says

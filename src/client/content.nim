@@ -172,9 +172,8 @@ proc isSafeIconUri*(src: string, serverOrigin = ""): bool =
   ## basic/index, Icons: security considerations): an https URL or a base64
   ## image `data:` URI, never another scheme. When `serverOrigin` is given
   ## (`https://host[:port]`), an https icon must come from that origin.
-  ## This screens the URI only. The consumer still has to fetch without
-  ## credentials, refuse redirects to another origin, limit sizes and check
-  ## the bytes against an allowlist of image types.
+  ## This screens the URI only; `fetchIcon` (client/icons) does the fetching
+  ## the specification asks for.
   if src.toLowerAscii.startsWith("data:"):
     let header = src[5 .. ^1].split(',', maxsplit = 1)[0].toLowerAscii
     return header.startsWith("image/") and header.endsWith(";base64")

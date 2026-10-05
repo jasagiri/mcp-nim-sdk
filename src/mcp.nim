@@ -25,6 +25,7 @@ import server/mrtr as serverMrtr
 import client/subscriptions as clientSubscriptions
 import server/tasks as serverTasks
 import client/tasks as clientTasks
+import client/icons
 import protocol/trace_context
 import transport/transport
 import transport/stdio
@@ -35,7 +36,7 @@ import transport/event_stream
 export types, lifecycle, modern, content, json_schema
 export server, client
 export tools, resources, prompts, utilities, roots, sampling, elicit, elicitation
-export clientExtensions, serverExtensions, serverMrtr, clientSubscriptions, serverTasks, clientTasks, trace_context
+export clientExtensions, serverExtensions, serverMrtr, clientSubscriptions, serverTasks, clientTasks, icons, trace_context
 export transport, stdio, http, http_server, event_stream
 
 const

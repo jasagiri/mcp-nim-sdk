@@ -1000,3 +1000,15 @@ MCP-CONTENT-FIELDS-1 | tests/test_client_field_types.nim | Given a nextCursor th
 MCP-CONTENT-FIELDS-1 | tests/test_client_field_types.nim | Given a prompt description that is a list, when the prompt is fetched, then it is a protocol error
 MCP-CONTENT-FIELDS-1 | tests/test_client_field_types.nim | Given an embedded text resource whose text is a number, when parsed, then it is a protocol error
 MCP-CONTENT-FIELDS-1 | tests/test_client_field_types.nim | Given optional strings that are absent or strings, when read, then they are none or the string
+MCP-ICONS-6 | tests/test_icon_fetch.nim | Given an icon of an allowed type, when fetched, then the bytes and the type found in them are returned
+MCP-ICONS-6 | tests/test_icon_fetch.nim | Given a fetch, when the request goes out, then it carries no credentials
+MCP-ICONS-6 | tests/test_icon_fetch.nim | Given an icon whose Content-Type disagrees with its bytes, when fetched, then it is refused
+MCP-ICONS-6 | tests/test_icon_fetch.nim | Given a generic Content-Type, when the icon's own mimeType disagrees with the bytes, then it is refused; when it agrees, accepted
+MCP-ICONS-6 | tests/test_icon_fetch.nim | Given bytes of no allowed image type, when fetched, then they are refused whatever the type says
+MCP-ICONS-6 | tests/test_icon_fetch.nim | Given an SVG, when fetched, then it is refused unless the caller allows it
+MCP-ICONS-6 | tests/test_icon_fetch.nim | Given a body over the limit, when fetched, then it is refused
+MCP-ICONS-6 | tests/test_icon_fetch.nim | Given an answer other than 200, when fetched, then it is refused
+MCP-ICONS-6 | tests/test_icon_fetch.nim | Given a redirect inside the origin, when fetched, then it is followed; to another origin, refused
+MCP-ICONS-6 | tests/test_icon_fetch.nim | Given an icon of another origin or scheme, when fetched, then nothing is sent
+MCP-ICONS-6 | tests/test_icon_fetch.nim | Given a data URI, when fetched, then the bytes are checked like any others
+MCP-ICONS-6 | tests/test_icon_fetch.nim | Given a fetch without the server's origin, when asked for a URL, then it is refused

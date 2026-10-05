@@ -108,7 +108,7 @@ func implementationOf*(feature: McpFeature): Implementation {.raises: [].} =
   of ftAudioContent:
     done("tests/test_audio_content.nim")
   of ftIcons:
-    done("tests/test_icons.nim", "tests/test_implementation_info.nim")
+    done("tests/test_icons.nim", "tests/test_icon_fetch.nim", "tests/test_implementation_info.nim")
   of ftTitleFields:
     done("tests/test_title_fields.nim", "tests/test_implementation_info.nim")
   of ftImplementationDescription:

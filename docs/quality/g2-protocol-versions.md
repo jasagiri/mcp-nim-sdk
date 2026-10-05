@@ -69,3 +69,4 @@
 - 認可の主体の経路: `src/auth/resource_server.nim` (principal)、`src/transport/auth_hook.nim` (check)、`src/transport/http_server.nim` (authenticate)、`src/server/tasks.nim` (ownerOf)。
 - `src/server/server.nim` の tools/call の出力検査 (`outputProblems`、`toolDefinition`)。
 - `src/client/content.nim` の `optionalString` (型違いを McpProtocolError にした)。
+- `src/client/icons.nim` (取得時の検査: 資格情報なし、同一オリジン、サイズ上限、マジックバイトの照合)。
