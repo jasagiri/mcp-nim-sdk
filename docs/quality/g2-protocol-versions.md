@@ -62,3 +62,7 @@
 1 つずつ壊した版を 20 通り作り、`tests/test_modern_protocol.nim` が落ちるかを確かめた。
 19 通りは検出された。検出されなかった 1 通り (結果に既にあるサーバー識別を上書きする)
 にはテストを足した。これは網羅的な変異検査の代わりにはならない。
+
+## 未測定 (core-rest、第 3 波)
+
+- `src/server/tasks.nim` (task の質問の保留と `tasks/result` での送出)、`src/server/server.nim` の `holdForTask` / `sendHeld` / task の通知の経路、`src/transport/http_server.nim` の `sendRequest` の経路選択、`src/server/elicit.nim` の task 連携。

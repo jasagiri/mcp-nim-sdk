@@ -132,7 +132,8 @@ func implementationOf*(feature: McpFeature): Implementation {.raises: [].} =
     done("tests/test_tool_input_validation.nim")
   of ftTasks:
     done("tests/test_tasks_store.nim", "tests/test_tasks_server.nim",
-         "tests/test_tasks_client.nim", "tests/test_tasks_end_to_end.nim")
+         "tests/test_tasks_client.nim", "tests/test_tasks_end_to_end.nim",
+         "tests/test_tasks_http.nim")
   of ftMultiRoundTripRequests:
     done("tests/test_mrtr.nim")
   of ftTraceContext:

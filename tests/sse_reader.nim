@@ -11,14 +11,19 @@ type Events* = ref object
   queued: Deque[SseEvent]
   ended: bool
 
-proc open*(url: string, httpMethod: HttpMethod, body: string,
-          headers: openArray[(string, string)]): Events =
+proc openAsync*(url: string, httpMethod: HttpMethod, body: string,
+                headers: seq[(string, string)]): Future[Events] {.async.} =
+  ## Like `open`, for a response whose headers come only with its first event.
   let allHeaders = newHttpHeaders({"Accept": "application/json, text/event-stream",
                                    "Content-Type": "application/json"})
   for (name, value) in headers:
     allHeaders[name] = value
-  Events(response: waitFor wire.request(url, httpMethod, allHeaders, body),
-         parser: initSseParser())
+  return Events(response: await wire.request(url, httpMethod, allHeaders, body),
+                parser: initSseParser())
+
+proc open*(url: string, httpMethod: HttpMethod, body: string,
+          headers: openArray[(string, string)]): Events =
+  waitFor openAsync(url, httpMethod, body, @headers)
 
 proc code*(e: Events): HttpCode = e.response.code
 proc contentType*(e: Events): string = e.response.headers.getOrDefault("Content-Type")

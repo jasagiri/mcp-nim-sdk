@@ -146,3 +146,15 @@ Feature: Tasks
     Given a client that enabled tasks for elicitation/create and has an elicitation handler
     When the server asks for elicitation as a task
     Then it creates the task, polls it and fetches the result, which is the handler's answer
+
+  @spec:MCP-TASKS-22 @feature:ftTasks
+  Scenario: What a task says over Streamable HTTP finds a stream
+    Given a task whose creating tools/call stream has ended with the CreateTaskResult
+    When its tool reports progress, logs or asks the user
+    Then, while a tasks/result request waits, all of it travels on that response stream with the related-task _meta, and otherwise notifications go to the GET stream
+
+  @spec:MCP-TASKS-23 @feature:ftTasks
+  Scenario: A question of a task waits for tasks/result
+    Given a task whose tool asks the client while no tasks/result request waits
+    When tasks/result arrives
+    Then the question is sent on its stream, not before, and a task with more held questions than the limit has the next one refused

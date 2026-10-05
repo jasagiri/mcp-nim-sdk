@@ -7,7 +7,7 @@
 ## negotiated another version is served as if this module were not there: the
 ## `task` parameter is ignored and `tasks/*` are unknown methods.
 
-import std/[asyncdispatch, json, options]
+import std/[asyncdispatch, json, options, tables]
 import ./server
 import ../protocol/types
 import ../protocol/features
@@ -26,6 +26,10 @@ type
       ## Declare `tasks.requests.tools.call`.
     pageSize*: int = 50
       ## Tasks per page of `tasks/list`; 0 puts them on one page.
+    maxQueuedMessages*: int = 32
+      ## Requests of a task to its requestor that wait for `tasks/result` (the
+      ## stream they travel on, see `enableTasks`), per task. One more is
+      ## refused: the tool's `ctx.elicit` or `ctx.createMessage` raises.
     immediateResponse*: string
       ## When not empty, the CreateTaskResult of a tools/call carries it as
       ## `io.modelcontextprotocol/model-immediate-response`.
@@ -78,7 +82,29 @@ proc enableTasks*(server: McpServer, config = TaskConfig(),
     list: config.list, cancel: config.cancel, toolsCall: config.toolsCall)
   server.capabilities.tasks = some(capability)
 
+  # A request the task makes of its requestor (a question for the user) has
+  # no stream of its own: the one of the `tools/call` ended with the
+  # CreateTaskResult. The specification's way is `input_required` and a
+  # `tasks/result` request that serves as the stream, so the request waits for
+  # one, held here. Notifications are not held: they go to the GET stream.
+  var held = initTable[string, seq[JsonRpcRequest]]()
+  server.holdForTask = proc(taskId: string, request: JsonRpcRequest): bool =
+    var queue = held.getOrDefault(taskId)
+    if queue.len >= config.maxQueuedMessages:
+      raise newTaskError(-32603, "task " & taskId & " has " & $queue.len &
+        " requests waiting for tasks/result already")
+    queue.add request
+    held[taskId] = queue
+    true
+  tasksStore.onResultStream = proc(owner, taskId, requestId: string) =
+    var queue: seq[JsonRpcRequest]
+    if held.pop(taskId, queue):
+      for request in queue:
+        asyncCheck server.sendHeld(request, requestId)
+
   tasksStore.onStatusChange = proc(owner: string, task: McpTask) =
+    if task.status.isTerminal:
+      held.del(task.taskId)  # nobody is left to read them
     asyncCheck server.announceStatus(owner, task)
 
   server.addRequestInterceptor(proc(ctx: McpRequestContext, request: JsonRpcRequest

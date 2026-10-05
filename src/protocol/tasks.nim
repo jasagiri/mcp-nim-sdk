@@ -86,6 +86,9 @@ type
       ## How many tasks that are not terminal one owner may have; 0 is no limit.
     onStatusChange*: proc(owner: string, task: McpTask) {.closure.}
       ## Called after every change of a task, with the whole task.
+    onResultStream*: proc(owner, taskId, requestId: string) {.closure.}
+      ## Called when a `tasks/result` request (`requestId`) starts to wait on
+      ## a task: the stream the receiver can now send the task's messages on.
 
 const
   InvalidParamsCode = -32602
@@ -328,6 +331,8 @@ proc setResultStream*(store: TaskStore, id, requestId: string) =
   ## so that the receiver can send its messages for the requestor there.
   if id in store.entries:
     store.entries[id].resultStream = requestId
+    if requestId.len > 0 and not store.onResultStream.isNil:
+      store.onResultStream(store.entries[id].owner, id, requestId)
 
 proc resultStream*(store: TaskStore, id: string): string =
   if id in store.entries: store.entries[id].resultStream else: ""

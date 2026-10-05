@@ -446,15 +446,21 @@ if isSupported(TaskVersion):
       let peer = fx.connectTo(clientCapabilities = %*{"sampling": {}})
       let id = peer.createTask("asks")["taskId"].getStr()
       fx.gate.complete()
+      peer.untilStatus(id, "input_required")
+      # the question waits for the requestor's tasks/result, as the
+      # specification's input_required flow has it
+      check fx.transport.messagesOf("sampling/createMessage").len == 0
+      let waiting = freshId()
+      peer.send(%waiting, "tasks/result", taskParams(id))
       untilTrue("the sampling request", proc(): bool =
         fx.transport.messagesOf("sampling/createMessage").len == 1)
       let request = fx.transport.messagesOf("sampling/createMessage")[0].message
+      check fx.transport.messagesOf("sampling/createMessage")[0].related == waiting
       check request["params"]["_meta"][RelatedTask]["taskId"].getStr() == id
       check peer.statusOf(id) == "input_required"
       fx.transport.inject("", %*{"jsonrpc": "2.0", "id": request["id"],
         "result": {"role": "assistant", "content": {"type": "text", "text": "hi"}, "model": "m"}})
       peer.untilStatus(id, "completed")
-      check peer.ask("tasks/result", taskParams(id)).textOf == "asked"
 
     test "Given a task that needs input and a waiting tasks/result, when the tool asks, then the request is sent for that tasks/result":
       let fx = fixture()

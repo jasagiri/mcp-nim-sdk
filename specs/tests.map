@@ -987,3 +987,7 @@ MCP-HTTP-18 | tests/test_param_headers_http.nim | Given a tool that gained x-mcp
 MCP-HTTP-18 | tests/test_param_headers_http.nim | Given a call that is refused as a header mismatch again after the tools were listed again, when it is answered, then the error is returned and the client does not retry a second time
 MCP-TASKS-20 | tests/test_tasks_end_to_end.nim | Given a tool that elicits inside a task, when the user has not answered, then the task needs input and the question belongs to it
 MCP-TASKS-21 | tests/test_tasks_end_to_end.nim | Given a client that receives tasks, when the server asks for elicitation as a task, then the answer is the handler's
+MCP-TASKS-22 | tests/test_tasks_http.nim | Given a task and a waiting tasks/result, when the tool reports progress, logs and asks, then all of it is on the stream of tasks/result
+MCP-TASKS-22 | tests/test_tasks_http.nim | Given a task and no tasks/result, when the tool reports progress and logs, then they are on the GET stream and the task goes on
+MCP-TASKS-23 | tests/test_tasks_http.nim | Given a task that asks and no tasks/result, when tasks/result arrives, then the question is on its stream and not before
+MCP-TASKS-23 | tests/test_tasks_http.nim | Given a task whose held questions are limited, when the tool asks beyond the limit, then the question is refused and the task fails

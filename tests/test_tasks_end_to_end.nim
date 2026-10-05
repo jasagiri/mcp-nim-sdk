@@ -143,9 +143,14 @@ if isSupported(TaskVersion):
           break
         waitFor sleepAsync(5)
       check waiting
+      # the question is delivered on the stream of tasks/result
+      let fetching = client.taskResult(taskId)
+      for _ in 0 ..< 100:
+        if not seen.isNil: break
+        waitFor sleepAsync(5)
       check seen{"_meta", RelatedTaskKey}{"taskId"}.getStr() == taskId
       gate.complete()
-      let payload = waitFor client.taskResult(taskId)
+      let payload = waitFor fetching
       check toolContentOf(payload).contentItems[0].text == "the user said Ada"
       check waitFor(client.getTask(taskId)).status == tsCompleted
 

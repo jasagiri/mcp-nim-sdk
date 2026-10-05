@@ -333,7 +333,10 @@ method sendRequest*(t: HttpServerTransport, request: JsonRpcRequest,
 
 method sendRequest*(t: HttpServerTransport,
                    request: JsonRpcRequest): Future[void] {.async.} =
-  t.deliver(MessageRoute(), request.toJson(), "request")
+  ## Routed by what the request says about itself, as a notification is: the
+  ## request it belongs to, else the session it is for, else the only client.
+  t.deliver(MessageRoute(session: request.session, requestId: request.relatedRequestId),
+            request.toJson(), "request")
 
 proc endSession*(t: HttpServerTransport, id: string) =
   ## Forget the session, end its streams and tell the server.

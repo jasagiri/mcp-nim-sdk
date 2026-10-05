@@ -168,6 +168,11 @@ type
     pending: Table[string, Future[JsonRpcResponse]]
       ## The requests of this server awaiting the client's response.
     nextRequestNumber: int
+    holdForTask*: proc(taskId: string, request: JsonRpcRequest): bool {.closure.}
+      ## Asked before a request that belongs to a task goes out while no
+      ## `tasks/result` request waits on that task. True: the request is held
+      ## and will be sent with `sendHeld` (2025-11-25: `enableTasks` sets it).
+      ## It raises to refuse the request.
     lastTransportError*: ref CatchableError
       ## Set when the message-processing loop terminates due to a transport
       ## error. `nil` if the loop has not yet ended (or ended cleanly). Lets
@@ -611,6 +616,13 @@ proc relatedNotification(ctx: McpRequestContext, methodName: string, params: Jso
     methodName, withTraceContext(params, ctx.traceContext))
   result.session = ctx.session
   result.relatedRequestId = ctx.requestId
+  let scope = ctx.taskScope
+  if not scope.isNil:
+    # The request that started the task has ended with its CreateTaskResult:
+    # what the task says goes to the `tasks/result` request waiting on it, or
+    # else to the session's own stream.
+    result.params = withRelatedTask(result.params, scope.taskId)
+    result.relatedRequestId = scope.resultStream()
 
 proc reportProgress*(ctx: McpRequestContext, progress: float,
                      total: Option[float] = none(float),
@@ -690,7 +702,10 @@ proc request*(server: McpServer, session: string, methodName: string,
   outgoing.session = session
   outgoing.relatedRequestId = relatedRequestId
   try:
-    await server.transport.sendRequest(outgoing)
+    let held = relatedTask.len > 0 and relatedRequestId.len == 0 and
+               not server.holdForTask.isNil and server.holdForTask(relatedTask, outgoing)
+    if not held:
+      await server.transport.sendRequest(outgoing)
   except CatchableError:
     server.pending.del(key)
     raise
@@ -707,6 +722,16 @@ proc request*(server: McpServer, session: string, methodName: string,
     raise newException(McpRequestTimeout,
       "the client did not answer " & methodName & " within " & $timeoutMs & " ms")
   return await answer
+
+proc sendHeld*(server: McpServer, request: JsonRpcRequest, streamRequestId: string) {.async.} =
+  ## Send a request that `holdForTask` kept, on the stream of the
+  ## `tasks/result` request `streamRequestId`. Its answer is awaited by the
+  ## `request` call that made it.
+  if inFlightKey(request.session, request.id) notin server.pending:
+    return  # timed out while held: the requestor has been told so
+  var outgoing = request
+  outgoing.relatedRequestId = streamRequestId
+  await server.transport.sendRequest(outgoing)
 
 proc resultOf*(response: JsonRpcResponse, methodName: string): JsonNode =
   if response.error.isSome:
