@@ -8,6 +8,7 @@ import server/server except McpRequestError
 import client/client
 import client/elicitation
 import client/extensions
+import client/subscriptions
 import protocol/types
 import protocol/tasks
 import protocol/version
@@ -300,3 +301,35 @@ if isSupported(mpv20260728):
         sleep = recordingSleep(new seq[int], proc() = w.gate.release()))
       check kept.len >= 32
       check waitFor(client.getTask(kept)).task.status == tsCompleted
+
+  suite "Tasks extension: watching tasks":
+
+    proc untilSeen(what: string, seen: proc(): bool) =
+      var waited = 0
+      while not seen():
+        doAssert waited < 2000, "timed out waiting for " & what
+        waitFor sleepAsync(2)
+        waited += 2
+
+    test "Given a task being watched, when it completes, then the callback gets the whole task":
+      let w = world()
+      let client = w.connected()
+      let taskId = waitFor(client.startToolCall("slow")).task.get.taskId
+      var seen: seq[DetailedTask]
+      let collect = proc(task: DetailedTask) =
+        seen.add task
+      let subscription = waitFor client.watchTasks(@[taskId], collect)
+      check subscription.unsupported().taskIds.len == 0
+      w.gate.release()
+      untilSeen("completion", proc(): bool =
+        seen.len > 0 and seen[^1].task.status == tsCompleted)
+      check seen[0].task.status == tsWorking  # the state as of the subscription
+      check seen[^1].result.get["content"][0]["text"].getStr() == "slow done"
+      waitFor subscription.cancel()
+
+    test "Given an id the server did not agree to, when the client watches, then unsupported names it":
+      let w = world()
+      let client = w.connected()
+      let subscription = waitFor client.watchTasks(@["not-a-task"], proc(task: DetailedTask) = discard)
+      check subscription.unsupported().taskIds == @["not-a-task"]
+      waitFor subscription.cancel()

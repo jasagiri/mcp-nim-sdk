@@ -31,6 +31,7 @@ import ../../protocol/mrtr
 import ../../protocol/tasks
 import ../../protocol/task_methods
 import ../../protocol/extensions
+import ../../protocol/subscriptions
 import ./wire
 
 export wire, tasks
@@ -207,9 +208,42 @@ proc asTaskOutcome(response: Future[JsonRpcResponse]): Future[JsonRpcResponse] {
     payload.delete("resultType")
   return answer
 
-proc statusChanged(ext: TasksExtension, task: McpTask) =
+proc announce(ext: TasksExtension, owner: string, task: McpTask) {.async.} =
+  ## Tell the streams that listed the task of its new status, with the whole
+  ## task as `tasks/get` would show it. Optional for a server: a failure is
+  ## logged, the client polls.
+  try:
+    let state = await ext.detailed(owner, task)
+    await ext.server.notifySubscribers(TaskStatusNotificationMethod, state.toWire())
+  except CatchableError as e:
+    stderr.writeLine("[mcp-tasks] could not announce the status of task " &
+                     task.taskId & ": " & e.msg)
+
+proc statusChanged(ext: TasksExtension, owner: string, task: McpTask) =
+  asyncCheck ext.announce(owner, task)
   if task.status.isTerminal:
     ext.inputs.del(task.taskId)
+
+proc agreeToListen(ext: TasksExtension, ctx: McpRequestContext,
+                   requested: SubscriptionFilter, honored: var SubscriptionFilter) =
+  ## `subscriptions/listen` with `taskIds`: only for a client that declared
+  ## the extension, and only for tasks that are its own. The acknowledgement
+  ## lists the ids agreed to; an id that is unknown, expired or another
+  ## owner's is simply not on it, which tells the client no more than that.
+  if requested.taskIds.len == 0:
+    return
+  if ctx.clientExtension(TasksExtensionId).isNone:
+    let error = missingCapabilityError(
+      "Task status notifications need the extension " & TasksExtensionId,
+      requiredExtension(TasksExtensionId))
+    raise newRequestError(error.code, error.message, error.data)
+  let owner = ext.ownerOf(ctx)
+  for id in requested.taskIds:
+    try:
+      discard ext.store.get(owner, id)
+      honored.taskIds.add id
+    except McpTaskError:
+      discard  # not agreed to: left out of the acknowledgement, as said above
 
 proc registerMethods(ext: TasksExtension) =
   let server = ext.server
@@ -291,9 +325,12 @@ proc enableTasksExtension*(server: McpServer, config = TasksExtensionConfig(),
   let previous = ext.store.onStatusChange
   ext.store.onStatusChange = proc(owner: string, task: McpTask) =
     if owner.startsWith(ExtOwnerPrefix):
-      ext.statusChanged(task)
+      ext.statusChanged(owner, task)
     elif not previous.isNil:
       previous(owner, task)
+  server.addListenFilterHook(proc(ctx: McpRequestContext, requested: SubscriptionFilter,
+                                  honored: var SubscriptionFilter) =
+    ext.agreeToListen(ctx, requested, honored))
   server.addRequestInterceptor(proc(ctx: McpRequestContext, request: JsonRpcRequest
                                    ): Future[Option[JsonRpcResponse]] {.async.} =
     # A request that already runs as a task is the work of one: not a new task.

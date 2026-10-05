@@ -18,6 +18,7 @@
 import std/[asyncdispatch, json, options, sets, tables]
 import ../../client/client
 import ../../client/extensions
+import ../../client/subscriptions
 import ../../protocol/types
 import ../../protocol/features
 import ../../protocol/version
@@ -25,6 +26,7 @@ import ../../protocol/lifecycle
 import ../../protocol/mrtr
 import ../../protocol/tasks
 import ../../protocol/task_methods
+import ../../protocol/subscriptions
 import ./wire
 
 export wire, tasks
@@ -115,6 +117,34 @@ proc cancelTask*(client: McpClient, taskId: string,
   client.requireDeclared(CancelTaskMethod)
   discard await client.callExtension(TasksExtensionId, CancelTaskMethod,
                                      %*{"taskId": taskId}, options)
+
+proc watchTasks*(client: McpClient, taskIds: seq[string],
+                 onTask: proc(task: DetailedTask) {.closure.},
+                 options: McpRequestOptions = McpRequestOptions()): Future[McpSubscription] {.async.} =
+  ## Have the server push the status of `taskIds` instead of, or besides,
+  ## polling: opens a `subscriptions/listen` stream with `taskIds` and calls
+  ## `onTask` with the whole task on each `notifications/tasks`. The server
+  ## need not agree to every id (see `unsupported` of the returned stream:
+  ## keep polling those) and need not send anything at all. `onTask` is also
+  ## called once per agreed task with its state as of the subscription, so a
+  ## change before the stream was open is not missed; a task may therefore be
+  ## seen twice in the same state. Raises what `listen` raises.
+  client.requireDeclared(ListenMethod)
+  let subscription = await client.listen(SubscriptionFilter(taskIds: taskIds), options)
+  subscription.onNotification = proc(methodName: string, params: JsonNode) =
+    if methodName != TaskStatusMethod:
+      return
+    var task = params.copy()
+    task.delete("_meta")
+    let parsed = parseDetailedTask(task)
+    if parsed.problem.isSome:
+      stderr.writeLine("[mcp-tasks] ignored a malformed " & TaskStatusMethod & ": " &
+                       parsed.problem.get)
+      return
+    onTask(parsed.detailed)
+  for id in subscription.acknowledged.get.taskIds:
+    onTask(await client.getTask(id))
+  return subscription
 
 proc answerFromHandlers(client: McpClient, key: string,
                         request: JsonNode): Future[JsonNode] {.async.} =

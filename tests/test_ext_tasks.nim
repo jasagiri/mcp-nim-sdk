@@ -11,6 +11,7 @@ import server/mrtr
 import protocol/extensions as protoExt
 import protocol/modern
 import protocol/tasks
+import protocol/subscriptions
 import protocol/version
 import ext/tasks
 
@@ -131,6 +132,17 @@ if isSupported(mpv20260728):
       check parseDetailedTask(with("input_required")).problem.isSome
       check parseDetailedTask(with("input_required", %*{"inputRequests": {"k": {"method": "elicitation/create"}}})).problem.isNone
       check parseDetailedTask(with("exploded")).problem.isSome
+
+    test "Given a listen filter with taskIds, when parsed and written, then the ids round-trip and a malformed list is rejected":
+      let node = %*{"toolsListChanged": true, "taskIds": ["a", "b"]}
+      let parsed = parseSubscriptionFilter(node)
+      check parsed.problem.isNone
+      check parsed.filter.taskIds == @["a", "b"]
+      check parsed.filter.toJson() == node
+      check parseSubscriptionFilter(%*{"taskIds": "a"}).problem.isSome
+      check parseSubscriptionFilter(%*{"taskIds": [1]}).problem.isSome
+      check parsed.filter.wants("notifications/tasks", %*{"taskId": "a"})
+      check not parsed.filter.wants("notifications/tasks", %*{"taskId": "c"})
 
     test "Given the specification's capability example, when the extension is enabled, then the server declares exactly that":
       let f = fixture()
@@ -508,3 +520,72 @@ if isSupported(mpv20260728):
       let id = peer.call("slow").taskIdOf
       check peer.getTask(id)["result"]["status"].getStr() == "working"
       check peer.call("slow").taskIdOf != id
+
+  suite "Tasks extension: status notifications":
+
+    proc listenFor(peer: Peer, id: string, taskIds: seq[string], meta: JsonNode = caps()) =
+      peer.send(%id, "subscriptions/listen", %*{"notifications": {"taskIds": taskIds}}, meta = meta)
+
+    proc acknowledged(peer: Peer): seq[JsonNode] =
+      for sent in peer.transport.messagesOf("notifications/subscriptions/acknowledged"):
+        result.add sent.message
+
+    proc taskNotifications(peer: Peer): seq[JsonNode] =
+      for sent in peer.transport.messagesOf("notifications/tasks"):
+        result.add sent.message["params"]
+
+    test "Given a client that did not declare the extension, when it listens for task ids, then the answer is -32021":
+      let peer = fixture().newPeer
+      peer.listenFor("l1", @["any"], meta = nil)
+      check peer.transport.responseTo("l1").errorCode == -32021
+      check peer.transport.responseTo("l1")["error"]["data"]["requiredCapabilities"]["extensions"][Ext] ==
+        newJObject()
+
+    test "Given task ids of its own and unknown ones, when a client listens, then the acknowledgement lists only its own":
+      let f = fixture()
+      let peer = f.newPeer
+      let id = peer.call("slow").taskIdOf
+      peer.listenFor("l1", @[id, "unknown"])
+      untilTrue("the acknowledgement", proc(): bool = peer.acknowledged.len > 0)
+      check peer.acknowledged[0]["params"]["notifications"]["taskIds"] == %*[id]
+
+    test "Given a task the client listened for, when its status changes, then the stream gets notifications/tasks with the whole task":
+      let f = fixture()
+      let peer = f.newPeer
+      let id = peer.call("slow").taskIdOf
+      peer.listenFor("l1", @[id])
+      untilTrue("the acknowledgement", proc(): bool = peer.acknowledged.len > 0)
+      f.gate.complete()
+      untilTrue("the notification", proc(): bool = peer.taskNotifications.len > 0)
+      let note = peer.taskNotifications[0]
+      check note["taskId"].getStr() == id
+      check note["status"].getStr() == "completed"
+      check note["result"]["content"][0]["text"].getStr() == "slow done"
+      check note["ttlMs"].getInt() == 3_600_000
+      check note["_meta"].hasKey("io.modelcontextprotocol/subscriptionId")
+      check not note.hasKey("resultType")
+
+    test "Given a task of another owner, when a client listens for its id, then it is not acknowledged and gets nothing":
+      let f = fixture(ownerOf = proc(ctx: McpRequestContext): string =
+        ctx.clientExtension(Ext).get{"who"}.getStr())
+      let peer = f.newPeer
+      let alice = %*{"io.modelcontextprotocol/clientCapabilities": {"extensions": {Ext: {"who": "alice"}}}}
+      let bob = %*{"io.modelcontextprotocol/clientCapabilities": {"extensions": {Ext: {"who": "bob"}}}}
+      let id = peer.ask("tools/call", %*{"name": "slow"}, meta = alice).taskIdOf
+      peer.listenFor("l1", @[id], meta = bob)
+      untilTrue("the acknowledgement", proc(): bool = peer.acknowledged.len > 0)
+      check not peer.acknowledged[0]["params"]["notifications"].hasKey("taskIds")
+      f.gate.complete()
+      settle()
+      check peer.taskNotifications.len == 0
+
+    test "Given a task the client did not list, when its status changes, then the stream is not told":
+      let f = fixture()
+      let peer = f.newPeer
+      let listed = peer.call("slow").taskIdOf
+      let other = peer.call("report").taskIdOf
+      peer.listenFor("l1", @[listed])
+      untilTrue("the acknowledgement", proc(): bool = peer.acknowledged.len > 0)
+      settle()
+      check other.len > 0
+      check peer.taskNotifications.len == 0
