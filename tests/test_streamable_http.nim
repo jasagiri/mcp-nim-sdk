@@ -29,6 +29,8 @@ proc weatherServer(version: McpProtocolVersion): McpServer =
       return @[%*{"name": "get_weather", "inputSchema": {"type": "object"}}]
   let callTool: typeof(McpToolHandlers().callHandler.get) =
     proc(name: string, arguments: JsonNode): Future[JsonNode] {.async.} =
+      if arguments{"delayMs"}.getInt() > 0:
+        await sleepAsync(arguments{"delayMs"}.getInt())
       return %*{"content": [{"type": "text",
                              "text": name & ":" & arguments{"location"}.getStr()}],
                 "isError": false}
@@ -36,13 +38,14 @@ proc weatherServer(version: McpProtocolVersion): McpServer =
     listHandler: some(listTools), callHandler: some(callTool)))
 
 proc startServer(version = DefaultProtocolVersion,
-                 maxBodySize = DefaultMaxBodySize): tuple[transport: HttpServerTransport, url: string] =
+                 maxBodySize = DefaultMaxBodySize): tuple[transport: HttpServerTransport, url: string, server: McpServer] =
   let transport = newHttpServerTransport(port = 0, protocolVersion = version,
                                          maxBodySize = maxBodySize)
   transport.listen()
   asyncCheck transport.serve()
-  waitFor weatherServer(version).attachTransport(transport)
-  (transport, "http://127.0.0.1:" & $transport.port & "/mcp")
+  let server = weatherServer(version)
+  waitFor server.attachTransport(transport)
+  (transport, "http://127.0.0.1:" & $transport.port & "/mcp", server)
 
 type Reply = tuple[code: HttpCode, headers: HttpHeaders, body: string]
 
@@ -77,56 +80,60 @@ proc legacyInitialize(): string =
 suite "HTTP endpoint (every era)":
 
   test "Given a path other than the endpoint, when posted to, then the answer is 404":
-    let (_, url) = startServer()
+    let (_, url, _) = startServer()
     check send(url.replace("/mcp", "/other"), HttpPost, legacyInitialize()).code == Http404
 
-  test "Given the endpoint, when it receives GET or DELETE, then the answer is 405 allowing POST":
-    let (_, url) = startServer()
-    for httpMethod in [HttpGet, HttpDelete]:
+  test "Given the endpoint, when it receives GET or PUT, then the answer is 405 naming the allowed methods":
+    let (_, url, _) = startServer()
+    for httpMethod in [HttpGet, HttpPut]:
       let reply = send(url, httpMethod)
       check reply.code == Http405
-      check $reply.headers["Allow"] == "POST"
+      check $reply.headers["Allow"] == "POST, DELETE"
 
   test "Given a body that is not JSON, when posted, then the answer is 400 with a parse error":
-    let (_, url) = startServer()
+    let (_, url, _) = startServer()
     let reply = send(url, HttpPost, "{not json")
     check reply.code == Http400
     check parseJson(reply.body)["error"]["code"].getInt() == -32700
     check parseJson(reply.body)["id"].kind == JNull
 
   test "Given a JSON body that is not an object, when posted, then the answer is 400 invalid request":
-    let (_, url) = startServer()
+    let (_, url, _) = startServer()
     let reply = send(url, HttpPost, "[1, 2]")
     check reply.code == Http400
     check parseJson(reply.body)["error"]["code"].getInt() == -32600
 
   test "Given a body larger than the limit, when posted, then the answer is 413":
-    let (_, url) = startServer(maxBodySize = 256)
+    let (_, url, _) = startServer(maxBodySize = 256)
     let reply = send(url, HttpPost, $(%*{"jsonrpc": "2.0", "id": 1, "method": "ping",
                                          "params": {"pad": repeat("x", 1024)}}))
     check reply.code == Http413
 
   test "Given an Origin that is neither loopback nor allowed, when posted, then the answer is 403":
-    let (_, url) = startServer()
+    let (_, url, _) = startServer()
     check send(url, HttpPost, legacyInitialize(), {"Origin": "https://evil.example"}).code == Http403
 
   test "Given a loopback Origin, when posted, then the request is served":
-    let (_, url) = startServer()
+    let (_, url, _) = startServer()
     check send(url, HttpPost, legacyInitialize(), {"Origin": "http://localhost:3000"}).code == Http200
 
   test "Given an Origin the operator allowed, when posted, then the request is served":
-    let (transport, url) = startServer()
+    let (transport, url, _) = startServer()
     transport.allowedOrigins = @["https://app.example"]
     check send(url, HttpPost, legacyInitialize(), {"Origin": "https://app.example"}).code == Http200
 
-  test "Given a notification, when posted, then the answer is 202 with no body":
-    let (_, url) = startServer()
-    let reply = send(url, HttpPost, $(%*{"jsonrpc": "2.0", "method": "notifications/initialized"}))
+  test "Given an initialized session, when a notification is posted on it, then the answer is 202 with no body":
+    let (_, url, server) = startServer()
+    let session = $send(url, HttpPost, legacyInitialize()).headers["Mcp-Session-Id"]
+    let reply = send(url, HttpPost, $(%*{"jsonrpc": "2.0", "method": "notifications/initialized"}),
+                     {"Mcp-Session-Id": session})
     check reply.code == Http202
     check reply.body == ""
+    waitFor sleepAsync(1)
+    check server.session(session).state == mlsOperational
 
   test "Given any answer, when its headers are read, then the security headers are present":
-    let (_, url) = startServer()
+    let (_, url, _) = startServer()
     for reply in [send(url, HttpPost, legacyInitialize()), send(url, HttpGet)]:
       check $reply.headers["X-Content-Type-Options"] == "nosniff"
       check $reply.headers["X-Frame-Options"] == "DENY"
@@ -134,7 +141,7 @@ suite "HTTP endpoint (every era)":
       check $reply.headers["Referrer-Policy"] == "strict-origin-when-cross-origin"
 
   test "Given a legacy initialize with a numeric id, when posted, then the answer is 200 JSON echoing the number":
-    let (_, url) = startServer()
+    let (_, url, _) = startServer()
     let reply = send(url, HttpPost, legacyInitialize())
     check reply.code == Http200
     check ($reply.headers["Content-Type"]).startsWith("application/json")
@@ -143,20 +150,113 @@ suite "HTTP endpoint (every era)":
     check body["id"].getInt() == 1
     check body["result"]["protocolVersion"].getStr() == $LegacyDefault
 
+proc legacyToolCall(id: JsonNode, location: string, delayMs = 0): string =
+  $(%*{"jsonrpc": "2.0", "id": id, "method": "tools/call",
+       "params": {"name": "get_weather",
+                  "arguments": {"location": location, "delayMs": delayMs}}})
+
+suite "HTTP sessions (versions 2025-03-26 to 2025-11-25)":
+
+  test "Given a legacy initialize, when answered, then the answer names an unguessable session":
+    let (_, url, _) = startServer()
+    let first = $send(url, HttpPost, legacyInitialize()).headers["Mcp-Session-Id"]
+    let second = $send(url, HttpPost, legacyInitialize()).headers["Mcp-Session-Id"]
+    check first.len >= 32
+    check first != second
+
+  test "Given a server one client has initialized, when a second client initializes, then it gets its own session":
+    let (transport, url, server) = startServer()
+    check send(url, HttpPost, legacyInitialize()).code == Http200
+    let reply = send(url, HttpPost, legacyInitialize())
+    check reply.code == Http200
+    check parseJson(reply.body).hasKey("result")
+    check transport.sessionCount == 2
+    check server.sessionCount == 2
+
+  test "Given a legacy request without a session id, when posted, then the answer is 400":
+    let (_, url, _) = startServer()
+    let reply = send(url, HttpPost, legacyToolCall(%1, "Kobe"))
+    check reply.code == Http400
+    check parseJson(reply.body)["id"].getInt() == 1
+
+  test "Given a session id the server did not issue, when a request names it, then the answer is 404":
+    let (_, url, _) = startServer()
+    check send(url, HttpPost, legacyToolCall(%1, "Kobe"), {"Mcp-Session-Id": "made-up"}).code == Http404
+
+  test "Given an initialized session, when a request names it, then it is served":
+    let (_, url, _) = startServer()
+    let session = $send(url, HttpPost, legacyInitialize()).headers["Mcp-Session-Id"]
+    let reply = send(url, HttpPost, legacyToolCall(%7, "Kobe"), {"Mcp-Session-Id": session})
+    check reply.code == Http200
+    let body = parseJson(reply.body)
+    check body["id"].getInt() == 7
+    check body["result"]["content"][0]["text"].getStr() == "get_weather:Kobe"
+
+  test "Given two clients using the same request id at the same time, when both are answered, then each gets its own result":
+    let (_, url, _) = startServer()
+    let sessionA = $send(url, HttpPost, legacyInitialize()).headers["Mcp-Session-Id"]
+    let sessionB = $send(url, HttpPost, legacyInitialize()).headers["Mcp-Session-Id"]
+    proc call(session, location: string, delayMs: int): Future[string] {.async.} =
+      let http = newAsyncHttpClient()
+      let response = await http.request(url, HttpPost, legacyToolCall(%1, location, delayMs),
+                                        newHttpHeaders({"Mcp-Session-Id": session}))
+      let body = await response.body
+      http.close()
+      return body
+    let slow = call(sessionA, "slow-city", 60)
+    let fast = call(sessionB, "fast-city", 0)
+    let fastBody = parseJson(waitFor fast)
+    let slowBody = parseJson(waitFor slow)
+    check fastBody["id"].getInt() == 1
+    check slowBody["id"].getInt() == 1
+    check fastBody["result"]["content"][0]["text"].getStr() == "get_weather:fast-city"
+    check slowBody["result"]["content"][0]["text"].getStr() == "get_weather:slow-city"
+
+  test "Given a session, when the client sends DELETE, then the session ends on the transport and the server":
+    let (transport, url, server) = startServer()
+    let session = $send(url, HttpPost, legacyInitialize()).headers["Mcp-Session-Id"]
+    check server.sessionCount == 1
+    check send(url, HttpDelete, headers = {"Mcp-Session-Id": session}).code == Http200
+    check transport.sessionCount == 0
+    check server.sessionCount == 0
+    check send(url, HttpPost, legacyToolCall(%1, "Kobe"), {"Mcp-Session-Id": session}).code == Http404
+
+  test "Given DELETE without a session id or with an unknown one, when sent, then the answer is 400 or 404":
+    let (_, url, _) = startServer()
+    check send(url, HttpDelete).code == Http400
+    check send(url, HttpDelete, headers = {"Mcp-Session-Id": "made-up"}).code == Http404
+
+  test "Given the session limit is reached, when another client initializes, then the answer is 503":
+    let (transport, url, _) = startServer()
+    transport.maxSessions = 1
+    check send(url, HttpPost, legacyInitialize()).code == Http200
+    check send(url, HttpPost, legacyInitialize()).code == Http503
+
+  test "Given an initialize the server rejects, when answered, then no session is opened":
+    let (transport, url, _) = startServer()
+    let reply = send(url, HttpPost, $(%*{"jsonrpc": "2.0", "id": 1, "method": "initialize",
+                                         "params": {"capabilities": {}}}))
+    check parseJson(reply.body).hasKey("error")
+    check not reply.headers.hasKey("Mcp-Session-Id")
+    check transport.sessionCount == 0
+
 suite "a build limited to legacy versions over HTTP":
 
-  test "Given an endpoint limited to a legacy version, when a 2026-07-28 probe is posted, then it is answered as an unknown method without header checks":
-    let (_, url) = startServer(LegacyDefault)
+  test "Given an endpoint limited to a legacy version, when a 2026-07-28 probe is posted, then it is refused like any request outside a session, not as a 2026-07-28 error":
+    # A 2026-07-28 error code would tell a dual-era client not to fall back.
+    let (_, url, _) = startServer(LegacyDefault)
     let reply = send(url, HttpPost, $(%*{"jsonrpc": "2.0", "id": "d", "method": "server/discover",
-                                         "params": {"_meta": modernMeta()}}))
-    check reply.code == Http200
-    check parseJson(reply.body)["error"]["code"].getInt() == -32601
+                                         "params": {"_meta": modernMeta()}}),
+                     {"MCP-Protocol-Version": "2026-07-28", "Mcp-Method": "server/discover"})
+    check reply.code == Http400
+    let code = parseJson(reply.body)["error"]["code"].getInt()
+    check code notin [-32020, -32021, -32022]
 
 if SpeaksModern:
   suite "2026-07-28 HTTP endpoint":
 
     test "Given the specification's tools/call request, when posted with its headers, then the answer is 200 with a complete result":
-      let (_, url) = startServer()
+      let (_, url, _) = startServer()
       let reply = send(url, HttpPost, toolCall(%1), ToolCallHeaders)
       check reply.code == Http200
       let body = parseJson(reply.body)
@@ -165,7 +265,7 @@ if SpeaksModern:
       check body["result"]["content"][0]["text"].getStr() == "get_weather:Seattle, WA"
 
     test "Given an Mcp-Name that differs from the body, when posted, then the answer is 400 header mismatch":
-      let (_, url) = startServer()
+      let (_, url, _) = startServer()
       let reply = send(url, HttpPost, toolCall(%1, name = "bar"), ToolCallHeaders)
       check reply.code == Http400
       let body = parseJson(reply.body)
@@ -173,7 +273,7 @@ if SpeaksModern:
       check body["error"]["code"].getInt() == -32020
 
     test "Given each required header missing in turn, when posted, then the answer is 400 header mismatch":
-      let (_, url) = startServer()
+      let (_, url, _) = startServer()
       for missing in ["MCP-Protocol-Version", "Mcp-Method", "Mcp-Name"]:
         var headers: seq[(string, string)] = @[]
         for (name, value) in ToolCallHeaders:
@@ -184,14 +284,14 @@ if SpeaksModern:
         check parseJson(reply.body)["error"]["code"].getInt() == -32020
 
     test "Given header names in another letter case, when posted, then the request is served":
-      let (_, url) = startServer()
+      let (_, url, _) = startServer()
       let reply = send(url, HttpPost, toolCall(%1), {
         "content-type": "application/json", "mcp-protocol-version": "2026-07-28",
         "MCP-METHOD": "tools/call", "mcp-name": "get_weather"})
       check reply.code == Http200
 
     test "Given an unknown version in header and body, when posted, then the answer is 400 listing supported versions":
-      let (_, url) = startServer()
+      let (_, url, _) = startServer()
       let reply = send(url, HttpPost,
         $(%*{"jsonrpc": "2.0", "id": 1, "method": "tools/list",
              "params": {"_meta": modernMeta("1900-01-01")}}),
@@ -202,7 +302,7 @@ if SpeaksModern:
       check error["data"]["supported"][0].getStr() == "2026-07-28"
 
     test "Given a request without client capabilities, when posted, then the answer is 400 invalid params":
-      let (_, url) = startServer()
+      let (_, url, _) = startServer()
       let meta = modernMeta()
       meta.delete("io.modelcontextprotocol/clientCapabilities")
       let reply = send(url, HttpPost,
@@ -212,7 +312,7 @@ if SpeaksModern:
       check parseJson(reply.body)["error"]["code"].getInt() == -32602
 
     test "Given a method the server does not implement, when posted, then the answer is 404 method not found":
-      let (_, url) = startServer()
+      let (_, url, _) = startServer()
       for name in ["no/such/method", "ping"]:
         let reply = send(url, HttpPost,
           $(%*{"jsonrpc": "2.0", "id": 1, "method": name, "params": {"_meta": modernMeta()}}),
@@ -221,7 +321,7 @@ if SpeaksModern:
         check parseJson(reply.body)["error"]["code"].getInt() == -32601
 
     test "Given a tool name that is not plain ASCII, when posted with a Base64 Mcp-Name, then the headers agree with the body":
-      let (_, url) = startServer()
+      let (_, url, _) = startServer()
       let reply = send(url, HttpPost, toolCall(%1, name = "天気"), {
         "MCP-Protocol-Version": "2026-07-28", "Mcp-Method": "tools/call",
         "Mcp-Name": "=?base64?5aSp5rCX?="})
@@ -231,7 +331,7 @@ if SpeaksModern:
 suite "HTTP client transport with this SDK's server":
 
   test "Given an HTTP server, when the client connects and calls a tool, then the call succeeds in the newest common version":
-    let (_, url) = startServer()
+    let (_, url, _) = startServer()
     let client = newMcpClient(McpClientInfo(name: "ExampleClient", version: "1.0.0"))
     waitFor client.connect(newStreamableHttpTransport(url))
     check client.negotiatedVersion == some(DefaultProtocolVersion)
@@ -242,7 +342,7 @@ suite "HTTP client transport with this SDK's server":
     waitFor client.close()
 
   test "Given an HTTP server limited to a legacy version, when a newer client connects, then it falls back to initialize and calls a tool":
-    let (_, url) = startServer(LegacyDefault)
+    let (_, url, _) = startServer(LegacyDefault)
     let client = newMcpClient(McpClientInfo(name: "ExampleClient", version: "1.0.0"))
     let transport = newStreamableHttpTransport(url)
     waitFor client.connect(transport)
@@ -250,6 +350,7 @@ suite "HTTP client transport with this SDK's server":
     check client.state == mlsOperational
     let response = waitFor client.sendRequest("tools/list", newJObject())
     check response.result.get["tools"].len == 1
+    check transport.sessionId.isSome
     check transport.protocolVersion.isSome == (LegacyDefault >= mpv20250618)
     waitFor client.close()
     waitFor sleepAsync(1)
@@ -312,6 +413,19 @@ suite "HTTP client transport with hand-written servers":
     let reply = waitFor transport.receiveMessage()
     check reply["id"].getStr() == "r1"
     check reply["error"]["code"].getInt() == -32022
+    waitFor transport.close()
+
+  test "Given an HTTP error whose JSON-RPC error names a placeholder id, when a request is sent, then the error arrives under the request's own id":
+    let url = startScripted(proc(req: Request) {.async, gcsafe.} =
+      await req.respond(Http400, $(%*{"jsonrpc": "2.0", "id": "server-error",
+        "error": {"code": -32600, "message": "Bad Request: Missing session ID"}}),
+        newHttpHeaders({"Content-Type": "application/json", "Mcp-Session-Id": "throwaway"})))
+    let transport = newStreamableHttpTransport(url)
+    waitFor transport.sendRequest(newJsonRpcRequest("r1", "server/discover", newJObject()))
+    let reply = waitFor transport.receiveMessage()
+    check reply["id"].getStr() == "r1"
+    check reply["error"]["code"].getInt() == -32600
+    check transport.sessionId.isNone
     waitFor transport.close()
 
   test "Given an HTTP error whose body is not a JSON-RPC error, when a request is sent, then McpTransportError names the status":

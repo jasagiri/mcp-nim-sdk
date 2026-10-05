@@ -16,6 +16,9 @@ type
       ## response echoes the same JSON type. nil for messages built here.
     `method`*: string
     params*: JsonNode
+    session*: string
+      ## Which of the transport's connections the request arrived on; empty
+      ## for a transport with a single peer. Not part of the wire format.
 
   JsonRpcResponse* = object
     jsonrpc*: string
@@ -28,6 +31,7 @@ type
     jsonrpc*: string
     `method`*: string
     params*: JsonNode
+    session*: string
 
   JsonRpcError* = object
     code*: int

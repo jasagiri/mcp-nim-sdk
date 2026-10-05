@@ -9,24 +9,35 @@
 ## server sees it: its headers must mirror its body, and its metadata must
 ## be complete, as that version requires of an HTTP endpoint.
 ##
-## TODO (versions 2025-03-26 to 2025-11-25): sessions (Mcp-Session-Id),
-## the GET stream for server-initiated messages, resumption with
-## Last-Event-ID, DELETE, and JSON-RPC batches (2025-03-26 only).
+## Clients of versions 2025-03-26 to 2025-11-25 each get a session: the
+## answer to initialize carries Mcp-Session-Id, later requests must name it,
+## and DELETE ends it. 2026-07-28 requests are stateless and carry none.
+##
+## TODO (versions 2025-03-26 to 2025-11-25): the GET stream for
+## server-initiated messages, resumption with Last-Event-ID, session expiry,
+## and JSON-RPC batches (2025-03-26 only).
 ## TODO: SSE responses, so that notifications reach the client during a
 ## request; until then `sendNotification` raises.
 
-import std/[asyncdispatch, asynchttpserver, httpcore, json, tables,
-             deques, options, uri, nativesockets]
+import std/[asyncdispatch, asynchttpserver, httpcore, json, tables, sets,
+             deques, options, uri, nativesockets, sysrand, strutils]
 import ./transport
 import ../protocol/types
 import ../protocol/modern
 
 const
   DefaultMaxBodySize* = 4 * 1024 * 1024
+  DefaultMaxSessions* = 1024
+  SessionHeader = "Mcp-Session-Id"
   ErrParse = -32700
   ErrInvalidRequest = -32600
 
 type
+  Exchange = object
+    ## An HTTP request waiting for its JSON-RPC response.
+    answered: Future[JsonRpcResponse]
+    idNode: JsonNode  ## the id the client used, restored on the response
+
   HttpServerTransport* = ref object of McpTransport
     server*:          AsyncHttpServer
     host*:            string
@@ -40,9 +51,14 @@ type
       ## Enforced by the HTTP server itself (413); fixed at construction.
     allowedOrigins*:  seq[string]
       ## Origins accepted besides loopback ones, e.g. "https://app.example".
-    requestQueue:     Deque[JsonNode]
-    receiveWaiters:   Deque[Future[JsonNode]]
-    pendingResponses: Table[string, Future[JsonRpcResponse]]
+    maxSessions*:     int
+      ## New clients are refused (503) while this many sessions are open.
+    sessions:         HashSet[string]
+    requestQueue:     Deque[McpIncoming]
+    receiveWaiters:   Deque[Future[McpIncoming]]
+    exchanges:        Table[string, Exchange]
+      ## Keyed by an id made here: two clients may use the same JSON-RPC id.
+    exchangeCount:    int
     started*:         bool
 
 proc newHttpServerTransport*(host: string = "127.0.0.1",
@@ -60,27 +76,37 @@ proc newHttpServerTransport*(host: string = "127.0.0.1",
     protocolVersion:  protocolVersion,
     maxBodySize:      maxBodySize,
     allowedOrigins:   @[],
-    requestQueue:     initDeque[JsonNode](),
-    receiveWaiters:   initDeque[Future[JsonNode]](),
-    pendingResponses: initTable[string, Future[JsonRpcResponse]](),
+    maxSessions:      DefaultMaxSessions,
+    sessions:         initHashSet[string](),
+    requestQueue:     initDeque[McpIncoming](),
+    receiveWaiters:   initDeque[Future[McpIncoming]](),
+    exchanges:        initTable[string, Exchange](),
     started:          false,
   )
 
-method receiveMessage*(t: HttpServerTransport): Future[JsonNode] {.async.} =
+method receive*(t: HttpServerTransport): Future[McpIncoming] {.async.} =
   if t.requestQueue.len > 0:
     return t.requestQueue.popFirst()
-  let fut = newFuture[JsonNode]("HttpServerTransport.receiveMessage")
+  let fut = newFuture[McpIncoming]("HttpServerTransport.receive")
   t.receiveWaiters.addLast(fut)
   return await fut
 
+method receiveMessage*(t: HttpServerTransport): Future[JsonNode] {.async.} =
+  return (await t.receive()).message
+
 method sendResponse*(t: HttpServerTransport,
                     response: JsonRpcResponse): Future[void] {.async.} =
-  if not t.pendingResponses.hasKey(response.id):
+  if not t.exchanges.hasKey(response.id):
     raise newException(McpTransportError,
       "no HTTP exchange is waiting for response id " & response.id)
-  let fut = t.pendingResponses[response.id]
-  t.pendingResponses.del(response.id)
-  fut.complete(response)
+  let exchange = t.exchanges[response.id]
+  t.exchanges.del(response.id)
+  var restored = response
+  restored.idNode = exchange.idNode
+  exchange.answered.complete(restored)
+
+proc sessionCount*(t: HttpServerTransport): int =
+  t.sessions.len
 
 method sendNotification*(t: HttpServerTransport,
                         notification: JsonRpcNotification): Future[void] {.async.} =
@@ -113,8 +139,12 @@ proc respondEmpty(req: Request, code: HttpCode,
     headers[name] = value
   req.respond(code, "", headers)
 
-proc respondJson(req: Request, code: HttpCode, body: JsonNode): Future[void] =
-  req.respond(code, $body, securityHeaders("application/json"))
+proc respondJson(req: Request, code: HttpCode, body: JsonNode,
+                 extra: openArray[(string, string)] = []): Future[void] =
+  let headers = securityHeaders("application/json")
+  for (name, value) in extra:
+    headers[name] = value
+  req.respond(code, $body, headers)
 
 proc respondError(req: Request, code: HttpCode, id: JsonNode,
                   error: JsonRpcError): Future[void] =
@@ -144,23 +174,34 @@ func httpStatusFor(response: JsonRpcResponse, modern: bool): HttpCode =
      ErrHeaderMismatch: Http400
   else: Http200
 
-proc enqueue(t: HttpServerTransport, message: JsonNode) =
+proc enqueue(t: HttpServerTransport, message: JsonNode, session: string) =
+  let incoming = McpIncoming(message: message, session: session)
   if t.receiveWaiters.len > 0:
-    t.receiveWaiters.popFirst().complete(message)
+    t.receiveWaiters.popFirst().complete(incoming)
   else:
-    t.requestQueue.addLast(message)
+    t.requestQueue.addLast(incoming)
 
-proc handle(t: HttpServerTransport, req: Request) {.async.} =
-  if req.url.path != t.path:
-    await req.respondEmpty(Http404)
-    return
-  if req.reqMethod != HttpPost:
-    await req.respondEmpty(Http405, {"Allow": "POST"})
-    return
-  let origin = req.header("Origin")
-  if origin.isSome and not t.originAllowed(origin.get):
-    await req.respondEmpty(Http403)
-    return
+proc newSessionId(): string =
+  ## Unguessable: the id is what ties later requests to a client.
+  for b in urandom(16):
+    result.add toHex(b.int, 2).toLowerAscii()
+
+proc invalidRequest(message: string): JsonRpcError =
+  JsonRpcError(code: ErrInvalidRequest, message: message)
+
+proc handleDelete(t: HttpServerTransport, req: Request) {.async.} =
+  let session = req.header(SessionHeader)
+  if session.isNone:
+    await req.respondError(Http400, nil, invalidRequest(SessionHeader & " header is required"))
+  elif session.get notin t.sessions:
+    await req.respondError(Http404, nil, invalidRequest("Session not found"))
+  else:
+    t.sessions.excl(session.get)
+    if not t.onSessionEnd.isNil:
+      t.onSessionEnd(session.get)
+    await req.respondEmpty(Http200)
+
+proc handlePost(t: HttpServerTransport, req: Request) {.async.} =
   var rpc: JsonNode
   try:
     rpc = parseJson(req.body)
@@ -170,39 +211,80 @@ proc handle(t: HttpServerTransport, req: Request) {.async.} =
     return
   if rpc.kind != JObject:
     # TODO: JSON-RPC batches (protocol version 2025-03-26 only).
-    await req.respondError(Http400, nil,
-      JsonRpcError(code: ErrInvalidRequest, message: "Request must be a JSON object"))
+    await req.respondError(Http400, nil, invalidRequest("Request must be a JSON object"))
     return
 
-  if not isRequest(rpc):
-    # A notification or a response: nothing to answer on this exchange.
-    t.enqueue(rpc)
-    await req.respondEmpty(Http202)
-    return
+  let isRpcRequest = isRequest(rpc)
+  let methodName = rpc{"method"}.getStr()
+  let params = rpc{"params"}
+  let modern = isModern(t.protocolVersion) and isRpcRequest and isModernRequest(params)
+  let opensSession = not modern and isRpcRequest and methodName == "initialize"
 
-  let request = decodeRequest(rpc)
-  let modern = isModern(t.protocolVersion) and isModernRequest(request.params)
+  var session = ""
   if modern:
     let mismatch = checkRequestHeaders(
       req.header(HeaderProtocolVersion), req.header(HeaderMethod),
-      req.header(HeaderName), request.`method`, request.params)
+      req.header(HeaderName), methodName, params)
     if mismatch.isSome:
-      await req.respondError(Http400, request.idNode, mismatch.get)
+      await req.respondError(Http400, rpc{"id"}, mismatch.get)
       return
-    let rejection = validateModernRequest(request.params, versionsUpTo(t.protocolVersion))
+    let rejection = validateModernRequest(params, versionsUpTo(t.protocolVersion))
     if rejection.isSome:
-      await req.respondError(Http400, request.idNode, rejection.get)
+      await req.respondError(Http400, rpc{"id"}, rejection.get)
       return
+  elif opensSession:
+    if t.sessions.len >= t.maxSessions:
+      await req.respondEmpty(Http503)
+      return
+    session = newSessionId()
+  else:
+    let named = req.header(SessionHeader)
+    if named.isNone:
+      await req.respondError(Http400, rpc{"id"},
+        invalidRequest(SessionHeader & " header is required"))
+      return
+    if named.get notin t.sessions:
+      await req.respondError(Http404, rpc{"id"}, invalidRequest("Session not found"))
+      return
+    session = named.get
 
-  if t.pendingResponses.hasKey(request.id):
-    await req.respondError(Http400, request.idNode,
-      JsonRpcError(code: ErrInvalidRequest, message: "Request id is already in use"))
+  if not isRpcRequest:
+    # A notification or a response: nothing to answer on this exchange.
+    t.enqueue(rpc, session)
+    await req.respondEmpty(Http202)
     return
+
+  inc t.exchangeCount
+  let exchangeId = "http-" & $t.exchangeCount
   let answered = newFuture[JsonRpcResponse]("HttpServerTransport.response")
-  t.pendingResponses[request.id] = answered
-  t.enqueue(rpc)
+  t.exchanges[exchangeId] = Exchange(answered: answered, idNode: rpc["id"])
+  let forwarded = rpc.copy()
+  forwarded["id"] = %exchangeId
+  t.enqueue(forwarded, session)
   let response = await answered
-  await req.respondJson(httpStatusFor(response, modern), response.toJson())
+
+  if opensSession and response.error.isNone:
+    t.sessions.incl(session)
+    await req.respondJson(Http200, response.toJson(), {SessionHeader: session})
+  else:
+    await req.respondJson(httpStatusFor(response, modern), response.toJson())
+
+proc handle(t: HttpServerTransport, req: Request) {.async.} =
+  if req.url.path != t.path:
+    await req.respondEmpty(Http404)
+    return
+  let origin = req.header("Origin")
+  if origin.isSome and not t.originAllowed(origin.get):
+    await req.respondEmpty(Http403)
+    return
+  case req.reqMethod
+  of HttpPost:
+    await t.handlePost(req)
+  of HttpDelete:
+    await t.handleDelete(req)
+  else:
+    # TODO: GET opens the stream for server-initiated messages.
+    await req.respondEmpty(Http405, {"Allow": "POST, DELETE"})
 
 proc listen*(t: HttpServerTransport) =
   ## Bind the socket. Afterwards `t.port` is the port actually bound.

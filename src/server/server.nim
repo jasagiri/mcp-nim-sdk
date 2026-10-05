@@ -7,13 +7,19 @@ import ../protocol/modern
 import ../transport/transport
 
 type
-  McpServer* = ref object
+  McpSession* = ref object
+    ## The handshake state of one client of the versions before 2026-07-28.
     state*: McpLifecycleState
+    negotiatedVersion*: Option[McpProtocolVersion]
+      ## The version agreed in the initialize handshake.
+    clientCapabilities*: Option[McpClientCapabilities]
+
+  McpServer* = ref object
+    sessions: Table[string, McpSession]
+      ## Keyed by the transport's session; "" is the only one on stdio.
     protocolVersion*: McpProtocolVersion
       ## The newest version this server speaks; it also speaks every
       ## earlier one.
-    negotiatedVersion*: Option[McpProtocolVersion]
-      ## The version agreed in the initialize handshake.
     serverInfo*: McpServerInfo
     instructions*: string
       ## How to use this server; sent with server/discover when not empty.
@@ -21,7 +27,6 @@ type
       ## What 2026-07-28 clients are told about reusing list and read
       ## results. The default tells them not to.
     capabilities*: McpServerCapabilities
-    clientCapabilities*: Option[McpClientCapabilities]
     transport*: McpTransport
     resourceHandlers*: McpResourceHandlers
     toolHandlers*: McpToolHandlers
@@ -66,12 +71,11 @@ proc newMcpServer*(
 ): McpServer =
   requireSupported(protocolVersion)
   let server = McpServer(
-    state: mlsUninitialized,
+    sessions: initTable[string, McpSession](),
     protocolVersion: protocolVersion,
     serverInfo: serverInfo,
     cachePolicy: UncachedPolicy,
     capabilities: capabilities,
-    clientCapabilities: none(McpClientCapabilities),
     requestHandlers: initTable[string, proc(request: JsonRpcRequest): Future[JsonRpcResponse] {.async.}](),
     notificationHandlers: initTable[string, proc(notification: JsonRpcNotification): Future[void] {.async.}]()
   )
@@ -96,6 +100,28 @@ proc newMcpServer*(
 
   return server
 
+proc session*(server: McpServer, id = ""): McpSession =
+  ## The handshake state of the client on session `id`; a client that has
+  ## not sent initialize is uninitialized.
+  server.sessions.getOrDefault(id, McpSession(state: mlsUninitialized))
+
+proc state*(server: McpServer): McpLifecycleState =
+  ## The state of the single client of a single-peer transport such as stdio.
+  server.session().state
+
+proc negotiatedVersion*(server: McpServer): Option[McpProtocolVersion] =
+  server.session().negotiatedVersion
+
+proc clientCapabilities*(server: McpServer): Option[McpClientCapabilities] =
+  server.session().clientCapabilities
+
+proc sessionCount*(server: McpServer): int =
+  server.sessions.len
+
+proc endSession*(server: McpServer, id: string) =
+  ## Forget the client on session `id`.
+  server.sessions.del(id)
+
 proc registerRequestHandler*(server: McpServer, methodName: string,
     handler: proc(request: JsonRpcRequest): Future[JsonRpcResponse] {.async.}) =
   server.requestHandlers[methodName] = handler
@@ -105,7 +131,7 @@ proc registerNotificationHandler*(server: McpServer, methodName: string,
   server.notificationHandlers[methodName] = handler
 
 proc handleInitialize(server: McpServer, request: JsonRpcRequest): Future[JsonRpcResponse] {.async.} =
-  if server.state != mlsUninitialized:
+  if server.session(request.session).state != mlsUninitialized:
     return newJsonRpcErrorResponse(
       request.id,
       -32600,
@@ -135,17 +161,16 @@ proc handleInitialize(server: McpServer, request: JsonRpcRequest): Future[JsonRp
       "Unsupported protocol version",
       %*{"supported": supportedJson, "requested": requested}
     )
-  server.negotiatedVersion = negotiated
 
   let clientCapabilities =
     if params.hasKey("capabilities") and params["capabilities"].kind == JObject:
       extractClientCapabilities(params["capabilities"])
     else:
       McpClientCapabilities()
-  server.clientCapabilities = some(clientCapabilities)
-
-  # Change state
-  server.state = mlsInitializing
+  server.sessions[request.session] = McpSession(
+    state: mlsInitializing,
+    negotiatedVersion: negotiated,
+    clientCapabilities: some(clientCapabilities))
   
   # Create response
   return createInitializeResponse(
@@ -156,12 +181,13 @@ proc handleInitialize(server: McpServer, request: JsonRpcRequest): Future[JsonRp
   )
 
 proc handleInitialized(server: McpServer, notification: JsonRpcNotification): Future[void] {.async.} =
-  if server.state != mlsInitializing:
+  let session = server.session(notification.session)
+  if session.state != mlsInitializing:
     stderr.writeLine("[mcp-server] initialized notification in state " &
-                      $server.state & " ignored")
+                      $session.state & " ignored")
     return
 
-  server.state = mlsOperational
+  session.state = mlsOperational
 
 proc handleCancelled(server: McpServer, notification: JsonRpcNotification): Future[void] {.async.} =
   # TODO: cancel the pending operation named by params.requestId.
@@ -335,18 +361,21 @@ proc processMessages*(server: McpServer): Future[void] {.async.} =
   ## are not caught and propagate normally — we only handle CatchableError.
   try:
     while true:
-      let json = await server.transport.receiveMessage()
+      let incoming = await server.transport.receive()
+      let json = incoming.message
 
       if isRequest(json):
-        let request = decodeRequest(json)
+        var request = decodeRequest(json)
+        request.session = incoming.session
         asyncCheck server.processRequest(request)
       elif isNotification(json):
-        let notification = decodeNotification(json)
+        var notification = decodeNotification(json)
+        notification.session = incoming.session
         asyncCheck server.processNotification(notification)
       else:
         stderr.writeLine("[mcp-server] invalid message received: " & $json)
   except McpTransportClosedError:
-    server.state = mlsShutdown
+    server.sessions[""] = McpSession(state: mlsShutdown)
   except CatchableError as e:
     server.lastTransportError = e
     stderr.writeLine("[mcp-server] transport loop ended with " &
@@ -358,7 +387,9 @@ proc sendNotification*(server: McpServer, methodName: string, params: JsonNode):
 
 proc attachTransport*(server: McpServer, transport: McpTransport): Future[void] {.async.} =
   server.transport = transport
-  
+  transport.onSessionEnd = proc(session: string) {.closure, gcsafe.} =
+    server.endSession(session)
+
   # Start message processing
   asyncCheck server.processMessages()
 

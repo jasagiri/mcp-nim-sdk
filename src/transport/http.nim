@@ -105,8 +105,10 @@ proc pump(t: StreamableHttpTransport, http: AsyncHttpClient,
           answered = true
         t.deliver(message)
   except CatchableError as e:
-    stderr.writeLine("[mcp-http] event stream from " & t.baseUrl &
-                      " failed with " & $e.name & ": " & e.msg)
+    # close() ends open streams on purpose; that is not a failure.
+    if not t.closed:
+      stderr.writeLine("[mcp-http] event stream from " & t.baseUrl &
+                        " failed with " & $e.name & ": " & e.msg)
   finally:
     http.close()
     let index = t.streams.find(http)
@@ -137,7 +139,9 @@ proc post(t: StreamableHttpTransport, body: string,
     raise newException(McpTransportError,
       "POST " & t.baseUrl & " failed: " & e.msg)
 
-  if response.headers.hasKey(SessionHeader):
+  # Only a successful exchange establishes a session; some servers put a
+  # throwaway session id on error responses too.
+  if response.code.is2xx and response.headers.hasKey(SessionHeader):
     t.sessionId = some($response.headers[SessionHeader])
 
   let contentType = response.headers.getOrDefault("Content-Type").toLowerAscii()
@@ -166,7 +170,10 @@ proc post(t: StreamableHttpTransport, body: string,
     except CatchableError:
       errorBody = nil
     if not errorBody.isNil and jsonRpcErrorIn(errorBody):
-      if errorBody{"id"}.kind == JNull and not requestId.isNil:
+      # An HTTP error answers the request that was posted, whatever id the
+      # server wrote: servers reject before reading the id, and then send
+      # null or a placeholder.
+      if not requestId.isNil:
         errorBody["id"] = requestId
       t.deliver(errorBody)
       return

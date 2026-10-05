@@ -12,6 +12,15 @@ type
   McpTransport* = ref object of RootObj
     ## Base transport class
     kind*: McpTransportKind
+    onSessionEnd*: proc(session: string) {.closure, gcsafe.}
+      ## Called by a transport that serves several clients when one of
+      ## them ends its session.
+
+  McpIncoming* = object
+    ## A received message and the connection it came from.
+    message*: JsonNode
+    session*: string
+      ## Empty for a transport with a single peer.
 
   McpTransportError* = object of CatchableError
     code*: int
@@ -32,6 +41,11 @@ method sendResponse*(t: McpTransport, response: JsonRpcResponse): Future[void] {
 
 method receiveMessage*(t: McpTransport): Future[JsonNode] {.base, async.} =
   raise newException(CatchableError, "Not implemented")
+
+method receive*(t: McpTransport): Future[McpIncoming] {.base, async.} =
+  ## The next message with the connection it came from. Transports with a
+  ## single peer need only implement receiveMessage.
+  return McpIncoming(message: await t.receiveMessage(), session: "")
 
 method close*(t: McpTransport): Future[void] {.base, async.} =
   raise newException(CatchableError, "Not implemented")

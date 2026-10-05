@@ -16,8 +16,7 @@
 | `src/transport/event_stream.nim` | `tests/test_event_stream.nim` | 2026-10-05 |
 | `src/transport/http.nim` | `tests/test_streamable_http.nim` | 2026-10-05 |
 | `src/transport/http_server.nim` | `tests/test_streamable_http.nim` | 2026-10-05 |
-| `src/transport/stdio.nim` | `tests/test_silent_dead.nim` | 2026-10-05 |
-| `src/mcp/protocol.nim` | `tests/test_protocol_versions.nim` | 2026-10-05 |
+| `src/transport/stdio.nim` | `tests/test_stdio.nim`, `tests/test_silent_dead.nim` | 2026-10-06 |
 
 ## 手で確かめたもの (nim-muter の測定ではない)
 
