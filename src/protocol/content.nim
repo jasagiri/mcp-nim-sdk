@@ -100,3 +100,43 @@ proc toolFor*(version: McpProtocolVersion, tool: JsonNode): JsonNode =
   result = tool.copy()
   if not version.has(ftToolAnnotations):
     result.dropKey("annotations")
+
+proc textBlock(text: string): JsonNode =
+  %*{"type": "text", "text": text}
+
+proc contentBlockFor*(version: McpProtocolVersion, blk: JsonNode): JsonNode =
+  ## A content block (of a tool result or a prompt message) as `version`
+  ## defines it. A block of a type the version does not have is replaced by a
+  ## text block that says what it was, so that the reader is told and no
+  ## client meets a type it cannot parse.
+  if not blk.objectOnly:
+    return blk
+  case blk{"type"}.getStr()
+  of "audio":
+    if version.has(ftAudioContent):
+      return blk
+    textBlock("[audio content (" & blk{"mimeType"}.getStr() &
+              ") omitted: protocol version " & $version & " has no audio content]")
+  else:
+    blk
+
+proc toolResultFor*(version: McpProtocolVersion, callResult: JsonNode): JsonNode =
+  ## A CallToolResult as `version` defines it.
+  if not callResult.objectOnly:
+    return callResult
+  result = callResult.copy()
+  if result.hasKey("content") and result["content"].kind == JArray:
+    var blocks = newJArray()
+    for item in result["content"]:
+      blocks.add version.contentBlockFor(item)
+    result["content"] = blocks
+
+proc promptResultFor*(version: McpProtocolVersion, prompt: JsonNode): JsonNode =
+  ## A GetPromptResult as `version` defines it.
+  if not prompt.objectOnly:
+    return prompt
+  result = prompt.copy()
+  if result.hasKey("messages") and result["messages"].kind == JArray:
+    for message in result["messages"]:
+      if message.objectOnly and message.hasKey("content"):
+        message["content"] = version.contentBlockFor(message["content"])

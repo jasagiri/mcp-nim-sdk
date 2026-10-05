@@ -1,6 +1,6 @@
 ## MCP server tool utilities
 
-import asyncdispatch, json, options, sequtils
+import json
 
 proc createToolInfo*(name: string, description: string, inputSchema: JsonNode, annotations: JsonNode = nil): JsonNode =
   result = %*{

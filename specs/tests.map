@@ -532,3 +532,10 @@ MCP-TOOLANN-3 | tests/test_tool_annotations.nim | Given an additive tool, when a
 MCP-TOOLANN-3 | tests/test_tool_annotations.nim | Given a hint of the wrong type, when annotations are parsed, then the protocol violation is raised
 MCP-TOOLANN-3 | tests/test_tool_annotations.nim | Given a tool with a title and annotations.title, when its display name is read, then the order is title, annotations.title, name
 MCP-TOOLANN-3 | tests/test_tool_annotations.nim | Given a server that lists annotated tools, when the client lists them, then the annotations are typed
+MCP-AUDIO-1 | tests/test_audio_content.nim | Given a version that has audio, when a tool returns audio, then the block is sent as it is
+MCP-AUDIO-1 | tests/test_audio_content.nim | Given a version that has audio, when a prompt message holds audio, then it is sent as it is
+MCP-AUDIO-2 | tests/test_audio_content.nim | Given a version without audio, when a tool returns audio, then a text block says so in its place
+MCP-AUDIO-2 | tests/test_audio_content.nim | Given a version without audio, when a prompt message holds audio, then it is replaced by text
+MCP-AUDIO-3 | tests/test_audio_content.nim | Given a tool result with audio, when the client calls the tool, then the item is audio with its data and type
+MCP-AUDIO-3 | tests/test_audio_content.nim | Given an audio block without mimeType, when the client calls the tool, then the protocol violation is raised
+MCP-AUDIO-3 | tests/test_audio_content.nim | Given a prompt message with audio, when the client gets the prompt, then the content is audio

@@ -8,7 +8,7 @@ This checkout speaks MCP **2026-07-28** and every earlier version: `2024-11-05`,
 
 ## Features of 2026-07-28
 
-35 of the 51 features of `2026-07-28` are implemented in this tree. The table lists every feature the specification of `2026-07-28` defines; "not implemented" means this SDK does not do it yet.
+36 of the 51 features of `2026-07-28` are implemented in this tree. The table lists every feature the specification of `2026-07-28` defines; "not implemented" means this SDK does not do it yet.
 
 | Feature | Status | Specification |
 |---|---|---|
@@ -28,7 +28,7 @@ This checkout speaks MCP **2026-07-28** and every earlier version: `2024-11-05`,
 | Streamable HTTP transport | implemented | [basic/transports/streamable-http](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http) |
 | authorization (OAuth) | implemented | [basic/authorization](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization) |
 | tool annotations | implemented | [server/tools](https://modelcontextprotocol.io/specification/2026-07-28/server/tools) |
-| audio content | not implemented | [server/tools](https://modelcontextprotocol.io/specification/2026-07-28/server/tools) |
+| audio content | implemented | [server/tools](https://modelcontextprotocol.io/specification/2026-07-28/server/tools) |
 | progress messages | implemented | [basic/patterns/progress](https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/progress) |
 | MCP-Protocol-Version header | implemented | [basic/transports/streamable-http](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http) |
 | structured tool output | not implemented | [server/tools](https://modelcontextprotocol.io/specification/2026-07-28/server/tools) |

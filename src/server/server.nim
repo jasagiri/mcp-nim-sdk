@@ -842,7 +842,7 @@ proc dispatchStandard(server: McpServer, request: JsonRpcRequest,
     let malformed = requireObjectResult(request, callResult)
     if malformed.isSome:
       return malformed.get
-    return newJsonRpcResponse(request.id, callResult)
+    return newJsonRpcResponse(request.id, toolResultFor(ctx.version, callResult))
 
   of "prompts/list":
     if caps.prompts.isNone or server.promptsList.isNil:
@@ -861,7 +861,7 @@ proc dispatchStandard(server: McpServer, request: JsonRpcRequest,
     let malformed = requireObjectResult(request, prompt)
     if malformed.isSome:
       return malformed.get
-    return newJsonRpcResponse(request.id, prompt)
+    return newJsonRpcResponse(request.id, promptResultFor(ctx.version, prompt))
 
   of "completion/complete":
     if caps.completions.isNone or server.completer.isNil:

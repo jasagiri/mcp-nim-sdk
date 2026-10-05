@@ -105,11 +105,13 @@ func implementationOf*(feature: McpFeature): Implementation {.raises: [].} =
     done("tests/test_auth_client_flow.nim")
   of ftToolAnnotations:
     done("tests/test_tool_annotations.nim")
+  of ftAudioContent:
+    done("tests/test_audio_content.nim")
   of ftJsonSchema2020:
     done("tests/test_json_schema.nim")
   of ftMultiRoundTripRequests:
     notYet("the client raises on an input_required result")
-  of ftAudioContent, ftStructuredToolOutput, ftResourceLinks,
+  of ftStructuredToolOutput, ftResourceLinks,
      ftElicitation, ftTitleFields, ftTasks, ftIcons, ftUrlElicitation,
      ftSamplingTools, ftSubscriptionsListen, ftExtensions,
      ftEnumSchemas, ftElicitationDefaults, ftImplementationDescription,
