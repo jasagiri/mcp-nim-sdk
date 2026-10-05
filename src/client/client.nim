@@ -570,6 +570,44 @@ proc answerInputRequests(client: McpClient, methodName: string,
       raise failure
     result[key] = answer.result.get(newJObject())
 
+const MaxToolListPagesOnMismatch = 100
+  ## How many pages of tools/list are read to find one tool again.
+
+proc refusedForParamHeaders(client: McpClient, methodName: string,
+                            response: JsonRpcResponse): bool =
+  ## Whether a tools/call was refused as a header mismatch over a transport
+  ## that carries `Mcp-Param-*` headers (2026-07-28, Streamable HTTP).
+  methodName == "tools/call" and response.error.isSome and
+    response.error.get.code == ErrHeaderMismatch and
+    client.usesModernProtocol and client.negotiatedVersion.get.has(ftParameterHeaders) and
+    client.transport.kind != mtkStdio
+
+proc listToolsAgainFor(client: McpClient, toolName: string,
+                       options: McpRequestOptions): Future[bool] {.async.} =
+  ## Read tools/list until `toolName` is seen, so the transport learns the
+  ## headers the tool declares now. False when the list could not be read
+  ## or does not have the tool; the caller then keeps the refusal it got.
+  var cursor = none(string)
+  for _ in 1 .. MaxToolListPagesOnMismatch:
+    let params = if cursor.isSome: %*{"cursor": cursor.get} else: newJObject()
+    let page = await client.sendOnce("tools/list", params,
+      McpRequestOptions(timeoutMs: options.timeoutMs, cancel: options.cancel))
+    if page.error.isSome:
+      stderr.writeLine("[mcp-client] tools/list after a header mismatch failed: " &
+                       page.error.get.message)
+      return false
+    let listed = page.result.get(newJObject())
+    for tool in listed{"tools"}.getElems():
+      if tool{"name"}.getStr() == toolName:
+        return true
+    let next = listed{"nextCursor"}
+    if next.isNil or next.kind != JString:
+      return false
+    cursor = some(next.getStr())
+  stderr.writeLine("[mcp-client] tools/list after a header mismatch has more than " &
+                   $MaxToolListPagesOnMismatch & " pages; '" & toolName & "' was not found")
+  return false
+
 proc sendRequest*(client: McpClient, methodName: string, params: JsonNode,
                   options: McpRequestOptions = McpRequestOptions()): Future[JsonRpcResponse] {.async.} =
   ## Send a request and wait for its response. A JSON-RPC error response is
@@ -583,10 +621,23 @@ proc sendRequest*(client: McpClient, methodName: string, params: JsonNode,
   ## retries the request, with a new id each time, until it completes; the
   ## timeout of the options applies to each attempt, not to the time spent
   ## answering. More than `maxInputRounds` retries raise McpInputRoundsError.
+  ##
+  ## Over Streamable HTTP in 2026-07-28, a `tools/call` refused as a header
+  ## mismatch (-32020) is retried once after tools/list has been read again,
+  ## in case the tool's `x-mcp-header` declarations changed; a second
+  ## refusal, or a list without the tool, returns the refusal.
   var current = params
   var rounds = 0
+  var toolsListedAgain = false
   while true:
     let response = await client.sendOnce(methodName, current, options)
+    if not toolsListedAgain and client.refusedForParamHeaders(methodName, response):
+      # The tool's `x-mcp-header` declarations may have changed since the
+      # client last listed it: list again and retry, once.
+      toolsListedAgain = true
+      if await client.listToolsAgainFor(current{"name"}.getStr(), options):
+        continue
+      return response
     if not client.usesModernProtocol or response.result.isNone:
       return response
     case resultKind(response.result.get)

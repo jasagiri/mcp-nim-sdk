@@ -7,6 +7,7 @@ import ../protocol/modern
 import ../protocol/param_headers
 import ../protocol/features
 import ../protocol/content
+import ../jsonschema/json_schema
 import ../protocol/log_level
 import ../protocol/sampling_tools
 import ../protocol/trace_context
@@ -897,18 +898,31 @@ proc toolInputSchema(server: McpServer, name: string): Future[Option[JsonNode]] 
                    $MaxToolListPages & " pages; '" & name & "' was not found")
   none(JsonNode)
 
-proc paramHeaderMismatch(server: McpServer, name: string, arguments: JsonNode,
-                         received: seq[(string, string)]): Future[Option[JsonRpcError]] {.async.} =
+func paramHeaderMismatch(schema: Option[JsonNode], arguments: JsonNode,
+                         received: seq[(string, string)]): Option[JsonRpcError] =
   ## Whether the `Mcp-Param-*` headers of an HTTP call disagree with the
-  ## arguments, by what the tool declared. A tool the server does not list,
-  ## or lists with invalid declarations, has nothing to check.
-  let schema = await server.toolInputSchema(name)
+  ## arguments, by what the tool's `inputSchema` declares. A tool the server
+  ## does not list, or lists with invalid declarations, has nothing to check.
   if schema.isNone:
     return none(JsonRpcError)
   let declared = declaredParamHeaders(schema.get)
   if declared.invalid.isSome:
     return none(JsonRpcError)
-  return checkParamHeaders(declared.bindings, arguments, received)
+  checkParamHeaders(declared.bindings, arguments, received)
+
+proc inputProblems(name: string, schema: Option[JsonNode], arguments: JsonNode): string =
+  ## What is wrong with `arguments` under the `inputSchema` the server lists
+  ## for the tool; empty when they conform or the tool has no schema.
+  ## "Servers MUST validate all tool inputs" (server/tools). A schema that
+  ## cannot be checked is the server's defect: nothing is passed as valid.
+  if schema.isNone:
+    return ""
+  try:
+    return describe(validate(schema.get, arguments))
+  except InvalidSchemaError as e:
+    stderr.writeLine("[mcp-server] tools/call: the inputSchema of tool '" & name &
+                     "' cannot be checked: " & e.msg)
+    raise newRequestError(ErrInternal, "Internal error")
 
 func honoredFilter(capabilities: McpServerCapabilities,
                     requested: SubscriptionFilter): SubscriptionFilter =
@@ -1042,15 +1056,24 @@ proc dispatchStandard(server: McpServer, request: JsonRpcRequest,
     if not arguments.isNil and arguments.kind != JObject:
       return newJsonRpcErrorResponse(request.id, ErrInvalidParams,
         "tools/call arguments must be an object")
+    let inputSchema = await server.toolInputSchema(name.get)
     if request.paramHeaders.isSome and ctx.version.has(ftParameterHeaders):
-      let mismatch = await server.paramHeaderMismatch(name.get, arguments,
-                                                      request.paramHeaders.get)
+      let mismatch = paramHeaderMismatch(inputSchema, arguments, request.paramHeaders.get)
       if mismatch.isSome:
         return newJsonRpcErrorResponse(request.id, mismatch.get.code, mismatch.get.message)
+    let given = if arguments.isNil: newJObject() else: arguments
+    let invalid = inputProblems(name.get, inputSchema, given)
+    if invalid.len > 0:
+      # Before 2025-11-25 invalid arguments are a protocol error; from then
+      # on they are a tool result the model can read and correct.
+      let message = "Invalid arguments for tool '" & name.get & "': " & invalid
+      if not ctx.version.has(ftToolInputErrors):
+        return newJsonRpcErrorResponse(request.id, ErrInvalidParams, message)
+      return newJsonRpcResponse(request.id,
+        toolResultFor(ctx.version, toolFailureResult(message)))
     var callResult: JsonNode
     try:
-      callResult = await server.toolCall(ctx, name.get,
-        if arguments.isNil: newJObject() else: arguments)
+      callResult = await server.toolCall(ctx, name.get, given)
     except McpToolFailure as e:
       callResult = toolFailureResult(e.plainMessage)
     let malformed = requireObjectResult(request, callResult)

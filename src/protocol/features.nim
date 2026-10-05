@@ -57,6 +57,7 @@ type
     ftIcons
     ftUrlElicitation
     ftSamplingTools
+    ftToolInputErrors        ## a tool input that fails validation is a tool result with isError, not a protocol error
     ftClientIdMetadataDocuments
     # 2026-07-28
     ftPerRequestMetadata
@@ -128,7 +129,8 @@ func span*(feature: McpFeature): FeatureSpan {.raises: [].} =
   of ftTasks:
     # Core only in 2025-11-25; an official extension afterwards.
     FeatureSpan(since: mpv20251125, until: before(mpv20260728))
-  of ftIcons, ftUrlElicitation, ftSamplingTools, ftClientIdMetadataDocuments:
+  of ftIcons, ftUrlElicitation, ftSamplingTools, ftToolInputErrors,
+     ftClientIdMetadataDocuments:
     FeatureSpan(since: mpv20251125, until: forever())
   of ftPerRequestMetadata, ftDiscover, ftResultType, ftMultiRoundTripRequests,
      ftSubscriptionsListen, ftCacheHints, ftMirroredHeaders,
@@ -202,6 +204,7 @@ func displayName*(feature: McpFeature): string {.raises: [].} =
   of ftIcons: "icons"
   of ftUrlElicitation: "URL-mode elicitation"
   of ftSamplingTools: "tool use in sampling"
+  of ftToolInputErrors: "input validation errors as tool results"
   of ftClientIdMetadataDocuments: "client ID metadata documents"
   of ftPerRequestMetadata: "per-request protocol metadata"
   of ftDiscover: "server/discover"
@@ -242,7 +245,7 @@ func specPage*(feature: McpFeature, version: McpProtocolVersion): string {.raise
   of ftCancellation:
     if modern: "basic/patterns/cancellation" else: "basic/utilities/cancellation"
   of ftPagination: "server/utilities/pagination"
-  of ftTools, ftToolAnnotations, ftAudioContent, ftStructuredToolOutput,
+  of ftTools, ftToolInputErrors, ftToolAnnotations, ftAudioContent, ftStructuredToolOutput,
      ftResourceLinks, ftTitleFields, ftIcons, ftJsonSchema2020: "server/tools"
   of ftResources, ftResourceTemplates, ftResourceSubscribe,
      ftResourceNotFoundInvalidParams: "server/resources"

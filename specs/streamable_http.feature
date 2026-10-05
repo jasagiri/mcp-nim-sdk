@@ -127,3 +127,10 @@ Feature: Streamable HTTP transport
     When a client connects, or sends a request with a timeout
     Then McpTimeoutError is raised after the timeout instead of waiting forever
 
+  @spec:MCP-HTTP-18 @feature:ftParameterHeaders
+  Scenario: A client refused for its parameter headers lists the tools again and retries once
+    Given a tool whose x-mcp-header declarations changed after the client listed it
+    When the call is refused as a header mismatch
+    Then the client reads tools/list again and retries the call with the headers the tool declares now
+    And a second refusal is returned to the caller without another retry
+

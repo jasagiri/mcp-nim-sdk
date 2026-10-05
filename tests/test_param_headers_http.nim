@@ -52,6 +52,35 @@ proc startServer(tools: seq[JsonNode]): tuple[url: string, server: McpServer] =
   waitFor server.attachTransport(transport)
   ("http://127.0.0.1:" & $transport.port & "/mcp", server)
 
+type ChangingTools = ref object
+  ## The tool definitions of a server that changes them while it runs.
+  tools: seq[JsonNode]
+  listed: int
+  called: int
+
+proc startChangingServer(state: ChangingTools): string =
+  let transport = newHttpServerTransport(port = 0)
+  transport.listen()
+  asyncCheck transport.serve()
+  let server = newMcpServer(McpServerInfo(name: "ExampleServer", version: "1.0.0"),
+    capabilities = McpServerCapabilities(tools: some(McpToolsCapability())))
+  let listTools: typeof(McpToolHandlers().listHandler.get) =
+    proc(): Future[seq[JsonNode]] {.async.} =
+      inc state.listed
+      return state.tools
+  let callTool: typeof(McpToolHandlers().callHandler.get) =
+    proc(name: string, arguments: JsonNode): Future[JsonNode] {.async.} =
+      inc state.called
+      return %*{"content": [{"type": "text", "text": name}], "isError": false}
+  server.setToolHandlers(McpToolHandlers(
+    listHandler: some(listTools), callHandler: some(callTool)))
+  waitFor server.attachTransport(transport)
+  "http://127.0.0.1:" & $transport.port & "/mcp"
+
+proc sqlToolWithoutHeader(): JsonNode =
+  %*{"name": "execute_sql", "inputSchema": {"type": "object", "properties": {
+    "region": {"type": "string"}, "query": {"type": "string"}}}}
+
 type Reply = tuple[code: HttpCode, body: string]
 
 proc post(url: string, body: JsonNode, headers: openArray[(string, string)]): Reply =
@@ -180,6 +209,54 @@ if SpeaksModern:
         %*{"name": "execute_sql", "arguments": {"region": "us-west1", "query": "SELECT 1"}})
       check response.error.isNone
       check response.result.get["resultType"].getStr() == "complete"
+
+    test "Given a tool that gained x-mcp-header after it was listed, when the call is refused as a header mismatch, then the client lists the tools again and retries with the header":
+      let state = ChangingTools(tools: @[sqlToolWithoutHeader()])
+      let client = newMcpClient(McpClientInfo(name: "ExampleClient", version: "1.0.0"))
+      waitFor client.connect(newStreamableHttpTransport(startChangingServer(state)))
+      discard waitFor client.sendRequest("tools/list", newJObject())
+      state.tools = @[sqlTool()]
+      let listedBefore = state.listed
+      let response = waitFor client.sendRequest("tools/call",
+        %*{"name": "execute_sql", "arguments": {"region": "us-west1", "query": "SELECT 1"}})
+      check response.error.isNone
+      check response.result.get["content"][0]["text"].getStr() == "execute_sql"
+      check state.called == 1
+      check state.listed > listedBefore
+
+    test "Given a call that is refused as a header mismatch again after the tools were listed again, when it is answered, then the error is returned and the client does not retry a second time":
+      # The server wants a header the client has no declaration for: the
+      # list it publishes never mentions it.
+      var calls = 0
+      var lists = 0
+      let url = startScripted(proc(req: Request) {.async, gcsafe.} =
+        let message = parseJson(req.body)
+        var code = Http200
+        var body: JsonNode
+        case message["method"].getStr()
+        of "server/discover":
+          body = %*{"jsonrpc": "2.0", "id": message["id"], "result": {
+            "resultType": "complete", "supportedVersions": ["2026-07-28"],
+            "capabilities": {"tools": {}},
+            "serverInfo": {"name": "scripted", "version": "1"}}}
+        of "tools/list":
+          {.cast(gcsafe).}: inc lists
+          body = %*{"jsonrpc": "2.0", "id": message["id"], "result": {
+            "resultType": "complete", "tools": [sqlToolWithoutHeader()],
+            "ttlMs": 0, "cacheScope": "private"}}
+        else:
+          {.cast(gcsafe).}: inc calls
+          code = Http400
+          body = %*{"jsonrpc": "2.0", "id": message["id"], "error": {
+            "code": -32020, "message": "Header mismatch: Mcp-Param-Region is required"}}
+        await req.respond(code, $body, newHttpHeaders({"Content-Type": "application/json"})))
+      let client = newMcpClient(McpClientInfo(name: "ExampleClient", version: "1.0.0"))
+      waitFor client.connect(newStreamableHttpTransport(url))
+      let response = waitFor client.sendRequest("tools/call",
+        %*{"name": "execute_sql", "arguments": {"region": "us-west1"}})
+      check response.error.get.code == -32020
+      check calls == 2
+      check lists == 1
 
     test "Given a scripted server, when a client calls a tool listed with x-mcp-header, then the headers are exactly the specification's":
       var seen: seq[tuple[name, region, other: string]] = @[]

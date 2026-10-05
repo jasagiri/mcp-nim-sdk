@@ -977,3 +977,11 @@ MCP-TASKS-19 | tests/test_tasks_end_to_end.nim | Given a task that cancels, when
 MCP-TASKS-19 | tests/test_tasks_end_to_end.nim | Given a tool that asks the client for sampling, when called with a task, then the client answers and the task completes
 MCP-TASKS-19 | tests/test_tasks_end_to_end.nim | Given a client that receives tasks, when the server asks for sampling as a task, then the answer is the handler's
 MCP-TASKS-3 | tests/test_tasks_server.nim | Given a server that did not declare tools/call tasks, when a call carries a task, then it runs normally
+MCP-TOOLS-3 | tests/test_tool_input_validation.nim | Given arguments that fit the tool's inputSchema, when the tool is called, then the handler runs
+MCP-TOOLS-3 | tests/test_tool_input_validation.nim | Given arguments that break the inputSchema, when the answer is read, then it names the argument at fault
+MCP-TOOLS-3 | tests/test_tool_input_validation.nim | Given a call without arguments, when the inputSchema requires one, then it is checked as an empty object
+MCP-TOOLS-3 | tests/test_tool_input_validation.nim | Given a tool the server lists without an inputSchema, or does not list, when it is called, then the handler decides
+MCP-TOOLS-4 | tests/test_tool_input_validation.nim | Given arguments that break the inputSchema, when the tool is called, then the handler does not run and the answer is invalid params before 2025-11-25 and a tool error from it
+MCP-TOOLS-5 | tests/test_tool_input_validation.nim | Given an inputSchema the server cannot check, when the tool is called, then it is an internal error and the handler does not run
+MCP-HTTP-18 | tests/test_param_headers_http.nim | Given a tool that gained x-mcp-header after it was listed, when the call is refused as a header mismatch, then the client lists the tools again and retries with the header
+MCP-HTTP-18 | tests/test_param_headers_http.nim | Given a call that is refused as a header mismatch again after the tools were listed again, when it is answered, then the error is returned and the client does not retry a second time
