@@ -4,9 +4,11 @@
     "src/server/errors.nim",
     "src/server/pagination.nim",
     "src/server/completion.nim",
-    "src/protocol/log_level.nim"
+    "src/protocol/log_level.nim",
+    "src/server/prompts.nim",
+    "src/server/resources.nim"
   ],
-  "testCommand": "nim c -r --hints:off tests/test_server_pagination.nim && nim c -r --hints:off tests/test_server_errors.nim && nim c -r --hints:off tests/test_server_completion.nim && nim c -r --hints:off tests/test_server_logging.nim && nim c -r --hints:off tests/test_server_notifications.nim && nim c -r --hints:off tests/test_server_progress_cancel.nim && nim c -r --hints:off tests/test_server_requests.nim && nim c -r --hints:off tests/test_era_matrix.nim && nim c -r --hints:off tests/test_legacy_handshake.nim && nim c -r --hints:off -d:mcpDefaultProtocolVersion=2024-11-05 tests/test_version.nim && nim c -r --hints:off -d:mcpDefaultProtocolVersion=2024-11-05 tests/test_legacy_handshake.nim && nim c -r --hints:off -d:mcpDefaultProtocolVersion=2024-11-05 tests/test_era_matrix.nim && nim c -r --hints:off -d:mcpDefaultProtocolVersion=2025-11-25 tests/test_version.nim && nim c -r --hints:off -d:mcpDefaultProtocolVersion=2025-11-25 tests/test_legacy_handshake.nim && nim c -r --hints:off -d:mcpDefaultProtocolVersion=2025-11-25 tests/test_era_matrix.nim",
+  "testCommand": "nim c -r --hints:off tests/test_server_pagination.nim && nim c -r --hints:off tests/test_server_errors.nim && nim c -r --hints:off tests/test_server_completion.nim && nim c -r --hints:off tests/test_server_logging.nim && nim c -r --hints:off tests/test_server_notifications.nim && nim c -r --hints:off tests/test_server_progress_cancel.nim && nim c -r --hints:off tests/test_server_requests.nim && nim c -r --hints:off tests/test_era_matrix.nim && nim c -r --hints:off tests/test_legacy_handshake.nim && nim c -r --hints:off -d:mcpDefaultProtocolVersion=2024-11-05 tests/test_version.nim && nim c -r --hints:off -d:mcpDefaultProtocolVersion=2024-11-05 tests/test_legacy_handshake.nim && nim c -r --hints:off -d:mcpDefaultProtocolVersion=2024-11-05 tests/test_era_matrix.nim && nim c -r --hints:off -d:mcpDefaultProtocolVersion=2025-11-25 tests/test_version.nim && nim c -r --hints:off -d:mcpDefaultProtocolVersion=2025-11-25 tests/test_legacy_handshake.nim && nim c -r --hints:off -d:mcpDefaultProtocolVersion=2025-11-25 tests/test_era_matrix.nim && nim c -r --hints:off tests/test_server_resources_prompts.nim && nim c -r --hints:off tests/test_version_floor.nim && nim c -r --hints:off -d:mcpOldestProtocolVersion=2026-07-28 tests/test_version_floor.nim",
   "mutators": [
     "AOR",
     "ROR",

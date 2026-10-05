@@ -1,0 +1,23 @@
+{
+  "sources": [
+    "src/protocol/sampling_tools.nim"
+  ],
+  "testCommand": "nim c -r --hints:off tests/test_sampling_tools_payload.nim && nim c -r --hints:off tests/test_server_sampling_tools.nim && nim c -r --hints:off tests/test_client_sampling_tools.nim && nim c -r --hints:off tests/test_client_server_requests.nim",
+  "mutators": [
+    "AOR",
+    "ROR",
+    "LOR",
+    "BLR",
+    "SDL",
+    "RVR"
+  ],
+  "parallelism": 0,
+  "timeoutMs": 0,
+  "minScore": 0.0,
+  "reports": [
+    "console",
+    "json"
+  ],
+  "outputDir": ".nim-muter/sampling_tools",
+  "incremental": false
+}

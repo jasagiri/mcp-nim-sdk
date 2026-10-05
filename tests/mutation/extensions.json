@@ -1,0 +1,25 @@
+{
+  "sources": [
+    "src/protocol/extensions.nim",
+    "src/server/extensions.nim",
+    "src/client/extensions.nim"
+  ],
+  "testCommand": "nim c -r --hints:off tests/test_extensions.nim",
+  "mutators": [
+    "AOR",
+    "ROR",
+    "LOR",
+    "BLR",
+    "SDL",
+    "RVR"
+  ],
+  "parallelism": 0,
+  "timeoutMs": 0,
+  "minScore": 0.0,
+  "reports": [
+    "console",
+    "json"
+  ],
+  "outputDir": ".nim-muter/extensions",
+  "incremental": false
+}

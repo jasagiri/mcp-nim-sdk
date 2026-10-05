@@ -1,6 +1,7 @@
 {
   "sources": [
-    "src/auth/resource_server.nim"
+    "src/auth/resource_server.nim",
+    "src/transport/auth_hook.nim"
   ],
   "testCommand": "nim c -r --hints:off tests/test_auth_resource_server.nim",
   "mutators": [

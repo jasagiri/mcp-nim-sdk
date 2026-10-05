@@ -1,0 +1,23 @@
+{
+  "sources": [
+    "src/protocol/param_headers.nim"
+  ],
+  "testCommand": "nim c -r --hints:off tests/test_param_headers.nim && nim c -r --hints:off tests/test_param_headers_http.nim",
+  "mutators": [
+    "AOR",
+    "ROR",
+    "LOR",
+    "BLR",
+    "SDL",
+    "RVR"
+  ],
+  "parallelism": 0,
+  "timeoutMs": 0,
+  "minScore": 0.0,
+  "reports": [
+    "console",
+    "json"
+  ],
+  "outputDir": ".nim-muter/param_headers",
+  "incremental": false
+}

@@ -1,0 +1,26 @@
+{
+  "sources": [
+    "src/protocol/elicitation.nim",
+    "src/protocol/payload.nim",
+    "src/server/elicit.nim",
+    "src/client/elicitation.nim"
+  ],
+  "testCommand": "nim c -r --hints:off tests/test_elicitation_payload.nim && nim c -r --hints:off tests/test_server_elicitation.nim && nim c -r --hints:off tests/test_client_elicitation.nim && nim c -r --hints:off tests/test_mrtr.nim",
+  "mutators": [
+    "AOR",
+    "ROR",
+    "LOR",
+    "BLR",
+    "SDL",
+    "RVR"
+  ],
+  "parallelism": 0,
+  "timeoutMs": 0,
+  "minScore": 0.0,
+  "reports": [
+    "console",
+    "json"
+  ],
+  "outputDir": ".nim-muter/elicitation",
+  "incremental": false
+}
