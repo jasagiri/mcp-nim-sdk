@@ -52,3 +52,45 @@ Feature: Authorization extensions (ext-auth)
     Given a token endpoint that authenticates clients by Basic, body secret, private_key_jwt or none
     When client credentials, the JWT bearer grant or a token exchange is requested, or a JWT is signed and read
     Then each request has the RFC's parameters, the signer is the application's, "none" and malformed JWTs are refused, and no secret reaches an error message
+
+  @spec:MCP-EXT-AUTH-8
+  Scenario: A client with an identity assertion gets an access token through an ID-JAG, without a user step
+    Given an MCP server that answers 401, an enterprise IdP that exchanges identity assertions, and an authorization server that accepts ID-JAGs
+    When a client holding an ID token, a SAML assertion or a refresh token sends a request
+    Then the IdP exchange asks for an ID-JAG for that authorization server and resource, the authorization server turns it into an access token restricted to the MCP server, the user is never sent to an authorization endpoint, and the ID-JAG is presented again before a new exchange is made
+
+  @spec:MCP-EXT-AUTH-9
+  Scenario: The exchange asks for the config's scopes, the challenge's or scopes_supported, and a 403 asks for more once
+    Given a resource server that names scopes in its challenge, in its metadata or in a 403
+    When the client requests an ID-JAG
+    Then the scope is the config's, else the challenge's, else scopes_supported, after insufficient_scope the union, and not again for scopes already asked for
+
+  @spec:MCP-EXT-AUTH-10
+  Scenario: The identity assertion is used only with servers that advertise the profile
+    Given an authorization server without authorization_grant_profiles_supported listing the id-jag profile or without the jwt-bearer grant, or an IdP that lists token types without id-jag
+    When the client would authorize
+    Then it refuses before the identity assertion is asked for or sent anywhere
+
+  @spec:MCP-EXT-AUTH-11
+  Scenario: The client does not present an ID-JAG that was not issued for this exchange
+    Given an ID-JAG with the wrong typ, issuer, audience, client_id or resource, an expired one, one missing sub, jti, iat or exp, or an exchange response of the wrong type
+    When it arrives from the IdP
+    Then it is not presented to the authorization server, and an aud array of exactly the authorization server and a resource array containing the MCP server are accepted
+
+  @spec:MCP-EXT-AUTH-12
+  Scenario: Failures carry no token or secret, and each credential goes only where it belongs
+    Given an IdP or authorization server that refuses, a single sign-on that has to be repeated, an IdP issuer or metadata that is not trustworthy
+    When the client authorizes
+    Then the failure names the OAuth error and none of the identity assertion, the ID-JAG or the secrets, the identity assertion goes to the IdP only and the ID-JAG to the authorization server only
+
+  @spec:MCP-EXT-AUTH-13
+  Scenario: Enterprise-managed authorization is off unless the application uses it
+    Given a transport without the extension's auth, or a configuration that could never succeed
+    When a request is answered 401 or the auth is made
+    Then neither the IdP nor the authorization server is contacted, and a bad configuration raises ValueError
+
+  @spec:MCP-EXT-AUTH-14
+  Scenario: The extension is declared in the extensions capability only when asked
+    Given a client or server that calls declare or advertise for the extension
+    When a 2026-07-28 client sends a request or discovers the server
+    Then io.modelcontextprotocol/enterprise-managed-authorization is listed with empty settings, otherwise not, and a build without the extensions capability raises ValueError

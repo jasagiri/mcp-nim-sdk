@@ -2269,3 +2269,55 @@ MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given an ID-JAG like assertion
 MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given a subject token, when exchanged, then every RFC 8693 parameter is sent and the issued token is returned with its type and lifetime
 MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given an empty subject token, when exchanged, then nothing is sent
 MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given token exchange responses with a missing field, when parsed, then each is refused
+MCP-EXT-AUTH-8 | tests/test_ext_auth_enterprise_managed.nim | Given a 401 and an ID token, when a request is sent, then the IdP exchanges it for an ID-JAG for this authorization server and resource, the server turns that into an access token, and the user is never sent anywhere
+MCP-EXT-AUTH-8 | tests/test_ext_auth_enterprise_managed.nim | Given the access token the server issued, when it is looked up, then it is restricted to the MCP server named by the ID-JAG's resource
+MCP-EXT-AUTH-8 | tests/test_ext_auth_enterprise_managed.nim | Given a SAML assertion or a refresh token instead of an ID token, when a request is sent, then subject_token_type says which
+MCP-EXT-AUTH-8 | tests/test_ext_auth_enterprise_managed.nim | Given a signing key at the IdP and a public client with a metadata document URL at the authorization server, when a request is sent, then both authenticate as the draft says
+MCP-EXT-AUTH-8 | tests/test_ext_auth_enterprise_managed.nim | Given a stored token, when more requests are sent, then no second exchange happens
+MCP-EXT-AUTH-8 | tests/test_ext_auth_enterprise_managed.nim | Given an access token and an ID-JAG that both outlive a clock step, when the access token expires first, then the ID-JAG is reused
+MCP-EXT-AUTH-8 | tests/test_ext_auth_enterprise_managed.nim | Given an access token and an ID-JAG that have both expired, when the next request is sent, then the identity assertion is asked for again and the IdP issues a new ID-JAG
+MCP-EXT-AUTH-8 | tests/test_ext_auth_enterprise_managed.nim | Given a refresh token from the authorization server, when the access token is stored, then it is not kept (the ID-JAG renews access)
+MCP-EXT-AUTH-8 | tests/test_ext_auth_enterprise_managed.nim | Given a config without a resource, when a request is sent, then the exchange carries none
+MCP-EXT-AUTH-9 | tests/test_ext_auth_enterprise_managed.nim | Given scopes in the config, when the exchange is made, then they replace the challenge's
+MCP-EXT-AUTH-9 | tests/test_ext_auth_enterprise_managed.nim | Given no scope in the challenge but scopes_supported, when the exchange is made, then it asks for those
+MCP-EXT-AUTH-9 | tests/test_ext_auth_enterprise_managed.nim | Given a 403 insufficient_scope, when the request is sent, then a new ID-JAG for the union is requested and the request succeeds
+MCP-EXT-AUTH-9 | tests/test_ext_auth_enterprise_managed.nim | Given a 403 that names a scope already asked for, when it repeats, then the client does not ask again
+MCP-EXT-AUTH-10 | tests/test_ext_auth_enterprise_managed.nim | Given an authorization server that does not list the ID-JAG profile, when a request is sent, then no identity assertion is used
+MCP-EXT-AUTH-10 | tests/test_ext_auth_enterprise_managed.nim | Given an authorization server that lists other profiles only, when a request is sent, then no identity assertion is used
+MCP-EXT-AUTH-10 | tests/test_ext_auth_enterprise_managed.nim | Given an authorization server that lists the profile but not the jwt-bearer grant, when a request is sent, then no identity assertion is used
+MCP-EXT-AUTH-10 | tests/test_ext_auth_enterprise_managed.nim | Given an IdP that lists identity chaining token types without id-jag, when a request is sent, then the identity assertion is not sent to it
+MCP-EXT-AUTH-10 | tests/test_ext_auth_enterprise_managed.nim | Given an IdP that does not advertise identity chaining token types, when a request is sent, then the exchange is tried (the draft says SHOULD)
+MCP-EXT-AUTH-11 | tests/test_ext_auth_enterprise_managed.nim | Given an ID-JAG whose typ is not oauth-id-jag+jwt, when it arrives, then it is not sent to the authorization server
+MCP-EXT-AUTH-11 | tests/test_ext_auth_enterprise_managed.nim | Given an ID-JAG issued by someone other than the IdP, when it arrives, then it is not sent on
+MCP-EXT-AUTH-11 | tests/test_ext_auth_enterprise_managed.nim | Given an ID-JAG for another audience, when it arrives, then it is not sent on
+MCP-EXT-AUTH-11 | tests/test_ext_auth_enterprise_managed.nim | Given an ID-JAG whose aud is an array with another entry too, when it arrives, then it is not sent on
+MCP-EXT-AUTH-11 | tests/test_ext_auth_enterprise_managed.nim | Given an ID-JAG whose aud is an array of exactly this authorization server, when it arrives, then it is accepted
+MCP-EXT-AUTH-11 | tests/test_ext_auth_enterprise_managed.nim | Given an ID-JAG for another client, when it arrives, then it is not sent on
+MCP-EXT-AUTH-11 | tests/test_ext_auth_enterprise_managed.nim | Given an ID-JAG without the resource that was asked for, when it arrives, then it is not sent on
+MCP-EXT-AUTH-11 | tests/test_ext_auth_enterprise_managed.nim | Given an ID-JAG for another resource, when it arrives, then it is not sent on
+MCP-EXT-AUTH-11 | tests/test_ext_auth_enterprise_managed.nim | Given an ID-JAG whose resource is an array that includes this server, when it arrives, then it is accepted
+MCP-EXT-AUTH-11 | tests/test_ext_auth_enterprise_managed.nim | Given an ID-JAG that has already expired, when it arrives, then it is not sent on
+MCP-EXT-AUTH-11 | tests/test_ext_auth_enterprise_managed.nim | Given an ID-JAG without sub, jti, iat or exp, when it arrives, then it is not sent on
+MCP-EXT-AUTH-11 | tests/test_ext_auth_enterprise_managed.nim | Given an exchange response that is not an ID-JAG by its issued_token_type or token_type, when it arrives, then it is not sent on
+MCP-EXT-AUTH-11 | tests/test_ext_auth_enterprise_managed.nim | Given a granted scope narrower than the request, when the ID-JAG arrives, then the exchange still succeeds
+MCP-EXT-AUTH-12 | tests/test_ext_auth_enterprise_managed.nim | Given an IdP that refuses by policy, when a request is sent, then the failure names the error, nothing reaches the authorization server, and no token or secret is in the message
+MCP-EXT-AUTH-12 | tests/test_ext_auth_enterprise_managed.nim | Given a wrong client secret at the IdP, when a request is sent, then the failure does not contain the secret
+MCP-EXT-AUTH-12 | tests/test_ext_auth_enterprise_managed.nim | Given an authorization server that refuses the ID-JAG, when a request is sent, then the failure contains neither the ID-JAG nor the identity assertion
+MCP-EXT-AUTH-12 | tests/test_ext_auth_enterprise_managed.nim | Given single sign-on that has to be repeated, when the provider raises, then the request fails with that reason and nothing is sent to the IdP
+MCP-EXT-AUTH-12 | tests/test_ext_auth_enterprise_managed.nim | Given an empty identity assertion, when a request is sent, then nothing is sent to the IdP
+MCP-EXT-AUTH-12 | tests/test_ext_auth_enterprise_managed.nim | Given a whole flow, when the logs are read, then the identity assertion went to the IdP only and the ID-JAG to the authorization server only
+MCP-EXT-AUTH-12 | tests/test_ext_auth_enterprise_managed.nim | Given an IdP issuer that is plain http on a public host, when the auth is made, then it is refused
+MCP-EXT-AUTH-12 | tests/test_ext_auth_enterprise_managed.nim | Given IdP metadata that names another issuer, when a request is sent, then the identity assertion is not sent
+MCP-EXT-AUTH-12 | tests/test_ext_auth_enterprise_managed.nim | Given IdP metadata with a plain-http token endpoint on a public host, when a request is sent, then the identity assertion is not sent
+MCP-EXT-AUTH-13 | tests/test_ext_auth_enterprise_managed.nim | Given a transport without the extension's auth, when the server answers 401, then the request fails and neither the IdP nor the authorization server is contacted
+MCP-EXT-AUTH-13 | tests/test_ext_auth_enterprise_managed.nim | Given a config that could never succeed, when the auth is made, then ValueError says why
+MCP-EXT-AUTH-11 | tests/test_ext_auth_enterprise_managed.nim | Given a well-formed ID-JAG, when checked, then the claims come back
+MCP-EXT-AUTH-11 | tests/test_ext_auth_enterprise_managed.nim | Given a resource written with a trailing slash on a bare origin, when checked, then it matches the canonical resource
+MCP-EXT-AUTH-11 | tests/test_ext_auth_enterprise_managed.nim | Given no resource expected, when the ID-JAG has none, then it is accepted
+MCP-EXT-AUTH-11 | tests/test_ext_auth_enterprise_managed.nim | Given an ID-JAG that is not a JWT or has the wrong typ, when checked, then it is refused
+MCP-EXT-AUTH-11 | tests/test_ext_auth_enterprise_managed.nim | Given claims of the wrong JSON type, when checked, then they are refused
+MCP-EXT-AUTH-14 | tests/test_ext_auth_enterprise_managed.nim | Given a client that declares the extension, when it sends a 2026-07-28 request, then clientCapabilities carries the identifier with empty settings
+MCP-EXT-AUTH-14 | tests/test_ext_auth_enterprise_managed.nim | Given a client that did not declare the extension, when it sends a request, then clientCapabilities has no extensions
+MCP-EXT-AUTH-14 | tests/test_ext_auth_enterprise_managed.nim | Given a server that advertises the extension, when a 2026-07-28 client discovers it, then the capabilities list the identifier
+MCP-EXT-AUTH-14 | tests/test_ext_auth_enterprise_managed.nim | Given a build that speaks no version with the extensions capability, when the extension is declared or advertised, then ValueError names the limit and nothing is registered
+MCP-EXT-AUTH-14 | tests/test_ext_auth_enterprise_managed.nim | Given enableEnterpriseManaged, when called, then the transport authorizes with it and the extension is declared
