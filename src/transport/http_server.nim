@@ -40,6 +40,7 @@ import std/[asyncdispatch, asyncnet, asynchttpserver, httpcore, json, tables, de
              options, uri, nativesockets, sysrand, strutils, sequtils, times]
 import ./transport
 import ./sse_stream
+import ./auth_hook
 import ../protocol/types
 import ../protocol/modern
 import ../protocol/version
@@ -107,6 +108,10 @@ type
       ## The newest version served here; set it to the server's.
     maxBodySize*:     int
       ## Enforced by the HTTP server itself (413); fixed at construction.
+    auth*:            HttpServerAuth
+      ## Authorization (see `auth/resource_server`): answers metadata
+      ## requests and rejects requests without an acceptable token. Nil: the
+      ## endpoint is open.
     allowedOrigins*:  seq[string]
       ## Origins accepted besides loopback ones, e.g. "https://app.example".
     maxSessions*:     int
@@ -695,6 +700,24 @@ proc handleLegacyPost(t: HttpServerTransport, req: Request) {.async.} =
     t.enqueue(message, id)
   await req.respondEmpty(Http202)
 
+proc authenticate(t: HttpServerTransport, req: Request): Future[bool] {.async.} =
+  ## Whether the request was answered here, by the authorization hook.
+  var answer: Option[HttpServerAuthResponse]
+  try:
+    answer = await t.auth.intercept($req.reqMethod, req.url.path, req.header("Authorization"))
+  except CatchableError as e:
+    # Fail closed: a hook that cannot decide lets nothing through.
+    stderr.writeLine("[mcp-http] authorization hook failed: " & $e.name)
+    await req.respondEmpty(Http500)
+    return true
+  if answer.isNone:
+    return false
+  let headers = securityHeaders()
+  for (name, value) in answer.get.headers:
+    headers[name] = value
+  await req.respond(HttpCode(answer.get.code), answer.get.body, headers)
+  return true
+
 type Endpoint = enum
   epMcp, epLegacySse, epLegacyMessages, epNone
 
@@ -705,6 +728,9 @@ func endpointOf(t: HttpServerTransport, path: string): Endpoint =
   else: epNone
 
 proc dispatch(t: HttpServerTransport, req: Request) {.async.} =
+  # Before the path is looked at: the hook also serves its own documents.
+  if not t.auth.isNil and await t.authenticate(req):
+    return
   let endpoint = t.endpointOf(req.url.path)
   if endpoint == epNone:
     await req.respondEmpty(Http404)
