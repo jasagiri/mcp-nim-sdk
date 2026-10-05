@@ -15,6 +15,24 @@ type
     onSessionEnd*: proc(session: string) {.closure, gcsafe.}
       ## Called by a transport that serves several clients when one of
       ## them ends its session.
+    onRequestCancelled*: proc(session, requestId: string) {.closure, gcsafe.}
+      ## Called by a transport when the peer abandoned a request that was
+      ## still being handled, e.g. by closing the HTTP connection that carried
+      ## it (which is how a 2026-07-28 client cancels). `requestId` is the id
+      ## the transport handed to `receive`. The server should stop working on
+      ## the request; a response sent for it afterwards is dropped.
+
+  MessageRoute* = object
+    ## Where a message the server initiates belongs. A transport with one
+    ## peer and one stream ignores it; Streamable HTTP uses it to pick the
+    ## stream.
+    session*: string
+      ## The client to send to. Empty: every client (a notification) or the
+      ## only one (a request).
+    requestId*: string
+      ## The id, as seen by the transport (`McpIncoming.message["id"]`), of
+      ## the client request the message belongs to. The message then travels
+      ## in the response to that request. Empty: not related to a request.
 
   McpIncoming* = object
     ## A received message and the connection it came from.
@@ -35,6 +53,16 @@ method sendRequest*(t: McpTransport, request: JsonRpcRequest): Future[void] {.ba
 
 method sendNotification*(t: McpTransport, notification: JsonRpcNotification): Future[void] {.base, async.} =
   raise newException(CatchableError, "Not implemented")
+
+method sendNotification*(t: McpTransport, notification: JsonRpcNotification,
+                         route: MessageRoute): Future[void] {.base, async.} =
+  ## Like `sendNotification`, to the client and request named by `route`.
+  await t.sendNotification(notification)
+
+method sendRequest*(t: McpTransport, request: JsonRpcRequest,
+                    route: MessageRoute): Future[void] {.base, async.} =
+  ## Like `sendRequest`, to the client and request named by `route`.
+  await t.sendRequest(request)
 
 method sendResponse*(t: McpTransport, response: JsonRpcResponse): Future[void] {.base, async.} =
   raise newException(CatchableError, "Not implemented")

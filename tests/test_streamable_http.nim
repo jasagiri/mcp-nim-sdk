@@ -83,12 +83,16 @@ suite "HTTP endpoint (every era)":
     let (_, url, _) = startServer()
     check send(url.replace("/mcp", "/other"), HttpPost, legacyInitialize()).code == Http404
 
-  test "Given the endpoint, when it receives GET or PUT, then the answer is 405 naming the allowed methods":
+  test "Given the endpoint, when it receives PUT, then the answer is 405 naming the allowed methods":
     let (_, url, _) = startServer()
-    for httpMethod in [HttpGet, HttpPut]:
-      let reply = send(url, httpMethod)
-      check reply.code == Http405
-      check $reply.headers["Allow"] == "POST, DELETE"
+    let reply = send(url, HttpPut)
+    check reply.code == Http405
+    check $reply.headers["Allow"] == (if LegacyDefault >= mpv20250326: "POST, GET, DELETE" else: "POST, DELETE")
+
+  test "Given the endpoint, when it receives GET without a session, then the answer is 400, or 405 where there is no GET stream":
+    let (_, url, _) = startServer()
+    let reply = send(url, HttpGet)
+    check reply.code == (if LegacyDefault >= mpv20250326: Http400 else: Http405)
 
   test "Given a body that is not JSON, when posted, then the answer is 400 with a parse error":
     let (_, url, _) = startServer()

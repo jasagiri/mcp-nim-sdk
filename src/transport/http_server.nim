@@ -13,30 +13,75 @@
 ## answer to initialize carries Mcp-Session-Id, later requests must name it,
 ## and DELETE ends it. 2026-07-28 requests are stateless and carry none.
 ##
-## TODO (versions 2025-03-26 to 2025-11-25): the GET stream for
-## server-initiated messages, resumption with Last-Event-ID, session expiry,
-## and JSON-RPC batches (2025-03-26 only).
-## TODO: SSE responses, so that notifications reach the client during a
-## request; until then `sendNotification` raises.
+## A request is answered with a JSON body, or, when the server says something
+## about it before it answers (progress, logs, requests of its own), with an
+## event stream that ends with the response. The server tells the transport
+## which request a message belongs to through `MessageRoute`. Versions
+## 2025-03-26 to 2025-11-25 also have a GET stream for the messages that
+## belong to no request, event ids and `Last-Event-ID` to resume a stream
+## after a lost connection, and (2025-03-26 only) JSON-RPC batches.
+##
+## In 2026-07-28 closing the connection of a request in progress is how a
+## client cancels it: the transport calls `onRequestCancelled`. Earlier
+## versions treat a lost connection as a network failure and keep the
+## request running, its stream resumable.
+##
+## Sessions that stay idle for `sessionIdleTimeoutMs` are dropped.
+##
+## TODO (2026-07-28): `subscriptions/listen` and `Mcp-Param-*` validation.
 
-import std/[asyncdispatch, asynchttpserver, httpcore, json, tables, sets,
-             deques, options, uri, nativesockets, sysrand, strutils]
+import std/[asyncdispatch, asyncnet, asynchttpserver, httpcore, json, tables, deques,
+             options, uri, nativesockets, sysrand, strutils, sequtils, times]
 import ./transport
+import ./sse_stream
 import ../protocol/types
 import ../protocol/modern
+import ../protocol/version
+import ../protocol/features
 
 const
   DefaultMaxBodySize* = 4 * 1024 * 1024
   DefaultMaxSessions* = 1024
+  DefaultMaxStoredStreams* = 64
+  DefaultSessionIdleTimeoutMs* = 30 * 60 * 1000
+  SweepIntervalMs = 250
   SessionHeader = "Mcp-Session-Id"
   ErrParse = -32700
   ErrInvalidRequest = -32600
 
 type
+  Group = ref object
+    ## The requests of one POST, and the stream their answers travel on.
+    stream: SseStream
+    session: string
+    exchangeIds: seq[string]
+    pending: int
+    responses: seq[JsonRpcResponse]
+    notified: bool
+      ## The server sent something besides a response: it takes a stream.
+    abandoned: bool
+      ## The client cancelled; whatever the server still sends is dropped.
+    opensSession: bool
+    isBatch: bool
+    settled: Future[void]
+      ## Completes when the answer's shape is known: the first message
+      ## besides a response, or the last response.
+
   Exchange = object
     ## An HTTP request waiting for its JSON-RPC response.
-    answered: Future[JsonRpcResponse]
+    group: Group
     idNode: JsonNode  ## the id the client used, restored on the response
+
+  Session = ref object
+    version: McpProtocolVersion
+      ## What initialize agreed; known from the server's answer to it.
+    lastActive: float
+    busy: int
+      ## Requests and streams in progress; such a session is not idle.
+    streams: OrderedTable[string, SseStream]
+      ## Streams of POSTs that a client may resume.
+    listen: SseStream
+      ## The GET stream: what the server says outside any request.
 
   HttpServerTransport* = ref object of McpTransport
     server*:          AsyncHttpServer
@@ -53,7 +98,15 @@ type
       ## Origins accepted besides loopback ones, e.g. "https://app.example".
     maxSessions*:     int
       ## New clients are refused (503) while this many sessions are open.
-    sessions:         HashSet[string]
+    maxStreamEvents*: int
+      ## Events each stream remembers for resumption; a client that falls
+      ## further behind cannot resume.
+    maxStoredStreams*: int
+      ## Finished streams a session keeps for resumption.
+    sessionIdleTimeoutMs*: int
+      ## A session unused for this long, with nothing in progress, is
+      ## dropped; 0 keeps sessions until DELETE.
+    sessions:         Table[string, Session]
     requestQueue:     Deque[McpIncoming]
     receiveWaiters:   Deque[Future[McpIncoming]]
     exchanges:        Table[string, Exchange]
@@ -77,7 +130,10 @@ proc newHttpServerTransport*(host: string = "127.0.0.1",
     maxBodySize:      maxBodySize,
     allowedOrigins:   @[],
     maxSessions:      DefaultMaxSessions,
-    sessions:         initHashSet[string](),
+    maxStreamEvents:  DefaultMaxStreamEvents,
+    maxStoredStreams: DefaultMaxStoredStreams,
+    sessionIdleTimeoutMs: DefaultSessionIdleTimeoutMs,
+    sessions:         initTable[string, Session](),
     requestQueue:     initDeque[McpIncoming](),
     receiveWaiters:   initDeque[Future[McpIncoming]](),
     exchanges:        initTable[string, Exchange](),
@@ -94,6 +150,17 @@ method receive*(t: HttpServerTransport): Future[McpIncoming] {.async.} =
 method receiveMessage*(t: HttpServerTransport): Future[JsonNode] {.async.} =
   return (await t.receive()).message
 
+proc sessionCount*(t: HttpServerTransport): int =
+  t.sessions.len
+
+proc pendingExchangeCount*(t: HttpServerTransport): int =
+  ## Requests handed to the server and not yet answered.
+  t.exchanges.len
+
+proc settle(group: Group) =
+  if not group.settled.finished:
+    group.settled.complete()
+
 method sendResponse*(t: HttpServerTransport,
                     response: JsonRpcResponse): Future[void] {.async.} =
   if not t.exchanges.hasKey(response.id):
@@ -101,22 +168,112 @@ method sendResponse*(t: HttpServerTransport,
       "no HTTP exchange is waiting for response id " & response.id)
   let exchange = t.exchanges[response.id]
   t.exchanges.del(response.id)
+  let group = exchange.group
+  if group.abandoned:
+    # The client cancelled this request and does not wait for an answer.
+    return
   var restored = response
   restored.idNode = exchange.idNode
-  exchange.answered.complete(restored)
+  group.responses.add restored
+  discard group.stream.push($restored.toJson())
+  dec group.pending
+  if group.pending == 0:
+    group.stream.finish()
+  group.settle()
 
-proc sessionCount*(t: HttpServerTransport): int =
-  t.sessions.len
+proc newToken(bytes: int): string =
+  for b in urandom(bytes):
+    result.add toHex(b.int, 2).toLowerAscii()
+
+proc newSessionId(): string =
+  ## Unguessable: the id is what ties later requests to a client.
+  newToken(16)
+
+proc newStreamId(): string =
+  newToken(8)
+
+proc listenStream(t: HttpServerTransport, session: Session): SseStream =
+  if session.listen.isNil:
+    session.listen = newSseStream(newStreamId(), t.maxStreamEvents)
+  session.listen
+
+proc deliver(t: HttpServerTransport, route: MessageRoute, message: JsonNode,
+             what: string) =
+  ## Put a message the server initiates on the stream `route` names.
+  let data = $message
+  if route.requestId.len > 0:
+    if not t.exchanges.hasKey(route.requestId):
+      raise newException(McpTransportError,
+        what & " names request " & route.requestId & ", which is not in progress")
+    let group = t.exchanges[route.requestId].group
+    if group.abandoned:
+      return
+    discard group.stream.push(data)
+    group.notified = true
+    group.settle()
+  elif route.session.len > 0:
+    if not t.sessions.hasKey(route.session):
+      raise newException(McpTransportError,
+        what & " names an unknown session " & route.session)
+    discard t.listenStream(t.sessions[route.session]).push(data)
+  else:
+    # Every client hears a notification once; a request has one addressee.
+    if what == "request":
+      if t.sessions.len != 1:
+        raise newException(McpTransportError,
+          "a request needs a session to go to; there are " & $t.sessions.len)
+    for session in t.sessions.values:
+      discard t.listenStream(session).push(data)
+
+method sendNotification*(t: HttpServerTransport,
+                        notification: JsonRpcNotification,
+                        route: MessageRoute): Future[void] {.async.} =
+  ## With `route.requestId` the notification joins the response stream of
+  ## that request (and is dropped if the client has cancelled it); with only
+  ## `route.session` it goes to that client's GET stream; with neither, to
+  ## every client's. A client that has not opened a GET stream finds the
+  ## notification waiting when it does, as far as `maxStreamEvents` allows.
+  t.deliver(route, notification.toJson(), "notification " & notification.`method`)
 
 method sendNotification*(t: HttpServerTransport,
                         notification: JsonRpcNotification): Future[void] {.async.} =
-  raise newException(McpTransportError,
-    "HttpServerTransport has no stream to deliver " & notification.`method` & " on")
+  t.deliver(MessageRoute(), notification.toJson(), "notification " & notification.`method`)
+
+method sendRequest*(t: HttpServerTransport, request: JsonRpcRequest,
+                    route: MessageRoute): Future[void] {.async.} =
+  ## Like `sendNotification`. The client answers with a POST of the response,
+  ## which `receive` hands over like any other message.
+  t.deliver(route, request.toJson(), "request")
 
 method sendRequest*(t: HttpServerTransport,
                    request: JsonRpcRequest): Future[void] {.async.} =
-  raise newException(McpTransportError,
-                     "HttpServerTransport.sendRequest is not supported")
+  t.deliver(MessageRoute(), request.toJson(), "request")
+
+proc endSession*(t: HttpServerTransport, id: string) =
+  ## Forget the session, end its streams and tell the server.
+  if not t.sessions.hasKey(id):
+    return
+  let session = t.sessions[id]
+  t.sessions.del(id)
+  for stream in session.streams.values:
+    stream.finish()
+  if not session.listen.isNil:
+    session.listen.finish()
+  if not t.onSessionEnd.isNil:
+    t.onSessionEnd(id)
+
+proc expireIdleSessions*(t: HttpServerTransport) =
+  ## Drop the sessions that have been unused for `sessionIdleTimeoutMs`.
+  ## A session with a request or a stream in progress is in use.
+  if t.sessionIdleTimeoutMs <= 0:
+    return
+  let now = epochTime()
+  var idle: seq[string] = @[]
+  for id, session in t.sessions:
+    if session.busy == 0 and (now - session.lastActive) * 1000 >= t.sessionIdleTimeoutMs.float:
+      idle.add id
+  for id in idle:
+    t.endSession(id)
 
 method close*(t: HttpServerTransport): Future[void] {.async.} =
   t.started = false
@@ -162,7 +319,9 @@ func originAllowed(t: HttpServerTransport, origin: string): bool =
   isLoopbackOrigin(origin) or origin in t.allowedOrigins
 
 func header(req: Request, name: string): Option[string] =
-  if req.headers.hasKey(name): some($req.headers[name]) else: none(string)
+  ## A header sent on several lines (Accept often is) reads as one value.
+  if req.headers.hasKey(name): some(seq[string](req.headers[name]).join(", "))
+  else: none(string)
 
 func httpStatusFor(response: JsonRpcResponse, modern: bool): HttpCode =
   ## 2026-07-28 maps some protocol errors onto HTTP statuses.
@@ -181,13 +340,62 @@ proc enqueue(t: HttpServerTransport, message: JsonNode, session: string) =
   else:
     t.requestQueue.addLast(incoming)
 
-proc newSessionId(): string =
-  ## Unguessable: the id is what ties later requests to a client.
-  for b in urandom(16):
-    result.add toHex(b.int, 2).toLowerAscii()
-
 proc invalidRequest(message: string): JsonRpcError =
   JsonRpcError(code: ErrInvalidRequest, message: message)
+
+proc touch(session: Session) =
+  session.lastActive = epochTime()
+
+proc legacyCeiling(t: HttpServerTransport): McpProtocolVersion =
+  ## The newest version spoken with an initialize handshake.
+  latestLegacyVersion(versionsUpTo(t.protocolVersion)).get(mpv20241105)
+
+proc rememberStream(t: HttpServerTransport, session: Session, stream: SseStream) =
+  session.streams[stream.id] = stream
+  while session.streams.len > t.maxStoredStreams:
+    var oldestFinished = ""
+    for id, kept in session.streams:
+      if kept.isFinished:
+        oldestFinished = id
+        break
+    if oldestFinished.len == 0:
+      break
+    session.streams.del(oldestFinished)
+
+proc cancel(t: HttpServerTransport, group: Group) =
+  ## The client of a 2026-07-28 request closed its connection.
+  group.abandoned = true
+  for id in group.exchangeIds:
+    if t.exchanges.hasKey(id) and not t.onRequestCancelled.isNil:
+      t.onRequestCancelled(group.session, id)
+
+proc versionHeaderError(t: HttpServerTransport, req: Request,
+                        session: Session): Option[JsonRpcError] =
+  ## From 2025-06-18 a client names the negotiated version on every request;
+  ## naming one the server does not speak is a 400. A request without the
+  ## header is taken as the version it was negotiated at.
+  if not session.version.has(ftProtocolVersionHeader):
+    return none(JsonRpcError)
+  let named = req.header(HeaderProtocolVersion)
+  if named.isNone:
+    return none(JsonRpcError)
+  let parsed = parseProtocolVersion(named.get)
+  if parsed.isNone or isModern(parsed.get) or parsed.get > t.protocolVersion:
+    return some(invalidRequest("Unsupported " & HeaderProtocolVersion & ": " &
+                               named.get.substr(0, 40)))
+  none(JsonRpcError)
+
+proc sessionFor(t: HttpServerTransport, req: Request, id: JsonNode): Future[Session] {.async.} =
+  ## The session the request names, or nil after having answered it with
+  ## the error that says why there is none.
+  let named = req.header(SessionHeader)
+  if named.isNone:
+    await req.respondError(Http400, id, invalidRequest(SessionHeader & " header is required"))
+    return nil
+  if not t.sessions.hasKey(named.get):
+    await req.respondError(Http404, id, invalidRequest("Session not found"))
+    return nil
+  result = t.sessions[named.get]
 
 proc handleDelete(t: HttpServerTransport, req: Request) {.async.} =
   let session = req.header(SessionHeader)
@@ -196,31 +404,113 @@ proc handleDelete(t: HttpServerTransport, req: Request) {.async.} =
   elif session.get notin t.sessions:
     await req.respondError(Http404, nil, invalidRequest("Session not found"))
   else:
-    t.sessions.excl(session.get)
-    if not t.onSessionEnd.isNil:
-      t.onSessionEnd(session.get)
+    t.endSession(session.get)
     await req.respondEmpty(Http200)
 
-proc handlePost(t: HttpServerTransport, req: Request) {.async.} =
-  var rpc: JsonNode
+func getStreamAvailable(t: HttpServerTransport): bool =
+  versionsUpTo(t.protocolVersion).anyIt(it.has(ftHttpGetStream))
+
+proc handleGet(t: HttpServerTransport, req: Request) {.async.} =
+  ## The stream of messages that belong to no request, or the rest of an
+  ## earlier stream after a lost connection.
+  let session = await t.sessionFor(req, nil)
+  if session.isNil:
+    return
+  if not session.version.has(ftHttpGetStream):
+    await req.respondEmpty(Http405, {"Allow": "POST, DELETE"})
+    return
+  let accept = req.header("Accept").get("")
+  if "text/event-stream" notin accept:
+    await req.respondEmpty(Http406)
+    return
+  let headerError = t.versionHeaderError(req, session)
+  if headerError.isSome:
+    await req.respondError(Http400, nil, headerError.get)
+    return
+
+  var stream: SseStream
+  var after = 0
+  let lastEventId = req.header("Last-Event-ID")
+  if lastEventId.isSome:
+    let parsed = parseEventId(lastEventId.get)
+    if parsed.isSome:
+      let (streamId, seqNo) = parsed.get
+      if session.streams.hasKey(streamId):
+        stream = session.streams[streamId]
+      elif not session.listen.isNil and session.listen.id == streamId:
+        stream = session.listen
+      if not stream.isNil and stream.canResumeAfter(seqNo):
+        after = seqNo
+      else:
+        stream = nil
+    if stream.isNil:
+      await req.respondError(Http400, nil,
+        invalidRequest("Cannot resume after that event id"))
+      return
+  else:
+    stream = t.listenStream(session)
+    after = stream.writtenUpTo
+
+  inc session.busy
+  let gone = watchDisconnect(req.client)
   try:
-    rpc = parseJson(req.body)
+    discard await serveStream(req, stream, after, securityHeaders(), gone)
+  finally:
+    dec session.busy
+    session.touch()
+
+proc openSession(t: HttpServerTransport, id: string, response: JsonRpcResponse) =
+  ## The server accepted an initialize: the client now has a session, at the
+  ## version the server's answer names.
+  let named = parseProtocolVersion(response.result.get(newJObject()){"protocolVersion"}.getStr())
+  let session = Session(version: named.get(t.legacyCeiling),
+                        streams: initOrderedTable[string, SseStream]())
+  session.touch()
+  t.sessions[id] = session
+
+proc answerWithJson(t: HttpServerTransport, req: Request, group: Group,
+                    modern: bool) {.async.} =
+  var extra = @[("Connection", "close")]
+  if group.opensSession and group.responses[0].error.isNone:
+    t.openSession(group.session, group.responses[0])
+    extra.add (SessionHeader, group.session)
+  if group.isBatch:
+    await req.respondJson(Http200, %group.responses.mapIt(it.toJson()), extra)
+  else:
+    await req.respondJson(httpStatusFor(group.responses[0], modern),
+                          group.responses[0].toJson(), extra)
+
+proc handlePost(t: HttpServerTransport, req: Request) {.async.} =
+  var body: JsonNode
+  try:
+    body = parseJson(req.body)
   except CatchableError:
     await req.respondError(Http400, nil,
       JsonRpcError(code: ErrParse, message: "Parse error"))
     return
-  if rpc.kind != JObject:
-    # TODO: JSON-RPC batches (protocol version 2025-03-26 only).
+  let isBatch = body.kind == JArray
+  if body.kind notin {JObject, JArray}:
     await req.respondError(Http400, nil, invalidRequest("Request must be a JSON object"))
     return
+  let items = if isBatch: body.elems else: @[body]
+  if items.len == 0 or items.anyIt(it.kind != JObject):
+    await req.respondError(Http400, nil,
+      invalidRequest("A batch must be a non-empty array of JSON-RPC messages"))
+    return
 
-  let isRpcRequest = isRequest(rpc)
+  let rpc = items[0]
+  let isRpcRequest = not isBatch and isRequest(rpc)
   let methodName = rpc{"method"}.getStr()
   let params = rpc{"params"}
   let modern = isModern(t.protocolVersion) and isRpcRequest and isModernRequest(params)
   let opensSession = not modern and isRpcRequest and methodName == "initialize"
+  if isBatch and items.anyIt(isRequest(it) and it{"method"}.getStr() == "initialize"):
+    await req.respondError(Http400, nil,
+      invalidRequest("initialize must not be part of a batch"))
+    return
 
-  var session = ""
+  var session: Session = nil
+  var sessionId = ""
   if modern:
     let mismatch = checkRequestHeaders(
       req.header(HeaderProtocolVersion), req.header(HeaderMethod),
@@ -234,42 +524,78 @@ proc handlePost(t: HttpServerTransport, req: Request) {.async.} =
       return
   elif opensSession:
     if t.sessions.len >= t.maxSessions:
+      t.expireIdleSessions()
+    if t.sessions.len >= t.maxSessions:
       await req.respondEmpty(Http503)
       return
-    session = newSessionId()
+    sessionId = newSessionId()
   else:
-    let named = req.header(SessionHeader)
-    if named.isNone:
-      await req.respondError(Http400, rpc{"id"},
-        invalidRequest(SessionHeader & " header is required"))
+    session = await t.sessionFor(req, rpc{"id"})
+    if session.isNil:
       return
-    if named.get notin t.sessions:
-      await req.respondError(Http404, rpc{"id"}, invalidRequest("Session not found"))
+    sessionId = req.header(SessionHeader).get
+    let headerError = t.versionHeaderError(req, session)
+    if headerError.isSome:
+      await req.respondError(Http400, rpc{"id"}, headerError.get)
       return
-    session = named.get
+    if isBatch and not session.version.has(ftJsonRpcBatch):
+      await req.respondError(Http400, nil, invalidRequest(
+        "JSON-RPC batches are not supported by protocol version " & $session.version))
+      return
+    inc session.busy
+  defer:
+    if not session.isNil:
+      dec session.busy
+      session.touch()
 
-  if not isRpcRequest:
-    # A notification or a response: nothing to answer on this exchange.
-    t.enqueue(rpc, session)
+  let requests = items.filterIt(isRequest(it))
+  if requests.len == 0:
+    # Notifications and responses: nothing to answer on this exchange.
+    for item in items:
+      t.enqueue(item, sessionId)
     await req.respondEmpty(Http202)
     return
 
-  inc t.exchangeCount
-  let exchangeId = "http-" & $t.exchangeCount
-  let answered = newFuture[JsonRpcResponse]("HttpServerTransport.response")
-  t.exchanges[exchangeId] = Exchange(answered: answered, idNode: rpc["id"])
-  let forwarded = rpc.copy()
-  forwarded["id"] = %exchangeId
-  t.enqueue(forwarded, session)
-  let response = await answered
+  let group = Group(
+    stream: newSseStream(newStreamId(), t.maxStreamEvents),
+    session: sessionId, pending: requests.len, opensSession: opensSession,
+    isBatch: isBatch, settled: newFuture[void]("HttpServerTransport.group"))
+  if not session.isNil and session.version.has(ftSsePolling):
+    discard group.stream.push("")
+  for item in items:
+    if not isRequest(item):
+      t.enqueue(item, sessionId)
+      continue
+    inc t.exchangeCount
+    let exchangeId = "http-" & $t.exchangeCount
+    group.exchangeIds.add exchangeId
+    t.exchanges[exchangeId] = Exchange(group: group, idNode: item["id"])
+    let forwarded = item.copy()
+    forwarded["id"] = %exchangeId
+    t.enqueue(forwarded, sessionId)
 
-  if opensSession and response.error.isNone:
-    t.sessions.incl(session)
-    await req.respondJson(Http200, response.toJson(), {SessionHeader: session})
-  else:
-    await req.respondJson(httpStatusFor(response, modern), response.toJson())
+  # The connection is watched for the whole exchange, which is why it is
+  # closed at the end: the watcher would otherwise eat the next request.
+  let gone = watchDisconnect(req.client)
+  await (group.settled or gone)
+  if not group.settled.finished:
+    if modern:
+      t.cancel(group)
+    req.client.close()
+    return
 
-proc handle(t: HttpServerTransport, req: Request) {.async.} =
+  if group.pending == 0 and not group.notified:
+    await t.answerWithJson(req, group, modern)
+    req.client.close()
+    return
+
+  if not session.isNil:
+    t.rememberStream(session, group.stream)
+  let ended = await serveStream(req, group.stream, 0, securityHeaders(), gone)
+  if ended == seClientGone and modern and group.pending > 0:
+    t.cancel(group)
+
+proc dispatch(t: HttpServerTransport, req: Request) {.async.} =
   if req.url.path != t.path:
     await req.respondEmpty(Http404)
     return
@@ -282,9 +608,28 @@ proc handle(t: HttpServerTransport, req: Request) {.async.} =
     await t.handlePost(req)
   of HttpDelete:
     await t.handleDelete(req)
+  of HttpGet:
+    if t.getStreamAvailable:
+      await t.handleGet(req)
+    else:
+      await req.respondEmpty(Http405, {"Allow": "POST, DELETE"})
   else:
-    # TODO: GET opens the stream for server-initiated messages.
-    await req.respondEmpty(Http405, {"Allow": "POST, DELETE"})
+    let allowed = if t.getStreamAvailable: "POST, GET, DELETE" else: "POST, DELETE"
+    await req.respondEmpty(Http405, {"Allow": allowed})
+
+proc handle(t: HttpServerTransport, req: Request) {.async.} =
+  try:
+    await t.dispatch(req)
+  except OSError, IOError:
+    # A write failed: the peer closed its connection. Nobody is left to answer.
+    req.client.close()
+  except CatchableError as e:
+    # What went wrong is for the log; the peer learns only that it did.
+    stderr.writeLine("[mcp-http-server] " & $e.name & ": " & e.msg)
+    try:
+      await req.respondEmpty(Http500)
+    except OSError, IOError:
+      req.client.close()
 
 proc listen*(t: HttpServerTransport) =
   ## Bind the socket. Afterwards `t.port` is the port actually bound.
@@ -292,10 +637,16 @@ proc listen*(t: HttpServerTransport) =
   t.port = t.server.getPort.int
   t.started = true
 
+proc sweepIdleSessions(t: HttpServerTransport) {.async.} =
+  while t.started:
+    await sleepAsync(SweepIntervalMs)
+    t.expireIdleSessions()
+
 proc serve*(t: HttpServerTransport): Future[void] {.async.} =
   ## Accept requests until `close`. Call `listen` first.
   proc requestHandler(req: Request) {.async, gcsafe.} =
     await t.handle(req)
+  asyncCheck t.sweepIdleSessions()
   while t.started:
     if t.server.shouldAcceptRequest():
       await t.server.acceptRequest(requestHandler)
