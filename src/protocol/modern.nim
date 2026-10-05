@@ -2,8 +2,8 @@
 ## initialize handshake, every request carries its own protocol version and
 ## client capabilities in `params._meta`.
 ##
-## Everything here is a pure function over JSON so that both the
-## `server/`+`client/` stack and `mcp/protocol` can delegate to it.
+## Everything here is a pure function over JSON, shared by the server, the
+## client and the HTTP transports.
 
 import std/[json, options, base64, strutils]
 import ./types

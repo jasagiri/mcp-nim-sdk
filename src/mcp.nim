@@ -1,31 +1,23 @@
-## Main package file for the Model Context Protocol (MCP) Nim SDK.
+## Model Context Protocol (MCP) SDK for Nim.
 ##
-## This module provides access to all MCP functionality including client,
-## server, resources, tools, and transports.
+## `import mcp` gives the client, the server, the transports and the
+## protocol types. The build speaks `DefaultProtocolVersion` and every
+## earlier version.
 
-import mcp/protocol
-import mcp/client
-import mcp/server
-import mcp/resources
-import mcp/tools
-import mcp/sampling
-import mcp/types
-import mcp/roots
-import mcp/transport/base
-import mcp/transport/stdio
-import mcp/transport/sse
+import protocol/types
+import protocol/lifecycle
+import protocol/modern
+import server/server
+import client/client
+import transport/transport
+import transport/stdio
+import transport/http
+import transport/http_server
+import transport/event_stream
 
-export protocol
-export client
-export server
-export resources
-export tools
-export sampling
-export types
-export roots
-export base
-export stdio
-export sse
+export types, lifecycle, modern
+export server, client
+export transport, stdio, http, http_server, event_stream
 
 const
   VERSION* = "0.1.0"  ## SDK version
