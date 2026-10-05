@@ -135,7 +135,7 @@ func clientAuthentication(c: ClientCredentials): tuple[fields: seq[(string, stri
   else:
     result.fields = @[("client_id", c.clientId)]
 
-proc parseTokenResponse(reply: HttpReply, issuer: string, requestedScopes: seq[string],
+proc parseTokenResponse*(reply: HttpReply, issuer: string, requestedScopes: seq[string],
                         previousRefreshToken: Option[string], now: Time): TokenSet
                        {.raises: [OAuthError].} =
   if reply.code != 200:

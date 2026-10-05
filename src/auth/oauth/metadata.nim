@@ -24,6 +24,9 @@ type
       ## does not support PKCE.
     clientIdMetadataDocumentSupported*: bool
     authorizationResponseIssParameterSupported*: bool
+    document*: JsonNode
+      ## The validated document as received, for the fields an extension
+      ## reads that this module does not model (RFC 8414 allows any number).
 
 func optString(doc: JsonNode, key: string): Option[string] {.raises: [OAuthError].} =
   let node = doc{key}
@@ -106,6 +109,7 @@ proc parseAuthorizationServerMetadata*(doc: JsonNode, expectedIssuer: string,
   result.clientIdMetadataDocumentSupported = doc.optBool("client_id_metadata_document_supported")
   result.authorizationResponseIssParameterSupported =
     doc.optBool("authorization_response_iss_parameter_supported")
+  result.document = doc
 
 func defaultEndpointMetadata*(serverUrl: string): AuthorizationServerMetadata {.raises: [].} =
   ## Version 2025-03-26 for a server without metadata: `/authorize`,
