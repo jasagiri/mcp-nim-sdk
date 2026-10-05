@@ -36,14 +36,27 @@ proc answering(contents: seq[JsonNode]): client_peer.Peer =
 proc appsClient(peer: client_peer.Peer, version: McpProtocolVersion): McpClient =
   peer.connectedClient(version, proc(c: McpClient) = c.declareApps())
 
-proc fetchFails(contents: seq[JsonNode], limits = defaultLimits()): string =
+proc fetchOutcome(version: McpProtocolVersion, contents: seq[JsonNode],
+                  limits: UiLimits): string =
+  ## "fetched", or the message of the McpProtocolError.
+  let client = appsClient(answering(contents), version)
+  try:
+    discard waitFor client.fetchUiResource(Uri, limits)
+    return "fetched"
+  except McpProtocolError as e:
+    return e.msg
+
+template expectRefused(contents: seq[JsonNode], fragment: string,
+                       limits: UiLimits = defaultLimits()) =
+  ## In every version with extensions the fetch is refused, naming `fragment`.
   for v in versionsWith(ftExtensions):
-    let client = appsClient(answering(contents), v)
-    try:
-      discard waitFor client.fetchUiResource(Uri, limits)
-      return "fetched"
-    except McpProtocolError as e:
-      return e.msg
+    let outcome = fetchOutcome(v, contents, limits)
+    check outcome != "fetched"
+    check fragment in outcome
+
+template expectFetched(contents: seq[JsonNode], limits: UiLimits = defaultLimits()) =
+  for v in versionsWith(ftExtensions):
+    check fetchOutcome(v, contents, limits) == "fetched"
 
 suite "declaring MCP Apps":
 
@@ -86,9 +99,10 @@ suite "declaring MCP Apps":
     check not client.declaredApps
 
   test "Given a connected client, when it declares apps, then it raises because capabilities are fixed at connect":
-    let client = startPeer(nil).connectedClient()
-    expect McpError:
-      client.declareApps()
+    if versionsWith(ftExtensions).len > 0:
+      let client = startPeer(nil).connectedClient()
+      expect McpError:
+        client.declareApps()
 
   test "Given a legacy-version client, when it declares apps and initializes, then the capabilities do not mention extensions":
     for v in versionsWithout(ftExtensions):
@@ -207,51 +221,51 @@ suite "fetching a UI resource":
 
   test "Given a content item with the wrong mime type, when fetched, then McpProtocolError":
     for mimeType in ["text/html", "text/html; profile=mcp-app", "text/plain", ""]:
-      check "mimeType" in fetchFails(@[item(%*{"mimeType": mimeType})])
+      expectRefused(@[item(%*{"mimeType": mimeType})], "mimeType")
 
   test "Given an answer with no item for the URI, when fetched, then McpProtocolError":
-    check "no content item" in fetchFails(@[%*{"uri": "ui://other", "mimeType": ResourceMimeType, "text": Html}])
-    check "no content item" in fetchFails(@[])
+    expectRefused(@[%*{"uri": "ui://other", "mimeType": ResourceMimeType, "text": Html}], "no content item")
+    expectRefused(@[], "no content item")
 
   test "Given text and blob together or neither, when fetched, then McpProtocolError":
-    check "both" in fetchFails(@[item(%*{"blob": base64.encode(Html)})])
-    check "neither" in fetchFails(@[%*{"uri": Uri, "mimeType": ResourceMimeType}])
+    expectRefused(@[item(%*{"blob": base64.encode(Html)})], "both")
+    expectRefused(@[%*{"uri": Uri, "mimeType": ResourceMimeType}], "neither")
 
   test "Given text or blob of the wrong type or invalid base64, when fetched, then McpProtocolError":
-    check "not a string" in fetchFails(@[item(%*{"text": 3})])
-    check "not a string" in fetchFails(@[%*{"uri": Uri, "mimeType": ResourceMimeType, "blob": 3}])
-    check "base64" in fetchFails(@[%*{"uri": Uri, "mimeType": ResourceMimeType, "blob": "!!!not base64!!!"}])
+    expectRefused(@[item(%*{"text": 3})], "not a string")
+    expectRefused(@[%*{"uri": Uri, "mimeType": ResourceMimeType, "blob": 3}], "not a string")
+    expectRefused(@[%*{"uri": Uri, "mimeType": ResourceMimeType, "blob": "!!!not base64!!!"}], "base64")
 
   test "Given empty HTML, when fetched, then McpProtocolError":
-    check "empty" in fetchFails(@[item(%*{"text": "  \n"})])
+    expectRefused(@[item(%*{"text": "  \n"})], "empty")
 
   test "Given HTML over the limit as text or as blob, when fetched, then McpProtocolError; at the limit it passes":
     let limits = UiLimits(maxHtmlBytes: 64)
     let big = "<p>" & repeat('a', 100) & "</p>"
-    check "exceed" in fetchFails(@[item(%*{"text": big})], limits)
-    check "exceed" in fetchFails(@[%*{"uri": Uri, "mimeType": ResourceMimeType,
-                                      "blob": base64.encode(big)}], limits)
+    expectRefused(@[item(%*{"text": big})], "exceed", limits)
+    expectRefused(@[%*{"uri": Uri, "mimeType": ResourceMimeType,
+                       "blob": base64.encode(big)}], "exceed", limits)
     let exact = "<p>" & repeat('a', 57) & "</p>"
     check exact.len == 64
-    check fetchFails(@[item(%*{"text": exact})], limits) == "fetched"
-    check fetchFails(@[%*{"uri": Uri, "mimeType": ResourceMimeType,
-                          "blob": base64.encode(exact)}], limits) == "fetched"
+    expectFetched(@[item(%*{"text": exact})], limits)
+    expectFetched(@[%*{"uri": Uri, "mimeType": ResourceMimeType,
+                       "blob": base64.encode(exact)}], limits)
 
   test "Given a huge blob, when fetched, then it is refused before it is decoded":
     let limits = UiLimits(maxHtmlBytes: 1024)
-    check "exceeds" in fetchFails(@[%*{"uri": Uri, "mimeType": ResourceMimeType,
-                                       "blob": repeat('A', 4 * 1024 * 1024)}], limits)
+    expectRefused(@[%*{"uri": Uri, "mimeType": ResourceMimeType,
+                       "blob": repeat('A', 4 * 1024 * 1024)}], "the blob exceeds", limits)
 
   test "Given a non-positive limit, when fetched, then McpProtocolError":
-    check "limit" in fetchFails(@[item()], UiLimits(maxHtmlBytes: 0))
+    expectRefused(@[item()], "limit", UiLimits(maxHtmlBytes: 0))
 
   test "Given declarations with a bad origin or wrong types, when fetched, then McpProtocolError":
-    for meta in [%*{"ui": {"csp": {"connectDomains": ["https://a.com; script-src *"]}}},
-                 %*{"ui": {"csp": {"connectDomains": ["*"]}}},
-                 %*{"ui": {"prefersBorder": "yes"}}, %*{"ui": 3}, %*[1]]:
-      check "ui" in fetchFails(@[item(%*{"_meta": meta})]) or
-            "_meta" in fetchFails(@[item(%*{"_meta": meta})])
-      check fetchFails(@[item(%*{"_meta": meta})]) != "fetched"
+    for (meta, fragment) in [
+        (%*{"ui": {"csp": {"connectDomains": ["https://a.com; script-src *"]}}}, "csp.connectDomains"),
+        (%*{"ui": {"csp": {"connectDomains": ["*"]}}}, "csp.connectDomains"),
+        (%*{"ui": {"prefersBorder": "yes"}}, "prefersBorder"),
+        (%*{"ui": 3}, "_meta.ui must be an object"), (%*[1], "_meta is not an object")]:
+      expectRefused(@[item(%*{"_meta": meta})], fragment)
 
   test "Given metadata on the listing entry only, when fetched with it, then it is used; the item's own wins":
     let listing = %*{"csp": {"connectDomains": ["https://listed.example.com"]}}

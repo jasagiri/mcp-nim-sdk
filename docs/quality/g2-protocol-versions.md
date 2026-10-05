@@ -133,6 +133,11 @@ nim-muter 0.2.5 の RVR は、戻り値がリテラルのとき `default(typeof(
 | `src/client/sampling.nim` (tools、複数ブロック、検査) | `tests/test_client_sampling_tools.nim` | 2026-10-06 |
 | `src/server/server.nim` (リクエスト傍受、`serveDetached`、タスクに属するサーバー発リクエスト) | `tests/test_tasks_server.nim` | 2026-10-06 |
 | `src/protocol/lifecycle.nim` (`tasks` capability の入出力) | `tests/test_tasks_server.nim`, `tests/test_tasks_client.nim` | 2026-10-06 |
+| `src/ext/apps/model.nim` | `tests/test_ext_apps_model.nim` | 2026-10-06 |
+| `src/ext/apps/messages.nim` | `tests/test_ext_apps_messages.nim` | 2026-10-06 |
+| `src/ext/apps/provider.nim` | `tests/test_ext_apps_server.nim`, `tests/test_ext_apps_end_to_end.nim` | 2026-10-06 |
+| `src/ext/apps/host.nim` | `tests/test_ext_apps_host.nim`, `tests/test_ext_apps_end_to_end.nim` | 2026-10-06 |
+| `src/server/server.nim` (`addToolListTransform`) | `tests/test_ext_apps_server.nim` | 2026-10-06 |
 
 ## 手で確かめたもの (nim-muter の測定ではない)
 
