@@ -39,6 +39,10 @@
 | `src/auth/policy.nim`, `src/auth/client.nim` | `tests/test_auth_client_flow.nim` | 2026-10-06 |
 | `src/auth/resource_server.nim` | `tests/test_auth_resource_server.nim` | 2026-10-06 |
 | `src/transport/auth_hook.nim` | `tests/test_auth_client_flow.nim`, `tests/test_auth_resource_server.nim` | 2026-10-06 |
+| `src/protocol/json_schema.nim`, `src/protocol/json_schema_regex.nim` | `tests/test_json_schema.nim` | 2026-10-06 |
+| `src/protocol/content.nim` | `tests/test_tool_annotations.nim`, `tests/test_audio_content.nim`, `tests/test_structured_tool_output.nim`, `tests/test_resource_links.nim`, `tests/test_title_fields.nim`, `tests/test_icons.nim`, `tests/test_implementation_info.nim` | 2026-10-06 |
+| `src/server/tool_output.nim` | `tests/test_structured_tool_output.nim` | 2026-10-06 |
+| `src/client/tools.nim` (outputSchema の検査)、`src/client/content.nim` (アイコンの選別) | `tests/test_structured_tool_output.nim`, `tests/test_icons.nim` | 2026-10-06 |
 
 ## 手で確かめたもの (nim-muter の測定ではない)
 
