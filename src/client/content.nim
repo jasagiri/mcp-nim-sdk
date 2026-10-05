@@ -28,8 +28,10 @@ type
     of mckResourceLink:
       linkUri*: string
       linkName*: string
+      linkTitle*: Option[string]
       linkDescription*: Option[string]
       linkMimeType*: Option[string]
+      linkSize*: Option[int]
     of mckUnknown:
       raw*: JsonNode
         ## A block whose type this client does not know, kept as received.
@@ -81,8 +83,10 @@ proc parseContentItem*(node: JsonNode, context: string): McpContentItem =
     McpContentItem(kind: mckResourceLink,
       linkUri: requiredString(node, "uri", context),
       linkName: requiredString(node, "name", context),
+      linkTitle: optionalString(node, "title"),
       linkDescription: optionalString(node, "description"),
-      linkMimeType: optionalString(node, "mimeType"))
+      linkMimeType: optionalString(node, "mimeType"),
+      linkSize: (if node.hasKey("size"): some(node["size"].getInt()) else: none(int)))
   else:
     McpContentItem(kind: mckUnknown, raw: node)
 
@@ -101,6 +105,8 @@ proc toJson*(item: McpContentItem): JsonNode =
     result = %*{"type": "resource_link", "uri": item.linkUri, "name": item.linkName}
     if item.linkDescription.isSome: result["description"] = %item.linkDescription.get
     if item.linkMimeType.isSome: result["mimeType"] = %item.linkMimeType.get
+    if item.linkTitle.isSome: result["title"] = %item.linkTitle.get
+    if item.linkSize.isSome: result["size"] = %item.linkSize.get
   of mckUnknown: result = item.raw
 
 proc parseNextCursor*(reply: JsonNode): Option[string] =

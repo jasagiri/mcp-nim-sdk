@@ -85,3 +85,21 @@ Feature: Content of tools, resources and prompts
     Given a tool without an outputSchema, a tool that was never listed, or a client of a version without structured output
     When the tool's result carries structuredContent
     Then it is passed through unchecked
+
+  @spec:MCP-RESLINK-1 @feature:ftResourceLinks
+  Scenario: A resource link is sent to a version that has it
+    Given a tool result and a prompt message that hold a resource_link block
+    When a client of a version with resource links receives them
+    Then the block arrives as the handler wrote it
+
+  @spec:MCP-RESLINK-2 @feature:ftResourceLinks
+  Scenario: A version without resource links is given the name and uri as text
+    Given a tool result and a prompt message that hold a resource_link block
+    When a client of a version before 2025-06-18 receives them
+    Then a text block with the link's name and uri stands in its place
+
+  @spec:MCP-RESLINK-3 @feature:ftResourceLinks
+  Scenario: A client reads a resource link and follows it
+    Given a tool result with a resource_link block
+    When the client reads the result and then reads the resource the link names
+    Then the item carries uri, name, title, description, MIME type and size, a link without uri or name is a protocol error, and resources/read asks for the link's uri

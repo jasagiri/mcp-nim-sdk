@@ -1,6 +1,6 @@
 ## MCP server tool utilities
 
-import json
+import json, options
 
 proc createToolInfo*(name: string, description: string, inputSchema: JsonNode, annotations: JsonNode = nil): JsonNode =
   result = %*{
@@ -43,6 +43,16 @@ proc createResourceToolContent*(resource: JsonNode): JsonNode =
     "type": "resource",
     "resource": resource
   }
+
+proc createResourceLinkToolContent*(uri, name: string, description = "",
+    mimeType = "", title = "", size = none(int)): JsonNode =
+  ## A link to a resource (2025-06-18 and later); a client may read it with
+  ## resources/read. Only the fields that were given are sent.
+  result = %*{"type": "resource_link", "uri": uri, "name": name}
+  if description.len > 0: result["description"] = %description
+  if mimeType.len > 0: result["mimeType"] = %mimeType
+  if title.len > 0: result["title"] = %title
+  if size.isSome: result["size"] = %size.get
 
 proc createInputSchema*(properties: JsonNode, required: seq[string] = @[]): JsonNode =
   result = %*{

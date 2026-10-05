@@ -120,6 +120,10 @@ proc contentBlockFor*(version: McpProtocolVersion, blk: JsonNode): JsonNode =
       return blk
     textBlock("[audio content (" & blk{"mimeType"}.getStr() &
               ") omitted: protocol version " & $version & " has no audio content]")
+  of "resource_link":
+    if version.has(ftResourceLinks):
+      return blk
+    textBlock(blk{"name"}.getStr() & ": " & blk{"uri"}.getStr())
   else:
     blk
 

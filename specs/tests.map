@@ -560,3 +560,13 @@ MCP-STRUCTOUT-6 | tests/test_structured_tool_output.nim | Given a version withou
 MCP-STRUCTOUT-6 | tests/test_structured_tool_output.nim | Given a tool without an outputSchema, when it returns any structuredContent, then it is not checked
 MCP-STRUCTOUT-6 | tests/test_structured_tool_output.nim | Given a client of a version without structured output, when a result breaks the schema, then it is returned unchecked
 MCP-STRUCTOUT-6 | tests/test_structured_tool_output.nim | Given a tool that was never listed, when it is called, then its structuredContent is not checked
+MCP-RESLINK-1 | tests/test_resource_links.nim | Given a version that has resource links, when a tool returns one, then the block is sent as it is
+MCP-RESLINK-1 | tests/test_resource_links.nim | Given a version that has resource links, when a prompt message holds one, then it is sent as it is
+MCP-RESLINK-1 | tests/test_resource_links.nim | Given the builder, when a resource link is made, then only the fields that were given are sent
+MCP-RESLINK-2 | tests/test_resource_links.nim | Given a version without resource links, when a tool returns one, then a text block with its name and uri stands in
+MCP-RESLINK-2 | tests/test_resource_links.nim | Given a version without resource links, when a prompt message holds one, then it is replaced by text
+MCP-RESLINK-3 | tests/test_resource_links.nim | Given a tool result with a resource link, when the client calls the tool, then the item carries the link's fields
+MCP-RESLINK-3 | tests/test_resource_links.nim | Given a resource link with title and size, when the client reads it, then both are kept and written back
+MCP-RESLINK-3 | tests/test_resource_links.nim | Given a resource link without a name or uri, when the client reads it, then the protocol violation is raised
+MCP-RESLINK-3 | tests/test_resource_links.nim | Given a resource link in a tool result, when the client reads the resource it names, then the link's uri is requested
+MCP-RESLINK-3 | tests/test_resource_links.nim | Given a prompt message with a resource link, when the client gets the prompt, then the content is a link
