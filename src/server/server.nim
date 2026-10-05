@@ -124,6 +124,10 @@ type
   CompletionHandler* = proc(ctx: McpRequestContext,
                             request: McpCompletionRequest): Future[McpCompletion] {.async.}
 
+  ToolListTransform* = proc(ctx: McpRequestContext, tool: JsonNode): JsonNode
+    ## Rewrites one tool definition for the client of the request that lists
+    ## it, e.g. to leave out what that client did not declare support for.
+
   ExtensionMethodHandler* = proc(ctx: McpRequestContext,
                                  params: JsonNode): Future[JsonNode] {.async.}
     ## Returns the result object of an extension's request. It may set its
@@ -168,6 +172,7 @@ type
     extensionResultTypes*: Table[string, string]
       ## The result types extensions define, mapped to the extension.
     interceptors: seq[RequestInterceptor]
+    toolListTransforms: seq[ToolListTransform]
     requestHandlers*: Table[string, proc(request: JsonRpcRequest): Future[JsonRpcResponse] {.async.}]
     notificationHandlers*: Table[string, proc(notification: JsonRpcNotification): Future[void] {.async.}]
     inFlight: Table[string, McpRequestContext]
@@ -333,6 +338,11 @@ proc addRequestInterceptor*(server: McpServer, interceptor: RequestInterceptor) 
   server.interceptors.add interceptor
 
 # Handlers of the standard methods
+
+proc addToolListTransform*(server: McpServer, transform: ToolListTransform) =
+  ## Every tool of a `tools/list` answer goes through the transforms, in the
+  ## order they were added, before it is shaped for the client's version.
+  server.toolListTransforms.add transform
 
 proc onToolsList*(server: McpServer, handler: ListHandler) =
   server.toolsList = handler
@@ -1091,7 +1101,13 @@ proc dispatchStandard(server: McpServer, request: JsonRpcRequest,
   of "tools/list":
     if caps.tools.isNone or server.toolsList.isNil:
       return notSupported(request)
-    let page = await listPage(request, server.toolsList, "tools", ctx.version, toolFor)
+    let transforms = server.toolListTransforms
+    let page = await listPage(request, server.toolsList, "tools", ctx.version,
+      proc(version: McpProtocolVersion, item: JsonNode): JsonNode =
+        var tool = item
+        for transform in transforms:
+          tool = transform(ctx, tool)
+        toolFor(version, tool))
     if ctx.version.has(ftParameterHeaders):
       return withoutInvalidParamHeaders(page)
     return page
