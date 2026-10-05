@@ -214,3 +214,53 @@ suite "extensions on the client":
       let client = peer.connectedClient(v, proc(c: McpClient) = c.declareExtension(Ext))
       expect ValueError:
         discard waitFor client.callExtension(Ext, "widgets/make", newJObject())
+
+suite "extensions in the initialize handshake of the versions before 2026-07-28":
+
+  test "Given extensions registered without onLegacyHandshake, when a legacy client initializes, then the request and the result are those of a peer with no extensions":
+    for v in versionsWithout(ftExtensions):
+      let plainPeer = startPeer(nil)
+      discard plainPeer.connectedClient(v)
+      let declaringPeer = startPeer(nil)
+      discard declaringPeer.connectedClient(v, proc(c: McpClient) = c.declareExtension(Ext, %*{"a": 1}))
+      check declaringPeer.requestsFor("initialize")[0]["params"] ==
+            plainPeer.requestsFor("initialize")[0]["params"]
+      let server = widgetServer()
+      let t = server.attach()
+      discard server.connect(t, v)
+      check t.sent[0].message["result"]["capabilities"] == %*{"tools": {"listChanged": false}}
+
+  test "Given an extension declared with onLegacyHandshake, when a legacy client initializes, then the request carries it and only it":
+    for v in versionsWithout(ftExtensions):
+      let peer = startPeer(nil)
+      discard peer.connectedClient(v, proc(c: McpClient) =
+        c.declareExtension(Ext, %*{"flavour": "blue"}, onLegacyHandshake = true)
+        c.declareExtension("com.example/other"))
+      let caps = peer.requestsFor("initialize")[0]["params"]["capabilities"]
+      check caps["extensions"] == %*{Ext: {"flavour": "blue"}}
+
+  test "Given a legacy client that declared an extension in initialize, when a handler asks, then it sees the settings; without the declaration it does not":
+    for v in versionsWithout(ftExtensions):
+      let server = newServer(McpServerCapabilities(tools: some(McpToolsCapability())))
+      server.onToolCall(proc(ctx: McpRequestContext, name: string,
+                             arguments: JsonNode): Future[JsonNode] {.async.} =
+        let settings = ctx.clientExtension(Ext)
+        return %*{"content": [{"type": "text",
+          "text": if settings.isSome: settings.get{"flavour"}.getStr() else: "none"}]})
+      let declared = server.connect(server.attach(), v,
+        clientCapabilities = %*{"extensions": {Ext: {"flavour": "blue"}}})
+      check declared.ask("tools/call", %*{"name": "t"}).textOf == "blue"
+      let other = newServer(McpServerCapabilities(tools: some(McpToolsCapability())))
+      other.onToolCall(proc(ctx: McpRequestContext, name: string,
+                            arguments: JsonNode): Future[JsonNode] {.async.} =
+        return %*{"content": [{"type": "text", "text": $ctx.clientExtension(Ext).isSome}]})
+      check other.connect(other.attach(), v).ask("tools/call", %*{"name": "t"}).textOf == "false"
+
+  test "Given an extension registered with onLegacyHandshake, when a legacy client initializes, then the result announces it and only it":
+    for v in versionsWithout(ftExtensions):
+      let server = newServer(McpServerCapabilities(tools: some(McpToolsCapability())))
+      server.registerExtension(Ext, %*{"flavours": ["a"]}, onLegacyHandshake = true)
+      server.registerExtension("com.example/other")
+      let t = server.attach()
+      discard server.connect(t, v)
+      check t.sent[0].message["result"]["capabilities"]["extensions"] == %*{Ext: {"flavours": ["a"]}}

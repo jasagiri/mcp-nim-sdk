@@ -169,6 +169,9 @@ type
       ## The open `subscriptions/listen` requests (2026-07-28).
     extensionMethods*: Table[string, ExtensionMethod]
       ## The methods extensions define, by method name; see `registerExtensionMethod`.
+    legacyExtensions*: seq[string]
+      ## The extensions registered with `onLegacyHandshake`: the only ones
+      ## announced in the `initialize` result of a version before 2026-07-28.
     extensionResultTypes*: Table[string, string]
       ## The result types extensions define, mapped to the extension.
     interceptors: seq[RequestInterceptor]
@@ -484,7 +487,7 @@ proc handleInitialize(server: McpServer, request: JsonRpcRequest): Future[JsonRp
     request.id,
     server.serverInfo,
     negotiated.get,
-    server.capabilities.forVersion(negotiated.get)
+    server.capabilities.forVersion(negotiated.get, server.legacyExtensions)
   )
 
 proc handleInitialized(server: McpServer, notification: JsonRpcNotification): Future[void] {.async.} =
@@ -539,6 +542,10 @@ proc extractClientCapabilities(json: JsonNode): McpClientCapabilities =
   let experimentalJson = json{"experimental"}
   if not experimentalJson.isNil and experimentalJson.kind == JObject:
     result.experimental = some(experimentalJson)
+
+  let extensionsJson = json{"extensions"}
+  if not extensionsJson.isNil and extensionsJson.kind == JObject:
+    result.extensions = some(extensionsJson)
 
 # Request context
 
@@ -1023,8 +1030,19 @@ proc listen(server: McpServer, request: JsonRpcRequest,
     server.subscriptions.remove subscription
   return newJsonRpcResponse(request.id, listenResult(idNode))
 
+proc declaredCapabilities*(ctx: McpRequestContext): JsonNode =
+  ## What the client declared, as a capabilities object: the request's own
+  ## in 2026-07-28, the `initialize` request's before it (only `extensions`
+  ## is carried over). JSON null when nothing is known.
+  if not ctx.clientCapabilities.isNil:
+    return ctx.clientCapabilities
+  let known = ctx.server.session(ctx.session)
+  if known.clientCapabilities.isSome and known.clientCapabilities.get.extensions.isSome:
+    return %*{"extensions": known.clientCapabilities.get.extensions.get}
+  newJNull()
+
 proc clientDeclaresExtension(ctx: McpRequestContext, id: string): bool =
-  settingsOf(ctx.clientCapabilities, id).isSome
+  settingsOf(ctx.declaredCapabilities, id).isSome
 
 proc dispatchExtension(server: McpServer, request: JsonRpcRequest,
                        ctx: McpRequestContext): Future[JsonRpcResponse] {.async.} =

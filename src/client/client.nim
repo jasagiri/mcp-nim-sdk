@@ -137,6 +137,9 @@ type
       ## How many times a request may be retried with input the server asked
       ## for (multi round-trip requests, 2026-07-28) before it raises
       ## McpInputRoundsError.
+    legacyExtensions*: seq[string]
+      ## The extensions declared with `onLegacyHandshake`: the only ones sent
+      ## in the `initialize` request of a version before 2026-07-28.
     extensionResultTypes*: seq[string]
       ## The `resultType` values of the extensions this client declared;
       ## see `declareExtension`.
@@ -766,7 +769,8 @@ proc initialize*(client: McpClient): Future[McpServerCapabilities] {.async.} =
   let request = createInitializeRequest(
     client.clientInfo,
     offered.get,
-    client.capabilities
+    client.capabilities,
+    client.legacyExtensions
   )
 
   let response = await client.sendRequest("initialize", request.params)

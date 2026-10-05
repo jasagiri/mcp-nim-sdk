@@ -97,37 +97,57 @@ proc toJson*(capabilities: McpServerCapabilities): JsonNode =
   if capabilities.extensions.isSome:
     result["extensions"] = capabilities.extensions.get
 
+func onlyNamed(extensions: Option[JsonNode],
+               names: openArray[string]): Option[JsonNode] {.raises: [].} =
+  ## The entries of `extensions` that are listed in `names`; none when no
+  ## entry is left.
+  if extensions.isNone or extensions.get.kind != JObject:
+    return none(JsonNode)
+  let kept = newJObject()
+  for name in names:
+    let entry = extensions.get{name}
+    if not entry.isNil:
+      kept[name] = entry
+  if kept.len == 0: none(JsonNode) else: some(kept)
+
 func forVersion*(capabilities: McpServerCapabilities,
-                 version: McpProtocolVersion): McpServerCapabilities {.raises: [].} =
+                 version: McpProtocolVersion,
+                 legacyExtensions: openArray[string] = []): McpServerCapabilities {.raises: [].} =
   ## What a server announces to a client that agreed on `version`: a
-  ## capability that version's schema does not know is left out.
+  ## capability that version's schema does not know is left out. Before
+  ## 2026-07-28 the `extensions` that were registered for the legacy
+  ## handshake (`legacyExtensions`) are kept, and only those.
   result = capabilities
   if not version.has(ftCompletionsCapability):
     result.completions = none(McpCompletionsCapability)
   if not version.has(ftExtensions):
-    result.extensions = none(JsonNode)
+    result.extensions = capabilities.extensions.onlyNamed(legacyExtensions)
   if not version.has(ftTasks):
     result.tasks = none(McpTasksCapability)
 
 func forVersion*(capabilities: McpClientCapabilities,
-                 version: McpProtocolVersion): McpClientCapabilities {.raises: [].} =
+                 version: McpProtocolVersion,
+                 legacyExtensions: openArray[string] = []): McpClientCapabilities {.raises: [].} =
   ## What a client declares to a server of `version`: a capability that
-  ## version's schema does not know is left out.
+  ## version's schema does not know is left out. Before 2026-07-28 the
+  ## `extensions` that were declared for the legacy handshake
+  ## (`legacyExtensions`) are kept, and only those.
   result = capabilities
   if not version.has(ftExtensions):
-    result.extensions = none(JsonNode)
+    result.extensions = capabilities.extensions.onlyNamed(legacyExtensions)
   if not version.has(ftTasks):
     result.tasks = none(McpTasksCapability)
 
 proc createInitializeRequest*(
   clientInfo: McpClientInfo,
   protocolVersion: McpProtocolVersion,
-  capabilities: McpClientCapabilities
+  capabilities: McpClientCapabilities,
+  legacyExtensions: openArray[string] = []
 ): JsonRpcRequest =
   let params = %*{
     "protocolVersion": $protocolVersion,
     "clientInfo": protocolVersion.implementationFor(clientInfo),
-    "capabilities": capabilities.forVersion(protocolVersion).toJson()
+    "capabilities": capabilities.forVersion(protocolVersion, legacyExtensions).toJson()
   }
   
   result = newJsonRpcRequest("1", "initialize", params)

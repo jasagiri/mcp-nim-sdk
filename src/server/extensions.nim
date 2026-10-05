@@ -20,7 +20,8 @@ import ../protocol/modern
 export extensions
 
 proc registerExtension*(server: McpServer, id: string, settings: JsonNode = nil,
-                        resultTypes: openArray[string] = []) =
+                        resultTypes: openArray[string] = [],
+                        onLegacyHandshake = false) =
   ## Declare extension `id` in the server's capabilities, with `settings` (an
   ## object; none means empty). `resultTypes` are the `resultType` values the
   ## extension defines, which its handlers may return. Raises ValueError for
@@ -43,6 +44,8 @@ proc registerExtension*(server: McpServer, id: string, settings: JsonNode = nil,
     else: newJObject()
   declared[id] = if settings.isNil: newJObject() else: settings
   server.capabilities.extensions = some(declared)
+  if onLegacyHandshake and id notin server.legacyExtensions:
+    server.legacyExtensions.add id
   for resultType in resultTypes:
     server.extensionResultTypes[resultType] = id
 
@@ -64,8 +67,10 @@ proc registerExtensionMethod*(server: McpServer, extensionId, methodName: string
 
 proc clientExtension*(ctx: McpRequestContext, id: string): Option[JsonNode] =
   ## The settings the client of this request declared for extension `id`;
-  ## none when it declared none, and always none before 2026-07-28.
-  settingsOf(ctx.clientCapabilities, id)
+  ## none when it declared none. Before 2026-07-28 only what the `initialize`
+  ## request carried counts, which a client sends only for an extension
+  ## declared for the legacy handshake.
+  settingsOf(ctx.declaredCapabilities, id)
 
 proc requireClientExtension*(ctx: McpRequestContext, id: string) =
   ## For a handler whose work needs extension `id`: raises the request error

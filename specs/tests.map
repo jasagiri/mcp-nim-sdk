@@ -1014,3 +1014,7 @@ MCP-ICONS-6 | tests/test_icon_fetch.nim | Given a data URI, when fetched, then t
 MCP-ICONS-6 | tests/test_icon_fetch.nim | Given a fetch without the server's origin, when asked for a URL, then it is refused
 MCP-SAMPLING-TOOLS-8 | tests/test_sampling_tools_payload.nim | Given an audio block in a message, when the request is checked, then only versions with audio content accept it
 MCP-SAMPLING-TOOLS-8 | tests/test_sampling_tools_payload.nim | Given an image block in a message, when the request is checked, then every version accepts it
+MCP-EXT-10 | tests/test_extensions.nim | Given extensions registered without onLegacyHandshake, when a legacy client initializes, then the request and the result are those of a peer with no extensions
+MCP-EXT-11 | tests/test_extensions.nim | Given an extension declared with onLegacyHandshake, when a legacy client initializes, then the request carries it and only it
+MCP-EXT-12 | tests/test_extensions.nim | Given a legacy client that declared an extension in initialize, when a handler asks, then it sees the settings; without the declaration it does not
+MCP-EXT-13 | tests/test_extensions.nim | Given an extension registered with onLegacyHandshake, when a legacy client initializes, then the result announces it and only it

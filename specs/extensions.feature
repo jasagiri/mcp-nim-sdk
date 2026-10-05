@@ -56,3 +56,27 @@ Feature: Extensions (2026-07-28)
     Given both sides support an extension that defines a resultType
     When the server answers with it
     Then the client returns the result, and raises for a type it does not know
+
+  @spec:MCP-EXT-10 @feature:ftExtensions
+  Scenario: A legacy handshake carries only the extensions registered for it
+    Given a client and a server that registered extensions without onLegacyHandshake
+    When a client of a version before 2026-07-28 initializes
+    Then the request and the result are those of a peer with no extensions
+
+  @spec:MCP-EXT-11 @feature:ftExtensions
+  Scenario: A client declares an extension in a legacy initialize when told to
+    Given a client that declared an extension with onLegacyHandshake and another without
+    When it sends initialize in a version before 2026-07-28
+    Then the capabilities carry the first and not the second
+
+  @spec:MCP-EXT-12 @feature:ftExtensions
+  Scenario: A server reads the extensions of a legacy initialize
+    Given a legacy client that declared an extension in initialize
+    When a handler asks what the client declared
+    Then it sees the settings, and sees nothing for a client that did not declare it
+
+  @spec:MCP-EXT-13 @feature:ftExtensions
+  Scenario: A server announces an extension in a legacy initialize result when told to
+    Given a server with an extension registered with onLegacyHandshake and another without
+    When a client of a version before 2026-07-28 initializes
+    Then the result announces the first and not the second

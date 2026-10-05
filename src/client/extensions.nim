@@ -18,11 +18,16 @@ import ../protocol/extensions
 export extensions
 
 proc declareExtension*(client: McpClient, id: string, settings: JsonNode = nil,
-                       resultTypes: openArray[string] = []) =
+                       resultTypes: openArray[string] = [],
+                       onLegacyHandshake = false) =
   ## Declare support for extension `id`, with `settings` (an object; none
   ## means empty), in the capabilities of every 2026-07-28 request.
   ## `resultTypes` are the `resultType` values the extension defines, which
-  ## this client then accepts instead of treating them as unknown. Call
+  ## this client then accepts instead of treating them as unknown.
+  ## `onLegacyHandshake` also sends the declaration in the `initialize`
+  ## request of the versions before 2026-07-28, which otherwise carry no
+  ## `extensions` (for an extension whose specification declares itself
+  ## there); other extensions are left out of it as before. Call
   ## before connect(). Raises ValueError for a malformed identifier or
   ## settings.
   client.requireNotConnected("the extension " & id)
@@ -36,6 +41,8 @@ proc declareExtension*(client: McpClient, id: string, settings: JsonNode = nil,
     else: newJObject()
   declared[id] = if settings.isNil: newJObject() else: settings
   client.capabilities.extensions = some(declared)
+  if onLegacyHandshake and id notin client.legacyExtensions:
+    client.legacyExtensions.add id
   for resultType in resultTypes:
     if resultType in CoreResultTypes:
       raise newException(ValueError, "'" & resultType & "' is a core result type")
