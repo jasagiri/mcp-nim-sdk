@@ -2438,3 +2438,79 @@ MCP-EXT-APPS-17 | tests/test_ext_apps_host.nim | Given declareApps, when the hos
 MCP-EXT-APPS-17 | tests/test_ext_apps_host.nim | Given a client that declared another extension besides apps, when it initializes in a legacy version, then only apps is sent
 MCP-EXT-APPS-17 | tests/test_ext_apps_end_to_end.nim | Given a host that declared MCP Apps, when it lists tools and fetches the UI, then it gets the references, the HTML and the declarations
 MCP-EXT-APPS-17 | tests/test_ext_apps_end_to_end.nim | Given a host that did not declare MCP Apps, when it lists tools in any version, then the server shows plain tools
+MCP-EXT-TASKS-1 | tests/test_ext_tasks.nim | Given the specification's CreateTaskResult example, when parsed and written, then it round-trips with ttlMs and pollIntervalMs
+MCP-EXT-TASKS-1 | tests/test_ext_tasks.nim | Given a task with unlimited lifetime, when written, then ttlMs is null
+MCP-EXT-TASKS-2 | tests/test_ext_tasks.nim | Given a task of each status, when parsed as a DetailedTask, then the fields of the status are required
+MCP-EXT-TASKS-3 | tests/test_ext_tasks.nim | Given the specification's capability example, when the extension is enabled, then the server declares exactly that
+MCP-EXT-TASKS-3 | tests/test_ext_tasks.nim | Given a server that did not enable the extension, when a client discovers it, then the extension is not declared
+MCP-EXT-TASKS-3 | tests/test_ext_tasks.nim | Given a build or a server that does not speak 2026-07-28, when the extension is enabled, then it raises
+MCP-EXT-TASKS-3 | tests/test_ext_tasks_client.nim | Given enableTasksExtension, when the client calls, then every request declares the extension and the task result type
+MCP-EXT-TASKS-3 | tests/test_ext_tasks_client.nim | Given a client limited to a version before 2026-07-28, when it enables the extension, then it raises
+MCP-EXT-TASKS-3 | tests/test_ext_tasks_dual.nim | Given a server with both, when each client discovers it, then the 2025-11-25 client sees tasks and the 2026-07-28 client sees the extension
+MCP-EXT-TASKS-4 | tests/test_ext_tasks.nim | Given a server that did not enable the extension, when a client declaring it asks for a task, then the answer is method not found
+MCP-EXT-TASKS-4 | tests/test_ext_tasks.nim | Given a client that did not declare the extension, when it uses tasks/get, tasks/update or tasks/cancel, then the answer is -32021 naming the extension
+MCP-EXT-TASKS-4 | tests/test_ext_tasks.nim | Given a client that did not declare the extension, when it calls a tool the server would make a task of, then it gets the result
+MCP-EXT-TASKS-4 | tests/test_ext_tasks.nim | Given a tool that exists only as a task, when a client that did not declare the extension calls it, then the answer is -32021
+MCP-EXT-TASKS-4 | tests/test_ext_tasks_client.nim | Given a client that did not enable the extension, when it calls a tool as a task, then it raises and sends nothing
+MCP-EXT-TASKS-5 | tests/test_ext_tasks.nim | Given a client that declared the extension, when the server decides against a task, then it gets the plain result
+MCP-EXT-TASKS-5 | tests/test_ext_tasks.nim | Given a server without a decider, when a client declaring the extension calls a tool, then no task is made
+MCP-EXT-TASKS-5 | tests/test_ext_tasks.nim | Given a client that declared the extension, when the server makes a task of a call, then the answer is a CreateTaskResult it can poll at once
+MCP-EXT-TASKS-5 | tests/test_ext_tasks.nim | Given a tool that is not the one the server makes tasks of, when a declaring client calls it, then the answer is the plain result
+MCP-EXT-TASKS-5 | tests/test_ext_tasks.nim | Given a request already running as a task, when it reaches the server's own handling, then it is not made a task again
+MCP-EXT-TASKS-6 | tests/test_ext_tasks.nim | Given a task that finished, when it is polled, then the result of the tool call is inlined without a resultType of its own
+MCP-EXT-TASKS-6 | tests/test_ext_tasks.nim | Given a tool call that returned isError, when the task is polled, then it is completed, not failed
+MCP-EXT-TASKS-6 | tests/test_ext_tasks.nim | Given a tool call that ended in a JSON-RPC error, when the task is polled, then it is failed with that error
+MCP-EXT-TASKS-6 | tests/test_ext_tasks.nim | Given a task that is working, when the work finishes between polls, then the next poll shows completed
+MCP-EXT-TASKS-7 | tests/test_ext_tasks.nim | Given an unknown or malformed taskId, when tasks/get, tasks/update or tasks/cancel is sent, then the answer is -32602
+MCP-EXT-TASKS-7 | tests/test_ext_tasks.nim | Given a task whose ttl elapsed, when it is polled, then it is gone: -32602
+MCP-EXT-TASKS-7 | tests/test_ext_tasks.nim | Given an owner limit of one active task, when a second task is asked for, then the answer is an error and no task is made
+MCP-EXT-TASKS-8 | tests/test_ext_tasks.nim | Given a working task, when tasks/cancel is sent, then the answer is an empty acknowledgement and the work is told to stop
+MCP-EXT-TASKS-8 | tests/test_ext_tasks.nim | Given a task that is over, when tasks/cancel is sent, then it is acknowledged and the task keeps its status
+MCP-EXT-TASKS-8 | tests/test_ext_tasks.nim | Given a cancelled task, when the work finishes anyway, then the task stays cancelled
+MCP-EXT-TASKS-8 | tests/test_ext_tasks_client.nim | Given a working task, when the client polls and cancels, then it sees the state and the acknowledgement
+MCP-EXT-TASKS-9 | tests/test_ext_tasks.nim | Given the methods the extension reserves, when another extension registers one, then it raises
+MCP-EXT-TASKS-9 | tests/test_ext_tasks.nim | Given tasks/result and tasks/list, when a client that declared the extension asks, then both are method not found
+MCP-EXT-TASKS-10 | tests/test_ext_tasks.nim | Given tasks/get, tasks/update and tasks/cancel over Streamable HTTP, when the headers are built and checked, then Mcp-Name carries the taskId
+MCP-EXT-TASKS-11 | tests/test_ext_tasks.nim | Given a task that needs input, when it is polled, then it is input_required with the outstanding requests
+MCP-EXT-TASKS-11 | tests/test_ext_tasks.nim | Given an input_required task, when the client answers with tasks/update, then it is acknowledged and the task finishes with the answer
+MCP-EXT-TASKS-11 | tests/test_ext_tasks.nim | Given responses for keys that are not outstanding, when tasks/update is sent, then they are ignored and the task stays input_required
+MCP-EXT-TASKS-11 | tests/test_ext_tasks.nim | Given inputResponses that are not an object of objects or missing, when tasks/update is sent, then the answer is -32602
+MCP-EXT-TASKS-11 | tests/test_ext_tasks.nim | Given a task that asks twice, when each request is answered, then the keys differ and a key already answered is not outstanding again
+MCP-EXT-TASKS-11 | tests/test_ext_tasks.nim | Given a task cancelled while it waits for input, when it is polled, then it is cancelled and the work stopped
+MCP-EXT-TASKS-11 | tests/test_ext_tasks.nim | Given a client that did not declare elicitation, when a task asks it for input, then the tool fails and the task is not input_required
+MCP-EXT-TASKS-11 | tests/test_ext_tasks.nim | Given a call outside a task, when the tool asks for input the task way, then it raises ValueError
+MCP-EXT-TASKS-11 | tests/test_ext_tasks_client.nim | Given a task that needs input, when the client waits, then it answers from its elicitation handler and the task finishes
+MCP-EXT-TASKS-11 | tests/test_ext_tasks_client.nim | Given an input request listed on several polls, when the client waits, then it answers a key once
+MCP-EXT-TASKS-11 | tests/test_ext_tasks_client.nim | Given a task that asks for something the client has no handler for, when it waits, then it raises McpUnsupportedError
+MCP-EXT-TASKS-12 | tests/test_ext_tasks.nim | Given a decider that waits for input gathered with multi round-trip requests, when the retry arrives, then the task starts only then
+MCP-EXT-TASKS-13 | tests/test_ext_tasks.nim | Given tasks of two owners, when one asks for the other's task, then it is unknown to it
+MCP-EXT-TASKS-13 | tests/test_ext_tasks.nim | Given no ownerOf, when two clients ask, then they are one owner and the unguessable task id is the only separation
+MCP-EXT-TASKS-13 | tests/test_ext_tasks_dual.nim | Given a task of each kind, when the other kind of client asks for it, then it is unknown
+MCP-EXT-TASKS-14 | tests/test_ext_tasks.nim | Given a listen filter with taskIds, when parsed and written, then the ids round-trip and a malformed list is rejected
+MCP-EXT-TASKS-14 | tests/test_ext_tasks.nim | Given a client that did not declare the extension, when it listens for task ids, then the answer is -32021
+MCP-EXT-TASKS-14 | tests/test_ext_tasks.nim | Given task ids of its own and unknown ones, when a client listens, then the acknowledgement lists only its own
+MCP-EXT-TASKS-14 | tests/test_ext_tasks.nim | Given a task the client listened for, when its status changes, then the stream gets notifications/tasks with the whole task
+MCP-EXT-TASKS-14 | tests/test_ext_tasks.nim | Given a task of another owner, when a client listens for its id, then it is not acknowledged and gets nothing
+MCP-EXT-TASKS-14 | tests/test_ext_tasks.nim | Given a task the client did not list, when its status changes, then the stream is not told
+MCP-EXT-TASKS-14 | tests/test_ext_tasks_client.nim | Given a task being watched, when it completes, then the callback gets the whole task
+MCP-EXT-TASKS-14 | tests/test_ext_tasks_client.nim | Given an id the server did not agree to, when the client watches, then unsupported names it
+MCP-EXT-TASKS-15 | tests/test_ext_tasks_client.nim | Given a tool the server makes a task of, when the client calls it, then it learns the task and not a result
+MCP-EXT-TASKS-15 | tests/test_ext_tasks_client.nim | Given a tool the server answers directly, when the client calls it, then it gets the result
+MCP-EXT-TASKS-15 | tests/test_ext_tasks_client.nim | Given a server that answers with a task without having declared the extension, when the client calls, then it raises McpProtocolError
+MCP-EXT-TASKS-15 | tests/test_ext_tasks_client.nim | Given a server whose task is malformed, when the client calls, then it raises McpProtocolError
+MCP-EXT-TASKS-15 | tests/test_ext_tasks_client.nim | Given an unknown task, when the client polls, then it raises McpRequestError with -32602
+MCP-EXT-TASKS-15 | tests/test_ext_tasks_client.nim | Given a task that finishes while the client waits, when it polls, then it waits the interval the task suggests between polls
+MCP-EXT-TASKS-15 | tests/test_ext_tasks_client.nim | Given a task that suggests no interval, when the client waits, then it uses its own default
+MCP-EXT-TASKS-15 | tests/test_ext_tasks_client.nim | Given every status change, when the client waits, then the callback sees each status once
+MCP-EXT-TASKS-15 | tests/test_ext_tasks_client.nim | Given a tool that answers directly, when called with callToolAwaitingTask, then the result is returned
+MCP-EXT-TASKS-15 | tests/test_ext_tasks_client.nim | Given a tool the server makes a task of, when called with callToolAwaitingTask, then the final result is returned
+MCP-EXT-TASKS-15 | tests/test_ext_tasks_client.nim | Given a task that failed, when called with callToolAwaitingTask, then it raises McpRequestError with the task's error
+MCP-EXT-TASKS-15 | tests/test_ext_tasks_client.nim | Given a task that was cancelled, when called with callToolAwaitingTask, then it raises McpTaskCancelledError
+MCP-EXT-TASKS-15 | tests/test_ext_tasks_client.nim | Given a task the server made, when called with callToolAwaitingTask, then the caller is given the task id first
+MCP-EXT-TASKS-16 | tests/test_ext_tasks_dual.nim | Given a 2025-11-25 client that asks for a task, when the call is made, then it gets the core's nested task with ttl and pollInterval
+MCP-EXT-TASKS-16 | tests/test_ext_tasks_dual.nim | Given a 2026-07-28 client that declared the extension, when the call is made, then it gets the extension's flat task with ttlMs and pollIntervalMs
+MCP-EXT-TASKS-16 | tests/test_ext_tasks_dual.nim | Given one store, when its clock passes the ttl, then the tasks of both kinds expire
+MCP-EXT-TASKS-16 | tests/test_ext_tasks_dual.nim | Given the extension was enabled after the core, when a core task changes status, then the core still announces it to its session
+MCP-EXT-TASKS-16 | tests/test_ext_tasks_dual.nim | Given a 2025-11-25 client that declares an extensions capability, when it calls a tool, then the extension does not apply
+MCP-EXT-TASKS-16 | tests/test_ext_tasks_dual.nim | Given a server with only the extension, when a 2025-11-25 client asks for a task, then the task parameter is ignored
+MCP-EXT-TASKS-16 | tests/test_ext_tasks_dual.nim | Given a server with only the core's tasks, when a 2026-07-28 client declares the extension and asks, then it gets the result and no tasks methods

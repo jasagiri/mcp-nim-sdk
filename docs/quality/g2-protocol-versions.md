@@ -138,6 +138,10 @@ nim-muter 0.2.5 の RVR は、戻り値がリテラルのとき `default(typeof(
 | `src/ext/apps/provider.nim` | `tests/test_ext_apps_server.nim`, `tests/test_ext_apps_end_to_end.nim` | 2026-10-06 |
 | `src/ext/apps/host.nim` | `tests/test_ext_apps_host.nim`, `tests/test_ext_apps_end_to_end.nim` | 2026-10-06 |
 | `src/server/server.nim` (`addToolListTransform`) | `tests/test_ext_apps_server.nim` | 2026-10-06 |
+| `src/ext/tasks/wire.nim`, `src/ext/tasks/server.nim`, `src/ext/tasks/client.nim` (拡張 Tasks) | `tests/test_ext_tasks.nim`, `tests/test_ext_tasks_client.nim`, `tests/test_ext_tasks_dual.nim` | 2026-10-06 |
+| `src/protocol/tasks.nim` (`finish` の toolErrorsFail)、`src/protocol/task_methods.nim` (`runAsTask`) | `tests/test_ext_tasks.nim` | 2026-10-06 |
+| `src/protocol/extensions.nim` (`takesOver`)、`src/server/extensions.nim`、`src/server/server.nim` (取り戻されたメソッド、`ListenFilterHook`、`notifySubscribers`) | `tests/test_ext_tasks.nim` | 2026-10-06 |
+| `src/protocol/subscriptions.nim` (`taskIds`)、`src/client/subscriptions.nim` (`unsupported`)、`src/protocol/modern.nim` (Mcp-Name の taskId) | `tests/test_ext_tasks.nim`, `tests/test_ext_tasks_client.nim` | 2026-10-06 |
 
 ## 手で確かめたもの (nim-muter の測定ではない)
 
