@@ -2351,15 +2351,12 @@ MCP-EXT-APPS-5 | tests/test_ext_apps_model.nim | Given declared permissions, whe
 MCP-EXT-APPS-6 | tests/test_ext_apps_model.nim | Given the specification's example, when parsed, then the mime types are read
 MCP-EXT-APPS-6 | tests/test_ext_apps_model.nim | Given a declaration without mimeTypes or with a wrong shape, when parsed, then it is none
 MCP-EXT-APPS-6 | tests/test_ext_apps_model.nim | Given a host that lists other mime types only, when asked, then it does not support HTML apps
-MCP-EXT-APPS-6 | tests/test_ext_apps_host.nim | Given declareApps, when a request is sent, then clientCapabilities lists the extension with the HTML mime type
+MCP-EXT-APPS-6 | tests/test_ext_apps_host.nim | Given declareApps, when the host connects in any version, then its capabilities list the extension with the HTML mime type
 MCP-EXT-APPS-6 | tests/test_ext_apps_host.nim | Given empty or malformed mime types, when declareApps is called, then ValueError and nothing is declared
 MCP-EXT-APPS-6 | tests/test_ext_apps_host.nim | Given a connected client, when it declares apps, then it raises because capabilities are fixed at connect
-MCP-EXT-APPS-7 | tests/test_ext_apps_server.nim | Given a build that speaks no version with extensions, when a registry is made, then ValueError; otherwise it is made
-MCP-EXT-APPS-7 | tests/test_ext_apps_server.nim | Given a registry, when it is made, then the server declares no extension for it
-MCP-EXT-APPS-7 | tests/test_ext_apps_host.nim | Given a client that never called declareApps, when it sends a request, then no extensions are declared
-MCP-EXT-APPS-7 | tests/test_ext_apps_host.nim | Given a build that speaks no version with extensions, when declareApps is called, then ValueError; otherwise it declares
-MCP-EXT-APPS-7 | tests/test_ext_apps_host.nim | Given a legacy-version client, when it declares apps and initializes, then the capabilities do not mention extensions
-MCP-EXT-APPS-7 | tests/test_ext_apps_end_to_end.nim | Given a server that registered MCP Apps, when a client connects, then the server declares no extension
+MCP-EXT-APPS-7 | tests/test_ext_apps_server.nim | Given a registry, when it is made in any build, then the server declares no extension for it
+MCP-EXT-APPS-7 | tests/test_ext_apps_host.nim | Given a client that never called declareApps, when it connects in any version, then no extensions are declared
+MCP-EXT-APPS-7 | tests/test_ext_apps_end_to_end.nim | Given a server that registered MCP Apps, when a client connects in any version, then the server declares no extension
 MCP-EXT-APPS-8 | tests/test_ext_apps_server.nim | Given bad registrations, when made, then each raises ValueError
 MCP-EXT-APPS-8 | tests/test_ext_apps_server.nim | Given a registered UI resource, when listed, then the entry has the uri, name, description and the MCP Apps mime type
 MCP-EXT-APPS-8 | tests/test_ext_apps_server.nim | Given a registered UI resource, when read, then the content item has text, the mime type and _meta.ui on the item
@@ -2371,13 +2368,13 @@ MCP-EXT-APPS-9 | tests/test_ext_apps_server.nim | Given a registered resource, w
 MCP-EXT-APPS-9 | tests/test_ext_apps_server.nim | Given an app-only tool, when built, then visibility is app
 MCP-EXT-APPS-9 | tests/test_ext_apps_server.nim | Given legacyKey, when built, then the deprecated flat key is added too
 MCP-EXT-APPS-9 | tests/test_ext_apps_server.nim | Given a resource that is not registered, when a tool is built for it, then ValueError because the resource must exist
-MCP-EXT-APPS-10 | tests/test_ext_apps_server.nim | Given a host that declared MCP Apps, when it lists tools, then the UI references are there
-MCP-EXT-APPS-10 | tests/test_ext_apps_server.nim | Given a client that declared nothing, when it lists tools, then they are plain tools without _meta
+MCP-EXT-APPS-10 | tests/test_ext_apps_server.nim | Given a host that declared MCP Apps, when it lists tools in any version, then the UI references are there
+MCP-EXT-APPS-10 | tests/test_ext_apps_server.nim | Given a client that declared nothing, when it lists tools in any version, then they are plain tools without _meta
 MCP-EXT-APPS-10 | tests/test_ext_apps_server.nim | Given a host that declared the extension without the HTML mime type, when it lists tools, then they are plain
 MCP-EXT-APPS-10 | tests/test_ext_apps_server.nim | Given a tool with other _meta keys, when listed to a plain client, then only the UI keys are removed
 MCP-EXT-APPS-10 | tests/test_ext_apps_server.nim | Given a handler, when it asks whether the host supports apps, then it is true only for the declared HTML mime type
 MCP-EXT-APPS-10 | tests/test_ext_apps_end_to_end.nim | Given a host that declared MCP Apps, when it lists tools and fetches the UI, then it gets the references, the HTML and the declarations
-MCP-EXT-APPS-10 | tests/test_ext_apps_end_to_end.nim | Given a host that did not declare MCP Apps, when it lists tools, then the server shows plain tools
+MCP-EXT-APPS-10 | tests/test_ext_apps_end_to_end.nim | Given a host that did not declare MCP Apps, when it lists tools in any version, then the server shows plain tools
 MCP-EXT-APPS-11 | tests/test_ext_apps_host.nim | Given tools with UI references, when listed, then each keeps its _meta and the parsed reference
 MCP-EXT-APPS-11 | tests/test_ext_apps_host.nim | Given a tool with a malformed UI reference, when listed, then the tool is kept as a plain tool with the reason
 MCP-EXT-APPS-11 | tests/test_ext_apps_host.nim | Given several pages, when listed, then every page is read
@@ -2435,3 +2432,9 @@ MCP-EXT-APPS-15 | tests/test_ext_apps_messages.nim | Given ui/notifications/size
 MCP-EXT-APPS-16 | tests/test_ext_apps_messages.nim | Given the ready and resource-ready messages, when built, then they have the specification's shape
 MCP-EXT-APPS-16 | tests/test_ext_apps_messages.nim | Given a csp with a bad origin, when sandbox-resource-ready is built, then McpAppsError
 MCP-EXT-APPS-16 | tests/test_ext_apps_messages.nim | Given methods, when routed, then the sandbox forwards all but ui/notifications/sandbox-* and the host forwards to the server only non-ui methods
+MCP-EXT-APPS-17 | tests/test_ext_apps_server.nim | Given a host that declared MCP Apps, when it lists tools in any version, then the UI references are there
+MCP-EXT-APPS-17 | tests/test_ext_apps_server.nim | Given a client that declared nothing, when it lists tools in any version, then they are plain tools without _meta
+MCP-EXT-APPS-17 | tests/test_ext_apps_host.nim | Given declareApps, when the host connects in any version, then its capabilities list the extension with the HTML mime type
+MCP-EXT-APPS-17 | tests/test_ext_apps_host.nim | Given a client that declared another extension besides apps, when it initializes in a legacy version, then only apps is sent
+MCP-EXT-APPS-17 | tests/test_ext_apps_end_to_end.nim | Given a host that declared MCP Apps, when it lists tools and fetches the UI, then it gets the references, the HTML and the declarations
+MCP-EXT-APPS-17 | tests/test_ext_apps_end_to_end.nim | Given a host that did not declare MCP Apps, when it lists tools in any version, then the server shows plain tools

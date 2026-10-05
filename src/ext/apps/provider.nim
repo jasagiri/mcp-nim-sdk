@@ -36,10 +36,9 @@ type
     resources: OrderedTable[string, UiResource]
 
 proc newAppsRegistry*(): AppsRegistry =
-  ## Raises ValueError in a build that speaks no version with the
-  ## `extensions` capability (see `requireExtensionsBuild`). Declares
-  ## nothing: the specification has no server-side declaration.
-  requireExtensionsBuild("newAppsRegistry")
+  ## Declares nothing: the specification has no server-side declaration, and
+  ## the host's declaration is read in every protocol version (in 2026-07-28
+  ## from the request's `_meta`, before it from `initialize`).
   AppsRegistry()
 
 proc addUiResource*(registry: AppsRegistry, uri, name, html: string,
@@ -138,7 +137,7 @@ proc appToolInfo*(registry: AppsRegistry, name, description: string,
 
 proc hostUiCapability*(ctx: McpRequestContext): Option[UiClientCapability] =
   ## What the client of this request declared for MCP Apps; none when it
-  ## declared nothing usable (or, before 2026-07-28, anything at all).
+  ## declared nothing usable.
   let settings = ctx.clientExtension(ExtensionId)
   if settings.isNone:
     return none(UiClientCapability)

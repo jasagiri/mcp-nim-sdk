@@ -39,13 +39,13 @@ Feature: MCP Apps (io.modelcontextprotocol/ui), an official extension
   Scenario: A host declares MCP Apps with the mime types it supports
     Given a client
     When it declares io.modelcontextprotocol/ui
-    Then the declaration carries mimeTypes, a malformed one is refused, and it is fixed at connect
+    Then the declaration carries mimeTypes in every version, a malformed one is refused, and it is fixed at connect
 
   @spec:MCP-EXT-APPS-7
-  Scenario: MCP Apps is off unless registered, and a build without the extensions capability refuses it
-    Given a program that did not opt in, or a build that speaks no 2026-07-28
-    When it registers or declares MCP Apps
-    Then nothing is declared without opt-in, the server declares no extension, and such a build raises instead of ignoring the registration
+  Scenario: MCP Apps is off unless registered
+    Given a program that did not opt in
+    When it registers a server or connects a client
+    Then nothing is declared, and the server never declares an extension
 
   @spec:MCP-EXT-APPS-8
   Scenario: A server serves UI resources with their metadata on the content item
@@ -101,8 +101,8 @@ Feature: MCP Apps (io.modelcontextprotocol/ui), an official extension
     When messages are built and routed
     Then sandbox-reserved messages are not forwarded and ui/ methods do not go to the server
 
-  @spec:MCP-EXT-APPS-17 @unimplemented
+  @spec:MCP-EXT-APPS-17
   Scenario: MCP Apps is negotiated in the initialize handshake of versions before 2026-07-28
-    Given a client and a server that agreed on a version before 2026-07-28
-    When the client declares io.modelcontextprotocol/ui in the capabilities of initialize
-    Then the server reads it (the specification's example shows this; the SDK carries extensions in 2026-07-28 only)
+    Given a host and a server that agreed on a version before 2026-07-28
+    When the host declares io.modelcontextprotocol/ui in the capabilities of initialize
+    Then the server lists UI references to it and plain tools to a host that did not declare

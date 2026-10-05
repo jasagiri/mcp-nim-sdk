@@ -8,6 +8,7 @@ import server/pagination
 import client/client
 import client/extensions
 import protocol/[types, version]
+
 import ext/apps
 import ./loopback_transport
 
@@ -33,20 +34,21 @@ proc weatherServer(): McpServer =
   server.degradeForPlainHosts()
   server
 
-proc connected(server: McpServer, declare: bool): McpClient =
+proc connected(server: McpServer, declare: bool, version: McpProtocolVersion): McpClient =
   let pair = newLoopbackPair()
   waitFor server.attachTransport(pair.server)
-  let client = newMcpClient(McpClientInfo(name: "host", version: "1"))
+  let client = newMcpClient(McpClientInfo(name: "host", version: "1"), version)
   if declare:
     client.declareApps()
   waitFor client.connect(pair.client)
   client
 
-if DefaultProtocolVersion >= FirstModernProtocolVersion:
-  suite "MCP Apps end to end":
+suite "MCP Apps end to end, in every version the build speaks":
 
-    test "Given a host that declared MCP Apps, when it lists tools and fetches the UI, then it gets the references, the HTML and the declarations":
-      let client = connected(weatherServer(), declare = true)
+  test "Given a host that declared MCP Apps, when it lists tools and fetches the UI, then it gets the references, the HTML and the declarations":
+    for v in SupportedProtocolVersions:
+      let client = connected(weatherServer(), declare = true, v)
+      check client.negotiatedVersion == some(v)
       let tools = waitFor client.listAppTools()
       check tools.len == 3
       check tools[0].ui.get.resourceUri == some(Uri)
@@ -64,8 +66,9 @@ if DefaultProtocolVersion >= FirstModernProtocolVersion:
       check "connect-src 'self' https://api.openweathermap.org" in contentSecurityPolicy(ui.meta.csp)
       waitFor client.close()
 
-    test "Given a host that did not declare MCP Apps, when it lists tools, then the server shows plain tools":
-      let client = connected(weatherServer(), declare = false)
+  test "Given a host that did not declare MCP Apps, when it lists tools in any version, then the server shows plain tools":
+    for v in SupportedProtocolVersions:
+      let client = connected(weatherServer(), declare = false, v)
       let tools = waitFor client.listAppTools()
       check tools.len == 3
       for tool in tools:
@@ -73,7 +76,8 @@ if DefaultProtocolVersion >= FirstModernProtocolVersion:
         check not tool.definition.hasKey("_meta")
       waitFor client.close()
 
-    test "Given a server that registered MCP Apps, when a client connects, then the server declares no extension":
-      let client = connected(weatherServer(), declare = true)
+  test "Given a server that registered MCP Apps, when a client connects in any version, then the server declares no extension":
+    for v in SupportedProtocolVersions:
+      let client = connected(weatherServer(), declare = true, v)
       check client.serverExtension(ExtensionId).isNone
       waitFor client.close()

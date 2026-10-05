@@ -5,9 +5,9 @@
 ##   nim c -r examples/ext_apps_server.nim
 ##
 ## MCP Apps is an official extension: it is off unless the program imports
-## `ext/apps` and registers a UI resource, and it needs the 2026-07-28
-## protocol (`newAppsRegistry` raises in a build that does not speak it). A
-## host that did not declare `io.modelcontextprotocol/ui` sees plain tools.
+## `ext/apps` and registers a UI resource. It works in every protocol version
+## the build speaks. A host that did not declare `io.modelcontextprotocol/ui`
+## sees plain tools.
 ## Stdout carries the protocol, so anything for people goes to stderr.
 
 import std/[asyncdispatch, json, options, times]

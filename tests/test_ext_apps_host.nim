@@ -9,7 +9,8 @@ import ./client_peer
 import ./server_harness
 import ext/apps
 import client/client
-import protocol/[features, types]
+import client/extensions
+import protocol/types
 
 const
   Html = "<!DOCTYPE html><html><body>weather</body></html>"
@@ -24,8 +25,17 @@ proc item(extra: JsonNode = nil): JsonNode =
 proc readAnswer(items: seq[JsonNode]): JsonNode =
   %*{"resultType": "complete", "contents": items}
 
+var peerVersion = DefaultProtocolVersion
+
+iterator eachVersion(): McpProtocolVersion =
+  ## Every version the build speaks; `hostPeer` answers in the era of the
+  ## version being tried.
+  for v in SupportedProtocolVersions:
+    peerVersion = v
+    yield v
+
 proc hostPeer(handler: proc(peer: client_peer.Peer, message: JsonNode)): client_peer.Peer =
-  startPeer(handler, modern = true,
+  startPeer(handler, modern = isModern(peerVersion),
             capabilities = %*{"tools": {}, "resources": {}})
 
 proc answering(contents: seq[JsonNode]): client_peer.Peer =
@@ -49,47 +59,54 @@ proc fetchOutcome(version: McpProtocolVersion, contents: seq[JsonNode],
 template expectRefused(contents: seq[JsonNode], fragment: string,
                        limits: UiLimits = defaultLimits()) =
   ## In every version with extensions the fetch is refused, naming `fragment`.
-  for v in versionsWith(ftExtensions):
+  for v in eachVersion():
     let outcome = fetchOutcome(v, contents, limits)
     check outcome != "fetched"
     check fragment in outcome
 
 template expectFetched(contents: seq[JsonNode], limits: UiLimits = defaultLimits()) =
-  for v in versionsWith(ftExtensions):
+  for v in eachVersion():
     check fetchOutcome(v, contents, limits) == "fetched"
 
 suite "declaring MCP Apps":
 
-  test "Given declareApps, when a request is sent, then clientCapabilities lists the extension with the HTML mime type":
-    for v in versionsWith(ftExtensions):
+  proc declaredIn(peer: client_peer.Peer, version: McpProtocolVersion): JsonNode =
+    ## The capabilities the host declared: in `_meta` of a request in
+    ## 2026-07-28, in the `initialize` request before it.
+    if isModern(version):
+      peer.requestsFor("tools/list")[0]["params"]["_meta"]["io.modelcontextprotocol/clientCapabilities"]
+    else:
+      peer.requestsFor("initialize")[0]["params"]["capabilities"]
+
+  test "Given declareApps, when the host connects in any version, then its capabilities list the extension with the HTML mime type":
+    for v in eachVersion():
       let peer = hostPeer(proc(peer: client_peer.Peer, message: JsonNode) =
         if message{"method"}.getStr() == "tools/list":
           peer.reply(message["id"], %*{"resultType": "complete", "tools": []}))
       let client = appsClient(peer, v)
       check client.declaredApps
       discard waitFor client.listAppTools()
-      let caps = peer.requestsFor("tools/list")[0]["params"]["_meta"]["io.modelcontextprotocol/clientCapabilities"]
-      check caps["extensions"][ExtensionId] == %*{"mimeTypes": [ResourceMimeType]}
+      check peer.declaredIn(v)["extensions"][ExtensionId] == %*{"mimeTypes": [ResourceMimeType]}
 
-  test "Given a client that never called declareApps, when it sends a request, then no extensions are declared":
-    for v in versionsWith(ftExtensions):
+  test "Given a client that never called declareApps, when it connects in any version, then no extensions are declared":
+    for v in eachVersion():
       let peer = hostPeer(proc(peer: client_peer.Peer, message: JsonNode) =
         if message{"method"}.getStr() == "tools/list":
           peer.reply(message["id"], %*{"resultType": "complete", "tools": []}))
       let client = peer.connectedClient(v)
       check not client.declaredApps
       discard waitFor client.listAppTools()
-      let caps = peer.requestsFor("tools/list")[0]["params"]["_meta"]["io.modelcontextprotocol/clientCapabilities"]
-      check not caps.hasKey("extensions")
+      check not peer.declaredIn(v).hasKey("extensions")
 
-  test "Given a build that speaks no version with extensions, when declareApps is called, then ValueError; otherwise it declares":
-    let client = newMcpClient(McpClientInfo(name: "h", version: "0"))
-    if versionsWith(ftExtensions).len == 0:
-      expect ValueError: client.declareApps()
-      check not client.declaredApps
-    else:
-      client.declareApps()
-      check client.declaredApps
+  test "Given a client that declared another extension besides apps, when it initializes in a legacy version, then only apps is sent":
+    for v in SupportedProtocolVersions:
+      if not isModern(v):
+        let peer = startPeer(nil)
+        discard peer.connectedClient(v, proc(c: McpClient) =
+          c.declareExtension("com.example/other")
+          c.declareApps())
+        check peer.requestsFor("initialize")[0]["params"]["capabilities"]["extensions"] ==
+              %*{ExtensionId: {"mimeTypes": [ResourceMimeType]}}
 
   test "Given empty or malformed mime types, when declareApps is called, then ValueError and nothing is declared":
     let client = newMcpClient(McpClientInfo(name: "h", version: "0"))
@@ -99,17 +116,9 @@ suite "declaring MCP Apps":
     check not client.declaredApps
 
   test "Given a connected client, when it declares apps, then it raises because capabilities are fixed at connect":
-    if versionsWith(ftExtensions).len > 0:
-      let client = startPeer(nil).connectedClient()
-      expect McpError:
-        client.declareApps()
-
-  test "Given a legacy-version client, when it declares apps and initializes, then the capabilities do not mention extensions":
-    for v in versionsWithout(ftExtensions):
-      let peer = startPeer(nil)
-      discard peer.connectedClient(v, proc(c: McpClient) =
-        if versionsWith(ftExtensions).len > 0: c.declareApps())
-      check not peer.requestsFor("initialize")[0]["params"]["capabilities"].hasKey("extensions")
+    let client = startPeer(nil, modern = isModern(DefaultProtocolVersion)).connectedClient()
+    expect McpError:
+      client.declareApps()
 
 suite "tools and their UI references":
 
@@ -138,7 +147,7 @@ suite "tools and their UI references":
                   "_meta": {"ui": {"resourceUri": "https://evil.example/x"}}}
 
   test "Given tools with UI references, when listed, then each keeps its _meta and the parsed reference":
-    for v in versionsWith(ftExtensions):
+    for v in eachVersion():
       let client = appsClient(toolsPeer(@[both, appOnly, plain, legacy]), v)
       let tools = waitFor client.listAppTools()
       check tools.len == 4
@@ -149,7 +158,7 @@ suite "tools and their UI references":
       check tools[3].ui.get.resourceUri == some(Uri)
 
   test "Given a tool with a malformed UI reference, when listed, then the tool is kept as a plain tool with the reason":
-    for v in versionsWith(ftExtensions):
+    for v in eachVersion():
       let tools = waitFor appsClient(toolsPeer(@[broken, both]), v).listAppTools()
       check tools.len == 2
       check tools[0].ui.isNone
@@ -157,12 +166,12 @@ suite "tools and their UI references":
       check tools[1].problem.isNone
 
   test "Given several pages, when listed, then every page is read":
-    for v in versionsWith(ftExtensions):
+    for v in eachVersion():
       let tools = waitFor appsClient(toolsPeer(@[both, appOnly, plain], pageSize = 1), v).listAppTools()
       check tools.len == 3
 
   test "Given tools with visibility, when the agent's list is made, then tools without model are left out":
-    for v in versionsWith(ftExtensions):
+    for v in eachVersion():
       let tools = waitFor appsClient(toolsPeer(@[both, appOnly, modelOnly, plain]), v).listAppTools()
       var names: seq[string]
       for tool in tools.modelVisible:
@@ -170,7 +179,7 @@ suite "tools and their UI references":
       check names == @["get_weather", "think", "plain"]
 
   test "Given a View's tools/call, when the tool lacks app visibility or is unknown, then it is refused with a reason":
-    for v in versionsWith(ftExtensions):
+    for v in eachVersion():
       let tools = waitFor appsClient(toolsPeer(@[both, appOnly, modelOnly, plain]), v).listAppTools()
       check tools.appCallProblem("get_weather").isNone
       check tools.appCallProblem("refresh").isNone
@@ -186,7 +195,7 @@ suite "tools and their UI references":
 suite "fetching a UI resource":
 
   test "Given a server that serves the UI resource, when fetched, then the HTML and the declarations are returned":
-    for v in versionsWith(ftExtensions):
+    for v in eachVersion():
       let meta = %*{"ui": {"csp": {"connectDomains": ["https://api.openweathermap.org"]},
                            "prefersBorder": true, "permissions": {"camera": {}}}}
       let client = appsClient(answering(@[item(%*{"_meta": meta})]), v)
@@ -199,18 +208,18 @@ suite "fetching a UI resource":
       check not ui.metaFromListing
 
   test "Given a blob, when fetched, then it is decoded":
-    for v in versionsWith(ftExtensions):
+    for v in eachVersion():
       let client = appsClient(answering(@[%*{"uri": Uri, "mimeType": ResourceMimeType,
                                              "blob": base64.encode(Html)}]), v)
       check (waitFor client.fetchUiResource(Uri)).html == Html
 
   test "Given content items for several URIs, when fetched, then the item for the requested URI is used":
-    for v in versionsWith(ftExtensions):
+    for v in eachVersion():
       let other = %*{"uri": "ui://other", "mimeType": ResourceMimeType, "text": "<p>x</p>"}
       check (waitFor appsClient(answering(@[other, item()]), v).fetchUiResource(Uri)).html == Html
 
   test "Given a tool that points at a UI resource, when its UI is fetched, then the resource it names is read":
-    for v in versionsWith(ftExtensions):
+    for v in eachVersion():
       let peer = answering(@[item()])
       let client = appsClient(peer, v)
       let tool = toAppTool(%*{"name": "t", "_meta": {"ui": {"resourceUri": Uri}}})
@@ -278,7 +287,7 @@ suite "fetching a UI resource":
     check not fromItem.metaFromListing
 
   test "Given a URI that is not ui://, when fetched, then ValueError and nothing is sent":
-    for v in versionsWith(ftExtensions):
+    for v in eachVersion():
       let peer = answering(@[item()])
       let client = appsClient(peer, v)
       for bad in ["https://evil.example/x", "ui://", "file:///etc/passwd", "ui://a b"]:
@@ -287,7 +296,7 @@ suite "fetching a UI resource":
       check peer.requestsFor("resources/read").len == 0
 
   test "Given a client that did not declare MCP Apps, when it fetches, then McpUnsupportedError and nothing is sent":
-    for v in versionsWith(ftExtensions):
+    for v in eachVersion():
       let peer = answering(@[item()])
       let client = peer.connectedClient(v)
       expect McpUnsupportedError:
@@ -295,15 +304,15 @@ suite "fetching a UI resource":
       check peer.requestsFor("resources/read").len == 0
 
   test "Given a server without the resources capability, when fetched, then McpUnsupportedError and nothing is sent":
-    for v in versionsWith(ftExtensions):
-      let peer = startPeer(nil, modern = true, capabilities = %*{"tools": {}})
+    for v in eachVersion():
+      let peer = startPeer(nil, modern = isModern(peerVersion), capabilities = %*{"tools": {}})
       let client = appsClient(peer, v)
       expect McpUnsupportedError:
         discard waitFor client.fetchUiResource(Uri)
       check peer.requestsFor("resources/read").len == 0
 
   test "Given a server that answers with an error, when fetched, then McpRequestError":
-    for v in versionsWith(ftExtensions):
+    for v in eachVersion():
       let peer = hostPeer(proc(peer: client_peer.Peer, message: JsonNode) =
         if message{"method"}.getStr() == "resources/read":
           peer.replyError(message["id"], -32002, "Resource not found"))
@@ -311,7 +320,7 @@ suite "fetching a UI resource":
         discard waitFor appsClient(peer, v).fetchUiResource(Uri)
 
   test "Given a fetched UI, when the host builds its CSP, then it is the one of the declared origins":
-    for v in versionsWith(ftExtensions):
+    for v in eachVersion():
       let meta = %*{"ui": {"csp": {"resourceDomains": ["https://cdn.jsdelivr.net"]}}}
       let ui = waitFor appsClient(answering(@[item(%*{"_meta": meta})]), v).fetchUiResource(Uri)
       check "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net" in

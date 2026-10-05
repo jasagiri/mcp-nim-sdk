@@ -9,8 +9,7 @@
 ## that reaches a CSP header, an iframe attribute or a size decision is
 ## checked here before it is used.
 
-import std/[json, options, sequtils, strutils]
-import ../../protocol/[features, version]
+import std/[json, options, strutils]
 
 const
   ExtensionId* = "io.modelcontextprotocol/ui"
@@ -71,15 +70,6 @@ type
 
 const
   DefaultVisibility* = {tvModel, tvApp}
-
-proc requireExtensionsBuild*(what: string) {.raises: [ValueError].} =
-  ## MCP Apps travels in the `extensions` capability, which only 2026-07-28
-  ## has. A build that speaks no such version cannot offer it: raise instead
-  ## of registering something that would silently never be negotiated.
-  if not SupportedProtocolVersions.anyIt(it.has(ftExtensions)):
-    raise newException(ValueError, what & ": MCP Apps needs the extensions " &
-      "capability of protocol version 2026-07-28, and this build speaks " &
-      $SupportedProtocolVersions[0] & " to " & $SupportedProtocolVersions[^1])
 
 func appsError(message: string): ref McpAppsError =
   newException(McpAppsError, message)

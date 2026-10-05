@@ -4,6 +4,10 @@
 ##
 ## Based on the stable MCP Apps specification 2026-01-26,
 ## modelcontextprotocol/ext-apps@82221c0c8ce7661efa6771c9d461511b1650495f.
+## Works in every protocol version this build speaks: specification section
+## "Client (Host) Capabilities" has the host declare the extension in the
+## `initialize` request, with an example for 2024-11-05, and the core schemas
+## of the versions before 2026-07-28 do not forbid the extra capability.
 ##
 ##   client.declareApps()                       # before connect()
 ##   await client.connect(transport)
@@ -58,17 +62,18 @@ func defaultLimits*(): UiLimits {.raises: [].} =
 
 proc declareApps*(client: McpClient, mimeTypes: seq[string] = @[ResourceMimeType]) =
   ## Declare MCP Apps support (`extensions["io.modelcontextprotocol/ui"] =
-  ## {"mimeTypes": [...]}`) in the capabilities of every 2026-07-28 request.
-  ## Apps is off unless this is called. Call before connect(). Raises
-  ## ValueError in a build that speaks no version with the `extensions`
-  ## capability, for an empty or malformed `mimeTypes`, or after connect().
-  requireExtensionsBuild("declareApps")
+  ## {"mimeTypes": [...]}`): in the capabilities of every 2026-07-28 request
+  ## and, since the specification has the host declare it in `initialize`
+  ## (its example is protocol version 2024-11-05), in the `initialize` request
+  ## of the earlier versions too. Apps is off unless this is called. Call
+  ## before connect(). Raises ValueError for an empty or malformed `mimeTypes`,
+  ## or after connect().
   if mimeTypes.len == 0:
     raise newException(ValueError, "declareApps: mimeTypes is required and may not be empty")
   for mimeType in mimeTypes:
     if mimeType.len == 0 or mimeType.strip() != mimeType:
       raise newException(ValueError, "declareApps: '" & mimeType & "' is not a MIME type")
-  client.declareExtension(ExtensionId, %*{"mimeTypes": mimeTypes})
+  client.declareExtension(ExtensionId, %*{"mimeTypes": mimeTypes}, onLegacyHandshake = true)
 
 proc declaredApps*(client: McpClient): bool =
   ## Whether `declareApps` was called.
