@@ -236,8 +236,9 @@ proc consume(t: StreamableHttpTransport, response: WireResponse,
         result.delivered = true
         t.deliver(message)
   except CatchableError as e:
-    # close() ends open streams on purpose; that is not a failure.
-    if not t.closed:
+    # close() and cancelRequest end open streams on purpose; that is not a
+    # failure.
+    if not t.closed and (requestId.isNil or idKey(requestId) notin t.abandoned):
       stderr.writeLine("[mcp-http] event stream from " & t.baseUrl &
                         " failed with " & $e.name & ": " & e.msg)
   finally:
@@ -414,7 +415,7 @@ proc postOnce(t: StreamableHttpTransport, body: string,
       return
   raise httpError(response, t.baseUrl, text)
 
-proc cancelRequest*(t: StreamableHttpTransport, requestId: string) =
+method cancelRequest*(t: StreamableHttpTransport, requestId: string) =
   ## Give up on a request that was sent, by closing the connection that
   ## carries it: for a 2026-07-28 server that is the cancellation. Nothing
   ## is delivered for the request afterwards, not even an error. Does

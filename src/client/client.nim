@@ -8,6 +8,7 @@ import ../protocol/features
 import ../protocol/content as wire
 import ../protocol/trace_context
 import ../protocol/mrtr
+import ../protocol/subscriptions
 import ../transport/transport
 import ../mcp/types as mcpTypes
 
@@ -40,6 +41,37 @@ type
   McpInputRoundsError* = object of McpError
     ## The server kept answering a request with `input_required` beyond
     ## `maxInputRounds` retries.
+
+  McpSubscriptionEnd* = enum
+    ## How a `subscriptions/listen` stream ended.
+    sbGraceful         ## the server answered the request: it ended on purpose
+    sbServerCancelled  ## the server sent notifications/cancelled for it (stdio)
+    sbCancelled        ## this client cancelled it
+    sbLost             ## the transport closed or failed; the server held no
+                       ## state worth keeping, so listening again starts afresh
+    sbFailed           ## the server answered the request with an error
+
+  McpSubscription* = ref object
+    ## One open `subscriptions/listen` stream; see `listen`.
+    id*: string
+      ## The id of the request, which tags every notification of the stream.
+    requested*: SubscriptionFilter
+    acknowledged*: Option[SubscriptionFilter]
+      ## What the server agreed to honor, once it has said so.
+    acknowledgement*: Future[void]
+      ## Completes when the server's acknowledgment has been processed (or
+      ## the stream ended first); `acknowledged` and `problem` say what it was.
+    problem*: Option[string]
+      ## What was wrong with the acknowledgment, when it was malformed.
+    owner*: McpClient
+    ended*: Future[void]
+      ## Completes when the stream is over, whichever way; `endedBy` says how.
+    endedBy*: Option[McpSubscriptionEnd]
+    failure*: Option[JsonRpcError]
+      ## The error the server answered the request with (`sbFailed`).
+    onNotification*: proc(methodName: string, params: JsonNode) {.closure.}
+      ## Every notification delivered on this stream, after the client's own
+      ## callbacks (`onToolsListChanged` and the like) have run for it.
 
   McpCancelToken* = ref object
     ## Lets the caller of an operation withdraw it. Pass it in
@@ -99,6 +131,8 @@ type
     pendingRequests*: Table[string, Future[JsonRpcResponse]]
     progressCallbacks: Table[string, McpProgressCallback]
     nextProgressToken: int
+    subscriptions*: Table[string, McpSubscription]
+      ## The open `subscriptions/listen` streams, by request id.
     maxInputRounds*: int
       ## How many times a request may be retried with input the server asked
       ## for (multi round-trip requests, 2026-07-28) before it raises
@@ -135,6 +169,11 @@ proc cancel*(token: McpCancelToken, reason: string = "") =
 
 proc isCancelled*(token: McpCancelToken): bool = token.signal.finished
 
+proc whenCancelled*(token: McpCancelToken): Future[void] = token.signal
+  ## Completes when the token is cancelled.
+
+proc cancelReason*(token: McpCancelToken): string = token.reason
+
 proc newMcpClient*(
   clientInfo: McpClientInfo,
   protocolVersion: McpProtocolVersion = DefaultProtocolVersion,
@@ -151,6 +190,7 @@ proc newMcpClient*(
     probeTimeoutMs: 5000,
     requestTimeoutMs: DefaultRequestTimeoutMs,
     maxInputRounds: DefaultMaxInputRounds,
+    subscriptions: initTable[string, McpSubscription](),
     pendingRequests: initTable[string, Future[JsonRpcResponse]](),
     progressCallbacks: initTable[string, McpProgressCallback](),
     requestHandlers: initTable[string, McpServerRequestHandler](),
@@ -229,8 +269,41 @@ proc notify(callback: proc() {.closure.}, what: string) =
   except CatchableError:
     logHandlerFailure(what)
 
+proc endSubscription*(client: McpClient, id: string, how: McpSubscriptionEnd) =
+  ## The stream `id` is over. Idempotent: the first reason counts.
+  let subscription = client.subscriptions.getOrDefault(id)
+  if subscription.isNil:
+    return
+  client.subscriptions.del(id)
+  subscription.endedBy = some(how)
+  if not subscription.ended.finished:
+    subscription.ended.complete()
+
+proc routeToSubscription(client: McpClient, notification: JsonRpcNotification): bool =
+  ## Notifications tagged with a subscription id belong to that stream. False
+  ## when the notification is not to be processed further: the acknowledgment
+  ## (consumed here) or one for a stream that has ended.
+  let tagged = subscriptionIdOf(notification.params)
+  if tagged.isNone:
+    return notification.`method` != AcknowledgedMethod
+  let subscription = client.subscriptions.getOrDefault(tagged.get)
+  if subscription.isNil:
+    return false
+  if notification.`method` == AcknowledgedMethod:
+    let (honored, problem) = parseSubscriptionFilter(notification.params{"notifications"})
+    if not subscription.acknowledgement.finished:
+      if problem.isSome:
+        subscription.problem = problem
+      else:
+        subscription.acknowledged = some(honored)
+      subscription.acknowledgement.complete()
+    return false
+  true
+
 proc processNotification(client: McpClient, notification: JsonRpcNotification): Future[void] {.async.} =
   let params = notification.params
+  if not client.routeToSubscription(notification):
+    return
   case notification.`method`
   of "notifications/progress":
     let token = params{"progressToken"}
@@ -269,8 +342,22 @@ proc processNotification(client: McpClient, notification: JsonRpcNotification): 
     notify(client.onResourcesListChanged, "resources list_changed callback")
   of "notifications/prompts/list_changed":
     notify(client.onPromptsListChanged, "prompts list_changed callback")
+  of "notifications/cancelled":
+    # A server cancels nothing but a subscriptions/listen stream.
+    let target = params{"requestId"}
+    if not target.isNil and target.kind in {JString, JInt}:
+      client.endSubscription(if target.kind == JString: target.getStr() else: $target.getInt(),
+                             sbServerCancelled)
   else:
     discard
+  let tagged = subscriptionIdOf(params)
+  if tagged.isSome:
+    let subscription = client.subscriptions.getOrDefault(tagged.get)
+    if not subscription.isNil and not subscription.onNotification.isNil:
+      try:
+        subscription.onNotification(notification.`method`, params)
+      except CatchableError:
+        logHandlerFailure("subscription callback")
   if notification.`method` in client.notificationHandlers:
     let handler = client.notificationHandlers[notification.`method`]
     try:
@@ -323,10 +410,13 @@ proc ensureOpen(client: McpClient) =
   if client.transport.isNil or client.state == mlsShutdown:
     raise newException(McpConnectionClosedError, "the client is not connected")
 
-proc startRequest(client: McpClient, methodName: string,
-                  params: JsonNode): Future[tuple[id: string, response: Future[JsonRpcResponse]]] {.async.} =
+proc startRequest*(client: McpClient, methodName: string, params: JsonNode,
+                   id = ""): Future[tuple[id: string, response: Future[JsonRpcResponse]]] {.async.} =
+  ## Send a request and hand back its response as a future, without waiting.
+  ## `params` go as given: a 2026-07-28 request needs its `_meta` already in
+  ## them (`sendRequest` adds it). `id` names the request; empty picks one.
   client.ensureOpen()
-  let id = $genUUID()
+  let id = if id.len > 0: id else: $genUUID()
   let promise = newFuture[JsonRpcResponse]("McpClient.request")
   client.pendingRequests[id] = promise
   try:
@@ -341,7 +431,7 @@ proc sendNotification*(client: McpClient, methodName: string, params: JsonNode):
   let notification = newJsonRpcNotification(methodName, params)
   await client.transport.sendNotification(notification)
 
-proc abandon(client: McpClient, id, methodName, reason: string) {.async.} =
+proc abandon*(client: McpClient, id, methodName, reason: string) {.async.} =
   ## Stop waiting for `id` and tell the server to stop working on it.
   client.pendingRequests.del(id)
   # initialize must not be cancelled. Over HTTP the 2026-07-28 protocol
@@ -349,6 +439,7 @@ proc abandon(client: McpClient, id, methodName, reason: string) {.async.} =
   if methodName == "initialize" or client.state == mlsShutdown:
     return
   if client.usesModernProtocol and client.transport.kind != mtkStdio:
+    client.transport.cancelRequest(id)
     return
   try:
     await client.sendNotification("notifications/cancelled",

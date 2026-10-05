@@ -34,7 +34,9 @@
 ## server's messages follow as `message` events. The connection is the
 ## session. Set `legacySsePath` to "" to turn it off.
 ##
-## TODO (2026-07-28): `subscriptions/listen`.
+## A `subscriptions/listen` request (2026-07-28) is answered with an event
+## stream that stays open: the server's notifications for it travel on it, and
+## closing the connection cancels it like any other request.
 
 import std/[asyncdispatch, asyncnet, asynchttpserver, httpcore, json, tables, deques,
              options, uri, nativesockets, sysrand, strutils, sequtils, times]
@@ -183,6 +185,30 @@ proc pendingExchangeCount*(t: HttpServerTransport): int =
   ## Requests handed to the server and not yet answered.
   t.exchanges.len
 
+proc withClientId(body: JsonNode, exchangeId: string, clientId: JsonNode): JsonNode =
+  ## The params or result of a `subscriptions/listen` stream's message name
+  ## the subscription by the id of the request, which this transport renamed
+  ## on the way in (`exchangeId`); the client knows the id it chose.
+  if body.isNil or body.kind != JObject or clientId.isNil:
+    return body
+  let meta = body{"_meta"}
+  if meta.isNil or meta.kind != JObject:
+    return body
+  let named = meta{MetaSubscriptionId}
+  if named.isNil or named.kind != JString or named.getStr() != exchangeId:
+    return body
+  result = body.copy()
+  result["_meta"][MetaSubscriptionId] = clientId
+
+proc forClient(message: JsonNode, exchangeId: string, clientId: JsonNode): JsonNode =
+  result = message
+  for key in ["params", "result"]:
+    if message.hasKey(key):
+      let renamed = withClientId(message[key], exchangeId, clientId)
+      if renamed != message[key]:
+        result = message.copy()
+        result[key] = renamed
+
 proc settle(group: Group) =
   if not group.settled.finished:
     group.settled.complete()
@@ -196,6 +222,8 @@ method sendResponse*(t: HttpServerTransport,
   t.exchanges.del(response.id)
   var restored = response
   restored.idNode = exchange.idNode
+  if restored.result.isSome:
+    restored.result = some(withClientId(restored.result.get, response.id, exchange.idNode))
   if exchange.group.isNil:
     # HTTP+SSE: the answer travels on the event stream. A client that has
     # left is not waiting for it.
@@ -235,7 +263,7 @@ proc pushTo(session: Session, data: string): bool =
 proc deliver(t: HttpServerTransport, route: MessageRoute, message: JsonNode,
              what: string) =
   ## Put a message the server initiates on the stream `route` names.
-  let data = $message
+  var data = $message
   if route.requestId.len > 0:
     if not t.exchanges.hasKey(route.requestId):
       raise newException(McpTransportError,
@@ -246,6 +274,7 @@ proc deliver(t: HttpServerTransport, route: MessageRoute, message: JsonNode,
         discard t.sessions[exchange.legacySession].pushTo(data)
       return
     let group = exchange.group
+    data = $message.forClient(route.requestId, exchange.idNode)
     if group.modern and what == "request":
       raise newException(McpTransportError,
         "a 2026-07-28 request's stream carries notifications only; " &
@@ -272,6 +301,12 @@ proc deliver(t: HttpServerTransport, route: MessageRoute, message: JsonNode,
       discard t.listenStream(session)
       discard session.pushTo(data)
 
+method requestDropped*(t: HttpServerTransport, session, requestId: string) =
+  ## The server will not answer this request (it was cancelled): its exchange
+  ## ends here, so that a stream that lasts as long as a subscription leaves
+  ## nothing behind.
+  t.exchanges.del(requestId)
+
 method sendNotification*(t: HttpServerTransport,
                         notification: JsonRpcNotification,
                         route: MessageRoute): Future[void] {.async.} =
@@ -284,7 +319,11 @@ method sendNotification*(t: HttpServerTransport,
 
 method sendNotification*(t: HttpServerTransport,
                         notification: JsonRpcNotification): Future[void] {.async.} =
-  t.deliver(MessageRoute(), notification.toJson(), "notification " & notification.`method`)
+  ## Routed by what the notification says about itself: the request it
+  ## belongs to, else the session it is for, else every client.
+  t.deliver(MessageRoute(session: notification.session,
+                         requestId: notification.relatedRequestId),
+            notification.toJson(), "notification " & notification.`method`)
 
 method sendRequest*(t: HttpServerTransport, request: JsonRpcRequest,
                     route: MessageRoute): Future[void] {.async.} =

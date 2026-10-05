@@ -12,6 +12,8 @@ import ../protocol/sampling_tools
 import ../protocol/trace_context
 import ../protocol/extensions
 import ../protocol/mrtr
+import ../protocol/subscriptions
+import ./subscriptions
 import ../transport/transport
 import ./errors
 import ./pagination
@@ -130,6 +132,8 @@ type
     promptsList: ListHandler
     promptGet: PromptGetHandler
     completer: CompletionHandler
+    subscriptions*: SubscriptionRegistry
+      ## The open `subscriptions/listen` requests (2026-07-28).
     extensionMethods*: Table[string, ExtensionMethod]
       ## The methods extensions define, by method name; see `registerExtensionMethod`.
     extensionResultTypes*: Table[string, string]
@@ -828,6 +832,45 @@ proc paramHeaderMismatch(server: McpServer, name: string, arguments: JsonNode,
     return none(JsonRpcError)
   return checkParamHeaders(declared.bindings, arguments, received)
 
+func honoredFilter(capabilities: McpServerCapabilities,
+                    requested: SubscriptionFilter): SubscriptionFilter =
+  ## What of `requested` this server can deliver: a notification type it did
+  ## not declare is left out of the acknowledgment.
+  if capabilities.tools.isSome and capabilities.tools.get.listChanged:
+    result.toolsListChanged = requested.toolsListChanged
+  if capabilities.prompts.isSome and capabilities.prompts.get.listChanged:
+    result.promptsListChanged = requested.promptsListChanged
+  if capabilities.resources.isSome:
+    if capabilities.resources.get.listChanged:
+      result.resourcesListChanged = requested.resourcesListChanged
+    if capabilities.resources.get.subscribe:
+      result.resourceSubscriptions = requested.resourceSubscriptions
+
+proc listen(server: McpServer, request: JsonRpcRequest,
+            ctx: McpRequestContext): Future[JsonRpcResponse] {.async.} =
+  ## `subscriptions/listen`: acknowledge, then stay open until the client
+  ## cancels it or the server ends it with `endSubscriptions`.
+  let notifications = request.params{"notifications"}
+  let (requested, problem) = parseSubscriptionFilter(notifications)
+  if problem.isSome:
+    return newJsonRpcErrorResponse(request.id, ErrInvalidParams, problem.get)
+  let idNode = if request.idNode.isNil: %request.id else: request.idNode
+  let subscription = Subscription(
+    session: request.session, requestId: request.id, idNode: idNode,
+    filter: honoredFilter(server.capabilities, requested),
+    closed: newFuture[void]("McpServer.subscription"))
+  server.subscriptions.add subscription
+  try:
+    await server.transport.sendNotification(ctx.relatedNotification(
+      AcknowledgedMethod, acknowledgementParams(idNode, subscription.filter)))
+    let ended = newFuture[void]("McpServer.listen")
+    subscription.closed.completesWith(ended)
+    ctx.cancelSignal.completesWith(ended)
+    await ended
+  finally:
+    server.subscriptions.remove subscription
+  return newJsonRpcResponse(request.id, listenResult(idNode))
+
 proc clientDeclaresExtension(ctx: McpRequestContext, id: string): bool =
   settingsOf(ctx.clientCapabilities, id).isSome
 
@@ -893,6 +936,11 @@ proc dispatchStandard(server: McpServer, request: JsonRpcRequest,
         await server.resourceUnsubscribe(ctx, uri.get)
       subscriber.subscriptions.excl(uri.get)
     return newJsonRpcResponse(request.id, newJObject())
+
+  of ListenMethod:
+    if not ctx.version.has(ftSubscriptionsListen):
+      return notSupported(request)
+    return await server.listen(request, ctx)
 
   of "tools/list":
     if caps.tools.isNone or server.toolsList.isNil:
@@ -1144,7 +1192,9 @@ proc processRequest(server: McpServer, request: JsonRpcRequest): Future[void] {.
     ctx.finished = true
     if server.inFlight.getOrDefault(key) == ctx:
       server.inFlight.del(key)
-  if not ctx.cancelled:
+  if ctx.cancelled:
+    server.transport.requestDropped(request.session, request.id)
+  else:
     await server.transport.sendResponse(response)
 
 proc processNotification(server: McpServer, notification: JsonRpcNotification): Future[void] {.async.} =
@@ -1198,6 +1248,8 @@ proc attachTransport*(server: McpServer, transport: McpTransport): Future[void] 
   server.transport = transport
   transport.onSessionEnd = proc(session: string) {.closure, gcsafe.} =
     server.endSession(session)
+  transport.onRequestCancelled = proc(session, requestId: string) {.closure, gcsafe.} =
+    discard server.cancelRequest(session, requestId, "the client closed the connection")
 
   # Start message processing
   asyncCheck server.processMessages()
@@ -1225,40 +1277,102 @@ proc deliverEach(server: McpServer, sessions: seq[string], methodName: string,
   if not firstFailure.isNil:
     raise firstFailure
 
-# TODO: 2026-07-28 clients learn of changes through subscriptions/listen (a
-# later change); until then the notify* procs reach the clients that
-# handshaked, which are the ones of the earlier versions.
+proc deliverToSubscribers(server: McpServer, methodName: string,
+                          params: JsonNode): Future[void] {.async.} =
+  ## The `subscriptions/listen` streams that asked for this notification, each
+  ## told on its own stream and tagged with its own subscription id.
+  var firstFailure: ref CatchableError
+  for subscription in server.subscriptions.receiving(methodName, params):
+    var notification = newJsonRpcNotification(
+      methodName, withSubscriptionId(params, subscription.idNode))
+    notification.session = subscription.session
+    notification.relatedRequestId = subscription.requestId
+    try:
+      await server.transport.sendNotification(notification)
+    except CatchableError as e:
+      stderr.writeLine("[mcp-server] could not send " & methodName &
+                       " to subscription '" & subscription.requestId & "': " & e.msg)
+      if firstFailure.isNil:
+        firstFailure = e
+  if not firstFailure.isNil:
+    raise firstFailure
+
+proc deliverAll(server: McpServer, sessions: seq[string], methodName: string,
+                params: JsonNode): Future[void] {.async.} =
+  ## To the clients of the earlier versions in `sessions` and to the
+  ## subscriptions of 2026-07-28; the first failure is raised once both have
+  ## been tried.
+  var firstFailure: ref CatchableError
+  try:
+    await server.deliverEach(sessions, methodName, params)
+  except CatchableError as e:
+    firstFailure = e
+  try:
+    await server.deliverToSubscribers(methodName, params)
+  except CatchableError as e:
+    if firstFailure.isNil:
+      firstFailure = e
+  if not firstFailure.isNil:
+    raise firstFailure
 
 proc notifyResourceListChanged*(server: McpServer): Future[void] {.async.} =
   if server.capabilities.resources.isSome and
      server.capabilities.resources.get.listChanged:
-    await server.deliverEach(server.operationalSessions,
-      "notifications/resources/list_changed", newJObject())
+    await server.deliverAll(server.operationalSessions,
+      ResourcesListChangedMethod, newJObject())
 
 proc subscribersOf*(server: McpServer, uri: string): seq[string] =
-  ## The sessions subscribed to `uri`.
+  ## The sessions subscribed to `uri` with `resources/subscribe`.
   for id, known in server.sessions.pairs:
     if known.state == mlsOperational and uri in known.subscriptions:
       result.add id
 
 proc notifyResourceUpdated*(server: McpServer, uri: string): Future[void] {.async.} =
-  ## Tell the clients subscribed to `uri` that it changed.
+  ## Tell the clients subscribed to `uri` that it changed: those of the
+  ## earlier versions that called `resources/subscribe`, and the
+  ## `subscriptions/listen` streams that named it.
   if server.capabilities.resources.isSome and
      server.capabilities.resources.get.subscribe:
-    await server.deliverEach(server.subscribersOf(uri),
-      "notifications/resources/updated", %*{"uri": uri})
+    await server.deliverAll(server.subscribersOf(uri),
+      ResourceUpdatedMethod, %*{"uri": uri})
 
 proc notifyToolListChanged*(server: McpServer): Future[void] {.async.} =
   if server.capabilities.tools.isSome and
      server.capabilities.tools.get.listChanged:
-    await server.deliverEach(server.operationalSessions,
-      "notifications/tools/list_changed", newJObject())
+    await server.deliverAll(server.operationalSessions,
+      ToolsListChangedMethod, newJObject())
 
 proc notifyPromptListChanged*(server: McpServer): Future[void] {.async.} =
   if server.capabilities.prompts.isSome and
      server.capabilities.prompts.get.listChanged:
-    await server.deliverEach(server.operationalSessions,
-      "notifications/prompts/list_changed", newJObject())
+    await server.deliverAll(server.operationalSessions,
+      PromptsListChangedMethod, newJObject())
+
+proc subscriptionCount*(server: McpServer): int =
+  ## The `subscriptions/listen` requests being served.
+  server.subscriptions.count
+
+proc endSubscriptions*(server: McpServer): Future[void] {.async.} =
+  ## Tear every subscription down, as a server does when it shuts down: each
+  ## `subscriptions/listen` request is answered with a result that says the
+  ## subscription ended gracefully. On stdio the server first sends
+  ## `notifications/cancelled` for it, which the specification requires of a
+  ## server that tears a subscription down (its transport rules for HTTP
+  ## ask only for the response).
+  for subscription in server.subscriptions.all:
+    if subscription.tornDown:
+      continue
+    subscription.tornDown = true
+    if server.transport.kind == mtkStdio:
+      var cancelled = newJsonRpcNotification("notifications/cancelled",
+        %*{"requestId": subscription.idNode, "reason": "the server ended the subscription"})
+      cancelled.session = subscription.session
+      try:
+        await server.transport.sendNotification(cancelled)
+      except CatchableError as e:
+        stderr.writeLine("[mcp-server] could not cancel subscription '" &
+                         subscription.requestId & "': " & e.msg)
+    subscription.closed.complete()
 
 proc log*(server: McpServer, level: McpLogLevel, data: JsonNode,
           logger = ""): Future[void] {.async.} =

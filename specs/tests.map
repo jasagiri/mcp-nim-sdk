@@ -784,3 +784,38 @@ MCP-MRTR-13 | tests/test_mrtr.nim | Given a handler that answers with an error, 
 MCP-MRTR-14 | tests/test_mrtr.nim | Given input_required for a request that does not allow it, when it arrives, then the client raises McpProtocolError
 MCP-MRTR-14 | tests/test_mrtr.nim | Given an input_required result that is malformed, when it arrives, then the client raises McpProtocolError
 MCP-MRTR-15 | tests/test_mrtr.nim | Given a slow answer to the input requests, when the request has a timeout, then the timeout counts each attempt and not the answering
+MCP-SUBSCRIBE-1 | tests/test_subscriptions.nim | Given the specification's listen request, when its filter is parsed, then the types and uris are read
+MCP-SUBSCRIBE-1 | tests/test_subscriptions.nim | Given filters of the wrong shape, when parsed, then each is rejected
+MCP-SUBSCRIBE-1 | tests/test_subscriptions.nim | Given the specification's acknowledgment and graceful-closure examples, when built, then they are equal
+MCP-SUBSCRIBE-1 | tests/test_subscriptions.nim | Given a filter, when asked about notifications, then only the subscribed types and uris are wanted
+MCP-SUBSCRIBE-1 | tests/test_subscriptions.nim | Given notification params, when the subscription id is read, then a string or an integer id is returned as text
+MCP-SUBSCRIBE-2 | tests/test_subscriptions.nim | Given a listen request, when the server accepts it, then the acknowledgment is the first message and carries the subscription id
+MCP-SUBSCRIBE-2 | tests/test_subscriptions.nim | Given a type the server does not support, when it acknowledges, then that type is omitted
+MCP-SUBSCRIBE-2 | tests/test_subscriptions.nim | Given a numeric request id, when the server acknowledges, then the subscription id is that number
+MCP-SUBSCRIBE-3 | tests/test_subscriptions.nim | Given an open subscription, when the tool list changes, then the notification arrives on that stream tagged with its id
+MCP-SUBSCRIBE-3 | tests/test_subscriptions.nim | Given a subscription that did not ask for a type, when that type changes, then nothing is sent
+MCP-SUBSCRIBE-3 | tests/test_subscriptions.nim | Given a subscription to a resource uri, when that resource and another change, then only the named one is delivered
+MCP-SUBSCRIBE-3 | tests/test_subscriptions.nim | Given two subscriptions, when a resource changes, then each stream gets its own notification with its own id
+MCP-SUBSCRIBE-4 | tests/test_subscriptions.nim | Given a tool call with progress, when it reports, then the notification belongs to the call and not to the subscription
+MCP-SUBSCRIBE-5 | tests/test_subscriptions.nim | Given a client that cancels, when the cancellation arrives, then the subscription is gone and no response is sent
+MCP-SUBSCRIBE-5 | tests/test_subscriptions.nim | Given the transport reports the request abandoned, when the connection closes, then the subscription is gone
+MCP-SUBSCRIBE-6 | tests/test_subscriptions.nim | Given open subscriptions, when the server ends them, then each request is answered with a graceful result and nothing more is sent
+MCP-SUBSCRIBE-6 | tests/test_subscriptions.nim | Given a stdio server, when it ends a subscription, then it sends notifications/cancelled for the request and then the graceful result
+MCP-SUBSCRIBE-7 | tests/test_subscriptions.nim | Given a request without a usable notifications filter, when it arrives, then it is invalid params
+MCP-SUBSCRIBE-8 | tests/test_subscriptions.nim | Given a version without subscriptions/listen, when it is requested, then it is method not found
+MCP-SUBSCRIBE-8 | tests/test_subscriptions.nim | Given a legacy client subscribed to a resource, when the server notifies, then it gets the notification untagged
+MCP-SUBSCRIBE-8 | tests/test_subscriptions.nim | Given a version without subscriptions/listen, when the client listens, then it raises McpUnsupportedError and sends nothing
+MCP-SUBSCRIBE-9 | tests/test_subscriptions.nim | Given a modern server, when the client listens, then it sends the filter with the request metadata and returns after the acknowledgment
+MCP-SUBSCRIBE-9 | tests/test_subscriptions.nim | Given an open subscription, when notifications arrive, then the client's callbacks and the stream's callback see them
+MCP-SUBSCRIBE-9 | tests/test_subscriptions.nim | Given a notification tagged with an unknown subscription id, when it arrives, then it is ignored
+MCP-SUBSCRIBE-9 | tests/test_subscriptions.nim | Given two subscriptions, when notifications arrive on each, then each stream's callback sees only its own
+MCP-SUBSCRIBE-10 | tests/test_subscriptions.nim | Given the server answers the listen request, when the response arrives, then the stream ended gracefully
+MCP-SUBSCRIBE-10 | tests/test_subscriptions.nim | Given a stdio server that cancels the stream, when notifications/cancelled arrives, then the stream ended by the server
+MCP-SUBSCRIBE-10 | tests/test_subscriptions.nim | Given an open subscription on stdio, when the client cancels it, then notifications/cancelled names the request and the stream ends
+MCP-SUBSCRIBE-10 | tests/test_subscriptions.nim | Given the transport fails while listening, when the stream breaks, then it ended lost
+MCP-SUBSCRIBE-11 | tests/test_subscriptions.nim | Given a server that rejects the listen request, when the client listens, then it raises McpRequestError
+MCP-SUBSCRIBE-11 | tests/test_subscriptions.nim | Given a server that never acknowledges, when the timeout passes, then the client raises McpTimeoutError and cancels
+MCP-SUBSCRIBE-11 | tests/test_subscriptions.nim | Given an acknowledgment that is malformed, when it arrives, then the client raises McpProtocolError and cancels
+MCP-SUBSCRIBE-12 | tests/test_subscriptions.nim | Given a client and a server over stdio-style transport, when the tool list changes and the server shuts down, then the client is told and the stream ends gracefully
+MCP-SUBSCRIBE-12 | tests/test_subscriptions.nim | Given a client and a server over Streamable HTTP, when the tool list changes, then it arrives on the response stream, and cancelling closes the subscription
+MCP-SUBSCRIBE-12 | tests/test_subscriptions.nim | Given a client over Streamable HTTP, when the server ends the subscription, then the client sees a graceful end

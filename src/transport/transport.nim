@@ -82,6 +82,18 @@ method receive*(t: McpTransport): Future[McpIncoming] {.base, async.} =
 method close*(t: McpTransport): Future[void] {.base, async.} =
   raise newException(CatchableError, "Not implemented")
 
+method requestDropped*(t: McpTransport, session, requestId: string) {.base.} =
+  ## The server will not answer request `requestId` of `session` (it was
+  ## cancelled), so a transport that keeps something per request can let go.
+  discard
+
+method cancelRequest*(t: McpTransport, requestId: string) {.base.} =
+  ## Give up on a request this side sent, the way the transport cancels:
+  ## Streamable HTTP closes the connection that carries it. Transports that
+  ## cancel with a `notifications/cancelled` message (stdio) leave this to the
+  ## caller; the default does nothing.
+  discard
+
 method protocolVersionNegotiated*(t: McpTransport, version: McpProtocolVersion) {.base.} =
   ## Called once the initialize handshake has agreed on `version`, for
   ## transports that must state it on later messages. Most need not.
