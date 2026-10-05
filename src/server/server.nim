@@ -908,9 +908,10 @@ proc requireObjectResult(request: JsonRpcRequest, node: JsonNode): Option[JsonRp
 const MaxToolListPages = 1000
   ## A handler that never stops issuing cursors must not hold a request.
 
-proc toolInputSchema(server: McpServer, name: string): Future[Option[JsonNode]] {.async.} =
-  ## The `inputSchema` the tool list publishes for `name`. The list is read
-  ## afresh: tools may change between calls.
+proc toolDefinition(server: McpServer, name: string): Future[Option[JsonNode]] {.async.} =
+  ## The entry the tool list publishes for `name`: what the server says about
+  ## a tool is stated once, there. The list is read afresh: tools may change
+  ## between calls.
   if server.toolsList.isNil:
     return none(JsonNode)
   var cursor = none(string)
@@ -918,14 +919,29 @@ proc toolInputSchema(server: McpServer, name: string): Future[Option[JsonNode]] 
     let page = await server.toolsList(cursor)
     for tool in page.items:
       if tool{"name"}.getStr() == name:
-        let schema = tool{"inputSchema"}
-        return if schema.isNil: none(JsonNode) else: some(schema)
+        return some(tool)
     if page.nextCursor.isNone:
       return none(JsonNode)
     cursor = page.nextCursor
   stderr.writeLine("[mcp-server] tools/list of this server has more than " &
                    $MaxToolListPages & " pages; '" & name & "' was not found")
   none(JsonNode)
+
+proc outputProblems(name: string, version: McpProtocolVersion, schema,
+                    callResult: JsonNode): seq[string] =
+  ## What is wrong with `callResult` under the `outputSchema` the server lists
+  ## for the tool. "Servers MUST provide structured results that conform to
+  ## this schema" (2025-06-18 and later, server/tools): a result that does not
+  ## is the server's defect, and the client is told so instead of receiving
+  ## data its schema disowns. A schema that cannot be checked is the same.
+  try:
+    return content.outputProblems(version, schema, callResult)
+  except InvalidSchemaError as e:
+    raise newRequestError(ErrInternal,
+      "tools/call: the outputSchema of tool '" & name & "' cannot be checked: " & e.msg)
+
+func schemaOf(tool: Option[JsonNode], key: string): Option[JsonNode] =
+  if tool.isNone or tool.get{key}.isNil: none(JsonNode) else: some(tool.get{key})
 
 func paramHeaderMismatch(schema: Option[JsonNode], arguments: JsonNode,
                          received: seq[(string, string)]): Option[JsonRpcError] =
@@ -1085,7 +1101,8 @@ proc dispatchStandard(server: McpServer, request: JsonRpcRequest,
     if not arguments.isNil and arguments.kind != JObject:
       return newJsonRpcErrorResponse(request.id, ErrInvalidParams,
         "tools/call arguments must be an object")
-    let inputSchema = await server.toolInputSchema(name.get)
+    let definition = await server.toolDefinition(name.get)
+    let inputSchema = definition.schemaOf("inputSchema")
     if request.paramHeaders.isSome and ctx.version.has(ftParameterHeaders):
       let mismatch = paramHeaderMismatch(inputSchema, arguments, request.paramHeaders.get)
       if mismatch.isSome:
@@ -1108,6 +1125,14 @@ proc dispatchStandard(server: McpServer, request: JsonRpcRequest,
     let malformed = requireObjectResult(request, callResult)
     if malformed.isSome:
       return malformed.get
+    callResult = withSerializedText(callResult)
+    let outputSchema = definition.schemaOf("outputSchema")
+    if outputSchema.isSome:
+      let faults = outputProblems(name.get, ctx.version, outputSchema.get, callResult)
+      if faults.len > 0:
+        raise newRequestError(ErrInternal,
+          "tools/call: the result of tool '" & name.get &
+          "' does not conform to its outputSchema: " & faults.join("; "))
     return newJsonRpcResponse(request.id, toolResultFor(ctx.version, callResult))
 
   of "prompts/list":

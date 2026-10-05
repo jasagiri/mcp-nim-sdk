@@ -10,7 +10,6 @@ import protocol/modern
 import protocol/content
 import jsonschema/json_schema
 import server/server
-import server/tool_output
 import server/elicit
 import client/client
 import client/tools
@@ -34,7 +33,7 @@ import transport/http_server
 import transport/event_stream
 
 export types, lifecycle, modern, content, json_schema
-export server, tool_output, client
+export server, client
 export tools, resources, prompts, utilities, roots, sampling, elicit, elicitation
 export clientExtensions, serverExtensions, serverMrtr, clientSubscriptions, serverTasks, clientTasks, trace_context
 export transport, stdio, http, http_server, event_stream

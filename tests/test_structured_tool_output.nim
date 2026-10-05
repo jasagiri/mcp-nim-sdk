@@ -1,13 +1,12 @@
 ## Structured tool output (2025-06-18 and later): outputSchema and
 ## structuredContent, sent only where the version has them, checked by the
-## server before it answers and by the client when it reads the answer.
+## server before it answers, by default, and by the client when it reads the answer.
 
 import std/[unittest, asyncdispatch, json, options, strutils]
 import ./server_harness
 import ./client_peer
 import client/client
 import client/tools
-import server/tool_output
 
 const WeatherSchema = """{"type": "object",
   "properties": {"temperature": {"type": "number"}, "conditions": {"type": "string"}},
@@ -26,9 +25,9 @@ proc toolServer(answer: JsonNode): McpServer =
   let tools = @[weatherTool(), plainTool()]
   result.onToolsList(proc(cursor: Option[string]): Future[McpPage] {.async.} =
     return McpPage(items: tools))
-  result.onToolCall(outputChecked(
+  result.onToolCall(
     proc(ctx: McpRequestContext, name: string, arguments: JsonNode): Future[JsonNode] {.async.} =
-      return answer.copy(), tools))
+      return answer.copy())
 
 proc callWeather(server: McpServer, version: McpProtocolVersion, name = "weather"): JsonNode =
   let peer = server.connect(server.attach(), version)
@@ -113,9 +112,11 @@ suite "structured output on the server":
     let tools = @[%*{"name": "odd", "inputSchema": {"type": "object"}, "outputSchema": schema}]
     for version in versionsWith(ftStructuredToolOutput):
       let server = newServer(McpServerCapabilities(tools: some(McpToolsCapability())))
-      server.onToolCall(outputChecked(
+      server.onToolsList(proc(cursor: Option[string]): Future[McpPage] {.async.} =
+        return McpPage(items: tools))
+      server.onToolCall(
         proc(ctx: McpRequestContext, name: string, arguments: JsonNode): Future[JsonNode] {.async.} =
-          return %*{"content": [], "structuredContent": {}}, tools))
+          return %*{"content": [], "structuredContent": {}})
       let reply = server.callWeather(version, "odd")
       check reply.errorCode == -32603
       check "https://example.com/own" in reply["error"]["message"].getStr()
@@ -125,9 +126,11 @@ suite "structured output on the server":
                      "outputSchema": {"type": "array", "items": {"type": "integer"}}}]
     for version in versionsWith(ftStructuredToolOutput):
       let server = newServer(McpServerCapabilities(tools: some(McpToolsCapability())))
-      server.onToolCall(outputChecked(
+      server.onToolsList(proc(cursor: Option[string]): Future[McpPage] {.async.} =
+        return McpPage(items: tools))
+      server.onToolCall(
         proc(ctx: McpRequestContext, name: string, arguments: JsonNode): Future[JsonNode] {.async.} =
-          return %*{"content": [], "structuredContent": [1, 2]}, tools))
+          return %*{"content": [], "structuredContent": [1, 2]})
       let reply = server.callWeather(version, "list")
       if isModern(version):
         check reply["result"]["structuredContent"] == %*[1, 2]

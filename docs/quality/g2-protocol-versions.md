@@ -41,7 +41,7 @@
 | `src/transport/auth_hook.nim` | `tests/test_auth_client_flow.nim`, `tests/test_auth_resource_server.nim` | 2026-10-06 |
 | `src/jsonschema/json_schema.nim`, `src/jsonschema/json_schema_regex.nim` | `tests/test_json_schema.nim` | 2026-10-06 |
 | `src/protocol/content.nim` | `tests/test_tool_annotations.nim`, `tests/test_audio_content.nim`, `tests/test_structured_tool_output.nim`, `tests/test_resource_links.nim`, `tests/test_title_fields.nim`, `tests/test_icons.nim`, `tests/test_implementation_info.nim` | 2026-10-06 |
-| `src/server/tool_output.nim` | `tests/test_structured_tool_output.nim` | 2026-10-06 |
+| `src/server/tool_output.nim` | (2026-10-06 に測定。2026-10-06 の後半で `server.nim` の tools/call に統合して削除した。統合後の検査は未測定) | 2026-10-06 |
 | `src/client/tools.nim` (outputSchema の検査)、`src/client/content.nim` (アイコンの選別) | `tests/test_structured_tool_output.nim`, `tests/test_icons.nim` | 2026-10-06 |
 | `src/protocol/elicitation.nim`, `src/protocol/payload.nim` | `tests/test_elicitation_payload.nim` | 2026-10-06 |
 | `src/server/elicit.nim` | `tests/test_server_elicitation.nim` | 2026-10-06 |
@@ -67,3 +67,4 @@
 
 - `src/server/tasks.nim` (task の質問の保留と `tasks/result` での送出)、`src/server/server.nim` の `holdForTask` / `sendHeld` / task の通知の経路、`src/transport/http_server.nim` の `sendRequest` の経路選択、`src/server/elicit.nim` の task 連携。
 - 認可の主体の経路: `src/auth/resource_server.nim` (principal)、`src/transport/auth_hook.nim` (check)、`src/transport/http_server.nim` (authenticate)、`src/server/tasks.nim` (ownerOf)。
+- `src/server/server.nim` の tools/call の出力検査 (`outputProblems`、`toolDefinition`)。
