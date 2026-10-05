@@ -91,6 +91,22 @@ let speaks = min(DefaultProtocolVersion, mpv20251125)
 
 suite "client: streams are read as they arrive":
 
+  test "Given a request, when the client posts it, then Accept lists both application/json and text/event-stream":
+    var accepts: seq[string] = @[]
+    let url = startRawServer(proc(request: RawRequest, socket: AsyncSocket) {.async.} =
+      accepts.add request.header("Accept")
+      let id = parseJson(request.body)["id"]
+      let body = $(%*{"jsonrpc": "2.0", "id": id, "result": {}})
+      await socket.send("HTTP/1.1 200 OK\c\LContent-Type: application/json\c\L" &
+                        "Content-Length: " & $body.len & "\c\L\c\L" & body))
+    let transport = newStreamableHttpTransport(url)
+    transport.ask()
+    discard transport.received()
+    check accepts.len == 1
+    check "application/json" in accepts[0]
+    check "text/event-stream" in accepts[0]
+    waitFor transport.close()
+
   test "Given a server that pauses between two events, when a request is sent, then the first message is delivered before the second is sent":
     let gate = newFuture[void]("gate")
     let url = startRawServer(proc(request: RawRequest, socket: AsyncSocket) {.async.} =
@@ -461,6 +477,23 @@ if speaks >= mpv20250326:
         newJsonRpcNotification("notifications/initialized", newJObject()))
       waitFor sleepAsync(200)
       check gets == 1
+      waitFor transport.close()
+
+    test "Given a client opening the GET stream, when it asks, then Accept lists text/event-stream":
+      var accepts: seq[string] = @[]
+      let url = startRawServer(proc(request: RawRequest, socket: AsyncSocket) {.async.} =
+        if request.httpMethod == "GET":
+          accepts.add request.header("Accept")
+          await socket.send("HTTP/1.1 405 Method Not Allowed\c\LContent-Length: 0\c\L\c\L")
+        else:
+          await socket.send("HTTP/1.1 202 Accepted\c\LContent-Length: 0\c\L\c\L"))
+      let transport = newStreamableHttpTransport(url)
+      transport.protocolVersionNegotiated(speaks)
+      waitFor transport.sendNotification(
+        newJsonRpcNotification("notifications/initialized", newJObject()))
+      waitFor sleepAsync(200)
+      check accepts.len == 1
+      check "text/event-stream" in accepts[0]
       waitFor transport.close()
 
     test "Given a GET stream that is cut, when the client reconnects, then it names the last event id it saw":

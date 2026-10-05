@@ -490,7 +490,7 @@ if SpeaksModern:
       check script.cancelled.len == 1
       check transport.pendingExchangeCount == 0
 
-    test "Given a 2026-07-28 endpoint, when GET is sent, then the answer is 405":
+    test "Given a 2026-07-28 endpoint, when GET is sent, then no stream opens and the answer is 400 or 405":
       let (_, url, _) = startRaw(DefaultProtocolVersion)
       let listen = open(url, HttpGet, "", [])
       check listen.code in [Http400, Http405]
