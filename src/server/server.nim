@@ -37,7 +37,7 @@ type
   McpRequestContext* = ref object
     ## What a handler knows about the request it serves, and how it reports
     ## back while it works: progress, log messages, requests to the client.
-    server: McpServer
+    server*: McpServer
     session*: string
       ## The connection the request arrived on; empty on stdio and, in
       ## 2026-07-28, on every transport.
@@ -439,7 +439,13 @@ proc extractClientCapabilities(json: JsonNode): McpClientCapabilities =
 
   let samplingJson = json{"sampling"}
   if not samplingJson.isNil and samplingJson.kind == JObject:
-    result.sampling = some(McpSamplingCapability())
+    result.sampling = some(McpSamplingCapability(
+      tools: samplingJson.hasKey("tools") and samplingJson["tools"].kind == JObject,
+      context: samplingJson.hasKey("context") and samplingJson["context"].kind == JObject))
+
+  let elicitationJson = json{"elicitation"}
+  if not elicitationJson.isNil and elicitationJson.kind == JObject:
+    result.elicitation = some(elicitationJson.fromJson(McpElicitationCapability))
 
   let experimentalJson = json{"experimental"}
   if not experimentalJson.isNil and experimentalJson.kind == JObject:
@@ -618,7 +624,7 @@ proc request*(server: McpServer, session: string, methodName: string,
       "the client did not answer " & methodName & " within " & $timeoutMs & " ms")
   return await answer
 
-proc resultOf(response: JsonRpcResponse, methodName: string): JsonNode =
+proc resultOf*(response: JsonRpcResponse, methodName: string): JsonNode =
   if response.error.isSome:
     let error = response.error.get
     var failure = newException(McpRemoteError, methodName & " failed: " & error.message)

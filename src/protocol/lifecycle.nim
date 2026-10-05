@@ -18,9 +18,24 @@ proc toJson*(capabilities: McpClientCapabilities): JsonNode =
   if capabilities.roots.isSome:
     result["roots"] = %*{"listChanged": capabilities.roots.get.listChanged}
   if capabilities.sampling.isSome:
-    result["sampling"] = newJObject()
+    let sampling = newJObject()
+    if capabilities.sampling.get.tools: sampling["tools"] = newJObject()
+    if capabilities.sampling.get.context: sampling["context"] = newJObject()
+    result["sampling"] = sampling
+  if capabilities.elicitation.isSome:
+    let elicitation = newJObject()
+    if capabilities.elicitation.get.form: elicitation["form"] = newJObject()
+    if capabilities.elicitation.get.url: elicitation["url"] = newJObject()
+    result["elicitation"] = elicitation
   if capabilities.experimental.isSome:
     result["experimental"] = capabilities.experimental.get
+
+proc fromJson*(node: JsonNode, T: typedesc[McpElicitationCapability]): McpElicitationCapability =
+  ## An empty object is the form mode alone.
+  let form = node{"form"}
+  let url = node{"url"}
+  result.url = not url.isNil and url.kind == JObject
+  result.form = (not form.isNil and form.kind == JObject) or not result.url
 
 proc toJson*(capabilities: McpServerCapabilities): JsonNode =
   ## Wire form: a capability the server did not declare is absent, not null.

@@ -603,3 +603,26 @@ MCP-TITLE-4 | tests/test_implementation_info.nim | Given a server with a full id
 MCP-TITLE-4 | tests/test_implementation_info.nim | Given a client with a full identity, when it initializes in each legacy version, then clientInfo has the fields of that version
 MCP-ICONS-5 | tests/test_implementation_info.nim | Given a server with a full identity, when each legacy version initializes, then serverInfo has the fields of that version
 MCP-ICONS-5 | tests/test_implementation_info.nim | Given a client with a full identity, when it initializes in each legacy version, then clientInfo has the fields of that version
+MCP-ELICIT-1 | tests/test_server_elicitation.nim | Given a client that can elicit, when the server asks, then elicitation/create carries the message and schema and the answer comes back
+MCP-ELICIT-1 | tests/test_server_elicitation.nim | Given a client that declines or cancels, when the server asks, then the action says so and there is no content
+MCP-ELICIT-1 | tests/test_elicitation_payload.nim | Given decline and cancel, when parsed, then there is no content
+MCP-ELICIT-1 | tests/test_elicitation_payload.nim | Given decline with content, when checked, then the content is reported
+MCP-ELICIT-1 | tests/test_client_elicitation.nim | Given an accepting handler, when the server asks, then the handler sees the request and the answer is sent in wire form
+MCP-ELICIT-2 | tests/test_elicitation_payload.nim | Given a nested object property, when checked, then the property is named
+MCP-ELICIT-2 | tests/test_elicitation_payload.nim | Given an array of objects, when checked, then it is reported in every version
+MCP-ELICIT-2 | tests/test_elicitation_payload.nim | Given a property with no known type, when checked, then it is reported
+MCP-ELICIT-2 | tests/test_server_elicitation.nim | Given a schema outside the rules, when the server asks, then McpPayloadError lists why and nothing is sent
+MCP-ELICIT-3 | tests/test_elicitation_payload.nim | Given accept without a required property, when checked, then the property is named
+MCP-ELICIT-3 | tests/test_elicitation_payload.nim | Given a value of the wrong type, when checked, then the property is named
+MCP-ELICIT-3 | tests/test_elicitation_payload.nim | Given strings outside the length limits, when checked, then they are reported
+MCP-ELICIT-3 | tests/test_elicitation_payload.nim | Given numbers outside the bounds, when checked, then they are reported
+MCP-ELICIT-3 | tests/test_elicitation_payload.nim | Given a value outside the enum, when checked, then it is reported
+MCP-ELICIT-3 | tests/test_elicitation_payload.nim | Given values that break the format, when checked, then they are reported
+MCP-ELICIT-3 | tests/test_server_elicitation.nim | Given an answer that does not match the schema, when it arrives, then McpPayloadError is raised
+MCP-ELICIT-3 | tests/test_client_elicitation.nim | Given a handler whose content does not match the schema, when the server asks, then the server gets an internal error and not the content
+MCP-ELICIT-4 | tests/test_server_elicitation.nim | Given a client without the elicitation capability, when the server asks, then it raises and sends nothing
+MCP-ELICIT-4 | tests/test_server_elicitation.nim | Given a client of a version before elicitation, when the server asks, then it raises and sends nothing
+MCP-ELICIT-5 | tests/test_client_elicitation.nim | Given an elicitation handler, when the client connects, then initialize declares the form mode
+MCP-ELICIT-5 | tests/test_client_elicitation.nim | Given a request whose schema breaks the rules, when it arrives, then the client answers invalid params and the handler is not called
+MCP-ELICIT-5 | tests/test_client_elicitation.nim | Given no elicitation handler, when the server asks, then the client answers method not found
+MCP-ELICIT-5 | tests/test_client_elicitation.nim | Given a connection of a version before elicitation, when the server asks, then the client answers method not found

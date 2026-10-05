@@ -55,6 +55,7 @@ type
   McpClientCapabilities* = object
     roots*: Option[McpRootsCapability]
     sampling*: Option[McpSamplingCapability]
+    elicitation*: Option[McpElicitationCapability]
     experimental*: Option[JsonNode]
 
   McpServerCapabilities* = object
@@ -69,7 +70,19 @@ type
     listChanged*: bool
 
   McpSamplingCapability* = object
-    # Currently empty in the protocol
+    tools*: bool
+      ## 2025-11-25: the client accepts `tools` and `toolChoice` in
+      ## sampling/createMessage.
+    context*: bool
+      ## 2025-11-25: the client honours includeContext "thisServer" and
+      ## "allServers".
+
+  McpElicitationCapability* = object
+    ## `elicitation: {}` on the wire means form mode only; that is `form`
+    ## here, so an object of this type always names at least one mode.
+    form*: bool
+    url*: bool
+      ## 2025-11-25: URL mode.
 
   McpPromptsCapability* = object
     listChanged*: bool

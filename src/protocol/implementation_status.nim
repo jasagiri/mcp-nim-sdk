@@ -119,8 +119,10 @@ func implementationOf*(feature: McpFeature): Implementation {.raises: [].} =
     done("tests/test_structured_tool_output.nim")
   of ftJsonSchema2020:
     done("tests/test_json_schema.nim", "tests/test_structured_tool_output.nim")
+  of ftElicitation:
+    done("tests/test_elicitation_payload.nim", "tests/test_server_elicitation.nim",
+         "tests/test_client_elicitation.nim")
   of ftMultiRoundTripRequests:
     notYet("the client raises on an input_required result")
-  of ftElicitation, ftTasks, ftUrlElicitation, ftSamplingTools, ftSubscriptionsListen, ftExtensions, ftEnumSchemas, ftElicitationDefaults,
-     ftTraceContext:
+  of ftTasks, ftUrlElicitation, ftSamplingTools, ftSubscriptionsListen, ftExtensions, ftEnumSchemas, ftElicitationDefaults, ftTraceContext:
     notYet()

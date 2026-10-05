@@ -173,6 +173,9 @@ proc requestAllowed(client: McpClient, methodName: string): bool =
   case methodName
   of "sampling/createMessage": client.capabilities.sampling.isSome
   of "roots/list": client.capabilities.roots.isSome
+  of "elicitation/create":
+    client.capabilities.elicitation.isSome and
+      client.negotiatedVersion.get.has(ftElicitation)
   else: true
 
 proc logHandlerFailure(what: string) =
