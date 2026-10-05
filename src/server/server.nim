@@ -6,6 +6,7 @@ import ../protocol/lifecycle
 import ../protocol/modern
 import ../protocol/param_headers
 import ../protocol/features
+import ../protocol/content
 import ../protocol/log_level
 import ../transport/transport
 import ./errors
@@ -679,14 +680,20 @@ proc missingParam(request: JsonRpcRequest, name: string): JsonRpcResponse =
   newJsonRpcErrorResponse(request.id, ErrInvalidParams,
     request.`method` & " requires a string " & name)
 
-proc listPage(request: JsonRpcRequest, handler: ListHandler,
-              key: string): Future[JsonRpcResponse] {.async.} =
+func asIs(version: McpProtocolVersion, item: JsonNode): JsonNode = item
+
+proc listPage(request: JsonRpcRequest, handler: ListHandler, key: string,
+              version: McpProtocolVersion,
+              forVersion: proc(version: McpProtocolVersion, item: JsonNode): JsonNode
+             ): Future[JsonRpcResponse] {.async.} =
   let cursor = request.params{"cursor"}
   if not cursor.isNil and cursor.kind != JString:
     raise newInvalidParams("cursor must be a string")
   let page = await handler(if cursor.isNil: none(string) else: some(cursor.getStr()))
   var payload = newJObject()
-  payload[key] = %page.items
+  payload[key] = newJArray()
+  for item in page.items:
+    payload[key].add forVersion(version, item)
   if page.nextCursor.isSome:
     payload["nextCursor"] = %page.nextCursor.get
   return newJsonRpcResponse(request.id, payload)
@@ -763,14 +770,15 @@ proc dispatchStandard(server: McpServer, request: JsonRpcRequest,
   of "resources/list":
     if caps.resources.isNone or server.resourcesList.isNil:
       return notSupported(request)
-    return await listPage(request, server.resourcesList, "resources")
+    return await listPage(request, server.resourcesList, "resources", ctx.version, asIs)
 
   of "resources/templates/list":
     if caps.resources.isNone:
       return notSupported(request)
     if server.resourceTemplatesList.isNil:
       return newJsonRpcResponse(request.id, %*{"resourceTemplates": []})
-    return await listPage(request, server.resourceTemplatesList, "resourceTemplates")
+    return await listPage(request, server.resourceTemplatesList, "resourceTemplates",
+                           ctx.version, asIs)
 
   of "resources/read":
     if caps.resources.isNone or server.resourceRead.isNil:
@@ -805,7 +813,7 @@ proc dispatchStandard(server: McpServer, request: JsonRpcRequest,
   of "tools/list":
     if caps.tools.isNone or server.toolsList.isNil:
       return notSupported(request)
-    let page = await listPage(request, server.toolsList, "tools")
+    let page = await listPage(request, server.toolsList, "tools", ctx.version, toolFor)
     if ctx.version.has(ftParameterHeaders):
       return withoutInvalidParamHeaders(page)
     return page
@@ -839,7 +847,7 @@ proc dispatchStandard(server: McpServer, request: JsonRpcRequest,
   of "prompts/list":
     if caps.prompts.isNone or server.promptsList.isNil:
       return notSupported(request)
-    return await listPage(request, server.promptsList, "prompts")
+    return await listPage(request, server.promptsList, "prompts", ctx.version, asIs)
 
   of "prompts/get":
     if caps.prompts.isNone or server.promptGet.isNil:

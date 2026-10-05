@@ -3,7 +3,10 @@
 import asyncdispatch, json, options
 import ./client
 import ./content
+import ../protocol/content as wire
 export content
+export wire.McpToolAnnotations, wire.isReadOnly, wire.isDestructive,
+  wire.isIdempotent, wire.isOpenWorld
 
 type
   McpToolContentKind* = McpContentKind
@@ -33,6 +36,24 @@ type
     inputSchema*: JsonNode
     outputSchema*: Option[JsonNode]
     annotations*: Option[JsonNode]
+
+proc annotationsOf*(tool: McpTool): McpToolAnnotations =
+  ## The typed hints of `tool`; all unset when the server sent none. They are
+  ## hints from the server: do not trust them more than the server.
+  if tool.annotations.isNone:
+    return McpToolAnnotations()
+  try:
+    parseToolAnnotations(tool.annotations.get)
+  except McpShapeError as e:
+    raise newException(McpProtocolError, "tool '" & tool.name & "': " & e.msg)
+
+proc displayName*(tool: McpTool): string =
+  ## What to show for the tool: `title`, else `annotations.title`, else
+  ## `name` (2025-06-18, server/tools).
+  if tool.title.isSome:
+    return tool.title.get
+  let annotated = tool.annotationsOf.title
+  if annotated.isSome: annotated.get else: tool.name
 
 proc requireTools(client: McpClient, operation: string) =
   if client.serverCapabilities.isNone:
