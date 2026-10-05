@@ -2,6 +2,7 @@
 
 import json, options
 import ./types
+import ./features
 
 type
   McpLifecycleState* = enum
@@ -38,6 +39,14 @@ proc toJson*(capabilities: McpServerCapabilities): JsonNode =
     result["completions"] = newJObject()
   if capabilities.experimental.isSome:
     result["experimental"] = capabilities.experimental.get
+
+func forVersion*(capabilities: McpServerCapabilities,
+                 version: McpProtocolVersion): McpServerCapabilities {.raises: [].} =
+  ## What a server announces to a client that agreed on `version`: a
+  ## capability that version's schema does not know is left out.
+  result = capabilities
+  if not version.has(ftCompletionsCapability):
+    result.completions = none(McpCompletionsCapability)
 
 proc createInitializeRequest*(
   clientInfo: McpClientInfo,

@@ -19,6 +19,11 @@ type
     session*: string
       ## Which of the transport's connections the request arrived on; empty
       ## for a transport with a single peer. Not part of the wire format.
+    relatedRequestId*: string
+      ## For a request the server sends while it handles a client request:
+      ## the id of that client request, so that an HTTP transport can put it on
+      ## the stream that carries the client request's response. Not part of
+      ## the wire format.
 
   JsonRpcResponse* = object
     jsonrpc*: string
@@ -32,6 +37,11 @@ type
     `method`*: string
     params*: JsonNode
     session*: string
+      ## The connection a received notification arrived on; for one that is
+      ## sent, the connection it is addressed to. Not part of the wire format.
+    relatedRequestId*: string
+      ## For a request-scoped notification (progress, log message): the id of
+      ## the client request it belongs to. Not part of the wire format.
 
   JsonRpcError* = object
     code*: int
