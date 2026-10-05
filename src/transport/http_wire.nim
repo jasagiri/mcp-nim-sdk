@@ -42,14 +42,15 @@ type
 proc httpFailure(message: string): ref McpTransportError =
   newException(McpTransportError, message)
 
-proc connect(url: Uri): Future[AsyncSocket] {.async.} =
+proc connect(url: Uri, connectTo: string): Future[AsyncSocket] {.async.} =
   let secure = url.scheme == "https"
   if url.scheme notin ["http", "https"]:
     raise httpFailure("unsupported URL scheme: " & url.scheme)
   let port = if url.port.len > 0: Port(parseInt(url.port))
              elif secure: Port(443)
              else: Port(80)
-  let socket = await dial(url.hostname, port, buffered = false)
+  let socket = await dial(if connectTo.len > 0: connectTo else: url.hostname, port,
+                          buffered = false)
   if secure:
     when defined(ssl):
       let context = newContext(verifyMode = CVerifyPeer)
@@ -137,11 +138,12 @@ type Connected* = proc(response: WireResponse) {.closure, gcsafe.}
   ## request still waiting for its answer.
 
 proc requestOnce(url: string, httpMethod: HttpMethod, headers: HttpHeaders,
-                 body: string, connected: Connected): Future[WireResponse] {.async.} =
+                 body: string, connected: Connected,
+                 connectTo: string): Future[WireResponse] {.async.} =
   let target = parseUri(url)
   let response = WireResponse(leftOpen: newFuture[void]("WireResponse.leftOpen"))
   try:
-    response.socket = await connect(target)
+    response.socket = await connect(target, connectTo)
   except McpTransportError:
     raise
   except CatchableError as e:
@@ -188,17 +190,23 @@ func sameOrigin(a, b: Uri): bool =
     a.port == b.port
 
 proc request*(url: string, httpMethod: HttpMethod, headers: HttpHeaders = nil,
-              body = "", connected: Connected = nil): Future[WireResponse] {.async.} =
+              body = "", connected: Connected = nil, followRedirects = true,
+              connectTo = ""): Future[WireResponse] {.async.} =
   ## Send the request and read the response head. The body is read with
   ## `readSome` / `readAll`. Redirects to the same server are followed (up
   ## to `MaxRedirects`); one to another server is an error, so that
-  ## credentials in `headers` do not travel there. Raises McpTransportError
-  ## when the server cannot be reached or does not answer in HTTP.
+  ## credentials in `headers` do not travel there. With `followRedirects`
+  ## false none is followed: the redirect is returned as the response.
+  ## `connectTo` is an address (not a name) to connect to instead of
+  ## resolving the host of `url`, which still names the server in `Host` and,
+  ## for https, in the TLS handshake: a caller that has checked an address
+  ## connects to exactly that one. Raises McpTransportError when the server
+  ## cannot be reached or does not answer in HTTP.
   var current = url
   for hop in 0 .. MaxRedirects:
-    let response = await requestOnce(current, httpMethod, headers, body, connected)
+    let response = await requestOnce(current, httpMethod, headers, body, connected, connectTo)
     let location = response.headers.getOrDefault("Location")
-    if not isRedirect(response.code, httpMethod) or location.len == 0:
+    if not followRedirects or not isRedirect(response.code, httpMethod) or location.len == 0:
       return response
     let next = combine(parseUri(current), parseUri(location))
     response.close()
