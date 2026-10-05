@@ -43,6 +43,12 @@
 | `src/protocol/content.nim` | `tests/test_tool_annotations.nim`, `tests/test_audio_content.nim`, `tests/test_structured_tool_output.nim`, `tests/test_resource_links.nim`, `tests/test_title_fields.nim`, `tests/test_icons.nim`, `tests/test_implementation_info.nim` | 2026-10-06 |
 | `src/server/tool_output.nim` | `tests/test_structured_tool_output.nim` | 2026-10-06 |
 | `src/client/tools.nim` (outputSchema の検査)、`src/client/content.nim` (アイコンの選別) | `tests/test_structured_tool_output.nim`, `tests/test_icons.nim` | 2026-10-06 |
+| `src/protocol/elicitation.nim`, `src/protocol/payload.nim` | `tests/test_elicitation_payload.nim` | 2026-10-06 |
+| `src/server/elicit.nim` | `tests/test_server_elicitation.nim` | 2026-10-06 |
+| `src/client/elicitation.nim` | `tests/test_client_elicitation.nim` | 2026-10-06 |
+| `src/protocol/sampling_tools.nim` | `tests/test_sampling_tools_payload.nim` | 2026-10-06 |
+| `src/server/server.nim` (createMessage: tools と結果の検査) | `tests/test_server_sampling_tools.nim` | 2026-10-06 |
+| `src/client/sampling.nim` (tools、複数ブロック、検査) | `tests/test_client_sampling_tools.nim` | 2026-10-06 |
 
 ## 手で確かめたもの (nim-muter の測定ではない)
 
