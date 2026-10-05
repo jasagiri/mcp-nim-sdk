@@ -6,33 +6,9 @@ import ./content
 import ../protocol/types
 import ../protocol/features
 import ../protocol/log_level
+import ../protocol/completion as completionTypes
 
-export log_level
-
-type
-  McpCompletionRefKind* = enum
-    mcrPrompt = "ref/prompt"
-    mcrResourceTemplate = "ref/resource"
-
-  McpCompletionRef* = object
-    ## What is being completed: a prompt's argument or a resource
-    ## template's variable.
-    case kind*: McpCompletionRefKind
-    of mcrPrompt:
-      promptName*: string
-    of mcrResourceTemplate:
-      uriTemplate*: string
-
-  McpCompletion* = object
-    values*: seq[string]
-    total*: Option[int]
-    hasMore*: bool
-
-proc promptRef*(name: string): McpCompletionRef =
-  McpCompletionRef(kind: mcrPrompt, promptName: name)
-
-proc resourceTemplateRef*(uriTemplate: string): McpCompletionRef =
-  McpCompletionRef(kind: mcrResourceTemplate, uriTemplate: uriTemplate)
+export log_level, completionTypes
 
 proc ping*(client: McpClient,
            options: McpRequestOptions = McpRequestOptions()) {.async.} =
@@ -60,7 +36,11 @@ proc requestCompletion(client: McpClient, params: JsonNode,
     result.values.add value.getStr()
   if completion.hasKey("total"):
     result.total = some(completion["total"].getInt())
-  result.hasMore = completion{"hasMore"}.getBool(false)
+  let hasMore = completion{"hasMore"}
+  if not hasMore.isNil:
+    if hasMore.kind != JBool:
+      raise newException(McpProtocolError, "completion/complete: hasMore is not a boolean")
+    result.hasMore = some(hasMore.getBool())
 
 proc complete*(client: McpClient, reference: McpCompletionRef,
                argumentName, argumentValue: string,

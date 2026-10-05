@@ -3,22 +3,14 @@
 
 import std/[json, options, tables]
 import ./errors
+import ../protocol/completion as completionTypes
+
+export completionTypes
 
 const MaxCompletionValues* = 100
   ## What the specification allows in one result.
 
 type
-  McpCompletionRefKind* = enum
-    crkPrompt    ## `ref/prompt`
-    crkResource  ## `ref/resource`
-
-  McpCompletionRef* = object
-    case kind*: McpCompletionRefKind
-    of crkPrompt:
-      name*: string
-    of crkResource:
-      uri*: string  ## A resource URI or URI template.
-
   McpCompletionRequest* = object
     reference*: McpCompletionRef
     argumentName*: string
@@ -27,12 +19,6 @@ type
     resolved*: Table[string, string]
       ## The other arguments already filled in (`context.arguments`, from
       ## 2025-06-18).
-
-  McpCompletion* = object
-    values*: seq[string]
-      ## Most relevant first.
-    total*: Option[int]
-    hasMore*: Option[bool]
 
 proc requiredString(node: JsonNode, key, where: string): string {.raises: [McpRequestError].} =
   let value = if node.isNil or node.kind != JObject: nil else: node{key}
@@ -49,11 +35,11 @@ proc parseCompletionRequest*(params: JsonNode,
     raise newInvalidParams("completion/complete requires a ref object")
   case requiredString(reference, "type", "ref")
   of "ref/prompt":
-    result.reference = McpCompletionRef(kind: crkPrompt,
-      name: requiredString(reference, "name", "ref/prompt"))
+    result.reference = McpCompletionRef(kind: mcrPrompt,
+      promptName: requiredString(reference, "name", "ref/prompt"))
   of "ref/resource":
-    result.reference = McpCompletionRef(kind: crkResource,
-      uri: requiredString(reference, "uri", "ref/resource"))
+    result.reference = McpCompletionRef(kind: mcrResourceTemplate,
+      uriTemplate: requiredString(reference, "uri", "ref/resource"))
   else:
     raise newInvalidParams("ref.type must be ref/prompt or ref/resource")
 

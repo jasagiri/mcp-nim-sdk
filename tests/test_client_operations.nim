@@ -293,7 +293,7 @@ suite "ping, logging and completion":
     let completion = waitFor client.complete(promptRef("code_review"), "language", "py")
     check completion.values == @["python", "pytorch"]
     check completion.total == some(10)
-    check completion.hasMore
+    check completion.hasMore == some(true)
     let sent = peer.requestsFor("completion/complete")[0]["params"]
     check sent["ref"] == %*{"type": "ref/prompt", "name": "code_review"}
     check sent["argument"] == %*{"name": "language", "value": "py"}

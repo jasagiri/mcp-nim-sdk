@@ -35,8 +35,8 @@ suite "completion/complete (every version)":
         promptComplete("language", "py"))
       check reply["result"]["completion"] == %*{
         "values": ["python", "pytorch"], "total": 10, "hasMore": true}
-      check lastRequest.reference.kind == crkPrompt
-      check lastRequest.reference.name == "code_review"
+      check lastRequest.reference.kind == mcrPrompt
+      check lastRequest.reference.promptName == "code_review"
       check lastRequest.argumentName == "language"
       check lastRequest.argumentValue == "py"
 
@@ -47,8 +47,8 @@ suite "completion/complete (every version)":
         "ref": {"type": "ref/resource", "uri": "file:///{path}"},
         "argument": {"name": "path", "value": "ro"}})
       check reply["result"]["completion"]["values"].len == 2
-      check lastRequest.reference.kind == crkResource
-      check lastRequest.reference.uri == "file:///{path}"
+      check lastRequest.reference.kind == mcrResourceTemplate
+      check lastRequest.reference.uriTemplate == "file:///{path}"
 
   test "Given more than 100 values, when a client completes, then 100 are sent and hasMore is true":
     for v in SupportedProtocolVersions:
