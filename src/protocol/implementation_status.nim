@@ -44,9 +44,10 @@ func implementationOf*(feature: McpFeature): Implementation {.raises: [].} =
   of ftStreamableHttp:
     done("tests/test_streamable_http.nim")
   of ftHttpSessions:
-    done("tests/test_streamable_http.nim")
+    done("tests/test_streamable_http.nim", "tests/test_http_streams.nim",
+         "tests/test_http_client_streams.nim")
   of ftProtocolVersionHeader:
-    done("tests/test_streamable_http.nim")
+    done("tests/test_http_streams.nim")
   of ftPerRequestMetadata:
     done("tests/test_modern_protocol.nim", "tests/test_era_matrix.nim")
   of ftDiscover:
@@ -59,7 +60,7 @@ func implementationOf*(feature: McpFeature): Implementation {.raises: [].} =
     done("tests/test_modern_protocol.nim", "tests/test_streamable_http.nim")
   of ftResources:
     done("tests/test_server_errors.nim", "tests/test_server_pagination.nim",
-         "tests/test_client_operations.nim")
+         "tests/test_server_resources_prompts.nim", "tests/test_client_operations.nim")
   of ftResourceTemplates:
     done("tests/test_server_pagination.nim", "tests/test_client_operations.nim")
   of ftResourceSubscribe:
@@ -67,15 +68,19 @@ func implementationOf*(feature: McpFeature): Implementation {.raises: [].} =
   of ftResourceNotFoundInvalidParams:
     done("tests/test_server_errors.nim")
   of ftPrompts:
-    done("tests/test_server_pagination.nim", "tests/test_client_operations.nim")
+    done("tests/test_server_pagination.nim", "tests/test_server_resources_prompts.nim",
+         "tests/test_client_operations.nim")
   of ftPagination:
     done("tests/test_server_pagination.nim", "tests/test_client_operations.nim")
   of ftCompletion, ftCompletionContext, ftCompletionsCapability:
     done("tests/test_server_completion.nim", "tests/test_client_operations.nim")
   of ftLogging, ftLoggingSetLevel:
     done("tests/test_server_logging.nim", "tests/test_client_operations.nim")
-  of ftProgress, ftProgressMessage, ftCancellation:
+  of ftProgress, ftProgressMessage:
     done("tests/test_server_progress_cancel.nim", "tests/test_client_requests.nim")
+  of ftCancellation:
+    done("tests/test_server_progress_cancel.nim", "tests/test_client_requests.nim",
+         "tests/test_http_streams.nim")
   of ftSampling, ftRoots, ftServerInitiatedRequests:
     done("tests/test_server_requests.nim", "tests/test_client_server_requests.nim")
   of ftRootsListChanged:
@@ -86,7 +91,10 @@ func implementationOf*(feature: McpFeature): Implementation {.raises: [].} =
     done("tests/test_http_streams.nim", "tests/test_http_client_streams.nim")
   of ftJsonRpcBatch:
     done("tests/test_http_streams.nim")
-  of ftAuthorization, ftProtectedResourceMetadata, ftIncrementalScopeConsent:
+  of ftAuthorization:
+    done("tests/test_auth_client_flow.nim", "tests/test_auth_resource_server.nim",
+         "tests/test_auth_http_methods.nim", "tests/test_auth_oauth_basics.nim")
+  of ftProtectedResourceMetadata, ftIncrementalScopeConsent:
     done("tests/test_auth_client_flow.nim", "tests/test_auth_resource_server.nim")
   of ftAuthorizationServerMetadata, ftOidcDiscovery:
     done("tests/test_auth_oauth_basics.nim", "tests/test_auth_client_flow.nim")
