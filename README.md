@@ -8,7 +8,7 @@ This checkout speaks MCP **2026-07-28** and every earlier version: `2024-11-05`,
 
 ## Features of 2026-07-28
 
-41 of the 51 features of `2026-07-28` are implemented in this tree. The table lists every feature the specification of `2026-07-28` defines; "not implemented" means this SDK does not do it yet.
+42 of the 51 features of `2026-07-28` are implemented in this tree. The table lists every feature the specification of `2026-07-28` defines; "not implemented" means this SDK does not do it yet.
 
 | Feature | Status | Specification |
 |---|---|---|
