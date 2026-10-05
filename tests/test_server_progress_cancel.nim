@@ -12,6 +12,8 @@ var
   lateProgressError: string
   raceWonByCancel: bool
 
+var kept: McpRequestContext
+
 proc progressServer(): McpServer =
   result = newServer(McpServerCapabilities(tools: some(McpToolsCapability())))
   result.onToolCall(proc(ctx: McpRequestContext, name: string,
@@ -20,6 +22,9 @@ proc progressServer(): McpServer =
     of "progress":
       await ctx.reportProgress(1, some(4.0), "one of four")
       await ctx.reportProgress(2.5, some(4.0))
+      return %*{"content": [{"type": "text", "text": "done"}]}
+    of "keep-context":
+      kept = ctx
       return %*{"content": [{"type": "text", "text": "done"}]}
     of "regress":
       await ctx.reportProgress(2)
@@ -134,6 +139,18 @@ suite "progress (every version)":
     release()
     discard t.responseTo(id)
     check t.progressesOf().len == 1  # sent before the answer, while it was in flight
+
+suite "progress after the answer (every version)":
+
+  test "Given a request that was answered, when its context reports progress, then no notification is sent":
+    for v in SupportedProtocolVersions:
+      let server = progressServer()
+      let t = server.attach()
+      discard server.connect(t, v).ask("tools/call", %*{"name": "keep-context"},
+        meta = %*{"progressToken": "p"})
+      waitFor kept.reportProgress(5)
+      settle()
+      check t.progressesOf().len == 0
 
 suite "cancellation (every version)":
 

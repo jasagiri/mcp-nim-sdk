@@ -151,3 +151,67 @@ MCP-PAGINATION-4 | tests/test_client_operations.nim | Given a cursor, when the n
 MCP-PAGINATION-4 | tests/test_client_operations.nim | Given a paged server, when every tool is listed, then all pages are followed
 MCP-PAGINATION-4 | tests/test_client_operations.nim | Given a server that repeats a cursor, when every tool is listed, then McpProtocolError is raised
 MCP-PAGINATION-5 | tests/test_client_operations.nim | Given a nextCursor that is the empty string, when every tool is listed, then the empty cursor is sent and the list does not end there
+MCP-COMPLETION-1 | tests/test_server_completion.nim | Given a prompt reference, when a client completes an argument, then the handler's values, total and hasMore come back
+MCP-COMPLETION-1 | tests/test_server_completion.nim | Given a resource template reference, when a client completes, then the handler sees the URI template
+MCP-COMPLETION-1 | tests/test_server_completion.nim | Given more than 100 values, when a client completes, then 100 are sent and hasMore is true
+MCP-COMPLETION-2 | tests/test_server_completion.nim | Given previously resolved arguments, when a client completes, then the handler gets them from 2025-06-18 on
+MCP-COMPLETION-3 | tests/test_server_completion.nim | Given a declared completions capability, when a client initializes, then it is announced from 2025-03-26 on
+MCP-COMPLETION-3 | tests/test_server_completion.nim | Given a 2026-07-28 server, when a client discovers it, then the completions capability is announced
+MCP-COMPLETION-3 | tests/test_server_completion.nim | Given a server without the completions capability, when a client completes, then the method is not found
+MCP-COMPLETION-4 | tests/test_server_completion.nim | Given a malformed request, when a client completes, then the answer is invalid params
+MCP-COMPLETION-4 | tests/test_server_completion.nim | Given a handler that rejects the argument, when a client completes, then the answer is invalid params
+MCP-COMPLETION-5 | tests/test_client_operations.nim | Given a prompt reference, when an argument is completed, then ref and argument are sent and values read
+MCP-COMPLETION-5 | tests/test_client_operations.nim | Given a resource template reference, when completed with context, then ref/resource and context are sent
+MCP-COMPLETION-6 | tests/test_client_operations.nim | Given 2025-03-26 or later without the completions capability, when completing, then McpUnsupportedError is raised
+MCP-COMPLETION-6 | tests/test_client_operations.nim | Given 2024-11-05, when completing, then the server need not declare completions
+MCP-COMPLETION-6 | tests/test_client_operations.nim | Given 2024-11-05, when completing with context, then McpUnsupportedError is raised
+MCP-LOGGING-1 | tests/test_server_logging.nim | Given no setLevel, when a handler logs at every level, then the client gets every message
+MCP-LOGGING-1 | tests/test_server_logging.nim | Given a log message, when it is sent, then it carries level, logger and data and belongs to the request
+MCP-LOGGING-2 | tests/test_server_logging.nim | Given setLevel warning, when a handler logs at every level, then the client gets warning and above
+MCP-LOGGING-2 | tests/test_server_logging.nim | Given two clients with different levels, when the server logs, then each gets what its level allows
+MCP-LOGGING-3 | tests/test_server_logging.nim | Given an unknown level, when setLevel is sent, then the answer is invalid params
+MCP-LOGGING-3 | tests/test_server_logging.nim | Given a server without the logging capability, when setLevel is sent, then the method is not found
+MCP-LOGGING-3 | tests/test_server_logging.nim | Given a client that has not initialized, when it sends setLevel, then the answer is invalid request
+MCP-LOGGING-4 | tests/test_server_logging.nim | Given a server that did not declare logging, when a handler logs, then it is an internal error and nothing is sent
+MCP-LOGGING-4 | tests/test_server_logging.nim | Given a client that ended its session, when the server logs, then nothing is sent to it
+MCP-LOGGING-5 | tests/test_server_logging.nim | Given a request without a log level, when a handler logs, then no notification is sent
+MCP-LOGGING-5 | tests/test_server_logging.nim | Given a 2026-07-28 client only, when the server logs outside a request, then nothing is sent
+MCP-LOGGING-6 | tests/test_server_logging.nim | Given a request with a log level, when a handler logs, then the client gets that level and above for this request
+MCP-LOGGING-6 | tests/test_server_logging.nim | Given one request with a level and one without, when a handler logs for both, then only the first is told
+MCP-LOGGING-7 | tests/test_server_logging.nim | Given a log level that is not one, when a request is sent, then the answer is invalid params
+MCP-LOGGING-8 | tests/test_server_logging.nim | Given logging/setLevel, when a 2026-07-28 client sends it, then the method is not found
+MCP-LOGGING-8 | tests/test_client_operations.nim | Given a 2026-07-28 connection, when ping, setLevel or subscribe is used, then McpUnsupportedError is raised and nothing is sent
+MCP-LOGGING-9 | tests/test_client_operations.nim | Given a server that supports logging, when the level is set, then logging/setLevel carries it
+MCP-LOGGING-9 | tests/test_client_operations.nim | Given a server without logging, when the level is set, then McpUnsupportedError is raised
+MCP-LOGGING-9 | tests/test_client_server_requests.nim | Given a log callback, when the server logs, then level, logger and data are passed
+MCP-PROGRESS-1 | tests/test_server_progress_cancel.nim | Given a progress token, when a handler reports progress, then the client gets the token, progress, total and related request
+MCP-PROGRESS-1 | tests/test_server_progress_cancel.nim | Given an integer progress token, when progress is reported, then the token comes back as an integer
+MCP-PROGRESS-1 | tests/test_server_progress_cancel.nim | Given no progress token, when a handler reports progress, then nothing is sent
+MCP-PROGRESS-2 | tests/test_server_progress_cancel.nim | Given a progress message, when a handler reports it, then the client gets it from 2025-03-26 on
+MCP-PROGRESS-3 | tests/test_server_progress_cancel.nim | Given progress that does not increase, when a handler reports it again, then it is refused
+MCP-PROGRESS-3 | tests/test_server_progress_cancel.nim | Given a request that was answered, when its context reports progress, then no notification is sent
+MCP-PROGRESS-4 | tests/test_server_progress_cancel.nim | Given a progress token that is neither string nor integer, when a request arrives, then the answer is invalid params
+MCP-PROGRESS-5 | tests/test_client_requests.nim | Given a progress callback, when the request is sent, then it carries a progressToken in _meta
+MCP-PROGRESS-5 | tests/test_client_requests.nim | Given a caller's own _meta, when a progress callback is set, then both keys are sent
+MCP-PROGRESS-5 | tests/test_client_requests.nim | Given a request with a callback, when the server sends progress, then the callback sees each update in order
+MCP-PROGRESS-5 | tests/test_client_requests.nim | Given a finished request, when a late progress arrives, then the callback is not called
+MCP-PROGRESS-5 | tests/test_client_requests.nim | Given progress for an unknown token, when it arrives, then the client carries on
+MCP-CANCEL-1 | tests/test_server_progress_cancel.nim | Given a request in flight, when the client cancels it, then no response is sent and the handler sees the cancellation
+MCP-CANCEL-1 | tests/test_server_progress_cancel.nim | Given a numeric request id, when the client cancels it, then the request is cancelled
+MCP-CANCEL-1 | tests/test_server_progress_cancel.nim | Given a handler waiting on whenCancelled, when the client cancels, then the wait ends
+MCP-CANCEL-2 | tests/test_server_progress_cancel.nim | Given a request id nobody sent, when the client cancels it, then it is ignored and the server goes on
+MCP-CANCEL-2 | tests/test_server_progress_cancel.nim | Given a request already answered, when the client cancels it, then the answer stands
+MCP-CANCEL-2 | tests/test_server_progress_cancel.nim | Given the initialize request in flight, when the client cancels it, then it is answered anyway
+MCP-CANCEL-3 | tests/test_server_progress_cancel.nim | Given the same request id on two sessions, when one client cancels it, then the other's request goes on
+MCP-CANCEL-3 | tests/test_server_progress_cancel.nim | Given a session that ends, when a request of it is in flight, then it is cancelled
+MCP-CANCEL-4 | tests/test_client_requests.nim | Given a server that never answers, when a request has a timeout, then it raises McpTimeoutError
+MCP-CANCEL-4 | tests/test_client_requests.nim | Given a timed-out request, when it raises, then the server is told to cancel that request id
+MCP-CANCEL-4 | tests/test_client_requests.nim | Given a late response to a timed-out request, when it arrives, then it is ignored
+MCP-CANCEL-4 | tests/test_client_requests.nim | Given a server that never answers initialize, when connect times out, then no cancellation is sent
+MCP-CANCEL-4 | tests/test_client_requests.nim | Given a pending request, when its token is cancelled, then it raises McpCancelledError and the server is told why
+MCP-CANCEL-4 | tests/test_client_requests.nim | Given a token cancelled before the call, when the request is made, then nothing is sent
+MCP-CANCEL-4 | tests/test_client_requests.nim | Given a request that already finished, when its token is cancelled later, then nothing is sent
+MCP-CANCEL-5 | tests/test_http_streams.nim | Given a request in progress, when the client closes the connection, then the server is told the request was cancelled
+MCP-CANCEL-5 | tests/test_http_streams.nim | Given a request in progress with nothing sent yet, when the client closes the connection, then the server is told the request was cancelled
+MCP-CANCEL-5 | tests/test_http_streams.nim | Given a cancelled request, when the server answers it anyway, then the answer is dropped without an error
+MCP-CANCEL-6 | tests/test_http_streams.nim | Given a request whose connection was cut, when the server finishes it, then it was not treated as cancelled
