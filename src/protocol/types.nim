@@ -1,6 +1,9 @@
 ## Core MCP protocol types
 
 import json, options
+import ./version
+
+export version
 
 type
   # Basic JSON-RPC types
@@ -25,13 +28,6 @@ type
     code*: int
     message*: string
     data*: JsonNode
-
-  # MCP protocol version
-  McpProtocolVersion* = enum
-    mpv20241105 = "2024-11-05",
-    mpv20250326 = "2025-03-26",
-    mpv20250618 = "2025-06-18",
-    mpv20251125 = "2025-11-25"
 
   # MCP capabilities
   McpClientCapabilities* = object

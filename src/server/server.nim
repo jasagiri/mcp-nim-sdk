@@ -1,6 +1,6 @@
 ## MCP server implementation
 
-import asyncdispatch, json, options, tables, strutils, uuids
+import asyncdispatch, json, options, tables
 import ../protocol/types
 import ../protocol/lifecycle
 import ../transport/transport
@@ -9,6 +9,10 @@ type
   McpServer* = ref object
     state*: McpLifecycleState
     protocolVersion*: McpProtocolVersion
+      ## The newest version this server speaks; it also speaks every
+      ## earlier one.
+    negotiatedVersion*: Option[McpProtocolVersion]
+      ## The version agreed in the initialize handshake.
     serverInfo*: McpServerInfo
     capabilities*: McpServerCapabilities
     clientCapabilities*: Option[McpClientCapabilities]
@@ -51,9 +55,10 @@ proc extractClientCapabilities(json: JsonNode): McpClientCapabilities
 
 proc newMcpServer*(
   serverInfo: McpServerInfo,
-  protocolVersion: McpProtocolVersion = mpv20250326,
+  protocolVersion: McpProtocolVersion = DefaultProtocolVersion,
   capabilities: McpServerCapabilities = McpServerCapabilities()
 ): McpServer =
+  requireSupported(protocolVersion)
   let server = McpServer(
     state: mlsUninitialized,
     protocolVersion: protocolVersion,
@@ -100,23 +105,38 @@ proc handleInitialize(server: McpServer, request: JsonRpcRequest): Future[JsonRp
       "Server already initialized"
     )
   
-  # Extract client info and capabilities
   let params = request.params
-  let clientProtocolVersion = parseEnum[McpProtocolVersion](
-    params["protocolVersion"].getStr()
-  )
-  
-  # Check protocol version compatibility
-  if clientProtocolVersion != server.protocolVersion:
-    echo "Protocol version mismatch: client=", clientProtocolVersion, 
-      " server=", server.protocolVersion
-      
-    # We'll still accept the client's connection, but use our protocol version
-  
-  # Extract client capabilities
-  let clientCapabilities = extractClientCapabilities(params["capabilities"])
+  if params.isNil or params.kind != JObject or
+     not params.hasKey("protocolVersion") or
+     params["protocolVersion"].kind != JString:
+    return newJsonRpcErrorResponse(
+      request.id,
+      -32602,
+      "initialize requires a string protocolVersion"
+    )
+
+  let requested = params["protocolVersion"].getStr()
+  let supported = versionsUpTo(server.protocolVersion)
+  let negotiated = negotiateLegacyVersion(requested, supported)
+  if negotiated.isNone:
+    var supportedJson = newJArray()
+    for v in supported:
+      supportedJson.add %($v)
+    return newJsonRpcErrorResponse(
+      request.id,
+      -32022,
+      "Unsupported protocol version",
+      %*{"supported": supportedJson, "requested": requested}
+    )
+  server.negotiatedVersion = negotiated
+
+  let clientCapabilities =
+    if params.hasKey("capabilities") and params["capabilities"].kind == JObject:
+      extractClientCapabilities(params["capabilities"])
+    else:
+      McpClientCapabilities()
   server.clientCapabilities = some(clientCapabilities)
-  
+
   # Change state
   server.state = mlsInitializing
   
@@ -124,42 +144,39 @@ proc handleInitialize(server: McpServer, request: JsonRpcRequest): Future[JsonRp
   return createInitializeResponse(
     request.id,
     server.serverInfo,
-    server.protocolVersion,
+    negotiated.get,
     server.capabilities
   )
 
 proc handleInitialized(server: McpServer, notification: JsonRpcNotification): Future[void] {.async.} =
   if server.state != mlsInitializing:
-    echo "Received initialized notification in wrong state: ", server.state
+    stderr.writeLine("[mcp-server] initialized notification in state " &
+                      $server.state & " ignored")
     return
-    
-  # Change state
+
   server.state = mlsOperational
-  echo "Server initialized successfully"
 
 proc handleCancelled(server: McpServer, notification: JsonRpcNotification): Future[void] {.async.} =
-  let params = notification.params
-  let requestId = params["requestId"].getStr()
-  
-  echo "Request cancelled: ", requestId
-  
-  # In a real implementation, we would cancel the pending operation
-  # For now, we just log it
+  # TODO: cancel the pending operation named by params.requestId.
+  discard
 
 proc extractClientCapabilities(json: JsonNode): McpClientCapabilities =
   result = McpClientCapabilities()
   
-  if json.hasKey("roots"):
-    let rootsJson = json["roots"]
+  # A peer that sends null for a capability has not declared it.
+  let rootsJson = json{"roots"}
+  if not rootsJson.isNil and rootsJson.kind == JObject:
     result.roots = some(McpRootsCapability(
-      listChanged: rootsJson.hasKey("listChanged") and rootsJson["listChanged"].getBool()
+      listChanged: rootsJson{"listChanged"}.getBool()
     ))
-  
-  if json.hasKey("sampling"):
+
+  let samplingJson = json{"sampling"}
+  if not samplingJson.isNil and samplingJson.kind == JObject:
     result.sampling = some(McpSamplingCapability())
-  
-  if json.hasKey("experimental"):
-    result.experimental = some(json["experimental"])
+
+  let experimentalJson = json{"experimental"}
+  if not experimentalJson.isNil and experimentalJson.kind == JObject:
+    result.experimental = some(experimentalJson)
 
 proc processRequest(server: McpServer, request: JsonRpcRequest): Future[void] {.async.} =
   if request.`method` in server.requestHandlers:

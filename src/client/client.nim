@@ -4,8 +4,6 @@ import asyncdispatch, json, options, tables, strutils, uuids
 import ../protocol/types
 import ../protocol/lifecycle
 import ../transport/transport
-import ../transport/stdio
-import ../transport/http
 import ../mcp/types as mcpTypes
 
 type
@@ -13,6 +11,10 @@ type
     transport*: McpTransport
     state*: McpLifecycleState
     protocolVersion*: McpProtocolVersion
+      ## The newest version this client speaks; it also speaks every
+      ## earlier one.
+    negotiatedVersion*: Option[McpProtocolVersion]
+      ## The version in use with the connected server.
     clientInfo*: McpClientInfo
     capabilities*: McpClientCapabilities
     serverCapabilities*: Option[McpServerCapabilities]
@@ -25,9 +27,10 @@ type
 
 proc newMcpClient*(
   clientInfo: McpClientInfo,
-  protocolVersion: McpProtocolVersion = mpv20250326,
+  protocolVersion: McpProtocolVersion = DefaultProtocolVersion,
   capabilities: McpClientCapabilities = McpClientCapabilities()
 ): McpClient =
+  requireSupported(protocolVersion)
   result = McpClient(
     state: mlsUninitialized,
     protocolVersion: protocolVersion,
@@ -115,38 +118,50 @@ proc sendNotification*(client: McpClient, methodName: string, params: JsonNode):
 proc extractServerCapabilities(json: JsonNode): McpServerCapabilities =
   result = McpServerCapabilities()
 
-  if json.hasKey("prompts"):
-    let promptsJson = json["prompts"]
+  # A peer that sends null for a capability has not declared it.
+  proc declared(name: string): JsonNode =
+    let node = json{name}
+    if not node.isNil and node.kind == JObject: node else: nil
+
+  let promptsJson = declared("prompts")
+  if not promptsJson.isNil:
     result.prompts = some(McpPromptsCapability(
-      listChanged: promptsJson.hasKey("listChanged") and promptsJson["listChanged"].getBool()
+      listChanged: promptsJson{"listChanged"}.getBool()
     ))
 
-  if json.hasKey("resources"):
-    let resourcesJson = json["resources"]
+  let resourcesJson = declared("resources")
+  if not resourcesJson.isNil:
     result.resources = some(McpResourcesCapability(
-      subscribe: resourcesJson.hasKey("subscribe") and resourcesJson["subscribe"].getBool(),
-      listChanged: resourcesJson.hasKey("listChanged") and resourcesJson["listChanged"].getBool()
+      subscribe: resourcesJson{"subscribe"}.getBool(),
+      listChanged: resourcesJson{"listChanged"}.getBool()
     ))
 
-  if json.hasKey("tools"):
-    let toolsJson = json["tools"]
+  let toolsJson = declared("tools")
+  if not toolsJson.isNil:
     result.tools = some(McpToolsCapability(
-      listChanged: toolsJson.hasKey("listChanged") and toolsJson["listChanged"].getBool()
+      listChanged: toolsJson{"listChanged"}.getBool()
     ))
 
-  if json.hasKey("logging"):
+  if not declared("logging").isNil:
     result.logging = some(McpLoggingCapability())
 
-  if json.hasKey("experimental"):
-    result.experimental = some(json["experimental"])
+  let experimentalJson = declared("experimental")
+  if not experimentalJson.isNil:
+    result.experimental = some(experimentalJson)
 
 proc initialize*(client: McpClient): Future[McpServerCapabilities] {.async.} =
   if client.state != mlsUninitialized:
     raise newException(ValueError, "Client already initialized")
 
+  let supported = versionsUpTo(client.protocolVersion)
+  let offered = latestLegacyVersion(supported)
+  if offered.isNone:
+    raise newException(ValueError,
+      "initialize needs a protocol version before " & $FirstModernProtocolVersion)
+
   let request = createInitializeRequest(
     client.clientInfo,
-    client.protocolVersion,
+    offered.get,
     client.capabilities
   )
 
@@ -158,20 +173,17 @@ proc initialize*(client: McpClient): Future[McpServerCapabilities] {.async.} =
 
   let resultData = response.result.get
 
-  # Check protocol version compatibility
-  let serverProtocolVersion = parseEnum[McpProtocolVersion](
-    resultData["protocolVersion"].getStr()
-  )
-
-  if serverProtocolVersion != client.protocolVersion:
-    echo "Protocol version mismatch: client=", client.protocolVersion,
-      " server=", serverProtocolVersion
-
-    # Accept server's protocol version
-    client.protocolVersion = serverProtocolVersion
+  let serverVersionText = resultData{"protocolVersion"}.getStr()
+  let serverVersion = parseProtocolVersion(serverVersionText)
+  if serverVersion.isNone or isModern(serverVersion.get) or
+     serverVersion.get notin supported:
+    raise newException(ValueError,
+      "Server chose protocol version '" & serverVersionText &
+      "', which this client does not speak")
+  client.negotiatedVersion = serverVersion
 
   # Extract server capabilities
-  let capabilities = extractServerCapabilities(resultData["capabilities"])
+  let capabilities = extractServerCapabilities(resultData{"capabilities"})
   client.serverCapabilities = some(capabilities)
 
   # Change state

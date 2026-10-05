@@ -1,6 +1,6 @@
 ## MCP transport layer
 
-import asyncdispatch, json, options, streams
+import asyncdispatch, json, options
 import ../protocol/types
 
 type

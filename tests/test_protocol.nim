@@ -12,8 +12,7 @@ suite "Protocol Tests":
   test "Create Protocol Instance":
     let protocol = newProtocol()
     check protocol != nil
-    check protocol.version.kind == VersionDate
-    check protocol.version.version == CURRENT_VERSION.version
+    check protocol.version == CURRENT_VERSION
     
   test "Generate Request ID":
     let id1 = $genUUID()
@@ -154,10 +153,7 @@ suite "Protocol Tests":
     )
     
     # Define a test version
-    let testVersion = MCPVersion(
-      kind: VersionDate,
-      version: "2025-03-26"
-    )
+    let testVersion = VERSION_20250326
     
     # Serialize with specific version
     let serialized = serializeWithVersion(request, testVersion)

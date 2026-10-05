@@ -19,7 +19,7 @@ type
   Transport* = ref object of RootObj
     ## Abstract base transport class
     state*: TransportState
-    version*: MCPVersion ## Protocol version to use
+    version*: MCPVersion = CURRENT_VERSION ## Protocol version to use
     onMessageCallback*: proc(msg: string) {.async, gcsafe.}
     onErrorCallback*: proc(err: string) {.async, gcsafe.}
     onCloseCallback*: proc() {.async, gcsafe.}

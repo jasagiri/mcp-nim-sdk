@@ -1,3 +1,5 @@
+import std/[os, strutils]
+
 # Package
 
 version       = "0.0.0"
@@ -66,43 +68,40 @@ task build, "Build the package and ensure binaries go to build/bin":
   else:
     exec "if [ -f ./mcp ]; then echo 'Binary in root directory' && mv ./mcp build/bin/; else echo 'Binary correctly placed in build/bin'; fi"
 
-task test, "Run tests":
-  # Create build/tests directory if it doesn't exist
-  exec "mkdir -p build/tests"
+const releasedProtocolVersions = [
+  "2024-11-05", "2025-03-26", "2025-06-18", "2025-11-25", "2026-07-28"
+]
 
-  # Get all test files in the tests directory using ls
-  echo "Finding test files..."
-  var testFiles: seq[string] = @[]
+proc testFiles(): seq[string] =
   when defined(windows):
     let files = staticExec("cmd /c dir /b tests\\test_*.nim 2>nul")
-    if files.len > 0:
-      for file in files.splitLines():
-        if file.len > 0:
-          testFiles.add(file)
+    for file in files.splitLines():
+      if file.len > 0:
+        result.add("tests/" & file)
   else:
     let files = staticExec("find tests -maxdepth 1 -name 'test_*.nim' -type f | sort")
-    if files.len > 0:
-      for file in files.splitLines():
-        if file.len > 0:
-          let fileName = staticExec("basename " & file).strip()
-          testFiles.add(fileName)
+    for file in files.splitLines():
+      if file.len > 0:
+        result.add(file)
 
-  if testFiles.len == 0:
+proc runTests(extraFlags: string) =
+  exec "mkdir -p build/tests"
+  let files = testFiles()
+  if files.len == 0:
     echo "No test files found in tests/ directory."
     return
+  for file in files:
+    let outFile = file.splitFile.name
+    echo "Running test: " & file
+    exec "nim c -r " & extraFlags & " -o:build/tests/" & outFile & " " & file
 
-  echo "Found test files: ", testFiles
+task test, "Run tests":
+  runTests("")
 
-  when defined(windows):
-    for testFile in testFiles:
-      let outFile = testFile.replace(".nim", "")
-      echo "Running test: tests/" & testFile
-      exec "nim c -r -o:build/tests/" & outFile & " tests/" & testFile
-  else:
-    for testFile in testFiles:
-      let outFile = testFile.replace(".nim", "")
-      echo "Running test: tests/" & testFile
-      exec "nim c -r -o:build/tests/" & outFile & " tests/" & testFile
+task testAllVersions, "Run tests once per released protocol version as the build default":
+  for version in releasedProtocolVersions:
+    echo "=== default protocol version " & version & " ==="
+    runTests("-d:mcpDefaultProtocolVersion=" & version)
 
 task clean, "Clean build artifacts":
   # ビルド成果物を管理するための安全で賢いクリーンアップタスク

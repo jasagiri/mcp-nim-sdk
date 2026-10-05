@@ -166,10 +166,7 @@ suite "InMemoryTransport Tests":
     )
     
     # Define a custom version
-    let testVersion = MCPVersion(
-      kind: VersionDate,
-      version: "2024-01-15"
-    )
+    let testVersion = VERSION_20241105
     
     # Send the request with specific version and wait for response
     let response = waitFor pair.clientSide.sendRequestWithVersion(request, testVersion)
@@ -239,10 +236,7 @@ suite "InMemoryTransport Tests":
     )
     
     # Custom version for test
-    let testVersion = MCPVersion(
-      kind: VersionDate,
-      version: "2023-06-30"
-    )
+    let testVersion = VERSION_20241105
     
     # Send the notification with specific version
     waitFor pair.clientSide.sendNotificationWithVersion(notification, testVersion)

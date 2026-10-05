@@ -1,6 +1,6 @@
 ## MCP protocol lifecycle management
 
-import json, options, asyncdispatch
+import json, options
 import ./types
 
 type
@@ -9,6 +9,33 @@ type
     mlsInitializing,   # After initialize request, before initialized notification
     mlsOperational,    # After initialized notification
     mlsShutdown        # After shutdown request or transport close
+
+proc toJson*(capabilities: McpClientCapabilities): JsonNode =
+  ## Wire form: a capability the client did not declare is absent, not null.
+  result = newJObject()
+  if capabilities.roots.isSome:
+    result["roots"] = %*{"listChanged": capabilities.roots.get.listChanged}
+  if capabilities.sampling.isSome:
+    result["sampling"] = newJObject()
+  if capabilities.experimental.isSome:
+    result["experimental"] = capabilities.experimental.get
+
+proc toJson*(capabilities: McpServerCapabilities): JsonNode =
+  ## Wire form: a capability the server did not declare is absent, not null.
+  result = newJObject()
+  if capabilities.prompts.isSome:
+    result["prompts"] = %*{"listChanged": capabilities.prompts.get.listChanged}
+  if capabilities.resources.isSome:
+    result["resources"] = %*{
+      "subscribe": capabilities.resources.get.subscribe,
+      "listChanged": capabilities.resources.get.listChanged
+    }
+  if capabilities.tools.isSome:
+    result["tools"] = %*{"listChanged": capabilities.tools.get.listChanged}
+  if capabilities.logging.isSome:
+    result["logging"] = newJObject()
+  if capabilities.experimental.isSome:
+    result["experimental"] = capabilities.experimental.get
 
 proc createInitializeRequest*(
   clientInfo: McpClientInfo,
@@ -21,7 +48,7 @@ proc createInitializeRequest*(
       "name": clientInfo.name,
       "version": clientInfo.version
     },
-    "capabilities": %capabilities
+    "capabilities": capabilities.toJson()
   }
   
   result = newJsonRpcRequest("1", "initialize", params)
@@ -32,16 +59,16 @@ proc createInitializeResponse*(
   protocolVersion: McpProtocolVersion,
   capabilities: McpServerCapabilities
 ): JsonRpcResponse =
-  let result = %*{
+  let initializeResult = %*{
     "protocolVersion": $protocolVersion,
     "serverInfo": {
       "name": serverInfo.name,
       "version": serverInfo.version
     },
-    "capabilities": %capabilities
+    "capabilities": capabilities.toJson()
   }
-  
-  return newJsonRpcResponse(requestId, result)
+
+  return newJsonRpcResponse(requestId, initializeResult)
 
 proc createInitializedNotification*(): JsonRpcNotification =
   return newJsonRpcNotification("notifications/initialized", newJObject())
