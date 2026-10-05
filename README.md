@@ -8,7 +8,7 @@ This checkout speaks MCP **2026-07-28** and every earlier version: `2024-11-05`,
 
 ## Features of 2026-07-28
 
-42 of the 51 features of `2026-07-28` are implemented in this tree. The table lists every feature the specification of `2026-07-28` defines; "not implemented" means this SDK does not do it yet.
+51 of the 51 features of `2026-07-28` are implemented in this tree. The table lists every feature the specification of `2026-07-28` defines; "not implemented" means this SDK does not do it yet.
 
 | Feature | Status | Specification |
 |---|---|---|
@@ -33,34 +33,34 @@ This checkout speaks MCP **2026-07-28** and every earlier version: `2024-11-05`,
 | MCP-Protocol-Version header | implemented | [basic/transports/streamable-http](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http) |
 | structured tool output | implemented | [server/tools](https://modelcontextprotocol.io/specification/2026-07-28/server/tools) |
 | resource links in tool results | implemented | [server/tools](https://modelcontextprotocol.io/specification/2026-07-28/server/tools) |
-| elicitation | not implemented | [client/elicitation](https://modelcontextprotocol.io/specification/2026-07-28/client/elicitation) |
+| elicitation | implemented | [client/elicitation](https://modelcontextprotocol.io/specification/2026-07-28/client/elicitation) |
 | title fields | implemented | [server/tools](https://modelcontextprotocol.io/specification/2026-07-28/server/tools) |
 | completion context | implemented | [server/utilities/completion](https://modelcontextprotocol.io/specification/2026-07-28/server/utilities/completion) |
 | protected resource metadata | implemented | [basic/authorization](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization) |
 | icons | implemented | [server/tools](https://modelcontextprotocol.io/specification/2026-07-28/server/tools) |
-| URL-mode elicitation | not implemented | [client/elicitation](https://modelcontextprotocol.io/specification/2026-07-28/client/elicitation) |
-| tool use in sampling | not implemented | [client/sampling](https://modelcontextprotocol.io/specification/2026-07-28/client/sampling) |
+| URL-mode elicitation | implemented | [client/elicitation](https://modelcontextprotocol.io/specification/2026-07-28/client/elicitation) |
+| tool use in sampling | implemented | [client/sampling](https://modelcontextprotocol.io/specification/2026-07-28/client/sampling) |
 | client ID metadata documents | implemented | [basic/authorization/client-registration](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization/client-registration) |
 | per-request protocol metadata | implemented | [basic](https://modelcontextprotocol.io/specification/2026-07-28/basic) |
 | server/discover | implemented | [server/discover](https://modelcontextprotocol.io/specification/2026-07-28/server/discover) |
 | resultType | implemented | [basic](https://modelcontextprotocol.io/specification/2026-07-28/basic) |
-| multi round-trip requests | not implemented (the client raises on an input_required result) | [basic/patterns/mrtr](https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/mrtr) |
-| subscriptions/listen | not implemented | [basic/patterns/subscriptions](https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/subscriptions) |
+| multi round-trip requests | implemented | [basic/patterns/mrtr](https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/mrtr) |
+| subscriptions/listen | implemented | [basic/patterns/subscriptions](https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/subscriptions) |
 | cache hints (ttlMs, cacheScope) | implemented | [server/utilities/caching](https://modelcontextprotocol.io/specification/2026-07-28/server/utilities/caching) |
 | mirrored request headers (Mcp-Method, Mcp-Name) | implemented | [basic/transports/streamable-http](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http) |
 | parameter headers (x-mcp-header) | implemented | [basic/transports/streamable-http](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http) |
-| extensions | not implemented | [basic](https://modelcontextprotocol.io/specification/2026-07-28/basic) |
+| extensions | implemented | [basic](https://modelcontextprotocol.io/specification/2026-07-28/basic) |
 | completions capability | implemented | [server/utilities/completion](https://modelcontextprotocol.io/specification/2026-07-28/server/utilities/completion) |
 | dynamic client registration | implemented | [basic/authorization/client-registration](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization/client-registration) |
 | authorization server metadata | implemented | [basic/authorization](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization) |
 | resource indicators | implemented | [basic/authorization](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization) |
 | OpenID Connect discovery | implemented | [basic/authorization/authorization-server-discovery](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization/authorization-server-discovery) |
 | incremental scope consent | implemented | [basic/authorization](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization) |
-| enum schemas in elicitation | not implemented | [client/elicitation](https://modelcontextprotocol.io/specification/2026-07-28/client/elicitation) |
-| elicitation default values | not implemented | [client/elicitation](https://modelcontextprotocol.io/specification/2026-07-28/client/elicitation) |
+| enum schemas in elicitation | implemented | [client/elicitation](https://modelcontextprotocol.io/specification/2026-07-28/client/elicitation) |
+| elicitation default values | implemented | [client/elicitation](https://modelcontextprotocol.io/specification/2026-07-28/client/elicitation) |
 | implementation description | implemented | [server/discover](https://modelcontextprotocol.io/specification/2026-07-28/server/discover) |
 | JSON Schema 2020-12 | implemented | [server/tools](https://modelcontextprotocol.io/specification/2026-07-28/server/tools) |
-| trace context in _meta | not implemented | [basic](https://modelcontextprotocol.io/specification/2026-07-28/basic) |
+| trace context in _meta | implemented | [basic](https://modelcontextprotocol.io/specification/2026-07-28/basic) |
 | authorization response issuer (iss) | implemented | [basic/authorization/security-considerations](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization/security-considerations) |
 | resource-not-found as invalid params | implemented | [server/resources](https://modelcontextprotocol.io/specification/2026-07-28/server/resources) |
 
