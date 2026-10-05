@@ -1,165 +1,83 @@
 ## MCP client prompt operations
 
-import asyncdispatch, json, options, sequtils
+import asyncdispatch, json, options
 import ./client
-import ../protocol/types
+import ./content
+export content
 
 type
-  McpPrompt* = object
-    name*: string
-    description*: string
-    arguments*: seq[McpPromptArgument]
-    
   McpPromptArgument* = object
     name*: string
     description*: Option[string]
     required*: bool
-    
+
+  McpPrompt* = object
+    name*: string
+    title*: Option[string]
+    description*: string
+    arguments*: seq[McpPromptArgument]
+
+  McpPromptMessage* = object
+    role*: string  ## "user" or "assistant"
+    content*: McpContentItem
+
   McpPromptResult* = object
     description*: Option[string]
     messages*: seq[McpPromptMessage]
-    
-  McpPromptMessage* = object
-    role*: string  # "user" or "assistant"
-    content*: McpPromptMessageContent
-    
-  McpPromptMessageContent* = object
-    case kind*: McpPromptContentKind
-    of mpckText:
-      text*: string
-    of mpckImage:
-      imageData*: string
-      imageMimeType*: string
-    of mpckAudio:
-      audioData*: string
-      audioMimeType*: string
-    of mpckResource:
-      resource*: McpEmbeddedResource
-      
-  McpPromptContentKind* = enum
-    mpckText, mpckImage, mpckAudio, mpckResource
-    
-  McpEmbeddedResource* = object
-    uri*: string
-    mimeType*: string
-    text*: Option[string]
-    blob*: Option[string]
 
-proc listPrompts*(client: McpClient, cursor: Option[string] = none(string)): Future[tuple[prompts: seq[McpPrompt], nextCursor: Option[string]]] {.async.} =
-  if client.serverCapabilities.isNone or client.serverCapabilities.get.prompts.isNone:
-    raise newException(ValueError, "Server does not support prompts")
-    
-  var params = newJObject()
-  if cursor.isSome:
-    params["cursor"] = %cursor.get
-  
-  let response = await client.sendRequest("prompts/list", params)
-  
-  if response.error.isSome:
-    let error = response.error.get
-    raise newException(ValueError, "Failed to list prompts: " & error.message)
-  
-  let result = response.result.get
-  
-  var prompts: seq[McpPrompt] = @[]
-  var nextCursor: Option[string] = none(string)
-  
-  # Parse prompts
-  for item in result["prompts"]:
-    var prompt = McpPrompt(
-      name: item["name"].getStr(),
-      description: item["description"].getStr(),
-      arguments: @[]
-    )
-    
-    if item.hasKey("arguments"):
-      for arg in item["arguments"]:
-        var argument = McpPromptArgument(
-          name: arg["name"].getStr(),
-          required: arg["required"].getBool(false)
-        )
-        
-        if arg.hasKey("description"):
-          argument.description = some(arg["description"].getStr())
-          
-        prompt.arguments.add(argument)
-        
-    prompts.add(prompt)
-  
-  # Check for pagination
-  if result.hasKey("nextCursor"):
-    nextCursor = some(result["nextCursor"].getStr())
-    
-  return (prompts: prompts, nextCursor: nextCursor)
+proc requirePrompts(client: McpClient, operation: string) =
+  if client.serverCapabilities.isNone:
+    raise newException(McpConnectionClosedError, operation & ": the client is not connected")
+  client.requireServerCapability(client.serverCapabilities.get.prompts.isSome,
+                                 operation, "prompts")
 
-proc getPrompt*(client: McpClient, name: string, arguments: JsonNode): Future[McpPromptResult] {.async.} =
-  if client.serverCapabilities.isNone or client.serverCapabilities.get.prompts.isNone:
-    raise newException(ValueError, "Server does not support prompts")
-    
-  let params = %*{
-    "name": name,
-    "arguments": arguments
-  }
-  
-  let response = await client.sendRequest("prompts/get", params)
-  
-  if response.error.isSome:
-    let error = response.error.get
-    raise newException(ValueError, "Failed to get prompt: " & error.message)
-  
-  let result = response.result.get
-  
-  var promptResult = McpPromptResult(
-    messages: @[]
-  )
-  
-  if result.hasKey("description"):
-    promptResult.description = some(result["description"].getStr())
-  
-  # Parse messages
-  for item in result["messages"]:
-    let contentJson = item["content"]
-    let contentType = contentJson["type"].getStr()
-    
-    var content: McpPromptMessageContent
-    
-    if contentType == "text":
-      content = McpPromptMessageContent(
-        kind: mpckText,
-        text: contentJson["text"].getStr()
-      )
-    elif contentType == "image":
-      content = McpPromptMessageContent(
-        kind: mpckImage,
-        imageData: contentJson["data"].getStr(),
-        imageMimeType: contentJson["mimeType"].getStr()
-      )
-    elif contentType == "audio":
-      content = McpPromptMessageContent(
-        kind: mpckAudio,
-        audioData: contentJson["data"].getStr(),
-        audioMimeType: contentJson["mimeType"].getStr()
-      )
-    elif contentType == "resource":
-      let resourceJson = contentJson["resource"]
-      var resource = McpEmbeddedResource(
-        uri: resourceJson["uri"].getStr(),
-        mimeType: resourceJson["mimeType"].getStr()
-      )
-      
-      if resourceJson.hasKey("text"):
-        resource.text = some(resourceJson["text"].getStr())
-      elif resourceJson.hasKey("blob"):
-        resource.blob = some(resourceJson["blob"].getStr())
-        
-      content = McpPromptMessageContent(
-        kind: mpckResource,
-        resource: resource
-      )
-    
-    promptResult.messages.add(McpPromptMessage(
-      role: item["role"].getStr(),
-      content: content
-    ))
-    
-  return promptResult
+proc parsePrompt(item: JsonNode): McpPrompt =
+  result = McpPrompt(
+    name: requiredString(item, "name", "prompts/list"),
+    title: optionalString(item, "title"),
+    description: item{"description"}.getStr())
+  let arguments = item{"arguments"}
+  if not arguments.isNil and arguments.kind == JArray:
+    for argument in arguments:
+      result.arguments.add McpPromptArgument(
+        name: requiredString(argument, "name", "prompts/list"),
+        description: optionalString(argument, "description"),
+        required: argument{"required"}.getBool(false))
+
+proc listPrompts*(client: McpClient, cursor: Option[string] = none(string),
+                  options: McpRequestOptions = McpRequestOptions()
+                 ): Future[tuple[prompts: seq[McpPrompt], nextCursor: Option[string]]] {.async.} =
+  client.requirePrompts("prompts/list")
+  let reply = await client.callMethod("prompts/list", pageParams(cursor), options)
+  var prompts: seq[McpPrompt]
+  for item in requiredArray(reply, "prompts", "prompts/list"):
+    prompts.add parsePrompt(item)
+  return (prompts: prompts, nextCursor: parseNextCursor(reply))
+
+proc listAllPrompts*(client: McpClient,
+                     options: McpRequestOptions = McpRequestOptions()): Future[seq[McpPrompt]] =
+  allPages("prompts/list", proc(cursor: Option[string]): Future[tuple[items: seq[McpPrompt], next: Option[string]]] {.async.} =
+    let page = await client.listPrompts(cursor, options)
+    return (items: page.prompts, next: page.nextCursor))
+
+proc fetchPrompt(client: McpClient, params: JsonNode,
+                 options: McpRequestOptions): Future[McpPromptResult] {.async.} =
+  let reply = await client.callMethod("prompts/get", params, options)
+  result.description = optionalString(reply, "description")
+  for message in requiredArray(reply, "messages", "prompts/get"):
+    result.messages.add McpPromptMessage(
+      role: requiredString(message, "role", "prompts/get"),
+      content: parseContentItem(message{"content"}, "prompts/get"))
+
+proc getPrompt*(client: McpClient, name: string,
+                arguments: openArray[(string, string)] = [],
+                options: McpRequestOptions = McpRequestOptions()): Future[McpPromptResult] =
+  ## Prompt arguments are strings on the wire.
+  client.requirePrompts("prompts/get")
+  var params = %*{"name": name}
+  if arguments.len > 0:
+    let argumentsJson = newJObject()
+    for (key, value) in arguments:
+      argumentsJson[key] = %value
+    params["arguments"] = argumentsJson
+  client.fetchPrompt(params, options)

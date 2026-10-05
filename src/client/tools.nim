@@ -1,138 +1,79 @@
 ## MCP client tool operations
 
-import asyncdispatch, json, options, sequtils
+import asyncdispatch, json, options
 import ./client
-import ../protocol/types
+import ./content
+export content
 
 type
-  McpToolContentKind* = enum
-    mctkText, mctkImage, mctkAudio, mctkResource
+  McpToolContentKind* = McpContentKind
+  McpToolContentItem* = McpContentItem
 
-  McpEmbeddedResource* = object
-    uri*: string
-    mimeType*: string
-    text*: Option[string]
-    blob*: Option[string]
+const
+  mctkText* = mckText
+  mctkImage* = mckImage
+  mctkAudio* = mckAudio
+  mctkResource* = mckResource
+  mctkResourceLink* = mckResourceLink
+  mctkUnknown* = mckUnknown
 
-  McpToolContentItem* = object
-    case kind*: McpToolContentKind
-    of mctkText:
-      text*: string
-    of mctkImage:
-      imageData*: string
-      imageMimeType*: string
-    of mctkAudio:
-      audioData*: string
-      audioMimeType*: string
-    of mctkResource:
-      resource*: McpEmbeddedResource
-
+type
   McpToolContent* = object
     contentItems*: seq[McpToolContentItem]
     isError*: bool
+      ## The tool ran and failed; a protocol failure raises instead.
+    structuredContent*: Option[JsonNode]
+      ## As received (2025-06-18 and later); not validated against the
+      ## tool's outputSchema.
 
   McpTool* = object
     name*: string
+    title*: Option[string]
     description*: string
     inputSchema*: JsonNode
+    outputSchema*: Option[JsonNode]
     annotations*: Option[JsonNode]
 
-proc listTools*(client: McpClient, cursor: Option[string] = none(string)): Future[tuple[tools: seq[McpTool], nextCursor: Option[string]]] {.async.} =
-  if client.serverCapabilities.isNone or client.serverCapabilities.get.tools.isNone:
-    raise newException(ValueError, "Server does not support tools")
-    
-  var params = newJObject()
-  if cursor.isSome:
-    params["cursor"] = %cursor.get
-  
-  let response = await client.sendRequest("tools/list", params)
-  
-  if response.error.isSome:
-    let error = response.error.get
-    raise newException(ValueError, "Failed to list tools: " & error.message)
-  
-  let result = response.result.get
-  
-  var tools: seq[McpTool] = @[]
-  var nextCursor: Option[string] = none(string)
-  
-  # Parse tools
-  for item in result["tools"]:
-    var tool = McpTool(
-      name: item["name"].getStr(),
-      description: item["description"].getStr(),
-      inputSchema: item["inputSchema"]
-    )
-    
-    if item.hasKey("annotations"):
-      tool.annotations = some(item["annotations"])
-      
-    tools.add(tool)
-  
-  # Check for pagination
-  if result.hasKey("nextCursor"):
-    nextCursor = some(result["nextCursor"].getStr())
-    
-  return (tools: tools, nextCursor: nextCursor)
+proc requireTools(client: McpClient, operation: string) =
+  if client.serverCapabilities.isNone:
+    raise newException(McpConnectionClosedError, operation & ": the client is not connected")
+  client.requireServerCapability(client.serverCapabilities.get.tools.isSome,
+                                 operation, "tools")
 
-proc callTool*(client: McpClient, name: string, arguments: JsonNode): Future[McpToolContent] {.async.} =
-  if client.serverCapabilities.isNone or client.serverCapabilities.get.tools.isNone:
-    raise newException(ValueError, "Server does not support tools")
-    
-  let params = %*{
-    "name": name,
-    "arguments": arguments
-  }
-  
-  let response = await client.sendRequest("tools/call", params)
-  
-  if response.error.isSome:
-    let error = response.error.get
-    raise newException(ValueError, "Failed to call tool: " & error.message)
-  
-  let result = response.result.get
-  
-  var content = McpToolContent(
-    isError: result["isError"].getBool(false),
-    contentItems: @[]
-  )
-  
-  # Parse content items
-  for item in result["content"]:
-    let contentType = item["type"].getStr()
-    
-    if contentType == "text":
-      content.contentItems.add(McpToolContentItem(
-        kind: mctkText,
-        text: item["text"].getStr()
-      ))
-    elif contentType == "image":
-      content.contentItems.add(McpToolContentItem(
-        kind: mctkImage,
-        imageData: item["data"].getStr(),
-        imageMimeType: item["mimeType"].getStr()
-      ))
-    elif contentType == "audio":
-      content.contentItems.add(McpToolContentItem(
-        kind: mctkAudio,
-        audioData: item["data"].getStr(),
-        audioMimeType: item["mimeType"].getStr()
-      ))
-    elif contentType == "resource":
-      let resourceJson = item["resource"]
-      var resource = McpEmbeddedResource(
-        uri: resourceJson["uri"].getStr(),
-        mimeType: resourceJson["mimeType"].getStr()
-      )
-      
-      if resourceJson.hasKey("text"):
-        resource.text = some(resourceJson["text"].getStr())
-      elif resourceJson.hasKey("blob"):
-        resource.blob = some(resourceJson["blob"].getStr())
-        
-      content.contentItems.add(McpToolContentItem(
-        kind: mctkResource,
-        resource: resource
-      ))
-    
-  return content
+proc parseTool(item: JsonNode): McpTool =
+  McpTool(
+    name: requiredString(item, "name", "tools/list"),
+    title: optionalString(item, "title"),
+    description: item{"description"}.getStr(),
+    inputSchema: item{"inputSchema"},
+    outputSchema: (if item.hasKey("outputSchema"): some(item["outputSchema"]) else: none(JsonNode)),
+    annotations: (if item.hasKey("annotations"): some(item["annotations"]) else: none(JsonNode)))
+
+proc listTools*(client: McpClient, cursor: Option[string] = none(string),
+                options: McpRequestOptions = McpRequestOptions()
+               ): Future[tuple[tools: seq[McpTool], nextCursor: Option[string]]] {.async.} =
+  ## One page of tools; pass the returned nextCursor for the next page.
+  client.requireTools("tools/list")
+  let reply = await client.callMethod("tools/list", pageParams(cursor), options)
+  var tools: seq[McpTool]
+  for item in requiredArray(reply, "tools", "tools/list"):
+    tools.add parseTool(item)
+  return (tools: tools, nextCursor: parseNextCursor(reply))
+
+proc listAllTools*(client: McpClient,
+                   options: McpRequestOptions = McpRequestOptions()): Future[seq[McpTool]] =
+  ## Every tool, following nextCursor to the last page.
+  allPages("tools/list", proc(cursor: Option[string]): Future[tuple[items: seq[McpTool], next: Option[string]]] {.async.} =
+    let page = await client.listTools(cursor, options)
+    return (items: page.tools, next: page.nextCursor))
+
+proc callTool*(client: McpClient, name: string, arguments: JsonNode = newJObject(),
+               options: McpRequestOptions = McpRequestOptions()): Future[McpToolContent] {.async.} =
+  client.requireTools("tools/call")
+  let reply = await client.callMethod("tools/call",
+    %*{"name": name, "arguments": arguments}, options)
+  result.isError = reply{"isError"}.getBool(false)
+  for item in requiredArray(reply, "content", "tools/call"):
+    result.contentItems.add parseContentItem(item, "tools/call")
+  if reply.hasKey("structuredContent"):
+    result.structuredContent = some(reply["structuredContent"])
