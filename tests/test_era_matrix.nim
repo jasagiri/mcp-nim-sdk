@@ -255,6 +255,45 @@ if SpeaksModern:
       waitFor connecting
       check client.negotiatedVersion == some(mpv20250618)
 
+    test "Given a modern peer that answers the probe only after the probe timed out, when it then refuses initialize as unsupported, then the client discovers again and stays modern":
+      # A server that starts slowly (a loaded machine) answers the probe late;
+      # that it refuses initialize with a modern error shows what it is.
+      let pair = newLoopbackPair()
+      let client = newMcpClient(clientInfo())
+      client.probeTimeoutMs = 20
+      let connecting = client.connect(pair.client)
+      let probe = waitFor pair.server.receiveMessage()
+      check probe["method"].getStr() == "server/discover"
+      let init = waitFor pair.server.receiveMessage()
+      check init["method"].getStr() == "initialize"
+      let discovered = %*{"resultType": "complete", "supportedVersions": ["2026-07-28"],
+        "capabilities": {}, "ttlMs": 0, "cacheScope": "private"}
+      pair.client.inject(%*{"jsonrpc": "2.0", "id": probe["id"], "result": discovered})
+      pair.client.inject(%*{"jsonrpc": "2.0", "id": init["id"], "error": {
+        "code": -32022, "message": "Unsupported protocol version",
+        "data": {"supported": ["2026-07-28"], "requested": "2025-11-25"}}})
+      let again = waitFor pair.server.receiveMessage()
+      check again["method"].getStr() == "server/discover"
+      pair.client.inject(%*{"jsonrpc": "2.0", "id": again["id"], "result": discovered})
+      waitFor connecting
+      check client.negotiatedVersion == some(mpv20260728)
+      check pair.client.sent.len == 3
+
+    test "Given a peer that refuses initialize as unsupported though the probe was answered with a legacy error, when the client connects, then connect fails":
+      let pair = newLoopbackPair()
+      let client = newMcpClient(clientInfo())
+      let connecting = client.connect(pair.client)
+      let probe = waitFor pair.server.receiveMessage()
+      pair.client.inject(%*{"jsonrpc": "2.0", "id": probe["id"], "error": {
+        "code": -32601, "message": "Method not found"}})
+      let init = waitFor pair.server.receiveMessage()
+      pair.client.inject(%*{"jsonrpc": "2.0", "id": init["id"], "error": {
+        "code": -32022, "message": "Unsupported protocol version",
+        "data": {"supported": ["2026-07-28"], "requested": "2025-11-25"}}})
+      expect ValueError:
+        waitFor connecting
+      check pair.client.sent.len == 2
+
     test "Given a modern peer that supports only a version the client does not speak, when the client connects, then connect fails naming that version and no initialize is sent":
       let pair = newLoopbackPair()
       let client = newMcpClient(clientInfo())

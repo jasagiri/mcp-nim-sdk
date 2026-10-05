@@ -511,3 +511,5 @@ MCP-HTTP-14 | tests/test_streamable_http.nim | Given a version header that names
 MCP-HTTP-14 | tests/test_streamable_http.nim | Given a version header that differs from a complete body, when posted, then the answer is 400 header mismatch, not invalid params
 MCP-HTTP-14 | tests/test_streamable_http.nim | Given an Mcp-Name with spaces or tabs around it, when posted, then the spaces are not part of the value and the request is served
 MCP-HTTP-14 | tests/test_streamable_http.nim | Given a Base64 Mcp-Name that decodes to a name with spaces around it, when posted, then the spaces are part of the value
+MCP-LIFECYCLE-13 | tests/test_era_matrix.nim | Given a modern peer that answers the probe only after the probe timed out, when it then refuses initialize as unsupported, then the client discovers again and stays modern
+MCP-LIFECYCLE-13 | tests/test_era_matrix.nim | Given a peer that refuses initialize as unsupported though the probe was answered with a legacy error, when the client connects, then connect fails

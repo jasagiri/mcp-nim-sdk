@@ -86,6 +86,13 @@ Feature: Starting a conversation
     When it is answered
     Then it is method not found, as is any unknown method
 
+  @spec:MCP-LIFECYCLE-13 @feature:ftDiscover
+  Scenario: A modern server that answered the probe too late is still met as one
+    Given a modern server that answers the discover probe after its timeout
+    When the client has sent initialize and the server refuses it with an unsupported-version error naming a modern version
+    Then the client discovers again and connects in the modern era
+    And a refusal after a probe that was answered with a legacy error is a failed connect
+
   @spec:MCP-RESULT-1 @feature:ftResultType
   Scenario: Results state their resultType
     Given a handler's result in 2026-07-28

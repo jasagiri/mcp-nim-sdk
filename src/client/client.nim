@@ -461,6 +461,12 @@ proc extractServerCapabilities(json: JsonNode): McpServerCapabilities =
   if not experimentalJson.isNil:
     result.experimental = some(experimentalJson)
 
+type ModernServerRefusedInitialize = object of ValueError
+  ## The server answered initialize with a 2026-07-28 error: it is a
+  ## modern server, whatever the probe showed.
+
+proc spokenVersions(client: McpClient, offered: JsonNode): seq[McpProtocolVersion]
+
 proc initialize*(client: McpClient): Future[McpServerCapabilities] {.async.} =
   if client.state != mlsUninitialized:
     raise newException(ValueError, "Client already initialized")
@@ -481,6 +487,10 @@ proc initialize*(client: McpClient): Future[McpServerCapabilities] {.async.} =
 
   if response.error.isSome:
     let error = response.error.get
+    if error.code == ErrUnsupportedProtocolVersion and not error.data.isNil and
+       client.spokenVersions(error.data{"supported"}).anyIt(isModern(it)):
+      raise newException(ModernServerRefusedInitialize,
+        "Initialization failed: " & error.message)
     raise newException(ValueError, "Initialization failed: " & error.message)
 
   let resultData = response.result.get
@@ -535,10 +545,14 @@ proc noCommonVersion(client: McpClient, offered: JsonNode): ref ValueError =
     (if offered.isNil: "none" else: $offered) & ", this client speaks up to " &
     $client.protocolVersion)
 
-proc discover(client: McpClient): Future[bool] {.async.} =
-  ## Probe for a 2026-07-28 server. True when the connection is established
-  ## in that era; false when the server is a legacy one and `initialize`
-  ## must follow. Raises when the server is modern but shares no version.
+type ProbeVerdict = enum
+  pvModern   ## the connection is established in that era
+  pvLegacy   ## the server answered like a legacy one
+  pvSilent   ## no answer in time: a legacy stdio server may never answer
+
+proc discover(client: McpClient, timeoutMs: int): Future[ProbeVerdict] {.async.} =
+  ## Probe for a 2026-07-28 server. Raises when the server is modern but
+  ## shares no version.
   var version = client.protocolVersion
   for attempt in 0 .. 1:
     let meta = requestMeta(version, client.clientInfo, client.capabilities.toJson())
@@ -547,18 +561,18 @@ proc discover(client: McpClient): Future[bool] {.async.} =
       started = await client.startRequest(DiscoverMethod, withRequestMeta(nil, meta))
     except McpTransportError:
       # A legacy HTTP server rejects the probe without a JSON-RPC body.
-      return false
-    if not await withTimeout(started.response, client.probeTimeoutMs):
+      return pvLegacy
+    if not await withTimeout(started.response, timeoutMs):
       # A legacy stdio server may not answer a request before initialize.
       client.pendingRequests.del(started.id)
-      return false
+      return pvSilent
 
     let response = started.response.read
     if response.error.isSome:
       let error = response.error.get
       if error.code != ErrUnsupportedProtocolVersion:
         # Legacy servers answer the probe with implementation-defined errors.
-        return false
+        return pvLegacy
       let offered = error.data{"supported"}
       let common = client.spokenVersions(offered)
       let modernChoice = newestModern(common)
@@ -566,7 +580,7 @@ proc discover(client: McpClient): Future[bool] {.async.} =
         version = modernChoice.get
         continue
       if common.len > 0 and modernChoice.isNone:
-        return false
+        return pvLegacy
       raise client.noCommonVersion(offered)
 
     let discovered = response.result.get
@@ -575,7 +589,7 @@ proc discover(client: McpClient): Future[bool] {.async.} =
     let modernChoice = newestModern(common)
     if modernChoice.isNone:
       if common.len > 0:
-        return false
+        return pvLegacy
       raise client.noCommonVersion(offered)
 
     client.negotiatedVersion = modernChoice
@@ -586,8 +600,8 @@ proc discover(client: McpClient): Future[bool] {.async.} =
       client.serverInfo = some(McpServerInfo(
         name: identity{"name"}.getStr(), version: identity{"version"}.getStr()))
     client.state = mlsOperational
-    return true
-  return false
+    return pvModern
+  return pvLegacy
 
 proc connect*(client: McpClient, transport: McpTransport): Future[void] {.async.} =
   ## Attach `transport` and establish the connection: with server/discover
@@ -598,12 +612,25 @@ proc connect*(client: McpClient, transport: McpTransport): Future[void] {.async.
   # Start message processing
   asyncCheck client.processMessages()
 
-  if isModern(client.protocolVersion) and await client.discover():
-    return
+  var verdict = pvLegacy
+  if isModern(client.protocolVersion):
+    verdict = await client.discover(client.probeTimeoutMs)
+    if verdict == pvModern:
+      return
 
   # The returned capabilities are stored on `client.serverCapabilities`
   # (audit #9); callers can inspect them via `client.capabilities()`.
-  discard await client.initialize()
+  try:
+    discard await client.initialize()
+  except ModernServerRefusedInitialize:
+    # A server too slow to answer the probe in time shows what it is by
+    # refusing initialize with a modern error. Ask again, now that it is
+    # known to answer, for as long as any request may take.
+    if verdict != pvSilent:
+      raise
+    let confirmed = await client.discover(client.requestTimeoutMs)
+    if confirmed != pvModern:
+      raise
 
 proc close*(client: McpClient): Future[void] {.async.} =
   client.state = mlsShutdown
