@@ -2516,3 +2516,23 @@ MCP-EXT-TASKS-16 | tests/test_ext_tasks_dual.nim | Given a server with only the 
 MCP-EXT-TASKS-16 | tests/test_ext_tasks_dual.nim | Given a server with only the core's tasks, when a 2026-07-28 client declares the extension and asks, then it gets the result and no tasks methods
 MCP-EXT-TASKS-10 | tests/test_ext_tasks_http.nim | Given a task over HTTP, when the client polls, cancels and updates it, then every request passes the header check
 MCP-EXT-TASKS-10 | tests/test_ext_tasks_http.nim | Given a task over HTTP, when tasks/get carries another Mcp-Name than its taskId, then the server answers a header mismatch
+MCP-EXT-SKILLS-1 | tests/test_ext_skills_model.nim | Given a SKILL.md with scalars, quotes, block scalars, lists and a mapping, when its frontmatter is read, then the fields are JSON
+MCP-EXT-SKILLS-1 | tests/test_ext_skills_model.nim | Given the specification's SKILL.md, when read, then name and description come out
+MCP-EXT-SKILLS-1 | tests/test_ext_skills_model.nim | Given text outside the supported subset, when read, then FrontmatterError is raised
+MCP-EXT-SKILLS-1 | tests/test_ext_skills_model.nim | Given a frontmatter that is empty, when read, then there are no fields
+MCP-EXT-SKILLS-2 | tests/test_ext_skills_model.nim | Given ordinary names, when validated, then they are accepted
+MCP-EXT-SKILLS-2 | tests/test_ext_skills_model.nim | Given names that break the Agent Skills rules, when validated, then each is refused
+MCP-EXT-SKILLS-2 | tests/test_ext_skills_model.nim | Given descriptions of 0, 1 and 1025 characters, when validated, then only the middle one is accepted
+MCP-EXT-SKILLS-3 | tests/test_ext_skills_model.nim | Given URIs that could leave the skill, when split, then none is accepted
+MCP-EXT-SKILLS-3 | tests/test_ext_skills_model.nim | Given ordinary URIs, when split, then the scheme and path come out
+MCP-EXT-SKILLS-3 | tests/test_ext_skills_model.nim | Given a SKILL.md URI, when its root is taken, then the suffix goes and a bad URI has none
+MCP-EXT-SKILLS-3 | tests/test_ext_skills_model.nim | Given a skill root, when a file URI is resolved against it, then only files strictly inside resolve
+MCP-EXT-SKILLS-3 | tests/test_ext_skills_model.nim | Given file paths a server names inside a skill, when checked, then absolute and climbing paths are refused
+MCP-EXT-SKILLS-4 | tests/test_ext_skills_model.nim | Given the same URI from two servers, when storage paths are computed, then they differ and stay under the root
+MCP-EXT-SKILLS-4 | tests/test_ext_skills_model.nim | Given a label or URI that climbs out of the root, when a storage path is computed, then SkillsError is raised
+MCP-EXT-SKILLS-5 | tests/test_ext_skills_model.nim | Given the specification's entry, when parsed, then it is accepted and round-trips
+MCP-EXT-SKILLS-5 | tests/test_ext_skills_model.nim | Given an entry whose resources is dynamic, when parsed, then it is dynamic and has no files
+MCP-EXT-SKILLS-5 | tests/test_ext_skills_model.nim | Given entries that break one rule each, when parsed, then each raises SkillsError
+MCP-EXT-SKILLS-5 | tests/test_ext_skills_model.nim | Given the limits exactly, when an entry is parsed, then it is accepted
+MCP-EXT-SKILLS-5 | tests/test_ext_skills_model.nim | Given the files of the specification's example, when digested, then the digests match the published ones
+MCP-EXT-SKILLS-5 | tests/test_ext_skills_model.nim | Given entries with the same files in another order or another digest, when bound, then the binding follows the set
