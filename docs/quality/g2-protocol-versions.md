@@ -49,6 +49,12 @@
 | `src/protocol/sampling_tools.nim` | `tests/test_sampling_tools_payload.nim` | 2026-10-06 |
 | `src/server/server.nim` (createMessage: tools と結果の検査) | `tests/test_server_sampling_tools.nim` | 2026-10-06 |
 | `src/client/sampling.nim` (tools、複数ブロック、検査) | `tests/test_client_sampling_tools.nim` | 2026-10-06 |
+| `src/protocol/tasks.nim` | `tests/test_tasks_store.nim` | 2026-10-06 |
+| `src/protocol/task_methods.nim` | `tests/test_tasks_server.nim`, `tests/test_tasks_client.nim` | 2026-10-06 |
+| `src/server/tasks.nim` | `tests/test_tasks_server.nim`, `tests/test_tasks_end_to_end.nim` | 2026-10-06 |
+| `src/client/tasks.nim` | `tests/test_tasks_client.nim`, `tests/test_tasks_end_to_end.nim` | 2026-10-06 |
+| `src/server/server.nim` (リクエスト傍受、`serveDetached`、タスクに属するサーバー発リクエスト) | `tests/test_tasks_server.nim` | 2026-10-06 |
+| `src/protocol/lifecycle.nim` (`tasks` capability の入出力) | `tests/test_tasks_server.nim`, `tests/test_tasks_client.nim` | 2026-10-06 |
 
 ## 手で確かめたもの (nim-muter の測定ではない)
 

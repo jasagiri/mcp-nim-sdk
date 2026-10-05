@@ -1,0 +1,117 @@
+## Tasks between the SDK's own client and server over an in-process
+## transport, in 2025-11-25: the two halves must agree on the wire, not only
+## each with a hand-written peer.
+
+import std/[asyncdispatch, json, options, unittest]
+import server/server except McpRequestError
+import server/tasks
+import client/client
+import client/content
+import client/sampling
+import client/tools
+import client/tasks
+import protocol/types
+import protocol/tasks
+import ./loopback_transport
+
+const TaskVersion = mpv20251125
+
+proc textOf(text: string): JsonNode =
+  %*{"content": [{"type": "text", "text": text}]}
+
+proc taskServer(store: TaskStore): McpServer =
+  let server = newMcpServer(McpServerInfo(name: "s", version: "1"),
+    capabilities = McpServerCapabilities(tools: some(McpToolsCapability())))
+  server.onToolsList(proc(cursor: Option[string]): Future[McpPage] {.async.} =
+    return McpPage(items: @[
+      %*{"name": "report", "inputSchema": {"type": "object"},
+         "execution": {"taskSupport": "optional"}},
+      %*{"name": "ask", "inputSchema": {"type": "object"},
+         "execution": {"taskSupport": "optional"}}]))
+  server.onToolCall(proc(ctx: McpRequestContext, name: string,
+                         arguments: JsonNode): Future[JsonNode] {.async.} =
+    case name
+    of "ask":
+      let answer = await ctx.createMessage(%*{
+        "messages": [{"role": "user", "content": {"type": "text", "text": "name?"}}],
+        "maxTokens": 5})
+      return textOf("the client said " & answer["content"]["text"].getStr())
+    else:
+      await sleepAsync(10)
+      return textOf("report of " & arguments{"topic"}.getStr()))
+  discard server.enableTasks(store = store)
+  server
+
+proc quickStore(): TaskStore =
+  newTaskStore(pollIntervalMs = some(5))
+
+proc connected(server: McpServer, configure: proc(client: McpClient) = nil): McpClient =
+  let pair = newLoopbackPair()
+  waitFor server.attachTransport(pair.server)
+  let client = newMcpClient(McpClientInfo(name: "c", version: "1"), TaskVersion)
+  if not configure.isNil:
+    configure(client)
+  waitFor client.connect(pair.client)
+  client
+
+if isSupported(TaskVersion):
+  suite "tasks end to end":
+    test "Given a server with tasks, when a client calls a tool as a task, then it learns the task and gets the result":
+      let server = taskServer(quickStore())
+      let client = server.connected()
+      check client.negotiatedVersion == some(TaskVersion)
+      check client.serverCapabilities.get.tasks.get.toolsCall
+      let tools = waitFor client.listAllTools()
+      let report = tools[0]
+      let created = waitFor client.callToolAsTask(report, %*{"topic": "sales"}, some(60_000'i64))
+      check created.task.status == tsWorking
+      check created.task.ttlMs == some(60_000'i64)
+      let finished = waitFor client.waitForTask(created.task.taskId)
+      check finished.status == tsCompleted
+      let payload = waitFor client.taskResult(created.task.taskId)
+      check toolContentOf(payload).contentItems[0].text == "report of sales"
+      check waitFor(client.listAllTasks()).len == 1
+
+    test "Given a tool, when called with callToolWithTask, then the result is the same as a plain call":
+      let server = taskServer(quickStore())
+      let client = server.connected()
+      let tools = waitFor client.listAllTools()
+      let viaTask = waitFor client.callToolWithTask(tools[0], %*{"topic": "x"})
+      let plain = waitFor client.callTool("report", %*{"topic": "x"})
+      check viaTask.contentItems[0].text == plain.contentItems[0].text
+
+    test "Given a task that cancels, when the client cancels it, then it is cancelled for both":
+      let server = taskServer(quickStore())
+      let client = server.connected()
+      let tools = waitFor client.listAllTools()
+      let created = waitFor client.callToolAsTask(tools[0], %*{"topic": "x"})
+      let cancelled = waitFor client.cancelTask(created.task.taskId)
+      check cancelled.status == tsCancelled
+      check waitFor(client.getTask(created.task.taskId)).status == tsCancelled
+      expect McpRequestError:
+        discard waitFor client.taskResult(created.task.taskId)
+
+    test "Given a tool that asks the client for sampling, when called with a task, then the client answers and the task completes":
+      let server = taskServer(quickStore())
+      let client = server.connected(proc(client: McpClient) =
+        client.setSamplingHandler(proc(request: McpSamplingRequest): Future[McpSamplingResult] {.async.} =
+          return McpSamplingResult(role: "assistant", model: "m",
+            content: McpContentItem(kind: mckText, text: "Ada"))))
+      let tools = waitFor client.listAllTools()
+      let content = waitFor client.callToolWithTask(tools[1])
+      check content.contentItems[0].text == "the client said Ada"
+
+    test "Given a client that receives tasks, when the server asks for sampling as a task, then the answer is the handler's":
+      let server = taskServer(quickStore())
+      let client = server.connected(proc(client: McpClient) =
+        client.setSamplingHandler(proc(request: McpSamplingRequest): Future[McpSamplingResult] {.async.} =
+          await sleepAsync(10)
+          return McpSamplingResult(role: "assistant", model: "m",
+            content: McpContentItem(kind: mckText, text: "Grace")))
+        discard client.enableClientTasks(store = quickStore()))
+      discard client
+      let answer = waitFor server.createMessageAsTask("", %*{
+        "messages": [{"role": "user", "content": {"type": "text", "text": "name?"}}],
+        "maxTokens": 5})
+      check answer["content"]["text"].getStr() == "Grace"
+      check answer["model"].getStr() == "m"
