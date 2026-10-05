@@ -121,3 +121,9 @@ Feature: Streamable HTTP transport
     And a posted initialize is answered 400 naming the versions the server speaks
     And the HTTP+SSE paths do not exist
 
+  @spec:MCP-HTTP-17 @feature:ftStreamableHttp
+  Scenario: A client's timeouts hold against a server that never answers
+    Given a server that accepts the connection and never answers
+    When a client connects, or sends a request with a timeout
+    Then McpTimeoutError is raised after the timeout instead of waiting forever
+

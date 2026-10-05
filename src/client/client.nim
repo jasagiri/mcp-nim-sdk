@@ -410,30 +410,59 @@ proc ensureOpen(client: McpClient) =
   if client.transport.isNil or client.state == mlsShutdown:
     raise newException(McpConnectionClosedError, "the client is not connected")
 
-proc startRequest*(client: McpClient, methodName: string, params: JsonNode,
-                   id = ""): Future[tuple[id: string, response: Future[JsonRpcResponse]]] {.async.} =
-  ## Send a request and hand back its response as a future, without waiting.
-  ## `params` go as given: a 2026-07-28 request needs its `_meta` already in
-  ## them (`sendRequest` adds it). `id` names the request; empty picks one.
+type StartedRequest = tuple[id: string, response: Future[JsonRpcResponse], sent: Future[void]]
+
+proc beginRequest(client: McpClient, methodName: string, params: JsonNode,
+                  id = ""): StartedRequest =
+  ## Hand the request to the transport without waiting for it to be sent.
+  ## Over HTTP sending ends only when the server starts to answer, so a
+  ## caller that waited for it could not time out on a server that never
+  ## does. When sending fails, `response` fails with the transport's error.
   client.ensureOpen()
   let id = if id.len > 0: id else: $genUUID()
   let promise = newFuture[JsonRpcResponse]("McpClient.request")
   client.pendingRequests[id] = promise
-  try:
-    await client.transport.sendRequest(newJsonRpcRequest(id, methodName, params))
-  except CatchableError as e:
-    client.pendingRequests.del(id)
-    raise e
-  return (id: id, response: promise)
+  let sent = client.transport.sendRequest(newJsonRpcRequest(id, methodName, params))
+  sent.addCallback(proc() =
+    if not sent.failed:
+      return
+    let error = sent.readError()
+    if client.pendingRequests.getOrDefault(id) == promise and not promise.finished:
+      client.pendingRequests.del(id)
+      promise.fail(error)
+    else:
+      # Nobody waits for this request any more (it timed out or was cancelled).
+      stderr.writeLine("[mcp-client] sending " & methodName & " failed after the request " &
+                       "was given up: " & error.msg))
+  (id: id, response: promise, sent: sent)
+
+proc startRequest*(client: McpClient, methodName: string, params: JsonNode,
+                   id = ""): Future[tuple[id: string, response: Future[JsonRpcResponse]]] {.async.} =
+  ## Send a request and hand back its response as a future, without waiting
+  ## for the response. `params` go as given: a 2026-07-28 request needs its
+  ## `_meta` already in them (`sendRequest` adds it). `id` names the request;
+  ## empty picks one. Raises what the transport raises when sending fails.
+  let started = client.beginRequest(methodName, params, id)
+  # Whichever comes first: the request is out, or sending failed and the
+  # response carries the error.
+  await (started.sent or started.response)
+  if started.response.failed:
+    raise started.response.readError()
+  return (id: started.id, response: started.response)
 
 proc sendNotification*(client: McpClient, methodName: string, params: JsonNode): Future[void] {.async.} =
   client.ensureOpen()
   let notification = newJsonRpcNotification(methodName, params)
   await client.transport.sendNotification(notification)
 
-proc abandon*(client: McpClient, id, methodName, reason: string) {.async.} =
+proc abandon*(client: McpClient, id, methodName, reason: string,
+              unsent = false) {.async.} =
   ## Stop waiting for `id` and tell the server to stop working on it.
+  ## `unsent`: the transport is still sending the request (over HTTP, still
+  ## waiting for the server to start answering), so that is given up too.
   client.pendingRequests.del(id)
+  if unsent:
+    client.transport.cancelRequest(id)
   # initialize must not be cancelled. Over HTTP the 2026-07-28 protocol
   # cancels by closing the request's response stream, not by a message.
   if methodName == "initialize" or client.state == mlsShutdown:
@@ -441,11 +470,20 @@ proc abandon*(client: McpClient, id, methodName, reason: string) {.async.} =
   if client.usesModernProtocol and client.transport.kind != mtkStdio:
     client.transport.cancelRequest(id)
     return
+  # Not awaited: over HTTP a notification is sent only when the server
+  # answers the POST, and a server that has stopped answering is a common
+  # reason to be here.
+  var cancelling: Future[void]
   try:
-    await client.sendNotification("notifications/cancelled",
+    cancelling = client.sendNotification("notifications/cancelled",
       %*{"requestId": id, "reason": reason})
   except CatchableError as e:
     stderr.writeLine("[mcp-client] could not cancel request " & id & ": " & e.msg)
+    return
+  cancelling.addCallback(proc() =
+    if cancelling.failed:
+      stderr.writeLine("[mcp-client] could not cancel request " & id & ": " &
+                       cancelling.readError().msg))
 
 proc sendOnce(client: McpClient, methodName: string, params: JsonNode,
               options: McpRequestOptions): Future[JsonRpcResponse] {.async.} =
@@ -474,7 +512,7 @@ proc sendOnce(client: McpClient, methodName: string, params: JsonNode,
     client.progressCallbacks[progressKey] = options.onProgress
   var response: JsonRpcResponse
   try:
-    let started = await client.startRequest(methodName, wireParams)
+    let started = client.beginRequest(methodName, wireParams)
     let timeoutMs = options.timeoutMs.get(client.requestTimeoutMs)
     let timer = if timeoutMs > 0: sleepAsync(timeoutMs)
                 else: newFuture[void]("McpClient.noTimeout")
@@ -485,12 +523,12 @@ proc sendOnce(client: McpClient, methodName: string, params: JsonNode,
       response = started.response.read
     elif cancelled.finished:
       let reason = options.cancel.reason
-      await client.abandon(started.id, methodName, reason)
+      await client.abandon(started.id, methodName, reason, unsent = not started.sent.finished)
       raise newException(McpCancelledError, methodName & ": cancelled" &
         (if reason.len > 0: " (" & reason & ")" else: ""))
     else:
       await client.abandon(started.id, methodName,
-        "no response within " & $timeoutMs & " ms")
+        "no response within " & $timeoutMs & " ms", unsent = not started.sent.finished)
       raise newException(McpTimeoutError,
         methodName & ": no response within " & $timeoutMs & " ms")
   finally:
@@ -752,15 +790,18 @@ proc discover(client: McpClient, timeoutMs: int): Future[ProbeVerdict] {.async.}
   var version = client.protocolVersion
   for attempt in 0 .. 1:
     let meta = requestMeta(version, client.clientInfo, client.capabilities.toJson())
-    var started: tuple[id: string, response: Future[JsonRpcResponse]]
+    let started = client.beginRequest(DiscoverMethod, withRequestMeta(nil, meta))
+    var answered = false
     try:
-      started = await client.startRequest(DiscoverMethod, withRequestMeta(nil, meta))
+      answered = await withTimeout(started.response, timeoutMs)
     except McpTransportError:
       # A legacy HTTP server rejects the probe without a JSON-RPC body.
       return pvLegacy
-    if not await withTimeout(started.response, timeoutMs):
+    if not answered:
       # A legacy stdio server may not answer a request before initialize.
       client.pendingRequests.del(started.id)
+      if not started.sent.finished:
+        client.transport.cancelRequest(started.id)
       return pvSilent
 
     let response = started.response.read
