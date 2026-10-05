@@ -87,6 +87,22 @@ type
   McpCompletionsCapability* = object
     # Currently empty in the protocol
 
+  # Icons (2025-11-25 and later) on implementations, tools, resources,
+  # resource templates, prompts and resource links
+  McpIconTheme* = enum
+    itLight = "light"
+    itDark = "dark"
+
+  McpIcon* = object
+    src*: string
+      ## An https URL or a base64 `data:` URI. A consumer MUST NOT fetch or
+      ## show one it has not screened (client/content.nim `safeIcons`).
+    mimeType*: Option[string]
+    sizes*: seq[string]
+      ## `["48x48"]`, `["any"]` for a scalable format.
+    theme*: Option[McpIconTheme]
+      ## The background the icon is meant for.
+
   # MCP initialization
   McpClientInfo* = object
     name*: string

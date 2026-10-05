@@ -121,3 +121,27 @@ Feature: Content of tools, resources and prompts
     Given listed items with and without titles
     When the client asks for their display names
     Then it is the title when there is one and the name otherwise
+
+  @spec:MCP-ICONS-1 @feature:ftIcons
+  Scenario: Icons are sent to a version that has them
+    Given tools, resources, resource templates, prompts and resource links that have icons
+    When a client of a version with icons lists or calls them
+    Then the icons arrive as the handler wrote them
+
+  @spec:MCP-ICONS-2 @feature:ftIcons
+  Scenario: A version without icons gets none
+    Given the same items
+    When a client of a version before 2025-11-25 lists or calls them
+    Then no icons field is sent
+
+  @spec:MCP-ICONS-3 @feature:ftIcons
+  Scenario: A client reads icons
+    Given listed items with icons
+    When the client lists them
+    Then each item carries src, mimeType, sizes and theme, and a malformed icon is a protocol error
+
+  @spec:MCP-ICONS-4 @feature:ftIcons
+  Scenario: A client screens icon URIs before using them
+    Given icons with various URIs
+    When the client screens them, with or without the server's origin
+    Then only https URLs (of the server's origin when it is given) and base64 image data URIs remain

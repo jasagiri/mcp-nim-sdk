@@ -1,16 +1,32 @@
 ## MCP server tool utilities
 
 import json, options
+import ../protocol/content
+import ../protocol/types
 
-proc createToolInfo*(name: string, description: string, inputSchema: JsonNode, annotations: JsonNode = nil): JsonNode =
+proc createToolInfo*(name: string, description: string, inputSchema: JsonNode,
+                     annotations: JsonNode = nil, title = "",
+                     outputSchema: JsonNode = nil,
+                     icons: seq[McpIcon] = @[]): JsonNode =
+  ## A tool definition for tools/list. Fields the client's protocol version
+  ## does not have (annotations, title, outputSchema, icons) are left out
+  ## when the server answers, so they can be set whatever the version.
   result = %*{
     "name": name,
     "description": description,
     "inputSchema": inputSchema
   }
-  
+
   if not annotations.isNil:
     result["annotations"] = annotations
+  if title.len > 0:
+    result["title"] = %title
+  if not outputSchema.isNil:
+    result["outputSchema"] = outputSchema
+  if icons.len > 0:
+    result["icons"] = newJArray()
+    for icon in icons:
+      result["icons"].add icon.toJson
 
 proc createToolResult*(content: seq[JsonNode], isError: bool = false): JsonNode =
   result = %*{

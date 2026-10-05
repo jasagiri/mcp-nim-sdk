@@ -8,7 +8,7 @@ This checkout speaks MCP **2026-07-28** and every earlier version: `2024-11-05`,
 
 ## Features of 2026-07-28
 
-39 of the 51 features of `2026-07-28` are implemented in this tree. The table lists every feature the specification of `2026-07-28` defines; "not implemented" means this SDK does not do it yet.
+40 of the 51 features of `2026-07-28` are implemented in this tree. The table lists every feature the specification of `2026-07-28` defines; "not implemented" means this SDK does not do it yet.
 
 | Feature | Status | Specification |
 |---|---|---|
@@ -37,7 +37,7 @@ This checkout speaks MCP **2026-07-28** and every earlier version: `2024-11-05`,
 | title fields | implemented | [server/tools](https://modelcontextprotocol.io/specification/2026-07-28/server/tools) |
 | completion context | implemented | [server/utilities/completion](https://modelcontextprotocol.io/specification/2026-07-28/server/utilities/completion) |
 | protected resource metadata | implemented | [basic/authorization](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization) |
-| icons | not implemented | [server/tools](https://modelcontextprotocol.io/specification/2026-07-28/server/tools) |
+| icons | implemented | [server/tools](https://modelcontextprotocol.io/specification/2026-07-28/server/tools) |
 | URL-mode elicitation | not implemented | [client/elicitation](https://modelcontextprotocol.io/specification/2026-07-28/client/elicitation) |
 | tool use in sampling | not implemented | [client/sampling](https://modelcontextprotocol.io/specification/2026-07-28/client/sampling) |
 | client ID metadata documents | implemented | [basic/authorization/client-registration](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization/client-registration) |

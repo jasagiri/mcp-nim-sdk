@@ -1,7 +1,10 @@
 ## Content blocks shared by tool results, prompt messages and sampling.
 
-import asyncdispatch, json, options, sets
+import asyncdispatch, json, options, sets, strutils, uri
 import ./client
+import ../protocol/types
+import ../protocol/content as wire
+export types.McpIcon, types.McpIconTheme
 
 type
   McpContentKind* = enum
@@ -32,6 +35,7 @@ type
       linkDescription*: Option[string]
       linkMimeType*: Option[string]
       linkSize*: Option[int]
+      linkIcons*: seq[McpIcon]
     of mckUnknown:
       raw*: JsonNode
         ## A block whose type this client does not know, kept as received.
@@ -52,6 +56,14 @@ proc requiredArray*(node: JsonNode, key: string, context: string): JsonNode =
   if value.isNil or value.kind != JArray:
     raise newException(McpProtocolError, context & ": missing array field '" & key & "'")
   value
+
+proc iconsOf*(node: JsonNode, context: string): seq[McpIcon] =
+  ## The `icons` of a listed item or content block; a malformed field is a
+  ## protocol error.
+  try:
+    wire.iconsOf(node)
+  except McpShapeError as e:
+    raise newException(McpProtocolError, context & ": " & e.msg)
 
 proc parseEmbeddedResource*(node: JsonNode, context: string): McpEmbeddedResource =
   if node.isNil or node.kind != JObject:
@@ -86,7 +98,8 @@ proc parseContentItem*(node: JsonNode, context: string): McpContentItem =
       linkTitle: optionalString(node, "title"),
       linkDescription: optionalString(node, "description"),
       linkMimeType: optionalString(node, "mimeType"),
-      linkSize: (if node.hasKey("size"): some(node["size"].getInt()) else: none(int)))
+      linkSize: (if node.hasKey("size"): some(node["size"].getInt()) else: none(int)),
+      linkIcons: iconsOf(node, context))
   else:
     McpContentItem(kind: mckUnknown, raw: node)
 
@@ -107,6 +120,10 @@ proc toJson*(item: McpContentItem): JsonNode =
     if item.linkMimeType.isSome: result["mimeType"] = %item.linkMimeType.get
     if item.linkTitle.isSome: result["title"] = %item.linkTitle.get
     if item.linkSize.isSome: result["size"] = %item.linkSize.get
+    if item.linkIcons.len > 0:
+      result["icons"] = newJArray()
+      for icon in item.linkIcons:
+        result["icons"].add icon.toJson
   of mckUnknown: result = item.raw
 
 proc parseNextCursor*(reply: JsonNode): Option[string] =
@@ -134,3 +151,33 @@ proc allPages*[T](what: string,
         what & ": the server repeated cursor '" & page.next.get & "'")
     seen.incl page.next.get
     cursor = page.next
+
+proc originOf(url: Uri): string =
+  ## scheme://host[:port] with the default port left out and case folded.
+  let scheme = url.scheme.toLowerAscii
+  let defaultPort = if scheme == "https": "443" else: ""
+  result = scheme & "://" & url.hostname.toLowerAscii
+  if url.port.len > 0 and url.port != defaultPort:
+    result.add ":" & url.port
+
+proc isSafeIconUri*(src: string, serverOrigin = ""): bool =
+  ## Whether a client may fetch or show the icon at `src` (2025-11-25,
+  ## basic/index, Icons: security considerations): an https URL or a base64
+  ## image `data:` URI, never another scheme. When `serverOrigin` is given
+  ## (`https://host[:port]`), an https icon must come from that origin.
+  ## This screens the URI only. The consumer still has to fetch without
+  ## credentials, refuse redirects to another origin, limit sizes and check
+  ## the bytes against an allowlist of image types.
+  if src.toLowerAscii.startsWith("data:"):
+    let header = src[5 .. ^1].split(',', maxsplit = 1)[0].toLowerAscii
+    return header.startsWith("image/") and header.endsWith(";base64")
+  let url = parseUri(src)
+  if url.scheme.toLowerAscii != "https" or url.hostname.len == 0:
+    return false
+  serverOrigin.len == 0 or originOf(url) == originOf(parseUri(serverOrigin))
+
+proc safeIcons*(icons: seq[McpIcon], serverOrigin = ""): seq[McpIcon] =
+  ## The icons whose URI passes `isSafeIconUri`.
+  for icon in icons:
+    if isSafeIconUri(icon.src, serverOrigin):
+      result.add icon

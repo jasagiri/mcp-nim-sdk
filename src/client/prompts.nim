@@ -16,6 +16,7 @@ type
     name*: string
     title*: Option[string]
     description*: string
+    icons*: seq[McpIcon]
     arguments*: seq[McpPromptArgument]
 
   McpPromptMessage* = object
@@ -43,7 +44,8 @@ proc parsePrompt(item: JsonNode): McpPrompt =
   result = McpPrompt(
     name: requiredString(item, "name", "prompts/list"),
     title: optionalString(item, "title"),
-    description: item{"description"}.getStr())
+    description: item{"description"}.getStr(),
+    icons: iconsOf(item, "prompts/list"))
   let arguments = item{"arguments"}
   if not arguments.isNil and arguments.kind == JArray:
     for argument in arguments:

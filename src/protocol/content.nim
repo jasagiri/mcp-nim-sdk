@@ -9,6 +9,7 @@
 import std/[json, options]
 import ./features
 import ./json_schema
+import ./types
 import ./version
 
 type
@@ -85,6 +86,47 @@ func toJson*(a: McpToolAnnotations): JsonNode {.raises: [].} =
   if a.idempotentHint.isSome: result["idempotentHint"] = %a.idempotentHint.get
   if a.openWorldHint.isSome: result["openWorldHint"] = %a.openWorldHint.get
 
+func toJson*(icon: McpIcon): JsonNode =
+  result = %*{"src": icon.src}
+  if icon.mimeType.isSome: result["mimeType"] = %icon.mimeType.get
+  if icon.sizes.len > 0: result["sizes"] = %icon.sizes
+  if icon.theme.isSome: result["theme"] = %($icon.theme.get)
+
+proc parseIcons*(node: JsonNode): seq[McpIcon] =
+  ## The icons of an `icons` field. Raises McpShapeError when it is not an
+  ## array of objects with a string `src` and, where present, a string
+  ## `mimeType`, an array of strings `sizes` and a `theme` of light or dark.
+  if node.isNil or node.kind != JArray:
+    raise newException(McpShapeError, "'icons' must be a JSON array")
+  for item in node:
+    if item.kind != JObject:
+      raise newException(McpShapeError, "an icon must be a JSON object")
+    let src = optionalStringField(item, "src")
+    if src.isNone:
+      raise newException(McpShapeError, "an icon needs a string 'src'")
+    var icon = McpIcon(src: src.get, mimeType: optionalStringField(item, "mimeType"))
+    let sizes = item{"sizes"}
+    if not sizes.isNil:
+      if sizes.kind != JArray:
+        raise newException(McpShapeError, "'sizes' must be a JSON array")
+      for size in sizes:
+        if size.kind != JString:
+          raise newException(McpShapeError, "'sizes' must hold strings")
+        icon.sizes.add size.getStr()
+    let theme = optionalStringField(item, "theme")
+    if theme.isSome:
+      case theme.get
+      of "light": icon.theme = some(itLight)
+      of "dark": icon.theme = some(itDark)
+      else: raise newException(McpShapeError, "'theme' must be \"light\" or \"dark\"")
+    result.add icon
+
+proc iconsOf*(node: JsonNode): seq[McpIcon] =
+  ## The icons of an item that may have none.
+  if node.isNil or not node.hasKey("icons"):
+    return
+  parseIcons(node["icons"])
+
 # What a version sends
 
 proc dropKey(node: JsonNode, key: string) =
@@ -102,6 +144,8 @@ proc describedFor(version: McpProtocolVersion, item: JsonNode): JsonNode =
   result = item.copy()
   if not version.has(ftTitleFields):
     result.dropKey("title")
+  if not version.has(ftIcons):
+    result.dropKey("icons")
 
 proc toolFor*(version: McpProtocolVersion, tool: JsonNode): JsonNode =
   ## `tool` (an entry of tools/list) as `version` defines it.

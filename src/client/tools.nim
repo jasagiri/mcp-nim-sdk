@@ -39,6 +39,7 @@ type
     name*: string
     title*: Option[string]
     description*: string
+    icons*: seq[McpIcon]
     inputSchema*: JsonNode
     outputSchema*: Option[JsonNode]
     annotations*: Option[JsonNode]
@@ -72,6 +73,7 @@ proc parseTool(item: JsonNode): McpTool =
     name: requiredString(item, "name", "tools/list"),
     title: optionalString(item, "title"),
     description: item{"description"}.getStr(),
+    icons: iconsOf(item, "tools/list"),
     inputSchema: item{"inputSchema"},
     outputSchema: (if item.hasKey("outputSchema"): some(item["outputSchema"]) else: none(JsonNode)),
     annotations: (if item.hasKey("annotations"): some(item["annotations"]) else: none(JsonNode)))

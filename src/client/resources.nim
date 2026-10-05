@@ -17,6 +17,7 @@ type
     description*: Option[string]
     mimeType*: Option[string]
     size*: Option[int]
+    icons*: seq[McpIcon]
 
   McpResourceTemplate* = object
     uriTemplate*: string
@@ -24,6 +25,7 @@ type
     title*: Option[string]
     description*: Option[string]
     mimeType*: Option[string]
+    icons*: seq[McpIcon]
 
 func displayName*(resource: McpResource): string =
   ## `title` when the server gave one, else `name`.
@@ -46,7 +48,8 @@ proc parseResource(item: JsonNode): McpResource =
     title: optionalString(item, "title"),
     description: optionalString(item, "description"),
     mimeType: optionalString(item, "mimeType"),
-    size: (if item.hasKey("size"): some(item["size"].getInt()) else: none(int)))
+    size: (if item.hasKey("size"): some(item["size"].getInt()) else: none(int)),
+    icons: iconsOf(item, "resources/list"))
 
 proc parseTemplate(item: JsonNode): McpResourceTemplate =
   McpResourceTemplate(
@@ -54,7 +57,8 @@ proc parseTemplate(item: JsonNode): McpResourceTemplate =
     name: requiredString(item, "name", "resources/templates/list"),
     title: optionalString(item, "title"),
     description: optionalString(item, "description"),
-    mimeType: optionalString(item, "mimeType"))
+    mimeType: optionalString(item, "mimeType"),
+    icons: iconsOf(item, "resources/templates/list"))
 
 proc listResources*(client: McpClient, cursor: Option[string] = none(string),
                     options: McpRequestOptions = McpRequestOptions()

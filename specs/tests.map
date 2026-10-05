@@ -576,3 +576,16 @@ MCP-TITLE-2 | tests/test_title_fields.nim | Given a version without titles, when
 MCP-TITLE-2 | tests/test_title_fields.nim | Given a version without titles but with tool annotations, when tools are listed, then annotations.title is kept
 MCP-TITLE-3 | tests/test_title_fields.nim | Given titled lists, when the client lists them, then every title is read
 MCP-TITLE-3 | tests/test_title_fields.nim | Given items without a title, when their display names are read, then it is the name
+MCP-ICONS-1 | tests/test_icons.nim | Given a version that has icons, when each list is requested, then the icons are sent as they are
+MCP-ICONS-1 | tests/test_icons.nim | Given a resource link with icons, when a version decides, then the icons go where icons do
+MCP-ICONS-1 | tests/test_icons.nim | Given an icon with only a src, when it is written, then only the src is sent
+MCP-ICONS-1 | tests/test_icons.nim | Given an icon with every field, when it is written and parsed, then it comes back the same
+MCP-ICONS-1 | tests/test_icons.nim | Given a tool built with icons, when its definition is made, then the icons are in it
+MCP-ICONS-2 | tests/test_icons.nim | Given a version without icons, when each list is requested, then no icons are sent
+MCP-ICONS-3 | tests/test_icons.nim | Given listed items with icons, when the client lists them, then each carries its icons
+MCP-ICONS-3 | tests/test_icons.nim | Given an item without icons, when the client lists it, then it has none
+MCP-ICONS-3 | tests/test_icons.nim | Given a malformed icon, when the client lists tools, then the protocol violation is raised
+MCP-ICONS-4 | tests/test_icons.nim | Given https and base64 image data uris, when screened, then they are kept
+MCP-ICONS-4 | tests/test_icons.nim | Given unsafe schemes, when screened, then every one is dropped
+MCP-ICONS-4 | tests/test_icons.nim | Given a server origin, when screened, then an https icon from another origin is dropped and data stays
+MCP-ICONS-4 | tests/test_icons.nim | Given scheme and host in other letter cases, when screened, then they are compared case-insensitively
