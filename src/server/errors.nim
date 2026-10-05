@@ -2,7 +2,7 @@
 ## result, the peer gets. Any other exception a handler raises is a defect of
 ## the server: the peer is told "Internal error" and the cause goes to stderr.
 
-import std/[json, strutils]
+import std/[json, options, strutils]
 import ../protocol/modern
 
 const
@@ -15,6 +15,13 @@ type
     ## Answer the request with a JSON-RPC error.
     code*: int
     data*: JsonNode
+
+  McpInputRequired* = object of CatchableError
+    ## 2026-07-28 multi round-trip requests: answer with `input_required`
+    ## instead of a result; see `server/mrtr`.
+    inputRequests*: JsonNode
+      ## Key -> request object; nil when the answer carries only state.
+    requestState*: Option[string]
 
   McpResourceNotFound* = object of CatchableError
     ## The resource does not exist. Its code depends on the protocol version

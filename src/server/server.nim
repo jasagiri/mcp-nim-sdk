@@ -11,6 +11,7 @@ import ../protocol/log_level
 import ../protocol/sampling_tools
 import ../protocol/trace_context
 import ../protocol/extensions
+import ../protocol/mrtr
 import ../transport/transport
 import ./errors
 import ./pagination
@@ -54,6 +55,13 @@ type
     clientCapabilities*: JsonNode
       ## 2026-07-28: what the request declared in its `_meta`; nil in
       ## earlier versions.
+    inputResponses*: JsonNode
+      ## 2026-07-28, on a retry of a request that was answered with
+      ## `input_required`: the client's responses, key -> result object.
+      ## An empty object on a first attempt.
+    requestState*: Option[string]
+      ## 2026-07-28, on such a retry: the state the server sent, which the
+      ## client is to echo and the server must treat as untrusted input.
     traceContext*: TraceContext
       ## 2026-07-28: the trace context the request carried in its `_meta`;
       ## empty when it carried none. What the server sends for this request
@@ -514,6 +522,8 @@ proc newContext(server: McpServer, request: JsonRpcRequest): McpRequestContext =
         result.logLevel = parseLogLevel(level.getStr())
       result.traceContext = traceContextOf(request.params)
       result.clientCapabilities = meta{MetaClientCapabilities}
+      result.inputResponses = inputResponsesOf(request.params)
+      result.requestState = requestStateOf(request.params)
 
 proc metaRejection(request: JsonRpcRequest, version: McpProtocolVersion): Option[JsonRpcError] =
   ## Why the request's own `_meta` entries cannot be served.
@@ -968,6 +978,35 @@ proc dispatchStandard(server: McpServer, request: JsonRpcRequest,
     return newJsonRpcErrorResponse(request.id, ErrMethodNotFound,
       "Method not found: " & request.`method`)
 
+proc inputRequiredResponse(request: JsonRpcRequest, ctx: McpRequestContext,
+                           asked: ref McpInputRequired): JsonRpcResponse =
+  ## What a handler's `McpInputRequired` becomes. A handler that cannot ask
+  ## (an earlier version, a method without multi round-trips, nothing to ask)
+  ## is a defect of the server; a request for something the client did not
+  ## declare is the missing-capability error.
+  proc defect(why: string): JsonRpcResponse =
+    stderr.writeLine("[mcp-server] " & request.`method` & ": " & why)
+    newJsonRpcErrorResponse(request.id, ErrInternal, "Internal error")
+  if not ctx.version.has(ftMultiRoundTripRequests):
+    return defect("input_required is not part of protocol version " & $ctx.version)
+  if not supportsInputRequired(request.`method`):
+    return defect("input_required is not allowed for " & request.`method`)
+  let problem = invalidInputRequired(asked.inputRequests, asked.requestState)
+  if problem.isSome:
+    return defect(problem.get)
+  let missing = missingCapabilities(asked.inputRequests, ctx.clientCapabilities)
+  if missing.len > 0:
+    let error = missingCapabilityError(
+      "The client did not declare the capabilities these input requests need", missing)
+    return newJsonRpcErrorResponse(request.id, error.code, error.message, error.data)
+  var requests = asked.inputRequests
+  if not requests.isNil:
+    requests = newJObject()
+    for key, entry in asked.inputRequests.pairs:
+      requests[key] = %*{"method": entry{"method"},
+        "params": withTraceContext(entry{"params"}, ctx.traceContext)}
+  newJsonRpcResponse(request.id, inputRequiredPayload(requests, asked.requestState))
+
 proc handleStandardRequest(server: McpServer, request: JsonRpcRequest,
                            ctx: McpRequestContext): Future[JsonRpcResponse] {.async.} =
   ## What a method does, independent of the protocol era it arrived in.
@@ -976,6 +1015,8 @@ proc handleStandardRequest(server: McpServer, request: JsonRpcRequest,
 
   try:
     return await server.dispatchStandard(request, ctx)
+  except McpInputRequired as e:
+    return inputRequiredResponse(request, ctx, e)
   except McpRequestError as e:
     return newJsonRpcErrorResponse(request.id, e.code, e.plainMessage, e.data)
   except McpResourceNotFound as e:
@@ -1026,6 +1067,10 @@ proc handleModernRequest(server: McpServer, request: JsonRpcRequest,
   let metaError = metaRejection(request, ctx.version)
   if metaError.isSome:
     return newJsonRpcErrorResponse(request.id, metaError.get.code, metaError.get.message)
+  if supportsInputRequired(request.`method`):
+    let inputError = rejectInvalidInputParams(request.params)
+    if inputError.isSome:
+      return newJsonRpcErrorResponse(request.id, inputError.get.code, inputError.get.message)
 
   var response =
     if request.`method` == DiscoverMethod:

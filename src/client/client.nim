@@ -7,6 +7,7 @@ import ../protocol/modern
 import ../protocol/features
 import ../protocol/content as wire
 import ../protocol/trace_context
+import ../protocol/mrtr
 import ../transport/transport
 import ../mcp/types as mcpTypes
 
@@ -35,6 +36,10 @@ type
 
   McpProtocolError* = object of McpError
     ## The peer's answer does not have the shape the specification gives.
+
+  McpInputRoundsError* = object of McpError
+    ## The server kept answering a request with `input_required` beyond
+    ## `maxInputRounds` retries.
 
   McpCancelToken* = ref object
     ## Lets the caller of an operation withdraw it. Pass it in
@@ -94,6 +99,10 @@ type
     pendingRequests*: Table[string, Future[JsonRpcResponse]]
     progressCallbacks: Table[string, McpProgressCallback]
     nextProgressToken: int
+    maxInputRounds*: int
+      ## How many times a request may be retried with input the server asked
+      ## for (multi round-trip requests, 2026-07-28) before it raises
+      ## McpInputRoundsError.
     extensionResultTypes*: seq[string]
       ## The `resultType` values of the extensions this client declared;
       ## see `declareExtension`.
@@ -111,7 +120,9 @@ type
       ## Set when the message-processing loop terminates due to a transport
       ## error. Mirrors McpServer.lastTransportError — see audit finding #5.
 
-const DefaultRequestTimeoutMs* = 60_000
+const
+  DefaultRequestTimeoutMs* = 60_000
+  DefaultMaxInputRounds* = 10
 
 proc newMcpCancelToken*(): McpCancelToken =
   McpCancelToken(signal: newFuture[void]("McpCancelToken"))
@@ -139,6 +150,7 @@ proc newMcpClient*(
     serverInfo: none(McpServerInfo),
     probeTimeoutMs: 5000,
     requestTimeoutMs: DefaultRequestTimeoutMs,
+    maxInputRounds: DefaultMaxInputRounds,
     pendingRequests: initTable[string, Future[JsonRpcResponse]](),
     progressCallbacks: initTable[string, McpProgressCallback](),
     requestHandlers: initTable[string, McpServerRequestHandler](),
@@ -344,12 +356,10 @@ proc abandon(client: McpClient, id, methodName, reason: string) {.async.} =
   except CatchableError as e:
     stderr.writeLine("[mcp-client] could not cancel request " & id & ": " & e.msg)
 
-proc sendRequest*(client: McpClient, methodName: string, params: JsonNode,
-                  options: McpRequestOptions = McpRequestOptions()): Future[JsonRpcResponse] {.async.} =
-  ## Send a request and wait for its response. A JSON-RPC error response is
-  ## returned, not raised; see `callMethod` for the raising form. Raises
-  ## McpTimeoutError, McpCancelledError or McpConnectionClosedError when no
-  ## response will come.
+proc sendOnce(client: McpClient, methodName: string, params: JsonNode,
+              options: McpRequestOptions): Future[JsonRpcResponse] {.async.} =
+  ## One request and its response, with none of the retrying of multi
+  ## round-trip requests.
   if not options.cancel.isNil and options.cancel.isCancelled:
     raise newException(McpCancelledError, methodName & ": cancelled before it was sent")
   let modern = client.usesModernProtocol
@@ -395,22 +405,82 @@ proc sendRequest*(client: McpClient, methodName: string, params: JsonNode,
   finally:
     if progressKey.len > 0:
       client.progressCallbacks.del(progressKey)
+  return response
 
-  if modern and response.result.isSome:
+proc answerInputRequests(client: McpClient, methodName: string,
+                         pending: InputRequired): Future[JsonNode] {.async.} =
+  ## The `inputResponses` for a request the server answered with
+  ## `input_required`: each input request goes to the handler the client
+  ## registered for its method (the same handlers that serve the server's
+  ## requests in earlier versions), one after the other. Raises
+  ## McpProtocolError for a request the client did not declare the
+  ## capability for, McpUnsupportedError for one it has no handler for, and
+  ## McpRequestError when a handler answers with an error: an
+  ## `InputResponse` cannot carry one, so the request is abandoned.
+  result = newJObject()
+  if pending.inputRequests.isNil:
+    return
+  let declared = client.capabilities.toJson()
+  for key, entry in pending.inputRequests.pairs:
+    let inputMethod = entry{"method"}.getStr()
+    let needed = capabilityFor(inputMethod)
+    if not declared.hasKey(needed):
+      raise newException(McpProtocolError, methodName & ": the server asked for " &
+        inputMethod & ", but this client did not declare the " & needed & " capability")
+    if inputMethod notin client.requestHandlers:
+      raise newException(McpUnsupportedError, methodName & ": this client has no " &
+        "handler for " & inputMethod)
+    let asked = newJsonRpcRequest(key, inputMethod, entry{"params"})
+    let answer = await client.requestHandlers[inputMethod](asked)
+    if answer.error.isSome:
+      let error = answer.error.get
+      var failure = newException(McpRequestError, inputMethod & ": " & error.message)
+      failure.code = error.code
+      failure.data = error.data
+      raise failure
+    result[key] = answer.result.get(newJObject())
+
+proc sendRequest*(client: McpClient, methodName: string, params: JsonNode,
+                  options: McpRequestOptions = McpRequestOptions()): Future[JsonRpcResponse] {.async.} =
+  ## Send a request and wait for its response. A JSON-RPC error response is
+  ## returned, not raised; see `callMethod` for the raising form. Raises
+  ## McpTimeoutError, McpCancelledError or McpConnectionClosedError when no
+  ## response will come.
+  ##
+  ## In 2026-07-28 a server may answer `tools/call`, `prompts/get` and
+  ## `resources/read` with `input_required` and the requests it needs
+  ## answered. This collects the answers (see `answerInputRequests`) and
+  ## retries the request, with a new id each time, until it completes; the
+  ## timeout of the options applies to each attempt, not to the time spent
+  ## answering. More than `maxInputRounds` retries raise McpInputRoundsError.
+  var current = params
+  var rounds = 0
+  while true:
+    let response = await client.sendOnce(methodName, current, options)
+    if not client.usesModernProtocol or response.result.isNone:
+      return response
     case resultKind(response.result.get)
     of rkComplete:
-      discard
+      return response
     of rkInputRequired:
-      # TODO: multi round-trip requests (answer inputRequests and resend).
-      raise newException(ValueError,
-        methodName & ": the server asked for client input (resultType " &
-        "input_required), which this client does not support yet")
+      if not supportsInputRequired(methodName):
+        raise newException(McpProtocolError, methodName &
+          ": the server answered with input_required, which this request does not allow")
+      let (pending, problem) = parseInputRequired(response.result.get)
+      if problem.isSome:
+        raise newException(McpProtocolError, methodName & ": " & problem.get)
+      inc rounds
+      if rounds > client.maxInputRounds:
+        raise newException(McpInputRoundsError, methodName & ": the server asked for " &
+          "input more than " & $client.maxInputRounds & " times")
+      let responses = await client.answerInputRequests(methodName, pending)
+      current = retryParams(params, responses, pending.requestState)
     of rkUnknown:
       let declared = response.result.get{"resultType"}
       if declared.kind != JString or declared.getStr() notin client.extensionResultTypes:
         raise newException(ValueError,
           methodName & ": the server answered with unknown resultType " & $declared)
-  return response
+      return response
 
 proc requireFeature*(client: McpClient, feature: McpFeature, operation: string) =
   ## Raise McpUnsupportedError unless the negotiated version has `feature`.

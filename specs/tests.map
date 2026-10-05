@@ -753,3 +753,34 @@ MCP-EXT-8 | tests/test_extensions.nim | Given a server without the extension, wh
 MCP-EXT-8 | tests/test_extensions.nim | Given a client that did not declare the extension, when it calls an extension method, then it raises McpUnsupportedError
 MCP-EXT-9 | tests/test_extensions.nim | Given both sides support the extension, when the server answers with the extension's resultType, then the client returns the result
 MCP-EXT-9 | tests/test_extensions.nim | Given a resultType the client's extensions do not define, when the server answers with it, then the client raises
+MCP-MRTR-1 | tests/test_mrtr.nim | Given the specification's InputRequiredResult examples, when parsed, then requests and state are read
+MCP-MRTR-1 | tests/test_mrtr.nim | Given the specification's input requests, when the payload is built, then it equals the specification's result
+MCP-MRTR-1 | tests/test_mrtr.nim | Given results that are not an InputRequiredResult, when parsed, then each is rejected
+MCP-MRTR-1 | tests/test_mrtr.nim | Given input requests, when compared with a client's capabilities, then the undeclared ones are named
+MCP-MRTR-1 | tests/test_mrtr.nim | Given original params, when a retry is built, then the responses are added, the state is echoed exactly and the original stays
+MCP-MRTR-2 | tests/test_mrtr.nim | Given a tool that needs input, when it is called, then the answer is input_required with the request and the state
+MCP-MRTR-2 | tests/test_mrtr.nim | Given a retry with the answers and the state, when the tool runs again, then it sees both and completes
+MCP-MRTR-3 | tests/test_mrtr.nim | Given a retry that answers only some requests, when the tool runs, then only the missing ones are asked again
+MCP-MRTR-4 | tests/test_mrtr.nim | Given a handler that asks only to retry with a state, when it is called, then the answer carries the state alone
+MCP-MRTR-5 | tests/test_mrtr.nim | Given a client that did not declare the capability a request needs, when the tool asks, then the answer is the missing-capability error
+MCP-MRTR-6 | tests/test_mrtr.nim | Given a handler that asks for nothing, when it is called, then it is an internal error
+MCP-MRTR-6 | tests/test_mrtr.nim | Given prompts/get and resources/read, when their handlers need input, then they answer input_required too
+MCP-MRTR-6 | tests/test_mrtr.nim | Given a request that does not support input_required, when its handler asks, then it is an internal error
+MCP-MRTR-7 | tests/test_mrtr.nim | Given inputResponses or requestState of the wrong type, when the request arrives, then it is invalid params
+MCP-MRTR-8 | tests/test_mrtr.nim | Given a version without multi round-trips, when a handler asks for input, then it is an internal error and the fields are ignored
+MCP-MRTR-9 | tests/test_mrtr.nim | Given a request with trace context, when the server asks for input, then each input request carries it
+MCP-MRTR-10 | tests/test_mrtr.nim | Given a sealed state, when opened for the same request, then the payload comes back
+MCP-MRTR-10 | tests/test_mrtr.nim | Given a state, when it is tampered with, signed by another key, expired or presented elsewhere, then each is rejected with its reason
+MCP-MRTR-10 | tests/test_mrtr.nim | Given a state that is not acceptable, when a handler opens it, then the peer gets invalid params without the reason
+MCP-MRTR-10 | tests/test_mrtr.nim | Given a key shorter than the minimum, when sealing, then it raises ValueError
+MCP-MRTR-11 | tests/test_mrtr.nim | Given an input_required answer, when the client has the handler, then it answers and retries with a new id until the request completes
+MCP-MRTR-11 | tests/test_mrtr.nim | Given a result with requests only, when the client retries, then no requestState is sent
+MCP-MRTR-11 | tests/test_mrtr.nim | Given a result with only a state, when the client retries, then it retries at once echoing the state
+MCP-MRTR-12 | tests/test_mrtr.nim | Given a server that keeps asking, when the limit is reached, then the client raises McpInputRoundsError
+MCP-MRTR-13 | tests/test_mrtr.nim | Given a request for a capability the client did not declare, when the server asks, then the client raises without calling a handler or retrying
+MCP-MRTR-13 | tests/test_mrtr.nim | Given an elicitation request, when the client declared no elicitation, then it raises McpProtocolError
+MCP-MRTR-13 | tests/test_mrtr.nim | Given a declared capability with no handler, when the server asks, then the client raises McpUnsupportedError
+MCP-MRTR-13 | tests/test_mrtr.nim | Given a handler that answers with an error, when the server asks, then the request is abandoned with McpRequestError
+MCP-MRTR-14 | tests/test_mrtr.nim | Given input_required for a request that does not allow it, when it arrives, then the client raises McpProtocolError
+MCP-MRTR-14 | tests/test_mrtr.nim | Given an input_required result that is malformed, when it arrives, then the client raises McpProtocolError
+MCP-MRTR-15 | tests/test_mrtr.nim | Given a slow answer to the input requests, when the request has a timeout, then the timeout counts each attempt and not the answering
