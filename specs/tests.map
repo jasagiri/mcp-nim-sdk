@@ -2514,3 +2514,5 @@ MCP-EXT-TASKS-16 | tests/test_ext_tasks_dual.nim | Given the extension was enabl
 MCP-EXT-TASKS-16 | tests/test_ext_tasks_dual.nim | Given a 2025-11-25 client that declares an extensions capability, when it calls a tool, then the extension does not apply
 MCP-EXT-TASKS-16 | tests/test_ext_tasks_dual.nim | Given a server with only the extension, when a 2025-11-25 client asks for a task, then the task parameter is ignored
 MCP-EXT-TASKS-16 | tests/test_ext_tasks_dual.nim | Given a server with only the core's tasks, when a 2026-07-28 client declares the extension and asks, then it gets the result and no tasks methods
+MCP-EXT-TASKS-10 | tests/test_ext_tasks_http.nim | Given a task over HTTP, when the client polls, cancels and updates it, then every request passes the header check
+MCP-EXT-TASKS-10 | tests/test_ext_tasks_http.nim | Given a task over HTTP, when tasks/get carries another Mcp-Name than its taskId, then the server answers a header mismatch
