@@ -103,11 +103,13 @@ func implementationOf*(feature: McpFeature): Implementation {.raises: [].} =
   of ftDynamicClientRegistration, ftClientIdMetadataDocuments,
      ftAuthDefaultEndpoints, ftResourceIndicators, ftIssuerParameter:
     done("tests/test_auth_client_flow.nim")
+  of ftJsonSchema2020:
+    done("tests/test_json_schema.nim")
   of ftMultiRoundTripRequests:
     notYet("the client raises on an input_required result")
   of ftToolAnnotations, ftAudioContent, ftStructuredToolOutput, ftResourceLinks,
      ftElicitation, ftTitleFields, ftTasks, ftIcons, ftUrlElicitation,
      ftSamplingTools, ftSubscriptionsListen, ftExtensions,
      ftEnumSchemas, ftElicitationDefaults, ftImplementationDescription,
-     ftJsonSchema2020, ftTraceContext:
+     ftTraceContext:
     notYet()

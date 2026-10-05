@@ -59,7 +59,7 @@ This checkout speaks MCP **2026-07-28** and every earlier version: `2024-11-05`,
 | enum schemas in elicitation | not implemented | [client/elicitation](https://modelcontextprotocol.io/specification/2026-07-28/client/elicitation) |
 | elicitation default values | not implemented | [client/elicitation](https://modelcontextprotocol.io/specification/2026-07-28/client/elicitation) |
 | implementation description | not implemented | [server/discover](https://modelcontextprotocol.io/specification/2026-07-28/server/discover) |
-| JSON Schema 2020-12 | not implemented | [server/tools](https://modelcontextprotocol.io/specification/2026-07-28/server/tools) |
+| JSON Schema 2020-12 | implemented | [server/tools](https://modelcontextprotocol.io/specification/2026-07-28/server/tools) |
 | trace context in _meta | not implemented | [basic](https://modelcontextprotocol.io/specification/2026-07-28/basic) |
 | authorization response issuer (iss) | implemented | [basic/authorization/security-considerations](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization/security-considerations) |
 | resource-not-found as invalid params | implemented | [server/resources](https://modelcontextprotocol.io/specification/2026-07-28/server/resources) |

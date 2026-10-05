@@ -513,3 +513,12 @@ MCP-HTTP-14 | tests/test_streamable_http.nim | Given an Mcp-Name with spaces or 
 MCP-HTTP-14 | tests/test_streamable_http.nim | Given a Base64 Mcp-Name that decodes to a name with spaces around it, when posted, then the spaces are part of the value
 MCP-LIFECYCLE-13 | tests/test_era_matrix.nim | Given a modern peer that answers the probe only after the probe timed out, when it then refuses initialize as unsupported, then the client discovers again and stays modern
 MCP-LIFECYCLE-13 | tests/test_era_matrix.nim | Given a peer that refuses initialize as unsupported though the probe was answered with a legacy error, when the client connects, then connect fails
+MCP-SCHEMA-1 | tests/test_json_schema.nim | Given a schema without $schema, when its dialect is asked, then it is 2020-12
+MCP-SCHEMA-1 | tests/test_json_schema.nim | Given $schema naming 2020-12, when its dialect is asked, then it is 2020-12
+MCP-SCHEMA-1 | tests/test_json_schema.nim | Given $schema naming draft-07 with or without the empty fragment, when its dialect is asked, then it is draft-07
+MCP-SCHEMA-1 | tests/test_json_schema.nim | Given a prefixItems schema, when validated as 2020-12 and as draft-07, then only 2020-12 reads it
+MCP-SCHEMA-1 | tests/test_json_schema.nim | Given an array items in draft-07, when validated, then the items are positional
+MCP-SCHEMA-2 | tests/test_json_schema.nim | Given $schema naming an unknown dialect, when an instance is validated, then the dialect is reported unsupported
+MCP-SCHEMA-2 | tests/test_json_schema.nim | Given $schema that is not a string, when an instance is validated, then the schema is invalid
+MCP-SCHEMA-2 | tests/test_json_schema.nim | Given a $ref that leaves the document or points at nothing, when validated, then it is reported
+MCP-SCHEMA-2 | tests/test_json_schema.nim | Given a keyword that is not implemented, when validated, then it is reported, not skipped
