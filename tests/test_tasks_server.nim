@@ -1,0 +1,501 @@
+## Tasks on the server side (2025-11-25, basic/utilities/tasks): what a client
+## sees when it augments a tools/call with a task, and polls, waits, lists and
+## cancels. Only 2025-11-25 has tasks in the core; 2026-07-28 and the versions
+## before 2025-11-25 must behave as if the feature did not exist.
+
+import std/[asyncdispatch, json, options, strutils, unittest]
+import ./server_harness
+import protocol/tasks
+import server/tasks
+
+const
+  TaskVersion = mpv20251125
+  RelatedTask = "io.modelcontextprotocol/related-task"
+
+type
+  FakeTime = ref object
+    nowMs: int64
+
+  Fixture = ref object
+    server: McpServer
+    store: TaskStore
+    transport: SessionedTransport
+    time: FakeTime
+    gate: Future[void]
+      ## What the tool "slow" waits for.
+    sawCancel: bool
+    sampled: Future[JsonNode]
+
+proc tool(name, taskSupport: string): JsonNode =
+  result = %*{"name": name, "inputSchema": {"type": "object"}}
+  if taskSupport.len > 0:
+    result["execution"] = %*{"taskSupport": taskSupport}
+
+proc textResult(text: string): JsonNode =
+  %*{"content": [{"type": "text", "text": text}]}
+
+proc fixture(config = TaskConfig(), withCapability = true, maxActive = 0): Fixture =
+  let fx = Fixture(time: FakeTime(nowMs: 1_764_067_800_000), gate: newFuture[void]("gate"))
+  fx.server = newServer(McpServerCapabilities(tools: some(McpToolsCapability())))
+  fx.server.onToolsList(proc(cursor: Option[string]): Future[McpPage] {.async.} =
+    return McpPage(items: @[
+      tool("slow", "optional"), tool("needs_task", "required"),
+      tool("never", "forbidden"), tool("plain", ""), tool("quick", "optional"), tool("failing", "optional"),
+      tool("broken", "optional"), tool("asks", "optional")]))
+  fx.server.onToolCall(proc(ctx: McpRequestContext, name: string,
+                            arguments: JsonNode): Future[JsonNode] {.async.} =
+    case name
+    of "slow", "needs_task":
+      await (fx.gate or ctx.whenCancelled())
+      if ctx.cancelled:
+        fx.sawCancel = true
+        ctx.checkCancelled()
+      return textResult("slow done")
+    of "failing":
+      raise newToolFailure("rate limit exceeded")
+    of "broken":
+      raise newInvalidParams("bad arguments")
+    of "asks":
+      await fx.gate
+      let answer = await ctx.createMessage(%*{"messages": [], "maxTokens": 1})
+      fx.sampled.complete(answer)
+      return textResult("asked")
+    else:  # "plain", "quick", "never"
+      return textResult("plain done"))
+  fx.sampled = newFuture[JsonNode]("sampled")
+  fx.store = newTaskStore(clock = proc(): int64 = fx.time.nowMs, pollIntervalMs = some(250),
+                          maxActivePerOwner = maxActive)
+  if withCapability:
+    discard fx.server.enableTasks(config, fx.store)
+  fx.transport = fx.server.attach()
+  fx
+
+proc connectTo(fx: Fixture, session = "", version = TaskVersion,
+               clientCapabilities: JsonNode = nil): Peer =
+  fx.server.connect(fx.transport, version, session, clientCapabilities)
+
+proc asTask(name: string, ttl = 60_000): JsonNode =
+  %*{"name": name, "arguments": {}, "task": {"ttl": ttl}}
+
+proc createTask(peer: Peer, name: string, ttl = 60_000): JsonNode =
+  let response = peer.ask("tools/call", asTask(name, ttl))
+  check not response.hasKey("error")
+  response["result"]["task"]
+
+proc taskParams(taskId: string): JsonNode =
+  %*{"taskId": taskId}
+
+proc statusOf(peer: Peer, taskId: string): string =
+  peer.ask("tasks/get", taskParams(taskId))["result"]["status"].getStr()
+
+proc untilStatus(peer: Peer, taskId, status: string) =
+  untilTrue("task " & taskId & " to be " & status, proc(): bool =
+    peer.statusOf(taskId) == status)
+
+template taskTest(name: string, body: untyped) =
+  ## A test of 2025-11-25 behaviour; skipped in a build older than that.
+  test name:
+    if not isSupported(TaskVersion):
+      skip()
+    else:
+      body
+
+template modernTest(name: string, body: untyped) =
+  ## A test of 2026-07-28 behaviour; skipped in a build older than that.
+  test name:
+    if not isModern(DefaultProtocolVersion):
+      skip()
+    else:
+      body
+
+suite "tasks server: capabilities":
+  taskTest "Given tasks enabled, when a 2025-11-25 client handshakes, then the server declares list, cancel and tools/call":
+    let fx = fixture()
+    let id = freshId()
+    fx.transport.inject("", rpcRequest(id, "initialize", %*{
+      "protocolVersion": $TaskVersion, "capabilities": {},
+      "clientInfo": {"name": "c", "version": "1"}}))
+    let tasksCapability = fx.transport.responseTo(id)["result"]["capabilities"]["tasks"]
+    check tasksCapability == %*{"list": {}, "cancel": {}, "requests": {"tools": {"call": {}}}}
+
+  taskTest "Given a config without list and cancel, when a client handshakes, then they are not declared":
+    let fx = fixture(TaskConfig(list: false, cancel: false, toolsCall: true, pageSize: 50))
+    let id = freshId()
+    fx.transport.inject("", rpcRequest(id, "initialize", %*{
+      "protocolVersion": $TaskVersion, "capabilities": {},
+      "clientInfo": {"name": "c", "version": "1"}}))
+    check fx.transport.responseTo(id)["result"]["capabilities"]["tasks"] ==
+      %*{"requests": {"tools": {"call": {}}}}
+
+  taskTest "Given a client of a version before 2025-11-25, when it handshakes, then no tasks capability is declared":
+    let fx = fixture()
+    for version in versionsWithout(ftTasks):
+      if isModern(version):
+        continue
+      let id = freshId()
+      fx.transport.inject("s-" & $version, rpcRequest(id, "initialize", %*{
+        "protocolVersion": $version, "capabilities": {},
+        "clientInfo": {"name": "c", "version": "1"}}))
+      check not fx.transport.responseTo(id)["result"]["capabilities"].hasKey("tasks")
+
+  modernTest "Given a 2026-07-28 request, when the server describes itself, then tasks are not declared":
+    let fx = fixture()
+    let peer = fx.connectTo(version = mpv20260728)
+    let described = peer.ask("server/discover")
+    check not described["result"]["capabilities"].hasKey("tasks")
+
+  modernTest "Given a 2026-07-28 request, when it calls tasks/get, tasks/result, tasks/list or tasks/cancel, then the method is unknown":
+    let fx = fixture()
+    let peer = fx.connectTo(version = mpv20260728)
+    for methodName in ["tasks/get", "tasks/result", "tasks/list", "tasks/cancel"]:
+      check peer.ask(methodName, taskParams("anything")).errorCode == -32601
+
+  modernTest "Given a 2026-07-28 request, when a tools/call carries a task, then it runs as a plain call":
+    let fx = fixture()
+    let peer = fx.connectTo(version = mpv20260728)
+    let response = peer.ask("tools/call", asTask("plain"))
+    check response.textOf == "plain done"
+    check not response["result"].hasKey("task")
+
+  taskTest "Given a client of an older version, when it calls tasks/get, then the method is unknown":
+    let fx = fixture()
+    let peer = fx.connectTo(version = mpv20250618)
+    check peer.ask("tasks/get", taskParams("anything")).errorCode == -32601
+
+suite "tasks server: task-augmented tools/call":
+  taskTest "Given an optional tool, when called with a task, then the answer is a working task at once":
+    let fx = fixture()
+    let peer = fx.connectTo()
+    let task = peer.createTask("slow", ttl = 30_000)
+    check task["status"].getStr() == "working"
+    check task["ttl"].getInt() == 30_000
+    check task["pollInterval"].getInt() == 250
+    check task["createdAt"].getStr() == "2025-11-25T10:50:00.000Z"
+    check task["lastUpdatedAt"].getStr() == "2025-11-25T10:50:00.000Z"
+    check task["taskId"].getStr().len >= 32
+
+  taskTest "Given a task-augmented call, when it is answered, then the answer holds no tool result":
+    let fx = fixture()
+    let peer = fx.connectTo()
+    let response = peer.ask("tools/call", asTask("quick"))
+    check response["result"].hasKey("task")
+    check not response["result"].hasKey("content")
+
+  taskTest "Given a server with an immediate response configured, when a task is created, then _meta carries it":
+    let fx = fixture(TaskConfig(list: true, cancel: true, toolsCall: true, pageSize: 50,
+                                immediateResponse: "Working on it."))
+    let peer = fx.connectTo()
+    let response = peer.ask("tools/call", asTask("slow"))
+    check response["result"]["_meta"]["io.modelcontextprotocol/model-immediate-response"].getStr() ==
+      "Working on it."
+
+  taskTest "Given a call without a task, when the tool is optional, then it is answered with its result":
+    let fx = fixture()
+    let peer = fx.connectTo()
+    fx.gate.complete()
+    check peer.ask("tools/call", %*{"name": "slow", "arguments": {}}).textOf == "slow done"
+
+  taskTest "Given a forbidden tool or one without execution, when called with a task, then the method is not found":
+    let fx = fixture()
+    let peer = fx.connectTo()
+    check peer.ask("tools/call", asTask("never")).errorCode == -32601
+    check peer.ask("tools/call", asTask("plain")).errorCode == -32601
+
+  taskTest "Given a tool that requires a task, when called without one, then the method is not found":
+    let fx = fixture()
+    let peer = fx.connectTo()
+    check peer.ask("tools/call", %*{"name": "needs_task", "arguments": {}}).errorCode == -32601
+    check peer.createTask("needs_task")["status"].getStr() == "working"
+
+  taskTest "Given a server that did not declare tools/call tasks, when a call carries a task, then it runs normally":
+    let fx = fixture(TaskConfig(list: true, cancel: true, toolsCall: false, pageSize: 50))
+    let peer = fx.connectTo()
+    let response = peer.ask("tools/call", asTask("plain"))
+    check response.textOf == "plain done"
+
+  taskTest "Given a server without tasks enabled, when a call carries a task, then it runs normally":
+    let fx = fixture(withCapability = false)
+    let peer = fx.connectTo()
+    check peer.ask("tools/call", asTask("plain")).textOf == "plain done"
+    check peer.ask("tasks/get", taskParams("x")).errorCode == -32601
+
+  taskTest "Given a client that negotiated an older version, when a call carries a task, then it runs normally":
+    let fx = fixture()
+    let peer = fx.connectTo(version = mpv20250618)
+    check peer.ask("tools/call", asTask("plain")).textOf == "plain done"
+
+  taskTest "Given a task that is not an object, when a call carries it, then it is Invalid params":
+    let fx = fixture()
+    let peer = fx.connectTo()
+    check peer.ask("tools/call", %*{"name": "slow", "task": "yes"}).errorCode == -32602
+
+suite "tasks server: tasks/get and tasks/result":
+  taskTest "Given a working task, when polled, then it is working, has no related-task meta and the same id":
+    let fx = fixture()
+    let peer = fx.connectTo()
+    let created = peer.createTask("slow")
+    let polled = peer.ask("tasks/get", taskParams(created["taskId"].getStr()))["result"]
+    check polled["taskId"] == created["taskId"]
+    check polled["status"].getStr() == "working"
+    check polled["ttl"].getInt() == 60_000
+    check not polled.hasKey("_meta")
+
+  taskTest "Given a task, when polled with related-task meta naming another task, then the taskId param wins":
+    let fx = fixture()
+    let peer = fx.connectTo()
+    let created = peer.createTask("slow")
+    let polled = peer.ask("tasks/get", taskParams(created["taskId"].getStr()),
+                          meta = %*{RelatedTask: {"taskId": "someone-else"}})["result"]
+    check polled["taskId"] == created["taskId"]
+
+  taskTest "Given an unknown or missing taskId, when polled, then it is Invalid params":
+    let fx = fixture()
+    let peer = fx.connectTo()
+    check peer.ask("tasks/get", taskParams("no-such-task")).errorCode == -32602
+    check peer.ask("tasks/get", newJObject()).errorCode == -32602
+    check peer.ask("tasks/result", taskParams("no-such-task")).errorCode == -32602
+
+  taskTest "Given a task whose tool finished, when polled, then it is completed":
+    let fx = fixture()
+    let peer = fx.connectTo()
+    let id = peer.createTask("slow")["taskId"].getStr()
+    fx.gate.complete()
+    peer.untilStatus(id, "completed")
+
+  taskTest "Given a working task, when its result is requested, then the answer comes when the tool is done, tagged with the task":
+    let fx = fixture()
+    let peer = fx.connectTo()
+    let id = peer.createTask("slow")["taskId"].getStr()
+    let waiting = freshId()
+    peer.send(%waiting, "tasks/result", taskParams(id))
+    settle()
+    check fx.transport.sent.len > 0
+    var answered = false
+    for s in fx.transport.sent:
+      if s.message{"id"}.getStr() == waiting:
+        answered = true
+    check not answered
+    fx.gate.complete()
+    let response = fx.transport.responseTo(waiting)
+    check response["result"]["content"][0]["text"].getStr() == "slow done"
+    check response["result"]["_meta"][RelatedTask]["taskId"].getStr() == id
+
+  taskTest "Given a completed task, when its result is requested twice, then both answers are the result":
+    let fx = fixture()
+    let peer = fx.connectTo()
+    let id = peer.createTask("quick")["taskId"].getStr()
+    peer.untilStatus(id, "completed")
+    for attempt in 1 .. 2:
+      check peer.ask("tasks/result", taskParams(id)).textOf == "plain done"
+
+  taskTest "Given a tool that failed with isError, when polled, then the task failed with the tool's message, and the result is the tool result":
+    let fx = fixture()
+    let peer = fx.connectTo()
+    let id = peer.createTask("failing")["taskId"].getStr()
+    peer.untilStatus(id, "failed")
+    let polled = peer.ask("tasks/get", taskParams(id))["result"]
+    check polled["statusMessage"].getStr() == "rate limit exceeded"
+    let payload = peer.ask("tasks/result", taskParams(id))
+    check not payload.hasKey("error")
+    check payload["result"]["isError"].getBool()
+
+  taskTest "Given a call that ended in a JSON-RPC error, when the result is requested, then it is that same error":
+    let fx = fixture()
+    let peer = fx.connectTo()
+    let id = peer.createTask("broken")["taskId"].getStr()
+    peer.untilStatus(id, "failed")
+    let payload = peer.ask("tasks/result", taskParams(id))
+    check payload.errorCode == -32602
+    check payload["error"]["message"].getStr() == "bad arguments"
+    check peer.ask("tasks/get", taskParams(id))["result"]["statusMessage"].getStr() == "bad arguments"
+
+suite "tasks server: tasks/list":
+  taskTest "Given more tasks than a page, when listed page by page, then every task appears once and the last page has no cursor":
+    let fx = fixture(TaskConfig(list: true, cancel: true, toolsCall: true, pageSize: 2))
+    let peer = fx.connectTo()
+    var created: seq[string]
+    for _ in 1 .. 5:
+      created.add peer.createTask("slow")["taskId"].getStr()
+    var seen: seq[string]
+    var cursor = ""
+    var pages = 0
+    while true:
+      let params = if cursor.len > 0: %*{"cursor": cursor} else: newJObject()
+      let page = peer.ask("tasks/list", params)["result"]
+      inc pages
+      check page["tasks"].len <= 2
+      for item in page["tasks"]:
+        seen.add item["taskId"].getStr()
+      if not page.hasKey("nextCursor"):
+        break
+      cursor = page["nextCursor"].getStr()
+    check pages == 3
+    check seen == created
+
+  taskTest "Given a cursor nobody issued, when listed, then it is Invalid params":
+    let fx = fixture()
+    let peer = fx.connectTo()
+    discard peer.createTask("slow")
+    check peer.ask("tasks/list", %*{"cursor": "not-a-cursor"}).errorCode == -32602
+
+  taskTest "Given a task that tasks/get returns, when listed, then it is in the list":
+    let fx = fixture()
+    let peer = fx.connectTo()
+    let id = peer.createTask("quick")["taskId"].getStr()
+    peer.untilStatus(id, "completed")
+    let listed = peer.ask("tasks/list")["result"]["tasks"]
+    check id in (block:
+      var ids: seq[string]
+      for item in listed: ids.add item["taskId"].getStr()
+      ids)
+
+  taskTest "Given a server without the list capability, when a client lists, then the method is not found":
+    let fx = fixture(TaskConfig(list: false, cancel: true, toolsCall: true, pageSize: 50))
+    let peer = fx.connectTo()
+    check peer.ask("tasks/list").errorCode == -32601
+
+suite "tasks server: tasks/cancel":
+  taskTest "Given a working task, when cancelled, then the answer is the cancelled task and the tool is told":
+    let fx = fixture()
+    let peer = fx.connectTo()
+    let id = peer.createTask("slow")["taskId"].getStr()
+    let cancelled = peer.ask("tasks/cancel", taskParams(id))["result"]
+    check cancelled["status"].getStr() == "cancelled"
+    check cancelled["taskId"].getStr() == id
+    check not cancelled.hasKey("_meta")
+    untilTrue("the tool to see the cancellation", proc(): bool = fx.sawCancel)
+
+  taskTest "Given a cancelled task, when its tool finishes anyway, then the task stays cancelled":
+    let fx = fixture()
+    let peer = fx.connectTo()
+    let id = peer.createTask("slow")["taskId"].getStr()
+    discard peer.ask("tasks/cancel", taskParams(id))
+    fx.gate.complete()
+    settle()
+    check peer.statusOf(id) == "cancelled"
+
+  taskTest "Given a cancelled task, when its result is requested, then the answer is a JSON-RPC error":
+    let fx = fixture()
+    let peer = fx.connectTo()
+    let id = peer.createTask("slow")["taskId"].getStr()
+    discard peer.ask("tasks/cancel", taskParams(id))
+    check peer.ask("tasks/result", taskParams(id)).hasKey("error")
+
+  taskTest "Given a task that is over, when cancelled, then it is Invalid params":
+    let fx = fixture()
+    let peer = fx.connectTo()
+    let id = peer.createTask("quick")["taskId"].getStr()
+    peer.untilStatus(id, "completed")
+    let response = peer.ask("tasks/cancel", taskParams(id))
+    check response.errorCode == -32602
+    check "completed" in response["error"]["message"].getStr()
+    check peer.statusOf(id) == "completed"
+
+  taskTest "Given a server without the cancel capability, when a client cancels, then the method is not found":
+    let fx = fixture(TaskConfig(list: true, cancel: false, toolsCall: true, pageSize: 50))
+    let peer = fx.connectTo()
+    let id = peer.createTask("slow")["taskId"].getStr()
+    check peer.ask("tasks/cancel", taskParams(id)).errorCode == -32601
+
+suite "tasks server: notifications":
+  taskTest "Given a task, when its status changes, then the owning session is sent the whole task":
+    let fx = fixture()
+    let peer = fx.connectTo(session = "s1")
+    let id = peer.createTask("slow")["taskId"].getStr()
+    fx.gate.complete()
+    peer.untilStatus(id, "completed")
+    let notices = fx.transport.messagesOf("notifications/tasks/status")
+    check notices.len >= 1
+    let last = notices[^1]
+    check last.session == "s1"
+    check last.message["params"]["taskId"].getStr() == id
+    check last.message["params"]["status"].getStr() == "completed"
+    check last.message["params"].hasKey("createdAt")
+    check last.message["params"].hasKey("lastUpdatedAt")
+    check last.message["params"].hasKey("ttl")
+    check not last.message["params"].hasKey("_meta")
+
+suite "tasks server: expiry":
+  taskTest "Given a task whose ttl has passed, when polled, then it is gone and tasks/result agrees":
+    let fx = fixture()
+    let peer = fx.connectTo()
+    let id = peer.createTask("quick", ttl = 1_000)["taskId"].getStr()
+    peer.untilStatus(id, "completed")
+    fx.time.nowMs += 1_001
+    check peer.ask("tasks/get", taskParams(id)).errorCode == -32602
+    check peer.ask("tasks/result", taskParams(id)).errorCode == -32602
+    check peer.ask("tasks/list")["result"]["tasks"].len == 0
+
+  taskTest "Given a working task that expires, when the time passes, then its tool is told to stop":
+    let fx = fixture()
+    let peer = fx.connectTo()
+    let id = peer.createTask("slow", ttl = 1_000)["taskId"].getStr()
+    fx.time.nowMs += 5_000
+    check peer.ask("tasks/get", taskParams(id)).errorCode == -32602
+    untilTrue("the tool to see the cancellation", proc(): bool = fx.sawCancel)
+
+suite "tasks server: isolation":
+  taskTest "Given a task of one session, when another session asks for it, then it is not found, whatever the operation":
+    let fx = fixture()
+    let owner = fx.connectTo(session = "alice")
+    let other = fx.connectTo(session = "mallory")
+    let id = owner.createTask("slow")["taskId"].getStr()
+    check other.ask("tasks/get", taskParams(id)).errorCode == -32602
+    check other.ask("tasks/result", taskParams(id)).errorCode == -32602
+    check other.ask("tasks/cancel", taskParams(id)).errorCode == -32602
+    check owner.statusOf(id) == "working"
+
+  taskTest "Given tasks of two sessions, when each lists, then it sees only its own":
+    let fx = fixture()
+    let alice = fx.connectTo(session = "alice")
+    let bob = fx.connectTo(session = "bob")
+    let aliceTask = alice.createTask("slow")["taskId"].getStr()
+    let bobTask = bob.createTask("slow")["taskId"].getStr()
+    check alice.ask("tasks/list")["result"]["tasks"].len == 1
+    check alice.ask("tasks/list")["result"]["tasks"][0]["taskId"].getStr() == aliceTask
+    check bob.ask("tasks/list")["result"]["tasks"][0]["taskId"].getStr() == bobTask
+
+  taskTest "Given a task of one session, when its status changes, then only that session is notified":
+    let fx = fixture()
+    let alice = fx.connectTo(session = "alice")
+    discard fx.connectTo(session = "bob")
+    discard alice.createTask("quick")
+    settle()
+    for notice in fx.transport.messagesOf("notifications/tasks/status"):
+      check notice.session == "alice"
+
+suite "tasks server: resource limits":
+  taskTest "Given a limit of active tasks, when it is reached, then the call fails with an internal error until one ends":
+    let fx = fixture(maxActive = 1)
+    let peer = fx.connectTo()
+    discard peer.createTask("slow")
+    check peer.ask("tools/call", asTask("slow")).errorCode == -32603
+
+suite "tasks server: input_required":
+  taskTest "Given a task whose tool asks the client, when it does, then the task needs input, the request names the task, and it works again after the answer":
+    let fx = fixture()
+    let peer = fx.connectTo(clientCapabilities = %*{"sampling": {}})
+    let id = peer.createTask("asks")["taskId"].getStr()
+    fx.gate.complete()
+    untilTrue("the sampling request", proc(): bool =
+      fx.transport.messagesOf("sampling/createMessage").len == 1)
+    let request = fx.transport.messagesOf("sampling/createMessage")[0].message
+    check request["params"]["_meta"][RelatedTask]["taskId"].getStr() == id
+    check peer.statusOf(id) == "input_required"
+    fx.transport.inject("", %*{"jsonrpc": "2.0", "id": request["id"],
+      "result": {"role": "assistant", "content": {"type": "text", "text": "hi"}, "model": "m"}})
+    peer.untilStatus(id, "completed")
+    check peer.ask("tasks/result", taskParams(id)).textOf == "asked"
+
+  taskTest "Given a task that needs input and a waiting tasks/result, when the tool asks, then the request is sent for that tasks/result":
+    let fx = fixture()
+    let peer = fx.connectTo(clientCapabilities = %*{"sampling": {}})
+    let id = peer.createTask("asks")["taskId"].getStr()
+    let waiting = freshId()
+    # tasks/result arrives before the tool asks: the request belongs to its stream
+    peer.send(%waiting, "tasks/result", taskParams(id))
+    settle()
+    fx.gate.complete()
+    untilTrue("the sampling request", proc(): bool =
+      fx.transport.messagesOf("sampling/createMessage").len == 1)
+    check fx.transport.messagesOf("sampling/createMessage")[0].related == waiting

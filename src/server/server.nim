@@ -18,6 +18,7 @@ import ../transport/transport
 import ./errors
 import ./pagination
 import ./completion
+import ../protocol/tasks
 
 export errors, pagination, completion, log_level, sampling_tools, trace_context
 
@@ -75,6 +76,26 @@ type
     cancelReason*: string
     cancelSignal: Future[void]
     finished: bool
+    taskScope*: TaskScope
+      ## Set while the request runs as a task (2025-11-25).
+
+  TaskScope* = ref object
+    ## What ties a request that runs as a task to its task: what it asks of
+    ## the client is marked as belonging to the task, and the task needs input
+    ## while the client has not answered.
+    taskId*: string
+    awaitingInput*: proc(waiting: bool) {.closure.}
+      ## Called with true when the first request to the client goes out and
+      ## with false when the last one is answered.
+    resultStream*: proc(): string {.closure.}
+      ## The id of the `tasks/result` request that waits on the task, or "".
+    inputsOpen: int
+
+  RequestInterceptor* = proc(ctx: McpRequestContext,
+                             request: JsonRpcRequest): Future[Option[JsonRpcResponse]] {.async.}
+    ## Looks at a request before the server's own handling of it. Some answer
+    ## ends the matter; none lets the server carry on. Raise
+    ## `McpRequestError` for a JSON-RPC error.
 
   ToolCallHandler* = proc(ctx: McpRequestContext, name: string,
                           arguments: JsonNode): Future[JsonNode] {.async.}
@@ -138,6 +159,7 @@ type
       ## The methods extensions define, by method name; see `registerExtensionMethod`.
     extensionResultTypes*: Table[string, string]
       ## The result types extensions define, mapped to the extension.
+    interceptors: seq[RequestInterceptor]
     requestHandlers*: Table[string, proc(request: JsonRpcRequest): Future[JsonRpcResponse] {.async.}]
     notificationHandlers*: Table[string, proc(notification: JsonRpcNotification): Future[void] {.async.}]
     inFlight: Table[string, McpRequestContext]
@@ -291,6 +313,11 @@ proc registerRequestHandler*(server: McpServer, methodName: string,
 proc registerNotificationHandler*(server: McpServer, methodName: string,
     handler: proc(notification: JsonRpcNotification): Future[void] {.async.}) =
   server.notificationHandlers[methodName] = handler
+
+proc addRequestInterceptor*(server: McpServer, interceptor: RequestInterceptor) =
+  ## Interceptors see every request of the standard methods, in the order
+  ## they were added, before the server's own handling.
+  server.interceptors.add interceptor
 
 # Handlers of the standard methods
 
@@ -484,6 +511,8 @@ proc extractClientCapabilities(json: JsonNode): McpClientCapabilities =
   if not elicitationJson.isNil and elicitationJson.kind == JObject:
     result.elicitation = some(elicitationJson.fromJson(McpElicitationCapability))
 
+  result.tasks = tasksCapabilityFromJson(json{"tasks"})
+
   let experimentalJson = json{"experimental"}
   if not experimentalJson.isNil and experimentalJson.kind == JObject:
     result.experimental = some(experimentalJson)
@@ -635,11 +664,13 @@ proc log*(ctx: McpRequestContext, level: McpLogLevel, data: JsonNode,
 
 proc request*(server: McpServer, session: string, methodName: string,
               params: JsonNode, relatedRequestId = "",
-              timeoutMs = DefaultRequestTimeoutMs): Future[JsonRpcResponse] {.async.} =
+              timeoutMs = DefaultRequestTimeoutMs,
+              relatedTask = ""): Future[JsonRpcResponse] {.async.} =
   ## Send a request to the client on `session` and wait for its response,
   ## which may carry a JSON-RPC error. Raises `McpCapabilityError` when there
   ## is no initialized client there or its version has no requests from the
   ## server, `McpRequestTimeout` when `timeoutMs` (0: no limit) passes first.
+  ## A `relatedTask` marks the request as belonging to that task (2025-11-25).
   let known = server.sessions.getOrDefault(session)
   if known.isNil or known.state != mlsOperational:
     raise newException(McpCapabilityError,
@@ -653,7 +684,8 @@ proc request*(server: McpServer, session: string, methodName: string,
   let key = inFlightKey(session, id)
   let answer = newFuture[JsonRpcResponse]("McpServer.request")
   server.pending[key] = answer
-  var outgoing = newJsonRpcRequest(id, methodName, params)
+  var outgoing = newJsonRpcRequest(id, methodName,
+    if relatedTask.len > 0: withRelatedTask(params, relatedTask) else: params)
   outgoing.session = session
   outgoing.relatedRequestId = relatedRequestId
   try:
@@ -691,24 +723,27 @@ proc requireClientCapability(server: McpServer, session: string, name: string,
     raise newException(McpCapabilityError,
       "the client on session '" & session & "' did not declare the " & name & " capability")
 
-proc ping*(server: McpServer, session = "", relatedRequestId = ""): Future[void] {.async.} =
+proc ping*(server: McpServer, session = "", relatedRequestId = "",
+           relatedTask = ""): Future[void] {.async.} =
   ## Check that the client on `session` is alive.
-  discard resultOf(await server.request(session, "ping", newJObject(), relatedRequestId), "ping")
+  discard resultOf(await server.request(session, "ping", newJObject(), relatedRequestId,
+                                        relatedTask = relatedTask), "ping")
 
-proc listRoots*(server: McpServer, session = "",
-                relatedRequestId = ""): Future[seq[JsonNode]] {.async.} =
+proc listRoots*(server: McpServer, session = "", relatedRequestId = "",
+                relatedTask = ""): Future[seq[JsonNode]] {.async.} =
   ## The roots the client on `session` offers; needs its `roots` capability.
   server.requireClientCapability(session, "roots",
     proc(c: McpClientCapabilities): bool = c.roots.isSome)
   let answer = resultOf(await server.request(session, "roots/list", newJObject(),
-                                             relatedRequestId), "roots/list")
+                                             relatedRequestId, relatedTask = relatedTask),
+                        "roots/list")
   let roots = answer{"roots"}
   if roots.isNil or roots.kind != JArray:
     raise newException(McpRemoteError, "roots/list: the result has no roots array")
   return roots.getElems()
 
 proc createMessage*(server: McpServer, session: string, params: JsonNode,
-                    relatedRequestId = ""): Future[JsonNode] {.async.} =
+                    relatedRequestId = "", relatedTask = ""): Future[JsonNode] {.async.} =
   ## Ask the client on `session` for an LLM completion (`sampling/createMessage`);
   ## `params` is the CreateMessageRequest. Needs its `sampling` capability.
   server.requireClientCapability(session, "sampling",
@@ -721,21 +756,56 @@ proc createMessage*(server: McpServer, session: string, params: JsonNode,
     raise newException(McpCapabilityError, "sampling/createMessage: " & unavailable.get)
   raiseIfAny("sampling/createMessage", createMessageParamsProblems(params, version))
   let answer = resultOf(await server.request(session, "sampling/createMessage", params,
-                                             relatedRequestId), "sampling/createMessage")
+                                             relatedRequestId, relatedTask = relatedTask),
+                        "sampling/createMessage")
   if params.usesTools:
     # An answer to a request without tools is passed on as received.
     raiseIfAny("sampling/createMessage result",
                createMessageResultProblems(answer, params, version))
   return answer
 
-proc ping*(ctx: McpRequestContext): Future[void] =
-  ctx.server.ping(ctx.session, ctx.requestId)
+type InputScope = tuple[task, relatedRequestId: string]
 
-proc listRoots*(ctx: McpRequestContext): Future[seq[JsonNode]] =
-  ctx.server.listRoots(ctx.session, ctx.requestId)
+proc beginInput(ctx: McpRequestContext): InputScope =
+  ## Where a request of the server to the client belongs. For a request that
+  ## runs as a task: to the task, and to the `tasks/result` request waiting
+  ## on it, if any; the task needs input until the client answers.
+  let scope = ctx.taskScope
+  if scope.isNil:
+    return (task: "", relatedRequestId: ctx.requestId)
+  inc scope.inputsOpen
+  if scope.inputsOpen == 1:
+    scope.awaitingInput(true)
+  (task: scope.taskId, relatedRequestId: scope.resultStream())
 
-proc createMessage*(ctx: McpRequestContext, params: JsonNode): Future[JsonNode] =
-  ctx.server.createMessage(ctx.session, params, ctx.requestId)
+proc endInput(ctx: McpRequestContext) =
+  let scope = ctx.taskScope
+  if scope.isNil:
+    return
+  dec scope.inputsOpen
+  if scope.inputsOpen == 0:
+    scope.awaitingInput(false)
+
+proc ping*(ctx: McpRequestContext): Future[void] {.async.} =
+  let input = ctx.beginInput()
+  try:
+    await ctx.server.ping(ctx.session, input.relatedRequestId, input.task)
+  finally:
+    ctx.endInput()
+
+proc listRoots*(ctx: McpRequestContext): Future[seq[JsonNode]] {.async.} =
+  let input = ctx.beginInput()
+  try:
+    return await ctx.server.listRoots(ctx.session, input.relatedRequestId, input.task)
+  finally:
+    ctx.endInput()
+
+proc createMessage*(ctx: McpRequestContext, params: JsonNode): Future[JsonNode] {.async.} =
+  let input = ctx.beginInput()
+  try:
+    return await ctx.server.createMessage(ctx.session, params, input.relatedRequestId, input.task)
+  finally:
+    ctx.endInput()
 
 proc resolveResponse(server: McpServer, session: string, response: JsonRpcResponse) =
   let key = inFlightKey(session, response.id)
@@ -901,6 +971,10 @@ proc dispatchExtension(server: McpServer, request: JsonRpcRequest,
 proc dispatchStandard(server: McpServer, request: JsonRpcRequest,
                       ctx: McpRequestContext): Future[JsonRpcResponse] {.async.} =
   let caps = server.capabilities
+  for interceptor in server.interceptors:
+    let answer = await interceptor(ctx, request)
+    if answer.isSome:
+      return answer.get
   case request.`method`
   of "resources/list":
     if caps.resources.isNone or server.resourcesList.isNil:
@@ -1139,7 +1213,8 @@ proc handleModernRequest(server: McpServer, request: JsonRpcRequest,
   var response =
     if request.`method` == DiscoverMethod:
       newJsonRpcResponse(request.id, discoverPayload(
-        supported, server.capabilities.toJson(), server.instructions))
+        supported, server.capabilities.forVersion(ctx.version).toJson(),
+        server.instructions))
     else:
       await server.handleStandardRequest(request, ctx)
 
@@ -1175,6 +1250,24 @@ proc handleRequest*(server: McpServer, request: JsonRpcRequest): Future[JsonRpcR
   ## a server limited to earlier versions does not know that era at all.
   ## The request cannot be cancelled this way; `processMessages` can.
   server.serve(request, server.newContext(request))
+
+proc serveDetached*(server: McpServer, request: JsonRpcRequest,
+                    scope: TaskScope = nil): tuple[response: Future[JsonRpcResponse],
+                                                   cancel: proc(reason: string) {.closure.}] =
+  ## Serve `request` as `handleRequest` does, but with a way to stop it: its
+  ## handler sees `ctx.cancelled` and `whenCancelled` once `cancel` is
+  ## called. `scope` ties it to a task. For work that outlives the request
+  ## that started it, as a task does.
+  let ctx = server.newContext(request)
+  ctx.taskScope = scope
+  let handling = server.serve(request, ctx)
+  handling.addCallback(proc() = ctx.finished = true)
+  result.response = handling
+  result.cancel = proc(reason: string) =
+    if not ctx.finished and not ctx.cancelled:
+      ctx.cancelled = true
+      ctx.cancelReason = reason
+      ctx.cancelSignal.complete()
 
 proc processRequest(server: McpServer, request: JsonRpcRequest): Future[void] {.async.} =
   let ctx = server.newContext(request)
