@@ -24,6 +24,9 @@ proc requireElicitation(server: McpServer, session: string, mode: ElicitMode) =
   if not version.has(ftElicitation):
     raise newException(McpCapabilityError,
       "elicitation/create: protocol version " & $version & " has no elicitation")
+  if mode == emUrl and not version.has(ftUrlElicitation):
+    raise newException(McpCapabilityError,
+      "elicitation/create: protocol version " & $version & " has no URL mode")
   let declared = known.clientCapabilities.get(McpClientCapabilities()).elicitation
   if declared.isNone or not declared.get.modeSupported(mode):
     raise newException(McpCapabilityError,
@@ -48,3 +51,50 @@ proc elicit*(server: McpServer, session: string, message: string,
 proc elicit*(ctx: McpRequestContext, message: string,
              requestedSchema: JsonNode): Future[McpElicitResult] =
   ctx.server.elicit(ctx.session, message, requestedSchema, ctx.requestId)
+
+proc elicitUrl*(server: McpServer, session: string, message, elicitationId, url: string,
+                relatedRequestId = ""): Future[McpElicitResult] {.async.} =
+  ## Ask the user of the client on `session` to open `url` (2025-11-25
+  ## onward). The answer says whether the user agreed to go there; it does
+  ## not say that the interaction is done, so the server learns that out of
+  ## band and may then call `notifyElicitationComplete`. `elicitationId` is
+  ## unique within this server and opaque to the client. Raises like `elicit`.
+  server.requireElicitation(session, emUrl)
+  let version = server.session(session).negotiatedVersion.get
+  let params = urlElicitationParams(message, elicitationId, url, version)
+  let response = await server.request(session, "elicitation/create", params,
+                                      relatedRequestId)
+  return parseElicitationResult(resultOf(response, "elicitation/create"), params)
+
+proc elicitUrl*(ctx: McpRequestContext, message, elicitationId, url: string): Future[McpElicitResult] =
+  ctx.server.elicitUrl(ctx.session, message, elicitationId, url, ctx.requestId)
+
+proc notifyElicitationComplete*(server: McpServer, session: string,
+                                elicitationId: string): Future[void] {.async.} =
+  ## Tell the client on `session`, which must be the one that was asked, that
+  ## the out-of-band interaction of `elicitationId` is complete. The server
+  ## does not track which client was given which id: pass the session the
+  ## request or the -32042 error went to.
+  server.requireElicitation(session, emUrl)
+  let version = server.session(session).negotiatedVersion.get
+  await server.sendNotification("notifications/elicitation/complete",
+    elicitationCompleteParams(elicitationId, version), session)
+
+proc urlElicitationRequired*(version: McpProtocolVersion, elicitations: seq[JsonNode],
+                             message = "This request requires more information."
+                             ): ref McpRequestError =
+  ## The error a handler raises when its request cannot go on until the user
+  ## has done the URL mode elicitations in `elicitations` (build them with
+  ## `urlElicitationParams`). Only 2025-11-25 has it; raises McpPayloadError
+  ## for another version or for entries that are not URL requests.
+  newRequestError(UrlElicitationRequiredCode, message,
+                  urlElicitationRequiredData(elicitations, version))
+
+proc urlElicitationRequired*(ctx: McpRequestContext, elicitations: seq[JsonNode],
+                             message = "This request requires more information."
+                             ): ref McpRequestError =
+  ## As above for the version of `ctx`'s request; raises McpCapabilityError
+  ## when its client did not declare the url mode, because the error asks the
+  ## client for something it cannot do.
+  ctx.server.requireElicitation(ctx.session, emUrl)
+  urlElicitationRequired(ctx.version, elicitations, message)

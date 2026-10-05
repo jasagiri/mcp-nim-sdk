@@ -158,3 +158,100 @@ if DefaultProtocolVersion >= mpv20251125:
       expect McpPayloadError:
         discard waitFor server.elicit("", "m", colours)
       check t.messagesOf("elicitation/create").len == 0
+
+
+if DefaultProtocolVersion >= mpv20251125:
+  suite "URL mode elicitation requested by the server (2025-11-25)":
+
+    let
+      BothModes = %*{"elicitation": {"form": {}, "url": {}}}
+      id = "550e8400-e29b-41d4-a716-446655440000"
+      link = "https://mcp.example.com/ui/set_api_key"
+
+    proc urlServer(): McpServer =
+      result = newServer(McpServerCapabilities(tools: some(McpToolsCapability())))
+      result.onToolCall(proc(ctx: McpRequestContext, name: string,
+                             arguments: JsonNode): Future[JsonNode] {.async.} =
+        raise ctx.urlElicitationRequired(@[urlElicitationParams("Connect", id, link, ctx.version)]))
+
+    test "Given a client that declared the url mode, when the server asks, then elicitation/create names the url mode and the accept comes back without content":
+      let server = urlServer()
+      let t = server.attach()
+      discard server.connect(t, mpv20251125, clientCapabilities = BothModes)
+      let pending = server.elicitUrl("", "Provide your key", id, link)
+      let asked = t.awaitRequest("elicitation/create")
+      check asked.message["params"] == %*{"mode": "url", "message": "Provide your key",
+                                          "elicitationId": id, "url": link}
+      t.answer(asked, %*{"action": "accept"})
+      let reply = waitFor pending
+      check reply.action == eaAccept
+      check reply.content.isNil
+
+    test "Given a client that declared only the form mode, when the server asks in url mode, then it raises and sends nothing":
+      for caps in [%*{"elicitation": {}}, %*{"elicitation": {"form": {}}}]:
+        let server = urlServer()
+        let t = server.attach()
+        discard server.connect(t, mpv20251125, clientCapabilities = caps)
+        expect McpCapabilityError:
+          discard waitFor server.elicitUrl("", "m", id, link)
+        check t.messagesOf("elicitation/create").len == 0
+
+    test "Given a client that declared only the url mode, when the server asks for a form, then it raises":
+      let server = urlServer()
+      let t = server.attach()
+      discard server.connect(t, mpv20251125, clientCapabilities = %*{"elicitation": {"url": {}}})
+      expect McpCapabilityError:
+        discard waitFor server.elicit("", "m", Schema)
+      check t.messagesOf("elicitation/create").len == 0
+
+    test "Given a connection of 2025-06-18, when the server asks in url mode, then it raises and sends nothing":
+      let server = urlServer()
+      let t = server.attach()
+      discard server.connect(t, mpv20250618, clientCapabilities = BothModes)
+      expect McpCapabilityError:
+        discard waitFor server.elicitUrl("", "m", id, link)
+      check t.messagesOf("elicitation/create").len == 0
+
+    test "Given a URL mode answer with content, when it arrives, then McpPayloadError is raised":
+      let server = urlServer()
+      let t = server.attach()
+      discard server.connect(t, mpv20251125, clientCapabilities = BothModes)
+      let pending = server.elicitUrl("", "m", id, link)
+      t.answer(t.awaitRequest("elicitation/create"),
+               %*{"action": "accept", "content": {"key": "secret"}})
+      expect McpPayloadError:
+        discard waitFor pending
+
+    test "Given a completed interaction, when the server notifies, then only that client gets notifications/elicitation/complete":
+      let server = urlServer()
+      let t = server.attach()
+      discard server.connect(t, mpv20251125, session = "a", clientCapabilities = BothModes)
+      discard server.connect(t, mpv20251125, session = "b", clientCapabilities = BothModes)
+      waitFor server.notifyElicitationComplete("a", id)
+      let sent = t.messagesOf("notifications/elicitation/complete")
+      check sent.len == 1
+      check sent[0].session == "a"
+      check sent[0].message["params"] == %*{"elicitationId": id}
+
+    test "Given a client without the url mode, when the server notifies a completion, then it raises and sends nothing":
+      let server = urlServer()
+      let t = server.attach()
+      discard server.connect(t, mpv20251125, clientCapabilities = FormOnly)
+      expect McpCapabilityError:
+        waitFor server.notifyElicitationComplete("", id)
+      check t.messagesOf("notifications/elicitation/complete").len == 0
+
+    test "Given a handler that needs a URL elicitation, when the client can do the url mode, then the call fails with code -32042 and the elicitations":
+      let server = urlServer()
+      let t = server.attach()
+      let peer = server.connect(t, mpv20251125, clientCapabilities = BothModes)
+      let reply = peer.ask("tools/call", %*{"name": "connect"})
+      check reply.errorCode == -32042
+      check reply["error"]["data"] == %*{"elicitations": [
+        {"mode": "url", "message": "Connect", "elicitationId": id, "url": link}]}
+
+    test "Given a handler that needs a URL elicitation, when the client cannot do the url mode, then the handler's raise is a capability error and the call fails as an internal error":
+      let server = urlServer()
+      let t = server.attach()
+      let peer = server.connect(t, mpv20251125, clientCapabilities = FormOnly)
+      check peer.ask("tools/call", %*{"name": "connect"}).errorCode == -32603

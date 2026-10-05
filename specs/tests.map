@@ -644,3 +644,31 @@ MCP-ELICIT-DEFAULT-1 | tests/test_elicitation_payload.nim | Given defaults on st
 MCP-ELICIT-DEFAULT-1 | tests/test_elicitation_payload.nim | Given a default on a string, number or enum property, when checked in 2025-06-18, then it is reported
 MCP-ELICIT-DEFAULT-1 | tests/test_elicitation_payload.nim | Given a boolean with a default in 2025-06-18, when checked, then it is accepted
 MCP-ELICIT-DEFAULT-2 | tests/test_elicitation_payload.nim | Given a default that does not fit its property, when checked, then it is reported
+MCP-ELICIT-URL-1 | tests/test_elicitation_payload.nim | Given a message, an id and a URL, when a request is built, then the params name the url mode
+MCP-ELICIT-URL-1 | tests/test_elicitation_payload.nim | Given an empty id or a string that is not a URL, when checked, then the field is named
+MCP-ELICIT-URL-1 | tests/test_elicitation_payload.nim | Given a version before URL mode, when a request is built or checked, then McpPayloadError and the problem name the version
+MCP-ELICIT-URL-1 | tests/test_elicitation_payload.nim | Given a URL request, when it is accepted without content, then the answer is valid
+MCP-ELICIT-URL-1 | tests/test_elicitation_payload.nim | Given a URL request, when an accept carries content, then it is reported
+MCP-ELICIT-URL-1 | tests/test_server_elicitation.nim | Given a client that declared the url mode, when the server asks, then elicitation/create names the url mode and the accept comes back without content
+MCP-ELICIT-URL-1 | tests/test_server_elicitation.nim | Given a URL mode answer with content, when it arrives, then McpPayloadError is raised
+MCP-ELICIT-URL-1 | tests/test_client_elicitation.nim | Given a URL request, when the handler accepts, then it sees the id and URL and the answer has no content
+MCP-ELICIT-URL-1 | tests/test_client_elicitation.nim | Given a handler that returns content for a URL request, when the server asks, then the server gets an internal error
+MCP-ELICIT-URL-2 | tests/test_elicitation_payload.nim | Given the capability forms, when read, then an empty object is the form mode alone
+MCP-ELICIT-URL-2 | tests/test_server_elicitation.nim | Given a client that declared only the form mode, when the server asks in url mode, then it raises and sends nothing
+MCP-ELICIT-URL-2 | tests/test_server_elicitation.nim | Given a client that declared only the url mode, when the server asks for a form, then it raises
+MCP-ELICIT-URL-2 | tests/test_server_elicitation.nim | Given a connection of 2025-06-18, when the server asks in url mode, then it raises and sends nothing
+MCP-ELICIT-URL-3 | tests/test_client_elicitation.nim | Given a handler for both modes, when the client connects, then initialize declares form and url
+MCP-ELICIT-URL-3 | tests/test_client_elicitation.nim | Given a client that declared only the form mode, when a URL request arrives, then the client answers invalid params
+MCP-ELICIT-URL-4 | tests/test_elicitation_payload.nim | Given an elicitation id, when a completion is built, then the params carry it
+MCP-ELICIT-URL-4 | tests/test_server_elicitation.nim | Given a completed interaction, when the server notifies, then only that client gets notifications/elicitation/complete
+MCP-ELICIT-URL-4 | tests/test_server_elicitation.nim | Given a client without the url mode, when the server notifies a completion, then it raises and sends nothing
+MCP-ELICIT-URL-4 | tests/test_client_elicitation.nim | Given an accepted URL request, when the completion notification arrives, then the callback runs once for that id and unknown ids are ignored
+MCP-ELICIT-URL-4 | tests/test_client_elicitation.nim | Given a declined URL request, when its completion arrives, then the callback does not run
+MCP-ELICIT-URL-5 | tests/test_elicitation_payload.nim | Given URL requests, when an error is built, then the data lists them under elicitations
+MCP-ELICIT-URL-5 | tests/test_elicitation_payload.nim | Given no requests, a form request or a request of the wrong version, when an error is built, then McpPayloadError is raised
+MCP-ELICIT-URL-5 | tests/test_elicitation_payload.nim | Given error data, when checked, then each entry must be a URL request
+MCP-ELICIT-URL-5 | tests/test_server_elicitation.nim | Given a handler that needs a URL elicitation, when the client can do the url mode, then the call fails with code -32042 and the elicitations
+MCP-ELICIT-URL-5 | tests/test_server_elicitation.nim | Given a handler that needs a URL elicitation, when the client cannot do the url mode, then the handler's raise is a capability error and the call fails as an internal error
+MCP-ELICIT-URL-5 | tests/test_client_elicitation.nim | Given a request that failed with -32042, when the error is read, then the URL requests come back
+MCP-ELICIT-URL-5 | tests/test_client_elicitation.nim | Given an error with another code, when read for URL requests, then there are none
+MCP-ELICIT-URL-5 | tests/test_client_elicitation.nim | Given a -32042 error with malformed data, when read, then McpProtocolError is raised

@@ -70,3 +70,36 @@ Feature: Elicitation
     Given a property with a default
     When the default has the wrong type, is outside the bounds or length, or is not one of the enum values
     Then the schema is not a valid requestedSchema
+
+  @spec:MCP-ELICIT-URL-1 @feature:ftUrlElicitation
+  Scenario: A server sends the user to a URL
+    Given a client that declared the url mode and a connection of 2025-11-25 or later
+    When the server sends elicitation/create with mode url, a message, an elicitationId and a url
+    Then the client answers accept, decline or cancel, and an accept has no content
+
+  @spec:MCP-ELICIT-URL-2 @feature:ftUrlElicitation
+  Scenario: A server asks only in a mode the client declared
+    Given a client whose elicitation capability is empty, or form only, or a connection of 2025-06-18
+    When the server asks in url mode
+    Then it fails with a capability error and sends nothing
+    And an empty elicitation capability means the form mode alone
+
+  @spec:MCP-ELICIT-URL-3 @feature:ftUrlElicitation
+  Scenario: A client declares the modes it supports and refuses the others
+    Given a client with an elicitation handler for chosen modes
+    When it connects
+    Then initialize declares exactly those modes
+    And a request in another mode is answered with invalid params
+
+  @spec:MCP-ELICIT-URL-4 @feature:ftUrlElicitation
+  Scenario: The end of an out-of-band interaction is announced to one client
+    Given an accepted URL request
+    When the server sends notifications/elicitation/complete to that client with the elicitationId
+    Then the client's callback runs once, and a notification for an unknown or completed id is ignored
+
+  @spec:MCP-ELICIT-URL-5 @feature:ftUrlElicitation
+  Scenario: A request that needs a URL elicitation fails with code -32042
+    Given a handler that cannot go on until the user has done a URL elicitation
+    When it raises the URL elicitation required error
+    Then the call fails with code -32042 and data.elicitations lists the URL requests
+    And the client reads them back, and malformed data is a protocol error

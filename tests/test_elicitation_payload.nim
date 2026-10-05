@@ -9,6 +9,7 @@
 import std/[unittest, json, strutils]
 import protocol/version
 import protocol/features
+import protocol/types
 import protocol/elicitation
 
 const
@@ -305,3 +306,73 @@ suite "elicitation: a response":
     check elicitationResultJson(McpElicitResult(action: eaDecline)) == %*{"action": "decline"}
     check elicitationResultJson(McpElicitResult(action: eaAccept,
       content: %*{"name": "Mona"})) == %*{"action": "accept", "content": {"name": "Mona"}}
+
+suite "elicitation: URL mode (2025-11-25)":
+
+  let
+    id = "550e8400-e29b-41d4-a716-446655440000"
+    link = "https://mcp.example.com/ui/set_api_key"
+    urlRequest = %*{"mode": "url", "message": "Provide your key", "elicitationId": id, "url": link}
+
+  test "Given a message, an id and a URL, when a request is built, then the params name the url mode":
+    for v in EnumVersions:
+      check urlElicitationParams("Provide your key", id, link, v) == urlRequest
+
+  test "Given a version before URL mode, when a request is built or checked, then McpPayloadError and the problem name the version":
+    expect McpPayloadError:
+      discard urlElicitationParams("m", id, link, mpv20250618)
+    check elicitationParamsProblems(urlRequest, mpv20250618).mentions("2025-06-18")
+
+  test "Given an empty id or a string that is not a URL, when checked, then the field is named":
+    for v in EnumVersions:
+      check elicitationParamsProblems(%*{"mode": "url", "message": "m", "url": link}, v).mentions("elicitationId")
+      check elicitationParamsProblems(%*{"mode": "url", "message": "m", "elicitationId": "",
+                                         "url": link}, v).mentions("elicitationId")
+      check elicitationParamsProblems(%*{"mode": "url", "message": "m", "elicitationId": id,
+                                         "url": "not a url"}, v).mentions("url")
+      check elicitationParamsProblems(urlRequest, v).len == 0
+
+  test "Given params with mode url, when the mode is read, then it is the url mode":
+    check elicitationModeOf(urlRequest) == emUrl
+
+  test "Given a URL request, when it is accepted without content, then the answer is valid":
+    let answer = parseElicitationResult(%*{"action": "accept"}, urlRequest)
+    check answer.action == eaAccept
+    check answer.content.isNil
+    check $parseElicitationResult(%*{"action": "decline"}, urlRequest).action == "decline"
+
+  test "Given a URL request, when an accept carries content, then it is reported":
+    check elicitationResultProblems(%*{"action": "accept", "content": {"k": "v"}},
+                                    urlRequest).mentions("content")
+
+  test "Given the capability forms, when read, then an empty object is the form mode alone":
+    check modeSupported(McpElicitationCapability(form: true), emForm)
+    check not modeSupported(McpElicitationCapability(form: true), emUrl)
+    check modeSupported(McpElicitationCapability(url: true), emUrl)
+
+  test "Given an elicitation id, when a completion is built, then the params carry it":
+    check elicitationCompleteParams(id, mpv20251125) == %*{"elicitationId": id}
+    expect McpPayloadError:
+      discard elicitationCompleteParams("", mpv20251125)
+    expect McpPayloadError:
+      discard elicitationCompleteParams(id, mpv20250618)
+
+  test "Given URL requests, when an error is built, then the data lists them under elicitations":
+    let data = urlElicitationRequiredData(@[urlRequest], mpv20251125)
+    check data == %*{"elicitations": [urlRequest]}
+    check UrlElicitationRequiredCode == -32042
+
+  test "Given no requests, a form request or a request of the wrong version, when an error is built, then McpPayloadError is raised":
+    expect McpPayloadError:
+      discard urlElicitationRequiredData(@[], mpv20251125)
+    expect McpPayloadError:
+      discard urlElicitationRequiredData(@[formElicitationParams("m", contactSchema, mpv20251125)], mpv20251125)
+    expect McpPayloadError:
+      discard urlElicitationRequiredData(@[urlRequest], mpv20250618)
+    expect McpPayloadError:
+      discard urlElicitationRequiredData(@[urlRequest], mpv20260728)
+
+  test "Given error data, when checked, then each entry must be a URL request":
+    check urlElicitationRequiredProblems(%*{"elicitations": [urlRequest]}, mpv20251125).len == 0
+    check urlElicitationRequiredProblems(%*{}, mpv20251125).mentions("elicitations")
+    check urlElicitationRequiredProblems(%*{"elicitations": [{"mode": "form"}]}, mpv20251125).len > 0

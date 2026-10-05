@@ -35,7 +35,11 @@ type
       ## The submitted form data; nil unless the action is accept and the
       ## request was a form.
 
-const StringFormats = ["email", "uri", "date", "date-time"]
+const
+  StringFormats = ["email", "uri", "date", "date-time"]
+  UrlElicitationRequiredCode* = -32042
+    ## The JSON-RPC error code of a request that cannot go on until a URL
+    ## mode elicitation is done (2025-11-25 only).
 
 func isInteger(node: JsonNode): bool =
   case node.kind
@@ -263,6 +267,8 @@ func elicitationModeOf*(params: JsonNode): ElicitMode =
     return emForm
   if mode.kind == JString and mode.getStr() == "form":
     return emForm
+  if mode.kind == JString and mode.getStr() == "url":
+    return emUrl
   raise newPayloadError("elicitation/create", @["mode " & $mode & " is not an elicitation mode"])
 
 func elicitationParamsProblems*(params: JsonNode,
@@ -283,7 +289,12 @@ func elicitationParamsProblems*(params: JsonNode,
   of emForm:
     result.add requestedSchemaProblems(params{"requestedSchema"}, version)
   of emUrl:
-    discard
+    if not version.has(ftUrlElicitation):
+      return @["mode url is not part of protocol version " & $version]
+    if not params.isString("elicitationId") or params["elicitationId"].getStr().len == 0:
+      result.add "elicitationId is missing"
+    if not params.isString("url") or not isUriLike(params["url"].getStr()):
+      result.add "url is not a URL"
 
 func formElicitationParams*(message: string, requestedSchema: JsonNode,
                             version: McpProtocolVersion): JsonNode =
@@ -293,6 +304,49 @@ func formElicitationParams*(message: string, requestedSchema: JsonNode,
   if version.has(ftUrlElicitation):
     result["mode"] = %"form"
   raiseIfAny("elicitation/create", elicitationParamsProblems(result, version))
+
+func urlElicitationParams*(message, elicitationId, url: string,
+                           version: McpProtocolVersion): JsonNode =
+  ## The params of a URL-mode elicitation/create (2025-11-25 onward):
+  ## `elicitationId` is opaque to the client and unique within the server.
+  result = %*{"mode": "url", "message": message, "elicitationId": elicitationId,
+              "url": url}
+  raiseIfAny("elicitation/create", elicitationParamsProblems(result, version))
+
+func elicitationCompleteParams*(elicitationId: string,
+                                version: McpProtocolVersion): JsonNode =
+  ## The params of notifications/elicitation/complete, which tells the client
+  ## that the out-of-band interaction of `elicitationId` is over.
+  var problems: seq[string]
+  if not version.has(ftUrlElicitation):
+    problems.add "protocol version " & $version & " has no URL mode elicitation"
+  if elicitationId.len == 0:
+    problems.add "elicitationId is empty"
+  raiseIfAny("notifications/elicitation/complete", problems)
+  %*{"elicitationId": elicitationId}
+
+func urlElicitationRequiredProblems*(data: JsonNode,
+                                     version: McpProtocolVersion): seq[string] =
+  ## What is wrong with the `data` of a -32042 error: a non-empty list of URL
+  ## mode requests, each with an elicitationId, in a version that has the error.
+  if isModern(version) or not version.has(ftUrlElicitation):
+    return @["the URL elicitation required error is not part of protocol version " & $version]
+  let list = if data.isNil: nil else: data{"elicitations"}
+  if list.isNil or list.kind != JArray or list.len == 0:
+    return @["data.elicitations is not a non-empty array"]
+  for entry in list:
+    if entry.kind != JObject or entry{"mode"} != %"url":
+      result.add "data.elicitations holds an entry that is not a URL mode request"
+    else:
+      result.add elicitationParamsProblems(entry, version)
+
+func urlElicitationRequiredData*(elicitations: seq[JsonNode],
+                                 version: McpProtocolVersion): JsonNode =
+  ## The `data` of a URLElicitationRequiredError (code
+  ## `UrlElicitationRequiredCode`) listing what must be done before the
+  ## request can be retried.
+  result = %*{"elicitations": elicitations}
+  raiseIfAny("URL elicitation required", urlElicitationRequiredProblems(result, version))
 
 func modeSupported*(capability: McpElicitationCapability, mode: ElicitMode): bool =
   case mode
@@ -381,7 +435,8 @@ func elicitationResultProblems*(answer, params: JsonNode): seq[string] =
       return @["an accepted form has no content"]
     result.add contentProblems(params{"requestedSchema"}, answer["content"])
   of emUrl:
-    discard
+    if answer.has("content"):
+      return @["a URL mode answer has no content: the interaction is out of band"]
 
 func parseElicitationResult*(node, params: JsonNode): McpElicitResult =
   ## The answer to a request with `params`, checked against it.
