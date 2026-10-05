@@ -7,7 +7,7 @@ Feature: Streamable HTTP transport
   Scenario: The endpoint accepts well-formed JSON-RPC POSTs only
     Given a server's endpoint
     When a request goes to another path, the answer is 404
-    And GET or PUT is answered 405 naming the allowed methods
+    And a method the endpoint does not serve, such as PUT, is answered 405 naming the allowed methods
     And a body that is not JSON is 400 with a parse error, and JSON that is not an object is 400 invalid request
     And a body over the limit is 413
 

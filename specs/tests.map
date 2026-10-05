@@ -63,7 +63,7 @@ MCP-STDIO-3 | tests/test_stdio.nim | Given a client, when it closes the transpor
 MCP-STDIO-4 | tests/test_stdio.nim | Given a child that never answers, when the client connects, then the dispatcher keeps running and the wait can time out
 MCP-STDIO-4 | tests/test_stdio.nim | Given a command that does not exist, when a process transport is made, then McpTransportError names the command
 MCP-HTTP-1 | tests/test_streamable_http.nim | Given a path other than the endpoint, when posted to, then the answer is 404
-MCP-HTTP-1 | tests/test_streamable_http.nim | Given the endpoint, when it receives GET or PUT, then the answer is 405 naming the allowed methods
+MCP-HTTP-1 | tests/test_streamable_http.nim | Given the endpoint, when it receives PUT, then the answer is 405 naming the allowed methods
 MCP-HTTP-1 | tests/test_streamable_http.nim | Given a body that is not JSON, when posted, then the answer is 400 with a parse error
 MCP-HTTP-1 | tests/test_streamable_http.nim | Given a JSON body that is not an object, when posted, then the answer is 400 invalid request
 MCP-HTTP-1 | tests/test_streamable_http.nim | Given a body larger than the limit, when posted, then the answer is 413
