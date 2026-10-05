@@ -5,18 +5,11 @@ import ./client
 import ./content
 import ../protocol/types
 import ../protocol/features
+import ../protocol/log_level
+
+export log_level
 
 type
-  McpLogLevel* = enum
-    mllDebug = "debug"
-    mllInfo = "info"
-    mllNotice = "notice"
-    mllWarning = "warning"
-    mllError = "error"
-    mllCritical = "critical"
-    mllAlert = "alert"
-    mllEmergency = "emergency"
-
   McpCompletionRefKind* = enum
     mcrPrompt = "ref/prompt"
     mcrResourceTemplate = "ref/resource"
