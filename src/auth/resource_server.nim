@@ -34,6 +34,12 @@ type
     of tvInsufficientScope:
       requiredScopes*: seq[string]
         ## Everything the operation needs, in one challenge.
+    of tvValid:
+      principal*: Option[string]
+        ## Who the token stands for (its subject, or the client id of a
+        ## client-credentials token). Handlers read it as `ctx.principal`, and
+        ## tasks are bound to it (2025-11-25 tasks, Security). None when the
+        ## verifier cannot name one: tasks then belong to the session.
     else:
       discard
 
@@ -112,6 +118,9 @@ proc bearerToken(authorization: Option[string]): Option[string] {.raises: [].} =
     return none(string)
   some(token)
 
+func answered(response: HttpServerAuthResponse): HttpServerAuthOutcome {.raises: [].} =
+  HttpServerAuthOutcome(answer: some(response))
+
 proc newResourceServerAuth*(config: ResourceServerConfig, mcpPath: string): HttpServerAuth
                            {.raises: [ValueError, OAuthError].} =
   ## `mcpPath` is the path the HTTP transport serves MCP on. Raises for a
@@ -136,17 +145,16 @@ proc newResourceServerAuth*(config: ResourceServerConfig, mcpPath: string): Http
   # Fail now, not on the first request, if the configured challenge cannot
   # be written.
   discard config.challenge(scopes = config.challengeScopes)
-  HttpServerAuth(
-    intercept: proc(httpMethod, path: string, authorization: Option[string]):
-                   Future[Option[HttpServerAuthResponse]] {.closure, gcsafe, async.} =
+  let check = proc(httpMethod, path: string, authorization: Option[string]):
+                  Future[HttpServerAuthOutcome] {.closure, gcsafe, async.} =
       if metadataPath.isSome and path == metadataPath.get and httpMethod == "GET":
-        return some(HttpServerAuthResponse(
+        return answered(HttpServerAuthResponse(
           code: 200, headers: @[("Content-Type", "application/json")], body: document))
       if path != mcpPath:
-        return none(HttpServerAuthResponse)
+        return HttpServerAuthOutcome()
       let token = bearerToken(authorization)
       if token.isNone:
-        return some(HttpServerAuthResponse(
+        return answered(HttpServerAuthResponse(
           code: 401, headers: @[("WWW-Authenticate",
             config.challenge(scopes = if config.version.has(ftIncrementalScopeConsent):
                                         config.challengeScopes else: @[]))]))
@@ -155,22 +163,27 @@ proc newResourceServerAuth*(config: ResourceServerConfig, mcpPath: string): Http
         verdict = await config.verify(token.get, config.resource)
       except CatchableError as e:
         stderr.writeLine("[mcp-auth] token verifier failed: " & $e.name)
-        return some(HttpServerAuthResponse(code: 500))
+        return answered(HttpServerAuthResponse(code: 500))
       case verdict.kind
       of tvValid:
-        return none(HttpServerAuthResponse)
+        return HttpServerAuthOutcome(principal: verdict.principal)
       of tvInvalid:
-        return some(HttpServerAuthResponse(
+        return answered(HttpServerAuthResponse(
           code: 401, headers: @[("WWW-Authenticate",
             config.challenge(error = "invalid_token",
                              description = "The access token is invalid or expired"))]))
       of tvInsufficientScope:
         try:
-          return some(HttpServerAuthResponse(
+          return answered(HttpServerAuthResponse(
             code: 403, headers: @[("WWW-Authenticate",
               config.challenge(error = "insufficient_scope",
                                scopes = verdict.requiredScopes))]))
         except ValueError:
           # The verifier named a scope that cannot go in a header.
           stderr.writeLine("[mcp-auth] required scopes cannot be written as a challenge")
-          return some(HttpServerAuthResponse(code: 500)))
+          return answered(HttpServerAuthResponse(code: 500))
+  HttpServerAuth(
+    check: check,
+    intercept: proc(httpMethod, path: string, authorization: Option[string]):
+                   Future[Option[HttpServerAuthResponse]] {.closure, gcsafe, async.} =
+      return (await check(httpMethod, path, authorization)).answer)

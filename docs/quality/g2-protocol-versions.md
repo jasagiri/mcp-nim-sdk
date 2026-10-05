@@ -66,3 +66,4 @@
 ## 未測定 (core-rest、第 3 波)
 
 - `src/server/tasks.nim` (task の質問の保留と `tasks/result` での送出)、`src/server/server.nim` の `holdForTask` / `sendHeld` / task の通知の経路、`src/transport/http_server.nim` の `sendRequest` の経路選択、`src/server/elicit.nim` の task 連携。
+- 認可の主体の経路: `src/auth/resource_server.nim` (principal)、`src/transport/auth_hook.nim` (check)、`src/transport/http_server.nim` (authenticate)、`src/server/tasks.nim` (ownerOf)。

@@ -61,6 +61,12 @@ func withoutTask(request: JsonRpcRequest): JsonRpcRequest =
   result.params = request.params.copy()
   result.params.delete("task")
 
+func ownerOf(request: JsonRpcRequest): string =
+  ## Who a task belongs to: the principal the authorization names, else the
+  ## transport's session (2025-11-25 tasks, Security). The prefix keeps a
+  ## principal from being taken for a session id.
+  if request.principal.isSome: "principal:" & request.principal.get else: request.session
+
 proc announceStatus(server: McpServer, owner: string, task: McpTask) {.async.} =
   ## Tell the owner of a task that its status changed (optional for a
   ## receiver). A session that cannot be reached is logged, not fatal: the
@@ -102,17 +108,22 @@ proc enableTasks*(server: McpServer, config = TaskConfig(),
       for request in queue:
         asyncCheck server.sendHeld(request, requestId)
 
+  # The owner of a task may be a principal, which is no address: the status
+  # goes to the session the task was made on.
+  var sessionOf = initTable[string, string]()
   tasksStore.onStatusChange = proc(owner: string, task: McpTask) =
+    let session = sessionOf.getOrDefault(task.taskId, owner)
     if task.status.isTerminal:
       held.del(task.taskId)  # nobody is left to read them
-    asyncCheck server.announceStatus(owner, task)
+      sessionOf.del(task.taskId)
+    asyncCheck server.announceStatus(session, task)
 
   server.addRequestInterceptor(proc(ctx: McpRequestContext, request: JsonRpcRequest
                                    ): Future[Option[JsonRpcResponse]] {.async.} =
     if not ctx.version.has(ftTasks):
       return none(JsonRpcResponse)
     if request.`method`.isTaskMethod:
-      return some(await tasksStore.handleTaskMethod(request.session, capability,
+      return some(await tasksStore.handleTaskMethod(request.ownerOf, capability,
                                                     config.pageSize, request))
     if request.`method` != "tools/call" or not capability.toolsCall:
       return none(JsonRpcResponse)
@@ -136,10 +147,11 @@ proc enableTasks*(server: McpServer, config = TaskConfig(),
     if support == tsForbidden:
       return some(newJsonRpcErrorResponse(request.id, MethodNotFound,
         "Tool " & name.getStr() & " does not support task augmentation"))
-    let owner = request.session
+    let owner = request.ownerOf
     var created: McpTask
     try:
       created = runAsTask(tasksStore, owner, asked.get, proc(taskId: string): TaskWork =
+        sessionOf[taskId] = request.session
         let scope = TaskScope(
           taskId: taskId,
           awaitingInput: proc(waiting: bool) =

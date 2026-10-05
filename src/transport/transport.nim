@@ -43,6 +43,9 @@ type
       ## The `Mcp-Param-*` headers of the HTTP request that carried the
       ## message, for the server to check against the arguments. None where
       ## the transport has no headers (stdio).
+    principal*: Option[string]
+      ## Who the transport's authorization says sent the message (the
+      ## subject of the access token); none where there is no authorization.
 
   McpTransportError* = object of CatchableError
     code*: int

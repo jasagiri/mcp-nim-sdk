@@ -158,3 +158,9 @@ Feature: Tasks
     Given a task whose tool asks the client while no tasks/result request waits
     When tasks/result arrives
     Then the question is sent on its stream, not before, and a task with more held questions than the limit has the next one refused
+
+  @spec:MCP-TASKS-24 @feature:ftTasks
+  Scenario: Tasks are bound to the authorization context
+    Given an HTTP endpoint whose authorization names the principal of each access token
+    When a principal makes a task and another principal, with the same session id, asks for it, cancels it or lists tasks
+    Then the task is unknown to the other principal, handlers see ctx.principal, and without authorization the task belongs to the session

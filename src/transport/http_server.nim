@@ -448,9 +448,10 @@ func httpStatusFor(response: JsonRpcResponse, modern: bool): HttpCode =
   else: Http200
 
 proc enqueue(t: HttpServerTransport, message: JsonNode, session: string,
+             principal: Option[string],
              paramHeaders = none(seq[(string, string)])) =
   let incoming = McpIncoming(message: message, session: session,
-                             paramHeaders: paramHeaders)
+                             paramHeaders: paramHeaders, principal: principal)
   if t.receiveWaiters.len > 0:
     t.receiveWaiters.popFirst().complete(incoming)
   else:
@@ -612,7 +613,8 @@ proc answerWithJson(t: HttpServerTransport, req: Request, group: Group,
     await req.respondJson(httpStatusFor(group.responses[0], modern),
                           group.responses[0].toJson(), extra)
 
-proc handlePost(t: HttpServerTransport, req: Request) {.async.} =
+proc handlePost(t: HttpServerTransport, req: Request,
+                principal: Option[string]) {.async.} =
   var body: JsonNode
   try:
     body = parseJson(req.body)
@@ -704,7 +706,7 @@ proc handlePost(t: HttpServerTransport, req: Request) {.async.} =
   if requests.len == 0:
     # Notifications and responses: nothing to answer on this exchange.
     for item in items:
-      t.enqueue(item, sessionId)
+      t.enqueue(item, sessionId, principal)
     await req.respondEmpty(Http202)
     return
 
@@ -716,7 +718,7 @@ proc handlePost(t: HttpServerTransport, req: Request) {.async.} =
     discard group.stream.push("")
   for item in items:
     if not isRequest(item):
-      t.enqueue(item, sessionId)
+      t.enqueue(item, sessionId, principal)
       continue
     inc t.exchangeCount
     let exchangeId = "http-" & $t.exchangeCount
@@ -724,7 +726,7 @@ proc handlePost(t: HttpServerTransport, req: Request) {.async.} =
     t.exchanges[exchangeId] = Exchange(group: group, idNode: item["id"])
     let forwarded = item.copy()
     forwarded["id"] = %exchangeId
-    t.enqueue(forwarded, sessionId,
+    t.enqueue(forwarded, sessionId, principal,
               if modern: some(req.paramHeaders) else: none(seq[(string, string)]))
 
   # The connection is watched for the whole exchange, which is why it is
@@ -770,7 +772,8 @@ proc handleLegacySse(t: HttpServerTransport, req: Request) {.async.} =
   finally:
     t.endSession(id)
 
-proc handleLegacyPost(t: HttpServerTransport, req: Request) {.async.} =
+proc handleLegacyPost(t: HttpServerTransport, req: Request,
+                      principal: Option[string]) {.async.} =
   var id = ""
   for (name, value) in decodeQuery(req.url.query):
     if name == "sessionId":
@@ -796,28 +799,35 @@ proc handleLegacyPost(t: HttpServerTransport, req: Request) {.async.} =
     t.exchanges[exchangeId] = Exchange(legacySession: id, idNode: message["id"])
     let forwarded = message.copy()
     forwarded["id"] = %exchangeId
-    t.enqueue(forwarded, id)
+    t.enqueue(forwarded, id, principal)
   else:
-    t.enqueue(message, id)
+    t.enqueue(message, id, principal)
   await req.respondEmpty(Http202)
 
-proc authenticate(t: HttpServerTransport, req: Request): Future[bool] {.async.} =
-  ## Whether the request was answered here, by the authorization hook.
-  var answer: Option[HttpServerAuthResponse]
+proc authenticate(t: HttpServerTransport, req: Request
+                 ): Future[tuple[answered: bool, principal: Option[string]]] {.async.} =
+  ## Whether the request was answered here, by the authorization hook; when it
+  ## was not, who the hook says sent it.
+  var outcome: HttpServerAuthOutcome
   try:
-    answer = await t.auth.intercept($req.reqMethod, req.url.path, req.header("Authorization"))
+    if t.auth.check.isNil:
+      outcome.answer = await t.auth.intercept($req.reqMethod, req.url.path,
+                                              req.header("Authorization"))
+    else:
+      outcome = await t.auth.check($req.reqMethod, req.url.path, req.header("Authorization"))
   except CatchableError as e:
     # Fail closed: a hook that cannot decide lets nothing through.
     stderr.writeLine("[mcp-http] authorization hook failed: " & $e.name)
     await req.respondEmpty(Http500)
-    return true
-  if answer.isNone:
-    return false
+    return (answered: true, principal: none(string))
+  if outcome.answer.isNone:
+    return (answered: false, principal: outcome.principal)
+  let answer = outcome.answer.get
   let headers = securityHeaders()
-  for (name, value) in answer.get.headers:
+  for (name, value) in answer.headers:
     headers[name] = value
-  await req.respond(HttpCode(answer.get.code), answer.get.body, headers)
-  return true
+  await req.respond(HttpCode(answer.code), answer.body, headers)
+  return (answered: true, principal: none(string))
 
 type Endpoint = enum
   epMcp, epLegacySse, epLegacyMessages, epNone
@@ -832,8 +842,12 @@ func endpointOf(t: HttpServerTransport, path: string): Endpoint =
 
 proc dispatch(t: HttpServerTransport, req: Request) {.async.} =
   # Before the path is looked at: the hook also serves its own documents.
-  if not t.auth.isNil and await t.authenticate(req):
-    return
+  var principal = none(string)
+  if not t.auth.isNil:
+    let verdict = await t.authenticate(req)
+    if verdict.answered:
+      return
+    principal = verdict.principal
   let endpoint = t.endpointOf(req.url.path)
   if endpoint == epNone:
     await req.respondEmpty(Http404)
@@ -850,7 +864,7 @@ proc dispatch(t: HttpServerTransport, req: Request) {.async.} =
       await req.respondEmpty(Http405, {"Allow": "GET"})
   of epLegacyMessages:
     if req.reqMethod == HttpPost:
-      await t.handleLegacyPost(req)
+      await t.handleLegacyPost(req, principal)
     else:
       await req.respondEmpty(Http405, {"Allow": "POST"})
   else:
@@ -858,7 +872,7 @@ proc dispatch(t: HttpServerTransport, req: Request) {.async.} =
     if req.reqMethod notin allowed:
       await req.respondEmpty(Http405, {"Allow": allowed.mapIt(($it).toUpperAscii).join(", ")})
     elif req.reqMethod == HttpPost:
-      await t.handlePost(req)
+      await t.handlePost(req, principal)
     elif req.reqMethod == HttpDelete:
       await t.handleDelete(req)
     else:

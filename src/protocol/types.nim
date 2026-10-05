@@ -22,6 +22,10 @@ type
     paramHeaders*: Option[seq[(string, string)]]
       ## The `Mcp-Param-*` headers the HTTP request carried; none on a
       ## transport without headers. Not part of the wire format.
+    principal*: Option[string]
+      ## Who the transport's authorization says sent the request (the subject
+      ## of the access token); none without authorization. Not part of the
+      ## wire format.
     relatedRequestId*: string
       ## For a request the server sends while it handles a client request:
       ## the id of that client request, so that an HTTP transport can put it on

@@ -50,6 +50,9 @@ type
       ## The connection the request arrived on; empty on stdio and, in
       ## 2026-07-28, on every transport.
     requestId*: string
+    principal*: Option[string]
+      ## Who the transport's authorization says sent the request (the subject
+      ## of the access token); none without authorization.
     version*: McpProtocolVersion
       ## The version this request is served in.
     progressToken: JsonNode
@@ -556,6 +559,7 @@ proc newContext(server: McpServer, request: JsonRpcRequest): McpRequestContext =
     server: server,
     session: request.session,
     requestId: request.id,
+    principal: request.principal,
     version: requested.get(server.legacyVersionOf(request.session)),
     cancellable: request.`method` != "initialize",
     cancelSignal: newFuture[void]("McpRequestContext.cancelSignal"))
@@ -1374,6 +1378,7 @@ proc processMessages*(server: McpServer): Future[void] {.async.} =
         var request = decodeRequest(json)
         request.session = incoming.session
         request.paramHeaders = incoming.paramHeaders
+        request.principal = incoming.principal
         asyncCheck server.processRequest(request)
       elif isNotification(json):
         var notification = decodeNotification(json)

@@ -22,8 +22,22 @@ type
     headers*: seq[(string, string)]
     body*: string
 
+  HttpServerAuthOutcome* = object
+    ## What the hook decided about one HTTP request.
+    answer*: Option[HttpServerAuthResponse]
+      ## Some: the request is answered here (metadata document, 401, 403).
+    principal*: Option[string]
+      ## When the request goes on: who sent it (the subject of the verified
+      ## token), as the MCP server and its handlers will see it
+      ## (`ctx.principal`); none when the hook cannot say.
+
   HttpServerAuth* = ref object
-    ## Server side, held by `HttpServerTransport.auth`.
+    ## Server side, held by `HttpServerTransport.auth`. A hook sets `check`,
+    ## which also names the principal; `intercept` alone is enough where no
+    ## handler needs to know who is asking.
+    check*: proc(httpMethod, path: string, authorization: Option[string]):
+                Future[HttpServerAuthOutcome] {.closure, gcsafe.}
+      ## Used instead of `intercept` when set.
     intercept*: proc(httpMethod, path: string, authorization: Option[string]):
                     Future[Option[HttpServerAuthResponse]] {.closure, gcsafe.}
       ## Asked first for every HTTP request. A response answers the request
