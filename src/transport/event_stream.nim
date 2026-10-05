@@ -1,7 +1,7 @@
 ## Server-sent events (text/event-stream): an incremental reader for a
 ## stream that arrives in arbitrary chunks, and a writer.
 
-import std/strutils
+import std/[strutils, options]
 
 type
   SseEvent* = object
@@ -15,6 +15,7 @@ type
     hasData: bool
     event: string
     lastId: string
+    retry: Option[int]    ## the newest valid retry field, in milliseconds
     pendingCr: bool       ## the previous chunk ended in CR; a LF may follow
     started: bool         ## past the position where a byte order mark may be
 
@@ -57,8 +58,19 @@ func takeLine(p: var SseParser, events: var seq[SseEvent]) {.raises: [].} =
   of "id":
     if '\0' notin value:
       p.lastId = value
+  of "retry":
+    # Nine digits cover any delay worth waiting for and cannot overflow.
+    if value.len in 1 .. 9 and value.allCharsInSet(Digits):
+      var delay = 0
+      for c in value:
+        delay = delay * 10 + (ord(c) - ord('0'))
+      p.retry = some(delay)
   else:
     discard
+
+func retryMs*(p: SseParser): Option[int] {.raises: [].} =
+  ## The reconnection delay the server asked for, if it did.
+  p.retry
 
 func feed*(p: var SseParser, chunk: string): seq[SseEvent] {.raises: [].} =
   ## The events completed by `chunk`. Lines may end in LF, CR or CRLF, and a

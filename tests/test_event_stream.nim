@@ -1,7 +1,7 @@
 ## Server-sent events: reading a stream that arrives in arbitrary chunks,
 ## and writing events.
 
-import std/unittest
+import std/[unittest, options]
 import transport/event_stream
 
 proc feedAll(chunks: varargs[string]): seq[SseEvent] =
@@ -10,6 +10,16 @@ proc feedAll(chunks: varargs[string]): seq[SseEvent] =
     result.add parser.feed(chunk)
 
 suite "event stream: reading":
+
+  test "Given a retry field, when read, then the parser reports the delay, and ignores a value that is not digits":
+    var parser = initSseParser()
+    check parser.retryMs.isNone
+    discard parser.feed("retry: 1500\n\n")
+    check parser.retryMs == some(1500)
+    discard parser.feed("retry: soon\n\n")
+    check parser.retryMs == some(1500)
+    discard parser.feed("retry: 20\ndata: x\n\n")
+    check parser.retryMs == some(20)
 
   test "Given one event, when read, then its data is returned":
     let events = feedAll("data: {\"a\":1}\n\n")
