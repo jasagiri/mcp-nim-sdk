@@ -115,6 +115,29 @@ suite "Authorization flow, every version of the build":
       check posts.len == 3
       check posts[2].bearerOf == posts[1].bearerOf
 
+    test "Given an access token and version " & $v & ", when requests are sent, then the token is in no URL":
+      var env = start(v)
+      defer: env.stop()
+      let transport = transportFor(newOAuthClient(env.config), env.resourceServer.url)
+      discard transport.ping()
+      discard transport.ping()
+      let token = env.resourceServer.log.requestsTo("/mcp")[1].bearerOf["Bearer ".len .. ^1]
+      check token.len > 0
+      for l in env.resourceServer.log & env.authServer.log:
+        check "access_token" notin l.path & "?" & l.query
+        check token notin l.path & "?" & l.query
+
+    test "Given a redirect URI that is neither https nor localhost and version " & $v & ", when the client is made, then it is refused":
+      var env = start(v)
+      defer: env.stop()
+      for bad in ["http://app.example.com/callback", "ftp://127.0.0.1/callback", "myapp://callback"]:
+        env.config.redirectUri = bad
+        expect OAuthSecurityError:
+          discard newOAuthClient(env.config)
+      for good in ["https://app.example.com/callback", "http://localhost:8080/callback"]:
+        env.config.redirectUri = good
+        discard newOAuthClient(env.config)
+
     test "Given version " & $v & ", when the client registers, then the document is a public client with the redirect URI":
       var env = start(v)
       defer: env.stop()

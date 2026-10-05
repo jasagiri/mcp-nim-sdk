@@ -340,3 +340,118 @@ MCP-HTTPSSE-10 | tests/test_http_sse_legacy.nim | Given a Streamable HTTP server
 MCP-HTTPSSE-10 | tests/test_http_sse_legacy.nim | Given headers set on the wrapper, when it falls back, then the old transport carries them too
 MCP-HTTPSSE-10 | tests/test_http_sse_legacy.nim | Given a server that is down, when a client connects, then the connection error is raised and no fallback is tried
 MCP-HTTPSSE-10 | tests/test_http_sse_legacy.nim | Given a full client and server, when the client connects through the wrapper to the old transport, then initialize and tools/list work
+MCP-AUTH-1 | tests/test_auth_resource_server.nim | Given a request without a token and version <version>, when posted, then the answer is 401 with a Bearer challenge
+MCP-AUTH-1 | tests/test_auth_resource_server.nim | Given a token the verifier rejects and version <version>, when posted, then the answer is 401 invalid_token
+MCP-AUTH-2 | tests/test_auth_resource_server.nim | Given a token the verifier accepts and version <version>, when posted, then the request reaches the MCP server
+MCP-AUTH-2 | tests/test_auth_resource_server.nim | Given the Bearer scheme in another case and version <version>, when posted, then it is accepted
+MCP-AUTH-2 | tests/test_auth_resource_server.nim | Given Authorization headers that are not Bearer tokens and version <version>, when posted, then each is 401 and none reaches the verifier
+MCP-AUTH-2 | tests/test_auth_resource_server.nim | Given a token in the query string and version <version>, when posted, then it is not looked at
+MCP-AUTH-2 | tests/test_auth_resource_server.nim | Given a verifier that fails and version <version>, when posted, then the answer is 500 and the request does not go through
+MCP-AUTH-3 | tests/test_auth_resource_server.nim | Given the verifier is told the resource and version <version>, when a token arrives, then it gets the canonical URI of this server to check the audience against
+MCP-AUTH-4 | tests/test_auth_resource_server.nim | Given a token that lacks scope and version <version>, when posted, then the answer is 403 insufficient_scope with all needed scopes
+MCP-AUTH-5 | tests/test_auth_resource_server.nim | Given a delete or get on the endpoint without a token and version <version>, when sent, then it is 401 too
+MCP-AUTH-5 | tests/test_auth_http_methods.nim | Given a transport with a token, when it posts, then every POST carries the token
+MCP-AUTH-5 | tests/test_auth_http_methods.nim | Given a transport without authorization, when it posts, then no Authorization header is sent
+MCP-AUTH-5 | tests/test_auth_http_methods.nim | Given a session on a version with the GET stream, when the stream is opened and the session ended, then GET and DELETE carry the token too
+MCP-AUTH-5 | tests/test_auth_client_flow.nim | Given an access token and version <version>, when requests are sent, then the token is in no URL
+MCP-AUTH-6 | tests/test_auth_resource_server.nim | Given version <version>, when the well-known URI for the endpoint is requested without a token, then the document names the resource and its authorization servers
+MCP-AUTH-6 | tests/test_auth_resource_server.nim | Given version <version>, when the metadata is requested with POST, then it is not served
+MCP-AUTH-6 | tests/test_auth_resource_server.nim | Given a request without a token and version <version>, when posted, then the answer is 401 with a Bearer challenge
+MCP-AUTH-7 | tests/test_auth_resource_server.nim | Given version <version>, when the well-known URI is requested, then it is not served: the version has no resource metadata
+MCP-AUTH-7 | tests/test_auth_resource_server.nim | Given a request without a token and version <version>, when posted, then the answer is 401 with a Bearer challenge
+MCP-AUTH-8 | tests/test_auth_resource_server.nim | Given challenge scopes configured and version <version>, when a request has no token, then the scope appears exactly from 2025-11-25 on
+MCP-AUTH-9 | tests/test_auth_resource_server.nim | Given an authorization server and version <version>, when the client connects, then it authorizes and lists tools through the protected endpoint
+MCP-AUTH-10 | tests/test_auth_oauth_basics.nim | Given the MCP 401 example, when parsed, then resource_metadata and scope are found
+MCP-AUTH-10 | tests/test_auth_oauth_basics.nim | Given the MCP insufficient_scope example, when parsed, then every parameter is found
+MCP-AUTH-10 | tests/test_auth_oauth_basics.nim | Given several challenges in one header, when parsed, then the Bearer one is selected
+MCP-AUTH-10 | tests/test_auth_oauth_basics.nim | Given a quoted string with an escaped quote and a comma, when parsed, then it is unescaped whole
+MCP-AUTH-10 | tests/test_auth_oauth_basics.nim | Given an unquoted token value and mixed case, when parsed, then names are case-insensitive
+MCP-AUTH-10 | tests/test_auth_oauth_basics.nim | Given only a Basic challenge or nothing, when parsed, then there is no Bearer challenge
+MCP-AUTH-10 | tests/test_auth_oauth_basics.nim | Given garbage, when parsed, then parsing terminates
+MCP-AUTH-10 | tests/test_auth_oauth_basics.nim | Given parameters, when formatted, then quotes and backslashes are escaped
+MCP-AUTH-10 | tests/test_auth_oauth_basics.nim | Given a newline in a value, when formatted, then it is refused
+MCP-AUTH-11 | tests/test_auth_client_flow.nim | Given metadata at the root of the origin, when the client discovers, then it sends MCP-Protocol-Version and asks no resource metadata
+MCP-AUTH-11 | tests/test_auth_client_flow.nim | Given no metadata (404), when the client discovers, then it uses /authorize, /token and /register
+MCP-AUTH-11 | tests/test_auth_client_flow.nim | Given a failure other than 404 on the metadata URL, when the client discovers, then it does not fall back
+MCP-AUTH-11 | tests/test_auth_oauth_basics.nim | Given the 2025-03-26 defaults, when built for a server URL with a path, then they are on the origin
+MCP-AUTH-12 | tests/test_auth_client_flow.nim | Given a challenge without resource_metadata and version 2025-06-18, when the client discovers, then it fails: the version defines no other way
+MCP-AUTH-12 | tests/test_auth_client_flow.nim | Given a resource metadata document for another resource, when the client discovers, then it is refused
+MCP-AUTH-12 | tests/test_auth_oauth_basics.nim | Given PRM for another resource, when parsed, then it is rejected (RFC 9728 3.3)
+MCP-AUTH-12 | tests/test_auth_oauth_basics.nim | Given PRM whose resource differs only by case of host and a bare slash, when parsed, then it is accepted
+MCP-AUTH-12 | tests/test_auth_oauth_basics.nim | Given PRM without authorization servers or with an insecure one, when parsed, then it is rejected
+MCP-AUTH-13 | tests/test_auth_client_flow.nim | Given a challenge without resource_metadata and version 2025-11-25, when the client discovers, then it probes the path-specific URI first
+MCP-AUTH-13 | tests/test_auth_client_flow.nim | Given metadata only at the root well-known URI, when the client probes, then it falls back to the root
+MCP-AUTH-13 | tests/test_auth_oauth_basics.nim | Given the MCP example server path, when listing PRM URLs, then path-specific comes before root
+MCP-AUTH-13 | tests/test_auth_oauth_basics.nim | Given a server at the root, when listing PRM URLs, then only the root is probed
+MCP-AUTH-14 | tests/test_auth_oauth_basics.nim | Given an issuer with a path, when building RFC 8414 URLs, then the suffix is inserted before the path
+MCP-AUTH-14 | tests/test_auth_oauth_basics.nim | Given a trailing slash, when building the URL, then it is removed first (RFC 8414 3.1)
+MCP-AUTH-14 | tests/test_auth_oauth_basics.nim | Given an issuer without a path, when listing candidates, then there are two
+MCP-AUTH-14 | tests/test_auth_oauth_basics.nim | Given a document naming the issuer it was fetched for, when parsed, then the fields are read
+MCP-AUTH-14 | tests/test_auth_oauth_basics.nim | Given the specification's example of an attacker serving another issuer, when parsed, then it is rejected
+MCP-AUTH-14 | tests/test_auth_oauth_basics.nim | Given an issuer differing only in a trailing slash, when parsed, then it is rejected
+MCP-AUTH-14 | tests/test_auth_oauth_basics.nim | Given a plain http token endpoint on a remote host, when parsed, then it is rejected
+MCP-AUTH-14 | tests/test_auth_oauth_basics.nim | Given wrong types and missing fields, when parsed, then OAuthError names the field
+MCP-AUTH-14 | tests/test_auth_oauth_basics.nim | Given no code_challenge_methods_supported, when parsed, then the field is absent rather than empty
+MCP-AUTH-14 | tests/test_auth_client_flow.nim | Given a metadata document whose issuer differs, when the client discovers, then the document is not used
+MCP-AUTH-15 | tests/test_auth_client_flow.nim | Given an issuer with a path and metadata only at the OpenID path-appending URL, when version 2025-11-25 discovers, then it tries the three URLs in order and finds it
+MCP-AUTH-15 | tests/test_auth_client_flow.nim | Given an issuer with a path and metadata only at the OpenID path-appending URL, when version 2025-06-18 discovers, then it does not find it
+MCP-AUTH-15 | tests/test_auth_oauth_basics.nim | Given the MCP 2025-11-25 example issuer with a path, when listing candidates, then the order is the specified one
+MCP-AUTH-15 | tests/test_auth_oauth_basics.nim | Given the 2025-06-18 style, when listing candidates, then OpenID Connect is not tried
+MCP-AUTH-16 | tests/test_auth_client_flow.nim | Given a resource_metadata URL naming the cloud metadata address, when the client discovers, then it is refused without a request
+MCP-AUTH-16 | tests/test_auth_client_flow.nim | Given an authorization server metadata document that is too large, when the client discovers, then it is refused
+MCP-AUTH-16 | tests/test_auth_client_flow.nim | Given an authorization server that redirects its metadata, when the client discovers, then the redirect is not followed
+MCP-AUTH-17 | tests/test_auth_client_flow.nim | Given a server that answers 401 and version <version>, when a request is sent, then the client authorizes once and the request succeeds
+MCP-AUTH-17 | tests/test_auth_client_flow.nim | Given a stored token and version <version>, when a second request is sent, then it carries the token and no new authorization happens
+MCP-AUTH-18 | tests/test_auth_client_flow.nim | Given version <version>, when the user is sent to the authorization endpoint, then PKCE S256 and state are in the request
+MCP-AUTH-18 | tests/test_auth_client_flow.nim | Given version <version>, when the token request is sent, then it carries the verifier of this request
+MCP-AUTH-18 | tests/test_auth_client_flow.nim | Given a redirect URI that is neither https nor localhost and version <version>, when the client is made, then it is refused
+MCP-AUTH-18 | tests/test_auth_oauth_basics.nim | Given the RFC 7636 appendix B verifier, when challenged with S256, then it is the appendix B challenge
+MCP-AUTH-18 | tests/test_auth_oauth_basics.nim | Given a new verifier, when checked, then it is 43 unreserved characters and differs each time
+MCP-AUTH-18 | tests/test_auth_oauth_basics.nim | Given too short or reserved characters, when checked, then the verifier is invalid
+MCP-AUTH-19 | tests/test_auth_client_flow.nim | Given a response with another state and version <version>, when the client receives it, then it is discarded before any token request
+MCP-AUTH-19 | tests/test_auth_client_flow.nim | Given a response without state and version <version>, when the client receives it, then it is discarded
+MCP-AUTH-19 | tests/test_auth_client_flow.nim | Given the user denies consent and version <version>, when the redirect reports an error, then the request fails and says why
+MCP-AUTH-20 | tests/test_auth_client_flow.nim | Given an authorization server that does not advertise PKCE, when version 2025-11-25 discovers, then the client refuses to proceed
+MCP-AUTH-20 | tests/test_auth_client_flow.nim | Given an authorization server that advertises only the plain method, when any version discovers, then the client refuses
+MCP-AUTH-20 | tests/test_auth_client_flow.nim | Given no PKCE field and version 2025-06-18, when the client discovers, then it proceeds: the version has no such check
+MCP-AUTH-21 | tests/test_auth_client_flow.nim | Given version <version>, when the request goes out, then the resource parameter is present exactly from 2025-06-18 on
+MCP-AUTH-21 | tests/test_auth_oauth_basics.nim | Given the valid examples of the specification, when canonicalized, then they are unchanged
+MCP-AUTH-21 | tests/test_auth_oauth_basics.nim | Given uppercase scheme and host and a bare trailing slash, when canonicalized, then they are lowercased and the slash dropped
+MCP-AUTH-21 | tests/test_auth_oauth_basics.nim | Given the invalid examples of the specification, when canonicalized, then they are refused
+MCP-AUTH-21 | tests/test_auth_oauth_basics.nim | Given the resource, when form-encoded as the specification shows, then it matches &resource=https%3A%2F%2Fmcp.example.com
+MCP-AUTH-22 | tests/test_auth_client_flow.nim | Given a scope in the challenge, when the client authorizes, then it asks for exactly that scope
+MCP-AUTH-22 | tests/test_auth_client_flow.nim | Given no scope in the challenge but scopes_supported, when the client authorizes, then it asks for all of them
+MCP-AUTH-22 | tests/test_auth_client_flow.nim | Given neither, when the client authorizes, then the scope parameter is omitted
+MCP-AUTH-22 | tests/test_auth_client_flow.nim | Given an application that chose its scopes, when the client authorizes, then its choice wins
+MCP-AUTH-23 | tests/test_auth_client_flow.nim | Given a 403 insufficient_scope, when the client steps up, then it asks for the challenged scope and the request succeeds
+MCP-AUTH-23 | tests/test_auth_client_flow.nim | Given a 403 and a version before 2025-11-25, when the client receives it, then it reports the error without a new authorization
+MCP-AUTH-23 | tests/test_auth_client_flow.nim | Given an authorization server that never grants the scope, when the server keeps challenging, then the client stops after its attempt limit
+MCP-AUTH-23 | tests/test_auth_client_flow.nim | Given a 403 and version 2026-07-28, when the client steps up, then it asks for the union of earlier and challenged scopes
+MCP-AUTH-24 | tests/test_auth_client_flow.nim | Given version <version>, when the client registers, then the document is a public client with the redirect URI
+MCP-AUTH-24 | tests/test_auth_client_flow.nim | Given credentials from dynamic registration and version <version>, when a second authorization is needed, then they are reused
+MCP-AUTH-24 | tests/test_auth_client_flow.nim | Given credentials registered at one issuer, when the resource now names another, then the client registers again
+MCP-AUTH-25 | tests/test_auth_client_flow.nim | Given pre-registered credentials and version <version>, when the client authorizes, then it uses them and does not register
+MCP-AUTH-25 | tests/test_auth_client_flow.nim | Given a pre-registered client with a secret and version <version>, when the token request is sent, then the secret goes in HTTP Basic and not in the body
+MCP-AUTH-25 | tests/test_auth_client_flow.nim | Given pre-registered credentials of another issuer and version 2026-07-28, when the client authorizes, then it refuses to reuse them
+MCP-AUTH-25 | tests/test_auth_client_flow.nim | Given pre-registered credentials without an issuer and version 2026-07-28, when the client authorizes, then it refuses: they must be bound
+MCP-AUTH-26 | tests/test_auth_client_flow.nim | Given an authorization server that supports Client ID Metadata Documents, when the client has such a URL, then it uses it and does not register
+MCP-AUTH-26 | tests/test_auth_client_flow.nim | Given a client_id URL without a path or over http, when the client is built and used, then it is refused
+MCP-AUTH-26 | tests/test_auth_client_flow.nim | Given a Client ID Metadata Document URL but a server that does not advertise support, when the client authorizes, then it registers dynamically
+MCP-AUTH-27 | tests/test_auth_client_flow.nim | Given metadata advertising iss and a response with another iss, when the client receives it, then the code is never sent
+MCP-AUTH-27 | tests/test_auth_client_flow.nim | Given metadata advertising iss and a response without it, when the client receives it, then it is rejected
+MCP-AUTH-27 | tests/test_auth_client_flow.nim | Given metadata that does not advertise iss and a response without it, when the client receives it, then it proceeds
+MCP-AUTH-27 | tests/test_auth_client_flow.nim | Given metadata that does not advertise iss and a response with a wrong iss, when the client receives it, then it is rejected (table row 3)
+MCP-AUTH-27 | tests/test_auth_client_flow.nim | Given an iss that differs only by a trailing slash, when the client compares, then it does not normalize
+MCP-AUTH-27 | tests/test_auth_client_flow.nim | Given an error response with a wrong iss, when the client receives it, then the error is not acted on or shown
+MCP-AUTH-28 | tests/test_auth_client_flow.nim | Given version 2025-11-25 and a wrong iss, when the client receives the response, then iss is not part of that version and the flow completes
+MCP-AUTH-29 | tests/test_auth_client_flow.nim | Given an expired access token and version <version>, when the next request is sent, then it is refreshed without the user
+MCP-AUTH-29 | tests/test_auth_client_flow.nim | Given a revoked access token and a valid refresh token and version <version>, when the server answers 401, then the refresh token answers it
+MCP-AUTH-29 | tests/test_auth_client_flow.nim | Given a spent refresh token and version <version>, when the server answers 401, then the client authorizes again
+MCP-AUTH-29 | tests/test_auth_client_flow.nim | Given a persisted token store and version <version>, when a new client starts, then it presents the stored token first
+MCP-AUTH-30 | tests/test_auth_oauth_basics.nim | Given https to a public name, when checked, then it passes
+MCP-AUTH-30 | tests/test_auth_oauth_basics.nim | Given plain http to a remote host, when checked, then it is refused
+MCP-AUTH-30 | tests/test_auth_oauth_basics.nim | Given plain http to loopback hosts, when checked, then it passes
+MCP-AUTH-30 | tests/test_auth_oauth_basics.nim | Given loopback disallowed, when checking loopback, then it is refused
+MCP-AUTH-30 | tests/test_auth_oauth_basics.nim | Given the cloud metadata address, when checked, then it is always refused
+MCP-AUTH-30 | tests/test_auth_oauth_basics.nim | Given private ranges, when checked, then they are refused unless allowed
+MCP-AUTH-30 | tests/test_auth_oauth_basics.nim | Given other schemes, fragments or credentials, when checked, then they are refused
