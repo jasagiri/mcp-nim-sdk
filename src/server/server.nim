@@ -765,9 +765,9 @@ proc createMessage*(server: McpServer, session: string, params: JsonNode,
                createMessageResultProblems(answer, params, version))
   return answer
 
-type InputScope = tuple[task, relatedRequestId: string]
+type InputScope* = tuple[task, relatedRequestId: string]
 
-proc beginInput(ctx: McpRequestContext): InputScope =
+proc beginInput*(ctx: McpRequestContext): InputScope =
   ## Where a request of the server to the client belongs. For a request that
   ## runs as a task: to the task, and to the `tasks/result` request waiting
   ## on it, if any; the task needs input until the client answers.
@@ -779,7 +779,7 @@ proc beginInput(ctx: McpRequestContext): InputScope =
     scope.awaitingInput(true)
   (task: scope.taskId, relatedRequestId: scope.resultStream())
 
-proc endInput(ctx: McpRequestContext) =
+proc endInput*(ctx: McpRequestContext) =
   let scope = ctx.taskScope
   if scope.isNil:
     return

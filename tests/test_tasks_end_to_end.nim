@@ -8,6 +8,8 @@ import server/tasks
 import client/client
 import client/content
 import client/sampling
+import client/elicitation
+import server/elicit
 import client/tools
 import client/tasks
 import protocol/types
@@ -27,6 +29,8 @@ proc taskServer(store: TaskStore): McpServer =
       %*{"name": "report", "inputSchema": {"type": "object"},
          "execution": {"taskSupport": "optional"}},
       %*{"name": "ask", "inputSchema": {"type": "object"},
+         "execution": {"taskSupport": "optional"}},
+      %*{"name": "form", "inputSchema": {"type": "object"},
          "execution": {"taskSupport": "optional"}}]))
   server.onToolCall(proc(ctx: McpRequestContext, name: string,
                          arguments: JsonNode): Future[JsonNode] {.async.} =
@@ -36,6 +40,10 @@ proc taskServer(store: TaskStore): McpServer =
         "messages": [{"role": "user", "content": {"type": "text", "text": "name?"}}],
         "maxTokens": 5})
       return textOf("the client said " & answer["content"]["text"].getStr())
+    of "form":
+      let answer = await ctx.elicit("name?", %*{"type": "object",
+        "properties": {"name": {"type": "string"}}})
+      return textOf("the user said " & answer.content{"name"}.getStr())
     else:
       await sleepAsync(10)
       return textOf("report of " & arguments{"topic"}.getStr()))
@@ -115,3 +123,45 @@ if isSupported(TaskVersion):
         "maxTokens": 5})
       check answer["content"]["text"].getStr() == "Grace"
       check answer["model"].getStr() == "m"
+
+    test "Given a tool that elicits inside a task, when the user has not answered, then the task needs input and the question belongs to it":
+      let server = taskServer(quickStore())
+      let gate = newFuture[void]("answer")
+      var seen: JsonNode
+      let client = server.connected(proc(client: McpClient) =
+        client.setElicitationHandler(proc(request: McpElicitRequest): Future[McpElicitResult] {.async.} =
+          seen = request.raw
+          await gate
+          return McpElicitResult(action: eaAccept, content: %*{"name": "Ada"})))
+      let tools = waitFor client.listAllTools()
+      let created = waitFor client.callToolAsTask(tools[2])
+      let taskId = created.task.taskId
+      var waiting = false
+      for _ in 0 ..< 100:
+        if waitFor(client.getTask(taskId)).status == tsInputRequired:
+          waiting = true
+          break
+        waitFor sleepAsync(5)
+      check waiting
+      check seen{"_meta", RelatedTaskKey}{"taskId"}.getStr() == taskId
+      gate.complete()
+      let payload = waitFor client.taskResult(taskId)
+      check toolContentOf(payload).contentItems[0].text == "the user said Ada"
+      check waitFor(client.getTask(taskId)).status == tsCompleted
+
+    test "Given a client that receives tasks, when the server asks for elicitation as a task, then the answer is the handler's":
+      let server = taskServer(quickStore())
+      let client = server.connected(proc(client: McpClient) =
+        client.setElicitationHandler(proc(request: McpElicitRequest): Future[McpElicitResult] {.async.} =
+          await sleepAsync(10)
+          return McpElicitResult(action: eaAccept, content: %*{"name": "Grace"}))
+        discard client.enableClientTasks(ClientTaskConfig(sampling: false, elicitation: true),
+                                         store = quickStore()))
+      discard client
+      let created = waitFor server.requestAsTask("", "elicitation/create", %*{
+        "message": "name?", "requestedSchema": {"type": "object",
+          "properties": {"name": {"type": "string"}}}})
+      discard waitFor server.awaitClientTask("", created.taskId)
+      let answer = waitFor server.clientTaskResult("", created.taskId)
+      check answer["action"].getStr() == "accept"
+      check answer["content"]["name"].getStr() == "Grace"

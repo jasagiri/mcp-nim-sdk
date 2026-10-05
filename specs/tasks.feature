@@ -134,3 +134,15 @@ Feature: Tasks
     Given the SDK's server and client connected in 2025-11-25
     When the client calls tools as tasks, cancels one, and the server asks the client for sampling in a task and through a tool
     Then both ends agree on the wire
+
+  @spec:MCP-TASKS-20 @feature:ftTasks
+  Scenario: A tool elicits input inside a task
+    Given a task whose tool asks the user with ctx.elicit or ctx.elicitUrl
+    When the client has not answered yet
+    Then the task is input_required and the question carries the related-task _meta, and the task works again once the answer is in
+
+  @spec:MCP-TASKS-21 @feature:ftTasks
+  Scenario: A client receives a task-augmented elicitation request
+    Given a client that enabled tasks for elicitation/create and has an elicitation handler
+    When the server asks for elicitation as a task
+    Then it creates the task, polls it and fetches the result, which is the handler's answer

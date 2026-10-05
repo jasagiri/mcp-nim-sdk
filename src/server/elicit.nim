@@ -35,7 +35,7 @@ proc requireElicitation(server: McpServer, session: string, mode: ElicitMode) =
 
 proc elicit*(server: McpServer, session: string, message: string,
              requestedSchema: JsonNode,
-             relatedRequestId = ""): Future[McpElicitResult] {.async.} =
+             relatedRequestId = "", relatedTask = ""): Future[McpElicitResult] {.async.} =
   ## Ask the user of the client on `session` to fill in a form described by
   ## `requestedSchema` (a flat object of primitive properties). Raises
   ## McpCapabilityError when the client cannot be asked, McpPayloadError when
@@ -45,15 +45,22 @@ proc elicit*(server: McpServer, session: string, message: string,
   let version = server.session(session).negotiatedVersion.get
   let params = formElicitationParams(message, requestedSchema, version)
   let response = await server.request(session, "elicitation/create", params,
-                                      relatedRequestId)
+                                      relatedRequestId, relatedTask = relatedTask)
   return parseElicitationResult(resultOf(response, "elicitation/create"), params)
 
 proc elicit*(ctx: McpRequestContext, message: string,
-             requestedSchema: JsonNode): Future[McpElicitResult] =
-  ctx.server.elicit(ctx.session, message, requestedSchema, ctx.requestId)
+             requestedSchema: JsonNode): Future[McpElicitResult] {.async.} =
+  ## Inside a task (2025-11-25) the question belongs to the task, which needs
+  ## input until the client answers.
+  let input = ctx.beginInput()
+  try:
+    return await ctx.server.elicit(ctx.session, message, requestedSchema,
+                                   input.relatedRequestId, input.task)
+  finally:
+    ctx.endInput()
 
 proc elicitUrl*(server: McpServer, session: string, message, elicitationId, url: string,
-                relatedRequestId = ""): Future[McpElicitResult] {.async.} =
+                relatedRequestId = "", relatedTask = ""): Future[McpElicitResult] {.async.} =
   ## Ask the user of the client on `session` to open `url` (2025-11-25
   ## onward). The answer says whether the user agreed to go there; it does
   ## not say that the interaction is done, so the server learns that out of
@@ -63,11 +70,17 @@ proc elicitUrl*(server: McpServer, session: string, message, elicitationId, url:
   let version = server.session(session).negotiatedVersion.get
   let params = urlElicitationParams(message, elicitationId, url, version)
   let response = await server.request(session, "elicitation/create", params,
-                                      relatedRequestId)
+                                      relatedRequestId, relatedTask = relatedTask)
   return parseElicitationResult(resultOf(response, "elicitation/create"), params)
 
-proc elicitUrl*(ctx: McpRequestContext, message, elicitationId, url: string): Future[McpElicitResult] =
-  ctx.server.elicitUrl(ctx.session, message, elicitationId, url, ctx.requestId)
+proc elicitUrl*(ctx: McpRequestContext, message, elicitationId, url: string
+               ): Future[McpElicitResult] {.async.} =
+  let input = ctx.beginInput()
+  try:
+    return await ctx.server.elicitUrl(ctx.session, message, elicitationId, url,
+                                      input.relatedRequestId, input.task)
+  finally:
+    ctx.endInput()
 
 proc notifyElicitationComplete*(server: McpServer, session: string,
                                 elicitationId: string): Future[void] {.async.} =
