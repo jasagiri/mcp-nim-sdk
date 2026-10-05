@@ -242,6 +242,7 @@ func headerNameSource*(methodName: string, params: JsonNode): Option[string] {.r
     case methodName
     of "tools/call", "prompts/get": "name"
     of "resources/read": "uri"
+    of "tasks/get", "tasks/update", "tasks/cancel": "taskId"
     else: ""
   if key.len == 0 or params.isNil or params.kind != JObject:
     return none(string)
@@ -249,7 +250,8 @@ func headerNameSource*(methodName: string, params: JsonNode): Option[string] {.r
   if node.isNil or node.kind != JString: none(string) else: some(node.getStr())
 
 func requiresNameHeader*(methodName: string): bool {.raises: [].} =
-  methodName in ["tools/call", "prompts/get", "resources/read"]
+  methodName in ["tools/call", "prompts/get", "resources/read",
+                 "tasks/get", "tasks/update", "tasks/cancel"]
 
 func modernRequestHeaders*(methodName: string,
                            params: JsonNode): seq[(string, string)] {.raises: [].} =

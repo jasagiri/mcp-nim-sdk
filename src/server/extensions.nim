@@ -54,13 +54,14 @@ proc registerExtensionMethod*(server: McpServer, extensionId, methodName: string
   ## Serve `methodName` for extension `extensionId` (declared with
   ## `registerExtension`). Only a client that declared the extension may call
   ## it. Raises ValueError for an undeclared extension, a method of the core
-  ## protocol, or a method already registered.
+  ## protocol (but for the ones an official extension takes over, see
+  ## `takesOver`), or a method already registered.
   if server.capabilities.extensions.isNone or
      not server.capabilities.extensions.get.hasKey(extensionId):
     raise newException(ValueError, "extension " & extensionId &
       " is not declared; call registerExtension first")
   if methodName in server.extensionMethods or methodName in server.requestHandlers or
-     isCoreMethod(methodName):
+     (isCoreMethod(methodName) and not takesOver(extensionId, methodName)):
     raise newException(ValueError, "method " & methodName & " is already defined")
   server.extensionMethods[methodName] = ExtensionMethod(
     extensionId: extensionId, handler: handler)

@@ -24,6 +24,24 @@ const
 func isCoreMethod*(methodName: string): bool {.raises: [].} =
   methodName in CoreMethods
 
+const
+  TasksExtensionId* = "io.modelcontextprotocol/tasks"
+
+  TakenOverMethods* = [
+    (extensionId: TasksExtensionId, methodName: "tasks/get"),
+    (extensionId: TasksExtensionId, methodName: "tasks/cancel")
+  ]
+    ## Methods of the core before 2026-07-28 that an official extension
+    ## defines again from 2026-07-28 on: the core removed them, the
+    ## extension reserves the `tasks/` prefix.
+
+func takesOver*(extensionId, methodName: string): bool {.raises: [].} =
+  ## Whether extension `extensionId` defines `methodName` in 2026-07-28 although
+  ## an earlier version of the core did.
+  for entry in TakenOverMethods:
+    if entry.extensionId == extensionId and entry.methodName == methodName:
+      return true
+
 func isLabel(label: string): bool {.raises: [].} =
   ## A letter first, a letter or digit last, letters, digits and hyphens
   ## between.

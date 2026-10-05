@@ -1315,7 +1315,7 @@ proc handleModernRequest(server: McpServer, request: JsonRpcRequest,
   if rejection.isSome:
     return newJsonRpcErrorResponse(request.id, rejection.get.code,
       rejection.get.message, rejection.get.data)
-  if isRemovedInModern(request.`method`):
+  if isRemovedInModern(request.`method`) and request.`method` notin server.extensionMethods:
     return newJsonRpcErrorResponse(request.id, ErrMethodNotFound,
       "Method not found: " & request.`method`)
   let metaError = metaRejection(request, ctx.version)
