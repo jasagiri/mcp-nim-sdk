@@ -226,3 +226,18 @@ nim-muter 0.2.5 の RVR は、戻り値がリテラルのとき `default(typeof(
 | `src/transport/http_server.nim` | 認可の対象パス、セッションの所有者、cancelled の書き換え、資源上限、Host 検証 | `tests/test_security_http.nim` | 2026-10-06 |
 | `src/transport/auth_hook.nim`、`src/auth/resource_server.nim` (`ownPaths`、`mcpPath` の廃止) | `tests/test_security_http.nim`、`tests/test_auth_resource_server.nim` | 2026-10-06 |
 | `src/protocol/diagnostic.nim` (`peerText`) と、それを使う `src/server/server.nim`、`src/transport/{http,http_server,sse_legacy,stdio}.nim` の診断 | `tests/test_security_diagnostic.nim` | 2026-10-06 |
+
+## 認可の拡張 (ext-auth): 未測定
+
+| モジュール | 対応する外部仕様テスト | 追加・変更した日 |
+|---|---|---|
+| `src/auth/oauth/authcode.nim` (`parseTokenResponse` の公開のみ)、`src/auth/oauth/metadata.nim` (`document` フィールドのみ) | `tests/test_auth_oauth_basics.nim`, `tests/test_auth_client_flow.nim` | 2026-10-06 |
+| `src/auth/oauth/jwt.nim`, `src/auth/oauth/grants.nim` | `tests/test_ext_auth_grants.nim` | 2026-10-06 |
+| `src/ext/auth_client_credentials.nim`, `src/ext/auth_shared.nim`, `src/auth/oauth/metadata_fields.nim` | `tests/test_ext_auth_client_credentials.nim` | 2026-10-06 |
+| `src/ext/auth_enterprise_managed.nim` | `tests/test_ext_auth_enterprise_managed.nim` | 2026-10-06 |
+
+`src/ext/auth_enterprise_managed.nim` は 2026-10-06 に、規則を 1 つずつ壊した版を 7 通り作り
+(プロファイル確認の省略、`aud` / `client_id` / `typ` / `token_type` の検査の省略、
+ID-JAG の再利用の無効化、リフレッシュトークンの保持)、`tests/test_ext_auth_enterprise_managed.nim`
+が落ちるかを確かめた。7 通りとも検出された。これは網羅的な変異検査の代わりにはならない。
+`auth_client_credentials.nim` と `jwt.nim` / `grants.nim` は手でも測っていない。
