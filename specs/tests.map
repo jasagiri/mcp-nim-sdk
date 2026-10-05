@@ -97,3 +97,57 @@ MCP-TOOLS-1 | tests/test_streamable_http.nim | Given an HTTP server, when the cl
 MCP-TOOLS-1 | tests/test_era_matrix.nim | Given no initialize, when a 2026-07-28 tools/list arrives, then it is served and the server keeps no handshake state
 MCP-TOOLS-1 | tests/test_era_matrix.nim | Given a 2026-07-28 tools/call, when it is answered, then the result is complete and carries no cache fields
 MCP-TOOLS-2 | tests/test_era_matrix.nim | Given an initialized legacy client, when it lists tools, then the result carries no 2026-07-28 fields
+MCP-RESOURCES-1 | tests/test_server_resources_prompts.nim | Given resources, when a client lists and reads them, then entries carry uri and name and contents carry the uri with text or blob
+MCP-RESOURCES-1 | tests/test_server_errors.nim | Given a resource with two contents, when it is read, then both are returned
+MCP-RESOURCES-1 | tests/test_server_errors.nim | Given the earlier API's read handler, when a resource is read, then its one content is wrapped in contents
+MCP-RESOURCES-2 | tests/test_client_operations.nim | Given resources, when listed, then fields are read and pages followed
+MCP-RESOURCES-2 | tests/test_client_operations.nim | Given a resource, when it is read, then text and blob entries are returned
+MCP-RESOURCES-3 | tests/test_server_resources_prompts.nim | Given no resources capability, when a client lists or reads resources, then the method is not found
+MCP-RESOURCES-4 | tests/test_server_errors.nim | Given an unknown resource, when it is read, then the code is -32002 before 2026-07-28 and -32602 from it
+MCP-RESOURCES-5 | tests/test_server_errors.nim | Given an unknown resource, when it is read, then the code is -32002 before 2026-07-28 and -32602 from it
+MCP-RESOURCES-6 | tests/test_server_pagination.nim | Given no templates handler, when a client lists templates, then the list is empty
+MCP-RESOURCES-6 | tests/test_server_pagination.nim | Given no resources capability, when a client lists templates, then the method is not found
+MCP-RESOURCES-6 | tests/test_server_pagination.nim | Given a paged list, when a client follows nextCursor, then it sees every item and the last page has no nextCursor
+MCP-RESOURCES-7 | tests/test_client_operations.nim | Given templates, when listed, then the wire key resourceTemplates is read
+MCP-RESOURCES-8 | tests/test_server_notifications.nim | Given a subscription, when the resource is updated, then the subscriber is told with the uri
+MCP-RESOURCES-8 | tests/test_server_notifications.nim | Given a subscription to one resource, when another is updated, then nothing is sent
+MCP-RESOURCES-8 | tests/test_server_notifications.nim | Given two clients and one subscription, when the resource is updated, then only the subscriber is told
+MCP-RESOURCES-9 | tests/test_server_notifications.nim | Given an unsubscribe, when the resource is updated, then nothing is sent
+MCP-RESOURCES-9 | tests/test_server_notifications.nim | Given a client that ends its session, when the resource is updated, then it is not told
+MCP-RESOURCES-10 | tests/test_server_notifications.nim | Given a server without the subscribe capability, when a client subscribes, then the method is not found
+MCP-RESOURCES-10 | tests/test_server_notifications.nim | Given a subscribe without a uri, when it is sent, then the answer is invalid params
+MCP-RESOURCES-10 | tests/test_server_notifications.nim | Given a client that has not initialized, when it subscribes, then the answer is invalid request
+MCP-RESOURCES-10 | tests/test_server_notifications.nim | Given a handler that refuses the resource, when a client subscribes, then it gets the error and no subscription
+MCP-RESOURCES-10 | tests/test_server_notifications.nim | Given a handler for subscriptions, when a client subscribes and unsubscribes, then the handler hears of both
+MCP-RESOURCES-11 | tests/test_client_operations.nim | Given a server that supports subscriptions, when a resource is subscribed and unsubscribed, then both requests are sent
+MCP-RESOURCES-11 | tests/test_client_operations.nim | Given resources without subscribe, when a resource is subscribed, then McpUnsupportedError is raised
+MCP-RESOURCES-11 | tests/test_client_server_requests.nim | Given a resource-updated callback, when the server reports an update, then the uri is passed
+MCP-RESOURCES-12 | tests/test_server_notifications.nim | Given a 2026-07-28 client, when it subscribes, then the method is not found
+MCP-RESOURCES-12 | tests/test_client_operations.nim | Given a 2026-07-28 connection, when ping, setLevel or subscribe is used, then McpUnsupportedError is raised and nothing is sent
+MCP-LISTCHANGED-1 | tests/test_server_notifications.nim | Given two initialized clients, when the tool list changes, then each is told on its own session
+MCP-LISTCHANGED-1 | tests/test_server_notifications.nim | Given resources, prompts and tools, when each list changes, then each notification has its method
+MCP-LISTCHANGED-1 | tests/test_server_notifications.nim | Given a server that did not declare listChanged, when a list changes, then nothing is sent
+MCP-LISTCHANGED-1 | tests/test_server_notifications.nim | Given a client that has not sent initialized, when a list changes, then it is not told
+MCP-LISTCHANGED-1 | tests/test_server_notifications.nim | Given a client whose transport fails, when a list changes, then the others are still told and the failure is raised
+MCP-LISTCHANGED-2 | tests/test_client_server_requests.nim | Given list-changed callbacks, when the server reports changes, then each callback fires once
+MCP-LISTCHANGED-2 | tests/test_client_server_requests.nim | Given a callback that raises, when a notification arrives, then the client keeps receiving
+MCP-LISTCHANGED-2 | tests/test_client_server_requests.nim | Given no callbacks, when notifications arrive, then they are ignored
+MCP-PROMPTS-1 | tests/test_server_resources_prompts.nim | Given a prompt, when a client lists and gets it, then the name is listed and the messages the handler built come back
+MCP-PROMPTS-2 | tests/test_client_operations.nim | Given prompts, when listed, then arguments are read
+MCP-PROMPTS-2 | tests/test_client_operations.nim | Given a prompt, when it is fetched with arguments, then they are sent as strings and messages are read
+MCP-PROMPTS-2 | tests/test_client_operations.nim | Given no arguments, when a prompt is fetched, then no arguments key is sent
+MCP-PROMPTS-3 | tests/test_server_resources_prompts.nim | Given no prompts capability, when a client lists or gets prompts, then the method is not found
+MCP-PROMPTS-4 | tests/test_server_errors.nim | Given an unknown prompt, when it is requested, then the answer is invalid params
+MCP-PROMPTS-4 | tests/test_server_resources_prompts.nim | Given a prompt that needs an argument, when a client gets it without, then the answer is invalid params
+MCP-PAGINATION-1 | tests/test_server_pagination.nim | Given a paged list, when a client follows nextCursor, then it sees every item and the last page has no nextCursor
+MCP-PAGINATION-1 | tests/test_server_pagination.nim | Given an unpaged list, when a client lists, then there is no nextCursor
+MCP-PAGINATION-1 | tests/test_server_pagination.nim | Given 5 items and a page size of 2, when the pages are followed, then every item comes once and the last page has no cursor
+MCP-PAGINATION-2 | tests/test_server_pagination.nim | Given a cursor the server did not issue, when a client lists, then the error is invalid params
+MCP-PAGINATION-2 | tests/test_server_pagination.nim | Given a cursor that is not a string, when a client lists, then the error is invalid params
+MCP-PAGINATION-2 | tests/test_server_pagination.nim | Given a cursor nobody issued, when the list is paged, then the cursor is invalid params
+MCP-PAGINATION-3 | tests/test_server_pagination.nim | Given a handler of its own cursors, when a client lists, then its cursor and its invalid-cursor error are used
+MCP-PAGINATION-4 | tests/test_client_operations.nim | Given a server with tools, when one page is listed, then the tools and nextCursor are returned
+MCP-PAGINATION-4 | tests/test_client_operations.nim | Given a cursor, when the next page is listed, then the cursor is sent and the last page has none
+MCP-PAGINATION-4 | tests/test_client_operations.nim | Given a paged server, when every tool is listed, then all pages are followed
+MCP-PAGINATION-4 | tests/test_client_operations.nim | Given a server that repeats a cursor, when every tool is listed, then McpProtocolError is raised
+MCP-PAGINATION-5 | tests/test_client_operations.nim | Given a nextCursor that is the empty string, when every tool is listed, then the empty cursor is sent and the list does not end there

@@ -66,6 +66,22 @@ suite "tools":
     expect McpProtocolError:
       discard waitFor client.listAllTools()
 
+  test "Given a nextCursor that is the empty string, when every tool is listed, then the empty cursor is sent and the list does not end there":
+    let peer = startPeer(proc(peer: Peer, message: JsonNode) =
+      if message{"method"}.getStr() == "tools/list":
+        if not message["params"].hasKey("cursor"):
+          peer.reply(message["id"], %*{"tools": [
+            {"name": "a", "inputSchema": {"type": "object"}}], "nextCursor": ""})
+        elif message["params"]["cursor"].getStr() == "":
+          peer.reply(message["id"], %*{"tools": [
+            {"name": "b", "inputSchema": {"type": "object"}}]})
+        else:
+          peer.replyError(message["id"], -32602, "bad cursor"))
+    let client = peer.connectedClient(LegacyDefault)
+    let tools = waitFor client.listAllTools()
+    check tools.len == 2
+    check tools[1].name == "b"
+
   test "Given a tool result with several kinds of content, when it is called, then each block is read":
     let peer = startPeer(proc(peer: Peer, message: JsonNode) =
       if message{"method"}.getStr() == "tools/call":

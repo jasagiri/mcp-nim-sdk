@@ -56,6 +56,14 @@ func featureNamed(name: string): McpFeature =
       return feature
   raise newException(ValueError, "no such feature: " & name)
 
+func testExists(source, name: string): bool =
+  ## A test is named by a literal, or by a literal with `<version>` where a
+  ## loop puts the protocol version in (`"... version " & $v & ", when ..."`).
+  let parts = name.split("<version>")
+  if parts.len == 1:
+    return ("test \"" & name & "\":") in source
+  ("test \"" & parts[0] & "\"") in source and ("\"" & parts[1] & "\":") in source
+
 let specs = loadSpecs()
 let verifications = loadVerifications()
 
@@ -103,7 +111,7 @@ suite "external specifications and their tests":
       check v.id in ids
       check fileExists(Root / v.testFile)
       if fileExists(Root / v.testFile):
-        check ("test \"" & v.testName & "\":") in readFile(Root / v.testFile)
+        check testExists(readFile(Root / v.testFile), v.testName)
 
   test "Given a tests.map, when read, then no line is repeated":
     var seen = initHashSet[string]()
@@ -118,3 +126,13 @@ suite "external specifications and their tests":
         checkpoint spec.id & ": " & spec.feature
         let status = implementationOf(featureNamed(spec.feature)).status
         check (status == isImplemented) == (not spec.unimplemented)
+
+  test "Given a feature the SDK implements, when the Scenarios are read, then at least one Scenario is tied to it":
+    var tied = initHashSet[string]()
+    for spec in specs:
+      if spec.feature.len > 0 and not spec.unimplemented:
+        tied.incl spec.feature
+    for feature in McpFeature:
+      if implementationOf(feature).status == isImplemented:
+        checkpoint $feature
+        check $feature in tied
