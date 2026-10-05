@@ -106,3 +106,31 @@ suite "list scope":
     check (scoped.hasKey("error") or scoped["result"]{"isError"}.getBool())
     check not peer.ask("tools/call", %*{"name": "plain", "arguments": {"s": "a"}},
       meta = %*{MetaKey: "x"})["result"].hasKey("isError")
+
+suite "list-changed notifications with params":
+
+  test "Given a server that declares listChanged, when notifyListChanged carries params, then a legacy client receives them":
+    for v in legacyVersions():
+      let server = newServer(McpServerCapabilities(tools: some(McpToolsCapability(listChanged: true))))
+      let transport = server.attach()
+      let peer = server.connect(transport, v)
+      waitFor server.notifyListChanged("notifications/tools/list_changed",
+        %*{"_meta": {MetaKey: "wide"}})
+      untilTrue("the notification", proc(): bool =
+        transport.messagesOf("notifications/tools/list_changed").len == 1)
+      check transport.messagesOf("notifications/tools/list_changed")[0].message["params"] ==
+        %*{"_meta": {MetaKey: "wide"}}
+      discard peer
+
+  test "Given a list the server did not declare listChanged for, when notifyListChanged is called, then nothing is sent":
+    let server = newServer(McpServerCapabilities(tools: some(McpToolsCapability())))
+    let transport = server.attach()
+    discard server.connect(transport, legacyVersions()[0])
+    waitFor server.notifyListChanged("notifications/tools/list_changed")
+    settle()
+    check transport.messagesOf("notifications/tools/list_changed").len == 0
+
+  test "Given a method that is not a list-changed notification, when notifyListChanged is called, then ValueError is raised":
+    let server = toolServer()
+    expect ValueError:
+      waitFor server.notifyListChanged("notifications/message")

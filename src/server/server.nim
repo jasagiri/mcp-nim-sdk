@@ -1636,6 +1636,30 @@ proc notifyResourceUpdated*(server: McpServer, uri: string): Future[void] {.asyn
     await server.deliverAll(server.subscribersOf(uri),
       ResourceUpdatedMethod, %*{"uri": uri})
 
+proc notifyListChanged*(server: McpServer, methodName: string,
+                        params: JsonNode = nil): Future[void] {.async.} =
+  ## A list-changed notification (`notifications/tools/list_changed`,
+  ## `notifications/prompts/list_changed` or
+  ## `notifications/resources/list_changed`) that carries `params`, for an
+  ## extension that scopes the change by an `_meta` key of its own. Goes to
+  ## the same clients as `notifyToolListChanged` and its siblings, and only
+  ## when the server declared `listChanged` for that list. Raises ValueError
+  ## for any other method.
+  let capabilities = server.capabilities
+  let declared =
+    case methodName
+    of ToolsListChangedMethod:
+      capabilities.tools.isSome and capabilities.tools.get.listChanged
+    of PromptsListChangedMethod:
+      capabilities.prompts.isSome and capabilities.prompts.get.listChanged
+    of ResourcesListChangedMethod:
+      capabilities.resources.isSome and capabilities.resources.get.listChanged
+    else:
+      raise newException(ValueError, methodName & " is not a list-changed notification")
+  if declared:
+    await server.deliverAll(server.operationalSessions, methodName,
+                            if params.isNil: newJObject() else: params)
+
 proc notifyToolListChanged*(server: McpServer): Future[void] {.async.} =
   if server.capabilities.tools.isSome and
      server.capabilities.tools.get.listChanged:
