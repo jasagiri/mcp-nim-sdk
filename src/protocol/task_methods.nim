@@ -108,7 +108,7 @@ proc pollTask*(fetch: proc(): Future[McpTask] {.closure.}, onStatus: TaskStatusC
       await sleep(pause)
 
 proc finishWhenDone(store: TaskStore, taskId: string,
-                    response: Future[JsonRpcResponse]) {.async.} =
+                    response: Future[JsonRpcResponse], toolErrorsFail: bool) {.async.} =
   var outcome: TaskOutcome
   var raised = ""
   try:
@@ -120,17 +120,19 @@ proc finishWhenDone(store: TaskStore, taskId: string,
       code: InternalErrorCode, message: "Internal error", data: newJNull())))
   # False when the task is over already (cancelled, or expired): it stays so,
   # and work that stops because it was told to is not a failure to report.
-  if store.finish(taskId, outcome) and raised.len > 0:
+  if store.finish(taskId, outcome, toolErrorsFail) and raised.len > 0:
     stderr.writeLine("[mcp-tasks] the request of task " & taskId & " raised " & raised)
 
 proc runAsTask*(store: TaskStore, owner: string, ttlMs: Option[int64],
-                start: proc(taskId: string): TaskWork {.closure.}): McpTask =
+                start: proc(taskId: string): TaskWork {.closure.},
+                toolErrorsFail = true): McpTask =
   ## Create a task for `owner` and run the request it stands for. `start`
   ## begins the work (it gets the task's id) and says how to stop it; when
-  ## the work ends, the task is completed or failed. The request is not
+  ## the work ends, the task is completed or failed (`toolErrorsFail`: see
+  ## `finish`). The request is not
   ## waited for: the task is returned at once, still working.
   let task = store.create(owner, ttlMs)
   let work = start(task.taskId)
   store.attachWork(task.taskId, work.cancel)
-  asyncCheck finishWhenDone(store, task.taskId, work.response)
+  asyncCheck finishWhenDone(store, task.taskId, work.response, toolErrorsFail)
   task

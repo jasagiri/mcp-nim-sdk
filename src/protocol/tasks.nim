@@ -375,13 +375,16 @@ func failureMessage(outcome: TaskOutcome): Option[string] =
         return some(item{"text"}.getStr())
   none(string)
 
-func isFailure(outcome: TaskOutcome): bool =
-  outcome.error.isSome or outcome.result.get{"isError"}.getBool(false)
+func isFailure(outcome: TaskOutcome, toolErrorsFail: bool): bool =
+  outcome.error.isSome or (toolErrorsFail and outcome.result.get{"isError"}.getBool(false))
 
-proc finish*(store: TaskStore, id: string, outcome: TaskOutcome): bool =
+proc finish*(store: TaskStore, id: string, outcome: TaskOutcome,
+             toolErrorsFail = true): bool =
   ## The request the task stands for ended: completed, or failed when it
-  ## ended in an error or, for a tool call, a result with `isError`. False
-  ## when the task is gone or already terminal (cancelled, say).
+  ## ended in an error or, for a tool call, a result with `isError` (2025-11-25;
+  ## the Tasks extension of 2026-07-28 keeps such a result `completed`:
+  ## pass `toolErrorsFail = false`). False when the task is gone or already
+  ## terminal (cancelled, say).
   discard store.sweep()
   if id notin store.entries:
     return false
@@ -389,7 +392,7 @@ proc finish*(store: TaskStore, id: string, outcome: TaskOutcome): bool =
   if entry.task.status.isTerminal:
     return false
   entry.outcome = some(outcome)
-  if outcome.isFailure:
+  if outcome.isFailure(toolErrorsFail):
     store.change(entry, tsFailed, outcome.failureMessage)
   else:
     store.change(entry, tsCompleted, none(string))
