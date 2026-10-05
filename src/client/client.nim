@@ -1,13 +1,70 @@
 ## MCP client implementation
 
-import asyncdispatch, json, options, tables, strutils, uuids
+import asyncdispatch, json, options, tables, strutils, sequtils, uuids
 import ../protocol/types
 import ../protocol/lifecycle
 import ../protocol/modern
+import ../protocol/features
 import ../transport/transport
 import ../mcp/types as mcpTypes
 
 type
+  McpError* = object of CatchableError
+    ## Base of every failure an operation of this client reports.
+
+  McpRequestError* = object of McpError
+    ## The peer answered with a JSON-RPC error.
+    code*: int
+    data*: JsonNode
+
+  McpTimeoutError* = object of McpError
+    ## No response arrived within the request's timeout.
+
+  McpCancelledError* = object of McpError
+    ## The caller cancelled the request through its McpCancelToken.
+
+  McpConnectionClosedError* = object of McpError
+    ## The client is not connected, was closed, or lost its transport
+    ## while a request was waiting.
+
+  McpUnsupportedError* = object of McpError
+    ## The negotiated version or the server's capabilities do not include
+    ## what the operation needs. Nothing was sent.
+
+  McpProtocolError* = object of McpError
+    ## The peer's answer does not have the shape the specification gives.
+
+  McpCancelToken* = ref object
+    ## Lets the caller of an operation withdraw it. Pass it in
+    ## McpRequestOptions; `cancel` makes the waiting call raise
+    ## McpCancelledError and tells the server to stop.
+    reason: string
+    signal: Future[void]
+
+  McpProgress* = object
+    ## One notifications/progress for a request that asked for them.
+    progress*: float
+    total*: Option[float]
+    message*: string
+
+  McpProgressCallback* = proc(update: McpProgress) {.closure.}
+
+  McpRequestOptions* = object
+    timeoutMs*: Option[int]
+      ## none: the client's requestTimeoutMs. some(0): wait without limit.
+    onProgress*: McpProgressCallback
+      ## When set, the request carries a progressToken and every matching
+      ## notifications/progress is passed here.
+    cancel*: McpCancelToken
+
+  McpLogMessage* = object
+    ## A notifications/message from the server.
+    level*: string
+    logger*: Option[string]
+    data*: JsonNode
+
+  McpServerRequestHandler* = proc(request: JsonRpcRequest): Future[JsonRpcResponse] {.closure.}
+
   McpClient* = ref object
     transport*: McpTransport
     state*: McpLifecycleState
@@ -25,12 +82,35 @@ type
     probeTimeoutMs*: int
       ## How long connect() waits for an answer to the 2026-07-28
       ## server/discover probe before treating the server as a legacy one.
+    requestTimeoutMs*: int
+      ## How long a request waits for its response unless its
+      ## McpRequestOptions say otherwise. 0 waits without limit.
     pendingRequests*: Table[string, Future[JsonRpcResponse]]
-    requestHandlers*: Table[string, proc(request: JsonRpcRequest): Future[JsonRpcResponse] {.async.}]
+    progressCallbacks: Table[string, McpProgressCallback]
+    nextProgressToken: int
+    requestHandlers*: Table[string, McpServerRequestHandler]
     notificationHandlers*: Table[string, proc(notification: JsonRpcNotification): Future[void] {.async.}]
+    onLogMessage*: proc(message: McpLogMessage) {.closure.}
+    onResourceUpdated*: proc(uri: string) {.closure.}
+    onToolsListChanged*: proc() {.closure.}
+    onResourcesListChanged*: proc() {.closure.}
+    onPromptsListChanged*: proc() {.closure.}
     lastTransportError*: ref CatchableError
       ## Set when the message-processing loop terminates due to a transport
       ## error. Mirrors McpServer.lastTransportError — see audit finding #5.
+
+const DefaultRequestTimeoutMs* = 60_000
+
+proc newMcpCancelToken*(): McpCancelToken =
+  McpCancelToken(signal: newFuture[void]("McpCancelToken"))
+
+proc cancel*(token: McpCancelToken, reason: string = "") =
+  ## Idempotent: only the first call counts.
+  if not token.signal.finished:
+    token.reason = reason
+    token.signal.complete()
+
+proc isCancelled*(token: McpCancelToken): bool = token.signal.finished
 
 proc newMcpClient*(
   clientInfo: McpClientInfo,
@@ -46,50 +126,144 @@ proc newMcpClient*(
     serverCapabilities: none(McpServerCapabilities),
     serverInfo: none(McpServerInfo),
     probeTimeoutMs: 5000,
+    requestTimeoutMs: DefaultRequestTimeoutMs,
     pendingRequests: initTable[string, Future[JsonRpcResponse]](),
-    requestHandlers: initTable[string, proc(request: JsonRpcRequest): Future[JsonRpcResponse] {.async.}](),
+    progressCallbacks: initTable[string, McpProgressCallback](),
+    requestHandlers: initTable[string, McpServerRequestHandler](),
     notificationHandlers: initTable[string, proc(notification: JsonRpcNotification): Future[void] {.async.}]()
   )
 
 proc registerRequestHandler*(client: McpClient, methodName: string,
-    handler: proc(request: JsonRpcRequest): Future[JsonRpcResponse] {.async.}) =
+    handler: McpServerRequestHandler) =
   client.requestHandlers[methodName] = handler
 
 proc registerNotificationHandler*(client: McpClient, methodName: string,
     handler: proc(notification: JsonRpcNotification): Future[void] {.async.}) =
   client.notificationHandlers[methodName] = handler
 
+proc requireNotConnected*(client: McpClient, what: string) =
+  ## Capabilities are declared once, in the handshake; a handler that adds
+  ## one afterwards would be a capability the server never heard of.
+  if client.state != mlsUninitialized:
+    raise newException(McpError, what & " must be set before connect()")
+
+proc usesModernProtocol*(client: McpClient): bool =
+  ## Whether the connection uses 2026-07-28 or later, where every request
+  ## carries its own protocol version and client capabilities.
+  client.negotiatedVersion.isSome and isModern(client.negotiatedVersion.get)
+
+proc failPending(client: McpClient, reason: string) =
+  ## Nobody will answer these requests any more.
+  let waiting = toSeq(client.pendingRequests.values)
+  client.pendingRequests.clear()
+  for future in waiting:
+    if not future.finished:
+      future.fail(newException(McpConnectionClosedError, reason))
+
+proc requestAllowed(client: McpClient, methodName: string): bool =
+  ## Whether the server may send `methodName` to this client: only when the
+  ## client declared the capability behind it, and never in the era without
+  ## server-initiated requests.
+  if client.usesModernProtocol:
+    return false
+  case methodName
+  of "sampling/createMessage": client.capabilities.sampling.isSome
+  of "roots/list": client.capabilities.roots.isSome
+  else: true
+
+proc logHandlerFailure(what: string) =
+  stderr.writeLine("[mcp-client] " & what & " raised " &
+                   $getCurrentException().name & ": " & getCurrentExceptionMsg())
+
 proc processRequest(client: McpClient, request: JsonRpcRequest): Future[void] {.async.} =
-  if request.`method` in client.requestHandlers:
-    let handler = client.requestHandlers[request.`method`]
-    let response = await handler(request)
-    await client.transport.sendResponse(response)
+  var response: JsonRpcResponse
+  if request.`method` == "ping" and not client.usesModernProtocol and
+     "ping" notin client.requestHandlers:
+    response = newJsonRpcResponse(request.id, newJObject())
+  elif request.`method` notin client.requestHandlers or
+       not client.requestAllowed(request.`method`):
+    response = newJsonRpcErrorResponse(
+      request.id, -32601, "Method not found: " & request.`method`)
   else:
-    # Unknown method
-    let response = newJsonRpcErrorResponse(
-      request.id,
-      -32601,
-      "Method not found: " & request.`method`
-    )
-    await client.transport.sendResponse(response)
+    try:
+      response = await client.requestHandlers[request.`method`](request)
+    except McpRequestError as e:
+      response = newJsonRpcErrorResponse(request.id, e.code, e.msg, e.data)
+    except CatchableError as e:
+      logHandlerFailure("handler for " & request.`method`)
+      response = newJsonRpcErrorResponse(request.id, -32603, e.msg)
+  response.idNode = request.idNode
+  await client.transport.sendResponse(response)
+
+proc notify(callback: proc() {.closure.}, what: string) =
+  if callback.isNil: return
+  try:
+    callback()
+  except CatchableError:
+    logHandlerFailure(what)
 
 proc processNotification(client: McpClient, notification: JsonRpcNotification): Future[void] {.async.} =
+  let params = notification.params
+  case notification.`method`
+  of "notifications/progress":
+    let token = params{"progressToken"}
+    if not token.isNil:
+      let key = if token.kind == JString: token.getStr() else: $token
+      if key in client.progressCallbacks:
+        let update = McpProgress(
+          progress: params{"progress"}.getFloat(),
+          total: (if params.hasKey("total"): some(params["total"].getFloat()) else: none(float)),
+          message: params{"message"}.getStr())
+        let callback = client.progressCallbacks[key]
+        try:
+          callback(update)
+        except CatchableError:
+          logHandlerFailure("progress callback")
+  of "notifications/message":
+    if not client.onLogMessage.isNil:
+      let message = McpLogMessage(
+        level: params{"level"}.getStr(),
+        logger: (if params.hasKey("logger"): some(params["logger"].getStr()) else: none(string)),
+        data: params{"data"})
+      try:
+        client.onLogMessage(message)
+      except CatchableError:
+        logHandlerFailure("log callback")
+  of "notifications/resources/updated":
+    if not client.onResourceUpdated.isNil:
+      let uri = params{"uri"}.getStr()
+      try:
+        client.onResourceUpdated(uri)
+      except CatchableError:
+        logHandlerFailure("resource-updated callback")
+  of "notifications/tools/list_changed":
+    notify(client.onToolsListChanged, "tools list_changed callback")
+  of "notifications/resources/list_changed":
+    notify(client.onResourcesListChanged, "resources list_changed callback")
+  of "notifications/prompts/list_changed":
+    notify(client.onPromptsListChanged, "prompts list_changed callback")
+  else:
+    discard
   if notification.`method` in client.notificationHandlers:
     let handler = client.notificationHandlers[notification.`method`]
-    await handler(notification)
-  # If no handler, silently ignore
+    try:
+      await handler(notification)
+    except CatchableError:
+      logHandlerFailure("handler for " & notification.`method`)
 
 proc processResponse(client: McpClient, response: JsonRpcResponse): Future[void] {.async.} =
+  # A response nobody waits for belongs to a request that timed out or
+  # was cancelled; the specification tells the sender to ignore it.
   if response.id in client.pendingRequests:
     let promise = client.pendingRequests[response.id]
-    promise.complete(response)
     client.pendingRequests.del(response.id)
-  # If no pending request, silently ignore
+    promise.complete(response)
 
 proc processMessages*(client: McpClient): Future[void] {.async.} =
   ## Run the receive loop until the transport raises. On termination, the
   ## raising error is stored on `client.lastTransportError` so callers can
-  ## diagnose the silent-dead condition. Defects propagate.
+  ## diagnose the silent-dead condition, and every request still waiting
+  ## fails. Defects propagate.
   try:
     while true:
       let json = await client.transport.receiveMessage()
@@ -107,21 +281,24 @@ proc processMessages*(client: McpClient): Future[void] {.async.} =
         stderr.writeLine("[mcp-client] invalid message received: " & $json)
   except McpTransportClosedError:
     client.state = mlsShutdown
+    client.failPending("the transport was closed")
   except CatchableError as e:
     if client.state == mlsShutdown:
       # close() ends the loop on purpose; that is not an error.
+      client.failPending("the client was closed")
       return
     client.lastTransportError = e
     stderr.writeLine("[mcp-client] transport loop ended with " &
                       $e.name & ": " & e.msg)
+    client.failPending("the transport failed: " & e.msg)
 
-proc usesModernProtocol*(client: McpClient): bool =
-  ## Whether the connection uses 2026-07-28 or later, where every request
-  ## carries its own protocol version and client capabilities.
-  client.negotiatedVersion.isSome and isModern(client.negotiatedVersion.get)
+proc ensureOpen(client: McpClient) =
+  if client.transport.isNil or client.state == mlsShutdown:
+    raise newException(McpConnectionClosedError, "the client is not connected")
 
 proc startRequest(client: McpClient, methodName: string,
                   params: JsonNode): Future[tuple[id: string, response: Future[JsonRpcResponse]]] {.async.} =
+  client.ensureOpen()
   let id = $genUUID()
   let promise = newFuture[JsonRpcResponse]("McpClient.request")
   client.pendingRequests[id] = promise
@@ -132,16 +309,72 @@ proc startRequest(client: McpClient, methodName: string,
     raise e
   return (id: id, response: promise)
 
-proc sendRequest*(client: McpClient, methodName: string, params: JsonNode): Future[JsonRpcResponse] {.async.} =
+proc sendNotification*(client: McpClient, methodName: string, params: JsonNode): Future[void] {.async.} =
+  client.ensureOpen()
+  let notification = newJsonRpcNotification(methodName, params)
+  await client.transport.sendNotification(notification)
+
+proc abandon(client: McpClient, id, methodName, reason: string) {.async.} =
+  ## Stop waiting for `id` and tell the server to stop working on it.
+  client.pendingRequests.del(id)
+  # initialize must not be cancelled. Over HTTP the 2026-07-28 protocol
+  # cancels by closing the request's response stream, not by a message.
+  if methodName == "initialize" or client.state == mlsShutdown:
+    return
+  if client.usesModernProtocol and client.transport.kind != mtkStdio:
+    return
+  try:
+    await client.sendNotification("notifications/cancelled",
+      %*{"requestId": id, "reason": reason})
+  except CatchableError as e:
+    stderr.writeLine("[mcp-client] could not cancel request " & id & ": " & e.msg)
+
+proc sendRequest*(client: McpClient, methodName: string, params: JsonNode,
+                  options: McpRequestOptions = McpRequestOptions()): Future[JsonRpcResponse] {.async.} =
+  ## Send a request and wait for its response. A JSON-RPC error response is
+  ## returned, not raised; see `callMethod` for the raising form. Raises
+  ## McpTimeoutError, McpCancelledError or McpConnectionClosedError when no
+  ## response will come.
+  if not options.cancel.isNil and options.cancel.isCancelled:
+    raise newException(McpCancelledError, methodName & ": cancelled before it was sent")
   let modern = client.usesModernProtocol
-  let wireParams =
-    if modern:
-      withRequestMeta(params, requestMeta(
-        client.negotiatedVersion.get, client.clientInfo, client.capabilities.toJson()))
+  var wireParams = params
+  var progressKey = ""
+  if not options.onProgress.isNil:
+    inc client.nextProgressToken
+    progressKey = "mcp-progress-" & $client.nextProgressToken
+    wireParams = withRequestMeta(params, %*{"progressToken": progressKey})
+  if modern:
+    wireParams = withRequestMeta(wireParams, requestMeta(
+      client.negotiatedVersion.get, client.clientInfo, client.capabilities.toJson()))
+  # Registered before sending: a progress notification may be the first
+  # thing to come back.
+  if progressKey.len > 0:
+    client.progressCallbacks[progressKey] = options.onProgress
+  var response: JsonRpcResponse
+  try:
+    let started = await client.startRequest(methodName, wireParams)
+    let timeoutMs = options.timeoutMs.get(client.requestTimeoutMs)
+    let timer = if timeoutMs > 0: sleepAsync(timeoutMs)
+                else: newFuture[void]("McpClient.noTimeout")
+    let cancelled = if options.cancel.isNil: newFuture[void]("McpClient.noCancel")
+                    else: options.cancel.signal
+    await (started.response or timer or cancelled)
+    if started.response.finished:
+      response = started.response.read
+    elif cancelled.finished:
+      let reason = options.cancel.reason
+      await client.abandon(started.id, methodName, reason)
+      raise newException(McpCancelledError, methodName & ": cancelled" &
+        (if reason.len > 0: " (" & reason & ")" else: ""))
     else:
-      params
-  let started = await client.startRequest(methodName, wireParams)
-  let response = await started.response
+      await client.abandon(started.id, methodName,
+        "no response within " & $timeoutMs & " ms")
+      raise newException(McpTimeoutError,
+        methodName & ": no response within " & $timeoutMs & " ms")
+  finally:
+    if progressKey.len > 0:
+      client.progressCallbacks.del(progressKey)
 
   if modern and response.result.isSome:
     case resultKind(response.result.get)
@@ -158,9 +391,38 @@ proc sendRequest*(client: McpClient, methodName: string, params: JsonNode): Futu
         $response.result.get{"resultType"})
   return response
 
-proc sendNotification*(client: McpClient, methodName: string, params: JsonNode): Future[void] {.async.} =
-  let notification = newJsonRpcNotification(methodName, params)
-  await client.transport.sendNotification(notification)
+proc requireFeature*(client: McpClient, feature: McpFeature, operation: string) =
+  ## Raise McpUnsupportedError unless the negotiated version has `feature`.
+  if client.negotiatedVersion.isNone:
+    raise newException(McpConnectionClosedError,
+      operation & ": the client is not connected")
+  if not client.negotiatedVersion.get.has(feature):
+    raise newException(McpUnsupportedError,
+      operation & ": " & $feature & " is not part of protocol version " &
+      $client.negotiatedVersion.get)
+
+proc requireServerCapability*(client: McpClient, declared: bool, operation: string,
+                              capability: string) =
+  ## `declared` is whether the server's capabilities include `capability`.
+  if not declared:
+    raise newException(McpUnsupportedError,
+      operation & ": the server does not declare the " & capability & " capability")
+
+proc callMethod*(client: McpClient, methodName: string, params: JsonNode,
+                 options: McpRequestOptions = McpRequestOptions()): Future[JsonNode] {.async.} =
+  ## Like sendRequest, but a JSON-RPC error response raises McpRequestError
+  ## and the result is returned directly. Every typed operation of this
+  ## client goes through here, so they all report failures the same way.
+  let response = await client.sendRequest(methodName, params, options)
+  if response.error.isSome:
+    let error = response.error.get
+    var failure = newException(McpRequestError, methodName & ": " & error.message)
+    failure.code = error.code
+    failure.data = error.data
+    raise failure
+  if response.result.isNone:
+    raise newException(McpProtocolError, methodName & ": the response has neither result nor error")
+  return response.result.get
 
 proc extractServerCapabilities(json: JsonNode): McpServerCapabilities =
   result = McpServerCapabilities()
@@ -191,6 +453,9 @@ proc extractServerCapabilities(json: JsonNode): McpServerCapabilities =
 
   if not declared("logging").isNil:
     result.logging = some(McpLoggingCapability())
+
+  if not declared("completions").isNil:
+    result.completions = some(McpCompletionsCapability())
 
   let experimentalJson = declared("experimental")
   if not experimentalJson.isNil:
@@ -341,11 +606,10 @@ proc connect*(client: McpClient, transport: McpTransport): Future[void] {.async.
   discard await client.initialize()
 
 proc close*(client: McpClient): Future[void] {.async.} =
-  # Change state
   client.state = mlsShutdown
-
-  # Close transport
-  await client.transport.close()
+  client.failPending("the client was closed")
+  if not client.transport.isNil:
+    await client.transport.close()
 
 # High-level Client interface for easier usage
 type

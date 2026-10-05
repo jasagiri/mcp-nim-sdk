@@ -34,6 +34,8 @@ proc toJson*(capabilities: McpServerCapabilities): JsonNode =
     result["tools"] = %*{"listChanged": capabilities.tools.get.listChanged}
   if capabilities.logging.isSome:
     result["logging"] = newJObject()
+  if capabilities.completions.isSome:
+    result["completions"] = newJObject()
   if capabilities.experimental.isSome:
     result["experimental"] = capabilities.experimental.get
 

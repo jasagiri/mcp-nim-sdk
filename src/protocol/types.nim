@@ -49,6 +49,7 @@ type
     resources*: Option[McpResourcesCapability]
     tools*: Option[McpToolsCapability]
     logging*: Option[McpLoggingCapability]
+    completions*: Option[McpCompletionsCapability]
     experimental*: Option[JsonNode]
 
   McpRootsCapability* = object
@@ -68,6 +69,9 @@ type
     listChanged*: bool
 
   McpLoggingCapability* = object
+    # Currently empty in the protocol
+
+  McpCompletionsCapability* = object
     # Currently empty in the protocol
 
   # MCP initialization
