@@ -56,6 +56,7 @@ type
     roots*: Option[McpRootsCapability]
     sampling*: Option[McpSamplingCapability]
     elicitation*: Option[McpElicitationCapability]
+    tasks*: Option[McpTasksCapability]
     experimental*: Option[JsonNode]
     extensions*: Option[JsonNode]
       ## 2026-07-28: extension identifier -> settings object.
@@ -66,9 +67,23 @@ type
     tools*: Option[McpToolsCapability]
     logging*: Option[McpLoggingCapability]
     completions*: Option[McpCompletionsCapability]
+    tasks*: Option[McpTasksCapability]
     experimental*: Option[JsonNode]
     extensions*: Option[JsonNode]
       ## 2026-07-28: extension identifier -> settings object.
+
+  McpTasksCapability* = object
+    ## 2025-11-25: which task operations a party supports and which of its
+    ## requests may be augmented with a task. The set of `requests` is
+    ## exhaustive: a request type that is not here does not support tasks.
+    list*: bool
+    cancel*: bool
+    toolsCall*: bool
+      ## Server: `requests.tools.call`.
+    samplingCreateMessage*: bool
+      ## Client: `requests.sampling.createMessage`.
+    elicitationCreate*: bool
+      ## Client: `requests.elicitation.create`.
 
   McpRootsCapability* = object
     listChanged*: bool

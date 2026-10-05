@@ -12,6 +12,39 @@ type
     mlsOperational,    # After initialized notification
     mlsShutdown        # After shutdown request or transport close
 
+proc toJson*(capability: McpTasksCapability): JsonNode =
+  ## Wire form of `capabilities.tasks`: only what is supported is present.
+  result = newJObject()
+  if capability.list:
+    result["list"] = newJObject()
+  if capability.cancel:
+    result["cancel"] = newJObject()
+  let requests = newJObject()
+  if capability.toolsCall:
+    requests["tools"] = %*{"call": {}}
+  if capability.samplingCreateMessage:
+    requests["sampling"] = %*{"createMessage": {}}
+  if capability.elicitationCreate:
+    requests["elicitation"] = %*{"create": {}}
+  if requests.len > 0:
+    result["requests"] = requests
+
+proc tasksCapabilityFromJson*(node: JsonNode): Option[McpTasksCapability] =
+  ## What a peer declared as `capabilities.tasks`; none when it declared no
+  ## object (null counts as not declared).
+  if node.isNil or node.kind != JObject:
+    return none(McpTasksCapability)
+  func declared(parent: JsonNode, key: string): bool =
+    not parent.isNil and parent.kind == JObject and
+      not parent{key}.isNil and parent{key}.kind == JObject
+  let requests = node{"requests"}
+  some(McpTasksCapability(
+    list: node.declared("list"),
+    cancel: node.declared("cancel"),
+    toolsCall: declared(requests{"tools"}, "call"),
+    samplingCreateMessage: declared(requests{"sampling"}, "createMessage"),
+    elicitationCreate: declared(requests{"elicitation"}, "create")))
+
 proc toJson*(capabilities: McpClientCapabilities): JsonNode =
   ## Wire form: a capability the client did not declare is absent, not null.
   result = newJObject()
@@ -27,6 +60,8 @@ proc toJson*(capabilities: McpClientCapabilities): JsonNode =
     if capabilities.elicitation.get.form: elicitation["form"] = newJObject()
     if capabilities.elicitation.get.url: elicitation["url"] = newJObject()
     result["elicitation"] = elicitation
+  if capabilities.tasks.isSome:
+    result["tasks"] = capabilities.tasks.get.toJson()
   if capabilities.experimental.isSome:
     result["experimental"] = capabilities.experimental.get
   if capabilities.extensions.isSome:
@@ -55,6 +90,8 @@ proc toJson*(capabilities: McpServerCapabilities): JsonNode =
     result["logging"] = newJObject()
   if capabilities.completions.isSome:
     result["completions"] = newJObject()
+  if capabilities.tasks.isSome:
+    result["tasks"] = capabilities.tasks.get.toJson()
   if capabilities.experimental.isSome:
     result["experimental"] = capabilities.experimental.get
   if capabilities.extensions.isSome:
@@ -69,6 +106,8 @@ func forVersion*(capabilities: McpServerCapabilities,
     result.completions = none(McpCompletionsCapability)
   if not version.has(ftExtensions):
     result.extensions = none(JsonNode)
+  if not version.has(ftTasks):
+    result.tasks = none(McpTasksCapability)
 
 func forVersion*(capabilities: McpClientCapabilities,
                  version: McpProtocolVersion): McpClientCapabilities {.raises: [].} =
@@ -77,6 +116,8 @@ func forVersion*(capabilities: McpClientCapabilities,
   result = capabilities
   if not version.has(ftExtensions):
     result.extensions = none(JsonNode)
+  if not version.has(ftTasks):
+    result.tasks = none(McpTasksCapability)
 
 proc createInitializeRequest*(
   clientInfo: McpClientInfo,
