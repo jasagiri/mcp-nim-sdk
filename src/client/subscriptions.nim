@@ -48,6 +48,9 @@ proc unsupported*(subscription: McpSubscription): SubscriptionFilter =
   for uri in requested.resourceSubscriptions:
     if uri notin honored.resourceSubscriptions:
       result.resourceSubscriptions.add uri
+  for id in requested.taskIds:
+    if id notin honored.taskIds:
+      result.taskIds.add id
 
 proc listen*(client: McpClient, filter: SubscriptionFilter,
              options: McpRequestOptions = McpRequestOptions()): Future[McpSubscription] {.async.} =

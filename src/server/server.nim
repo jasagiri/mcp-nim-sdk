@@ -128,6 +128,13 @@ type
     ## Rewrites one tool definition for the client of the request that lists
     ## it, e.g. to leave out what that client did not declare support for.
 
+  ListenFilterHook* = proc(ctx: McpRequestContext, requested: SubscriptionFilter,
+                           honored: var SubscriptionFilter) {.closure.}
+    ## How an extension takes part in `subscriptions/listen`: it sees what the
+    ## client asked for and may add to what the server agrees to (the filter
+    ## keys the core does not know are the extension'"'"'s), or raise
+    ## `McpRequestError` to refuse the request.
+
   ExtensionMethodHandler* = proc(ctx: McpRequestContext,
                                  params: JsonNode): Future[JsonNode] {.async.}
     ## Returns the result object of an extension's request. It may set its
@@ -176,6 +183,7 @@ type
       ## The result types extensions define, mapped to the extension.
     interceptors: seq[RequestInterceptor]
     toolListTransforms: seq[ToolListTransform]
+    listenFilterHooks: seq[ListenFilterHook]
     requestHandlers*: Table[string, proc(request: JsonRpcRequest): Future[JsonRpcResponse] {.async.}]
     notificationHandlers*: Table[string, proc(notification: JsonRpcNotification): Future[void] {.async.}]
     inFlight: Table[string, McpRequestContext]
@@ -334,6 +342,10 @@ proc registerRequestHandler*(server: McpServer, methodName: string,
 proc registerNotificationHandler*(server: McpServer, methodName: string,
     handler: proc(notification: JsonRpcNotification): Future[void] {.async.}) =
   server.notificationHandlers[methodName] = handler
+
+proc addListenFilterHook*(server: McpServer, hook: ListenFilterHook) =
+  ## Hooks run in the order they were added, for every `subscriptions/listen`.
+  server.listenFilterHooks.add hook
 
 proc addRequestInterceptor*(server: McpServer, interceptor: RequestInterceptor) =
   ## Interceptors see every request of the standard methods, in the order
@@ -1014,9 +1026,12 @@ proc listen(server: McpServer, request: JsonRpcRequest,
   if problem.isSome:
     return newJsonRpcErrorResponse(request.id, ErrInvalidParams, problem.get)
   let idNode = if request.idNode.isNil: %request.id else: request.idNode
+  var honored = honoredFilter(server.capabilities, requested)
+  for hook in server.listenFilterHooks:
+    hook(ctx, requested, honored)
   let subscription = Subscription(
     session: request.session, requestId: request.id, idNode: idNode,
-    filter: honoredFilter(server.capabilities, requested),
+    filter: honored,
     closed: newFuture[void]("McpServer.subscription"))
   server.subscriptions.add subscription
   try:
@@ -1522,6 +1537,12 @@ proc deliverToSubscribers(server: McpServer, methodName: string,
         firstFailure = e
   if not firstFailure.isNil:
     raise firstFailure
+
+proc notifySubscribers*(server: McpServer, methodName: string,
+                        params: JsonNode): Future[void] =
+  ## Send `methodName` to the `subscriptions/listen` streams whose filter wants
+  ## it, for the notifications an extension defines.
+  server.deliverToSubscribers(methodName, params)
 
 proc deliverAll(server: McpServer, sessions: seq[string], methodName: string,
                 params: JsonNode): Future[void] {.async.} =

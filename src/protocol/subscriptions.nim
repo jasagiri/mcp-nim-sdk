@@ -14,6 +14,9 @@ const
   PromptsListChangedMethod* = "notifications/prompts/list_changed"
   ResourcesListChangedMethod* = "notifications/resources/list_changed"
   ResourceUpdatedMethod* = "notifications/resources/updated"
+  TaskStatusNotificationMethod* = "notifications/tasks"
+    ## Defined by the Tasks extension; a stream gets it for the task ids it
+    ## listed in `taskIds`.
 
 type
   SubscriptionFilter* = object
@@ -23,6 +26,9 @@ type
     promptsListChanged*: bool
     resourcesListChanged*: bool
     resourceSubscriptions*: seq[string]
+    taskIds*: seq[string]
+      ## The Tasks extension: the tasks whose status notifications this
+      ## stream gets. The core does not honor any; see `addListenFilterHook`.
 
 func toJson*(filter: SubscriptionFilter): JsonNode {.raises: [].} =
   ## Wire form: only what is subscribed to is present.
@@ -32,10 +38,13 @@ func toJson*(filter: SubscriptionFilter): JsonNode {.raises: [].} =
   if filter.resourcesListChanged: result["resourcesListChanged"] = %true
   if filter.resourceSubscriptions.len > 0:
     result["resourceSubscriptions"] = %filter.resourceSubscriptions
+  if filter.taskIds.len > 0:
+    result["taskIds"] = %filter.taskIds
 
 func isEmpty*(filter: SubscriptionFilter): bool {.raises: [].} =
   not filter.toolsListChanged and not filter.promptsListChanged and
-    not filter.resourcesListChanged and filter.resourceSubscriptions.len == 0
+    not filter.resourcesListChanged and filter.resourceSubscriptions.len == 0 and
+    filter.taskIds.len == 0
 
 func parseSubscriptionFilter*(node: JsonNode): tuple[filter: SubscriptionFilter,
                                                       problem: Option[string]] {.raises: [].} =
@@ -58,6 +67,14 @@ func parseSubscriptionFilter*(node: JsonNode): tuple[filter: SubscriptionFilter,
       if uri.kind != JString:
         return (SubscriptionFilter(), some("resourceSubscriptions must hold strings"))
       result.filter.resourceSubscriptions.add uri.getStr()
+  let taskIds = node{"taskIds"}
+  if not taskIds.isNil:
+    if taskIds.kind != JArray:
+      return (SubscriptionFilter(), some("taskIds must be an array"))
+    for id in taskIds:
+      if id.kind != JString:
+        return (SubscriptionFilter(), some("taskIds must hold strings"))
+      result.filter.taskIds.add id.getStr()
 
 func subscriptionIdOf*(params: JsonNode): Option[string] {.raises: [].} =
   ## The id of the subscription a notification was delivered on, as text
@@ -103,4 +120,7 @@ func wants*(filter: SubscriptionFilter, methodName: string,
   of ResourceUpdatedMethod:
     let uri = if params.isNil or params.kind != JObject: nil else: params{"uri"}
     not uri.isNil and uri.kind == JString and uri.getStr() in filter.resourceSubscriptions
+  of TaskStatusNotificationMethod:
+    let id = if params.isNil or params.kind != JObject: nil else: params{"taskId"}
+    not id.isNil and id.kind == JString and id.getStr() in filter.taskIds
   else: false
