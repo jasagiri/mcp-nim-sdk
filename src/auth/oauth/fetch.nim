@@ -58,7 +58,8 @@ proc httpExchange*(httpMethod: HttpMethod, url: string, policy: FetchPolicy, wha
     raise newException(OAuthError, what & " " & url & " failed: " & e.msg)
   finally:
     client.close()
-  if result.code in 300 .. 399:
+  # 304 answers a conditional request; it moves nothing.
+  if result.code in 300 .. 399 and result.code != 304:
     raise newException(OAuthError, what & " " & url & " redirected (HTTP " &
                                    $result.code & "); redirects are not followed")
 
