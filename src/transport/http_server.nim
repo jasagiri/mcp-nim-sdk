@@ -100,6 +100,17 @@ type
       ## A session of the HTTP+SSE transport: `listen` is its only stream,
       ## and it lasts as long as the connection.
 
+  HttpDocument* = object
+    ## A fixed document the transport serves with GET (and HEAD and OPTIONS)
+    ## at a path of its own, outside the MCP protocol: what an extension
+    ## publishes for discovery, such as a Server Card.
+    contentType*: string
+    body*: string
+    etag*: string
+      ## Sent as `ETag`; a GET whose `If-None-Match` names it gets 304.
+    headers*: seq[(string, string)]
+      ## Sent with every answer: `Cache-Control`, CORS headers.
+
   HttpServerTransport* = ref object of McpTransport
     server*:          AsyncHttpServer
     host*:            string
@@ -132,6 +143,10 @@ type
       ## "" does not serve it.
     legacyMessagesPath*: string
       ## Where clients of that transport POST, named by the first event.
+    documents*:       Table[string, HttpDocument]
+      ## Documents served at their paths, by path; none unless added. They
+      ## are public: the authorization hook sees the request first, and the
+      ## ones of `resource_server` ask for a token only on the MCP path.
     sessions:         Table[string, Session]
     requestQueue:     Deque[McpIncoming]
     receiveWaiters:   Deque[Future[McpIncoming]]
@@ -161,6 +176,7 @@ proc newHttpServerTransport*(host: string = "127.0.0.1",
     sessionIdleTimeoutMs: DefaultSessionIdleTimeoutMs,
     legacySsePath:    "/sse",
     legacyMessagesPath: "/messages",
+    documents:        initTable[string, HttpDocument](),
     sessions:         initTable[string, Session](),
     requestQueue:     initDeque[McpIncoming](),
     receiveWaiters:   initDeque[Future[McpIncoming]](),
@@ -829,6 +845,33 @@ proc authenticate(t: HttpServerTransport, req: Request
   await req.respond(HttpCode(answer.code), answer.body, headers)
   return (answered: true, principal: none(string))
 
+proc serveDocument(req: Request, document: HttpDocument) {.async.} =
+  let extra = document.headers
+  case req.reqMethod
+  of HttpOptions:
+    await req.respondEmpty(Http204, extra)
+  of HttpGet, HttpHead:
+    var named = false
+    let wanted = req.header("If-None-Match")
+    if wanted.isSome and document.etag.len > 0:
+      for candidate in wanted.get.split(','):
+        let tag = candidate.strip()
+        if tag == "*" or tag == document.etag or tag == "W/" & document.etag:
+          named = true
+    var headers = @extra
+    if document.etag.len > 0:
+      headers.add ("ETag", document.etag)
+    if named:
+      await req.respondEmpty(Http304, headers)
+    else:
+      let responseHeaders = securityHeaders(document.contentType)
+      for (name, value) in headers:
+        responseHeaders[name] = value
+      await req.respond(Http200, if req.reqMethod == HttpHead: "" else: document.body,
+                        responseHeaders)
+  else:
+    await req.respondEmpty(Http405, {"Allow": "GET, HEAD, OPTIONS"})
+
 type Endpoint = enum
   epMcp, epLegacySse, epLegacyMessages, epNone
 
@@ -848,6 +891,9 @@ proc dispatch(t: HttpServerTransport, req: Request) {.async.} =
     if verdict.answered:
       return
     principal = verdict.principal
+  if req.url.path in t.documents:
+    await serveDocument(req, t.documents[req.url.path])
+    return
   let endpoint = t.endpointOf(req.url.path)
   if endpoint == epNone:
     await req.respondEmpty(Http404)
