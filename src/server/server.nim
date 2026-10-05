@@ -8,12 +8,13 @@ import ../protocol/param_headers
 import ../protocol/features
 import ../protocol/content
 import ../protocol/log_level
+import ../protocol/sampling_tools
 import ../transport/transport
 import ./errors
 import ./pagination
 import ./completion
 
-export errors, pagination, completion, log_level
+export errors, pagination, completion, log_level, sampling_tools
 
 const
   DefaultRequestTimeoutMs* = 60_000
@@ -662,8 +663,20 @@ proc createMessage*(server: McpServer, session: string, params: JsonNode,
   ## `params` is the CreateMessageRequest. Needs its `sampling` capability.
   server.requireClientCapability(session, "sampling",
     proc(c: McpClientCapabilities): bool = c.sampling.isSome)
-  return resultOf(await server.request(session, "sampling/createMessage", params,
-                                       relatedRequestId), "sampling/createMessage")
+  let known = server.session(session)
+  let version = known.negotiatedVersion.get
+  let unavailable = samplingToolsUnavailable(params, version,
+                                             known.clientCapabilities.get.sampling.get)
+  if unavailable.isSome:
+    raise newException(McpCapabilityError, "sampling/createMessage: " & unavailable.get)
+  raiseIfAny("sampling/createMessage", createMessageParamsProblems(params, version))
+  let answer = resultOf(await server.request(session, "sampling/createMessage", params,
+                                             relatedRequestId), "sampling/createMessage")
+  if params.usesTools:
+    # An answer to a request without tools is passed on as received.
+    raiseIfAny("sampling/createMessage result",
+               createMessageResultProblems(answer, params, version))
+  return answer
 
 proc ping*(ctx: McpRequestContext): Future[void] =
   ctx.server.ping(ctx.session, ctx.requestId)

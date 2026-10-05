@@ -1,0 +1,53 @@
+Feature: Sampling with tools
+  As a server that wants the client's model to act with tools
+  I want to offer tools in a sampling request and carry the conversation through tool uses
+  So that an agent loop can run inside one sampling flow
+
+  2025-11-25 adds `tools` and `toolChoice` to sampling/createMessage, the
+  tool_use and tool_result content blocks and the stop reason toolUse. Before
+  2026-07-28 the request is a request of the server; the payload rules are
+  the same however the request travels.
+
+  @spec:MCP-SAMPLING-TOOLS-1 @feature:ftSamplingTools
+  Scenario: A server offers tools and the model answers with tool uses
+    Given a client that declared sampling.tools and a connection of 2025-11-25 or later
+    When the server sends sampling/createMessage with tools and toolChoice
+    Then the client's answer may stop with toolUse and a content array of tool_use blocks
+    And the server reads the tool uses from it
+
+  @spec:MCP-SAMPLING-TOOLS-2 @feature:ftSamplingTools
+  Scenario: Tools are sent only to a client that declared them
+    Given a client without sampling.tools, or a connection of 2025-06-18
+    When the server sends a request with tools or toolChoice
+    Then it fails with a capability error and sends nothing
+    And a client that receives such a request answers invalid params
+
+  @spec:MCP-SAMPLING-TOOLS-3 @feature:ftSamplingTools
+  Scenario: A client declares sampling.tools only when its handler supports tools
+    Given a client with a sampling handler
+    When it connects
+    Then initialize declares sampling.tools exactly when the handler was set up for tools
+
+  @spec:MCP-SAMPLING-TOOLS-4 @feature:ftSamplingTools
+  Scenario: Tool uses and tool results pair up in the messages
+    Given the messages of a request
+    When an assistant message holds tool_use blocks
+    Then a user message of exactly their tool_result blocks follows, each id answered once, and nothing else is in that message
+
+  @spec:MCP-SAMPLING-TOOLS-5 @feature:ftSamplingTools
+  Scenario: Messages that break the pairing are refused on both sides
+    Given a request whose tool results are mixed with other content, missing, or unmatched
+    When the server would send it, or the client receives it
+    Then the server raises and sends nothing, and the client answers invalid params
+
+  @spec:MCP-SAMPLING-TOOLS-6 @feature:ftSamplingTools
+  Scenario: An answer is consistent with the tools of its request
+    Given a request with tools
+    When the answer stops for toolUse without a tool_use block, or holds tool_use blocks under toolChoice none, or completes under required before any tool was used
+    Then it is not a valid result and the server does not accept it
+
+  @spec:MCP-SAMPLING-TOOLS-7 @feature:ftSamplingTools
+  Scenario: A client does not send an answer that breaks the rules
+    Given a handler that answers a request with tools inconsistently
+    When the server asks
+    Then the server gets an internal error and not the answer

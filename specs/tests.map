@@ -672,3 +672,45 @@ MCP-ELICIT-URL-5 | tests/test_server_elicitation.nim | Given a handler that need
 MCP-ELICIT-URL-5 | tests/test_client_elicitation.nim | Given a request that failed with -32042, when the error is read, then the URL requests come back
 MCP-ELICIT-URL-5 | tests/test_client_elicitation.nim | Given an error with another code, when read for URL requests, then there are none
 MCP-ELICIT-URL-5 | tests/test_client_elicitation.nim | Given a -32042 error with malformed data, when read, then McpProtocolError is raised
+MCP-SAMPLING-TOOLS-1 | tests/test_sampling_tools_payload.nim | Given tools and a tool choice, when the request is checked in 2025-11-25 and later, then there is nothing to report
+MCP-SAMPLING-TOOLS-1 | tests/test_sampling_tools_payload.nim | Given a result that stops for tool use with tool_use blocks, when checked, then it is valid
+MCP-SAMPLING-TOOLS-1 | tests/test_sampling_tools_payload.nim | Given tool uses, when they are read from a result, then they come back as blocks in order
+MCP-SAMPLING-TOOLS-1 | tests/test_sampling_tools_payload.nim | Given values, when tool blocks are built, then they have the wire shape
+MCP-SAMPLING-TOOLS-1 | tests/test_sampling_tools_payload.nim | Given a request that uses tools, when asked whether it does, then tools or toolChoice make it so
+MCP-SAMPLING-TOOLS-1 | tests/test_sampling_tools_payload.nim | Given a tool without a name or an input schema, or twice the same name, when checked, then it is reported
+MCP-SAMPLING-TOOLS-1 | tests/test_sampling_tools_payload.nim | Given a tool choice mode that does not exist, when checked, then it is reported
+MCP-SAMPLING-TOOLS-1 | tests/test_server_sampling_tools.nim | Given a client that declared sampling.tools, when the handshake is done, then the server knows it
+MCP-SAMPLING-TOOLS-1 | tests/test_server_sampling_tools.nim | Given a client that can use tools, when the server asks, then tools and toolChoice are sent and a toolUse answer comes back with its tool_use blocks
+MCP-SAMPLING-TOOLS-1 | tests/test_server_sampling_tools.nim | Given tool results for those uses, when the server asks again, then the follow-up is sent and the final answer comes back
+MCP-SAMPLING-TOOLS-1 | tests/test_server_sampling_tools.nim | Given a handler that samples with tools, when a tool is called, then the request belongs to the tool call
+MCP-SAMPLING-TOOLS-1 | tests/test_client_sampling_tools.nim | Given a request with tools, when the handler answers with tool uses, then the handler sees tools and toolChoice and the result carries a content array and toolUse
+MCP-SAMPLING-TOOLS-1 | tests/test_client_sampling_tools.nim | Given messages with tool uses and results, when the request arrives, then the handler sees every block
+MCP-SAMPLING-TOOLS-2 | tests/test_sampling_tools_payload.nim | Given tools or a tool choice, when checked in 2025-06-18, then the field is reported
+MCP-SAMPLING-TOOLS-2 | tests/test_sampling_tools_payload.nim | Given a client without sampling.tools, when the request uses tools, then the reason is that capability
+MCP-SAMPLING-TOOLS-2 | tests/test_sampling_tools_payload.nim | Given a version without sampling tools, when the request uses them, then the reason names the version even for a client that declared the capability
+MCP-SAMPLING-TOOLS-2 | tests/test_server_sampling_tools.nim | Given a client without sampling.tools, when the server asks with tools, then it raises a capability error and sends nothing
+MCP-SAMPLING-TOOLS-2 | tests/test_server_sampling_tools.nim | Given a connection of 2025-06-18, when the server asks with tools, then it raises a capability error and sends nothing
+MCP-SAMPLING-TOOLS-2 | tests/test_client_sampling_tools.nim | Given a client that did not declare sampling.tools, when a request with tools arrives, then the client answers invalid params and the handler is not called
+MCP-SAMPLING-TOOLS-2 | tests/test_client_sampling_tools.nim | Given a connection of 2025-06-18, when a request with tools arrives, then the client answers invalid params
+MCP-SAMPLING-TOOLS-3 | tests/test_client_sampling_tools.nim | Given a handler that supports tools, when the client connects, then initialize declares sampling.tools; by default it does not
+MCP-SAMPLING-TOOLS-4 | tests/test_sampling_tools_payload.nim | Given tool uses answered by a message of exactly their results, when checked, then there is nothing to report
+MCP-SAMPLING-TOOLS-4 | tests/test_sampling_tools_payload.nim | Given a single tool result as an object, when checked, then it is accepted
+MCP-SAMPLING-TOOLS-4 | tests/test_sampling_tools_payload.nim | Given a tool result mixed with text, when checked, then it is reported
+MCP-SAMPLING-TOOLS-4 | tests/test_sampling_tools_payload.nim | Given tool uses with a missing result, when checked, then the id is named
+MCP-SAMPLING-TOOLS-4 | tests/test_sampling_tools_payload.nim | Given a result for an id that was never used, when checked, then it is reported
+MCP-SAMPLING-TOOLS-4 | tests/test_sampling_tools_payload.nim | Given tool uses followed by another message that is not their results, when checked, then it is reported
+MCP-SAMPLING-TOOLS-4 | tests/test_sampling_tools_payload.nim | Given tool uses that nothing answers at the end, when checked, then it is reported
+MCP-SAMPLING-TOOLS-4 | tests/test_sampling_tools_payload.nim | Given a tool use by the user or a tool result by the assistant, when checked, then it is reported
+MCP-SAMPLING-TOOLS-4 | tests/test_sampling_tools_payload.nim | Given two tool uses with the same id, when checked, then it is reported
+MCP-SAMPLING-TOOLS-4 | tests/test_sampling_tools_payload.nim | Given tool blocks or array content, when checked in 2025-06-18, then they are reported
+MCP-SAMPLING-TOOLS-4 | tests/test_sampling_tools_payload.nim | Given a block that is malformed, when checked, then the message is named
+MCP-SAMPLING-TOOLS-5 | tests/test_server_sampling_tools.nim | Given messages that break the pairing of tool uses and results, when the server asks, then McpPayloadError names the problem and nothing is sent
+MCP-SAMPLING-TOOLS-5 | tests/test_client_sampling_tools.nim | Given a tool result mixed with other content or missing, when the request arrives, then the client answers invalid params
+MCP-SAMPLING-TOOLS-6 | tests/test_sampling_tools_payload.nim | Given two tool_use blocks with the same id, when checked, then it is reported
+MCP-SAMPLING-TOOLS-6 | tests/test_sampling_tools_payload.nim | Given stopReason toolUse without a tool_use block, when checked, then it is reported
+MCP-SAMPLING-TOOLS-6 | tests/test_sampling_tools_payload.nim | Given tool_use blocks that the request did not allow, when checked, then it is reported
+MCP-SAMPLING-TOOLS-6 | tests/test_sampling_tools_payload.nim | Given tool choice required and no tool used yet, when the result completes without a tool_use, then it is reported
+MCP-SAMPLING-TOOLS-6 | tests/test_sampling_tools_payload.nim | Given a result without role, content or model, when checked, then the field is reported
+MCP-SAMPLING-TOOLS-6 | tests/test_server_sampling_tools.nim | Given an answer that stops for tool use without a tool_use block, when it arrives, then McpPayloadError is raised
+MCP-SAMPLING-TOOLS-6 | tests/test_server_sampling_tools.nim | Given tool choice none, when the answer holds a tool_use, then McpPayloadError is raised
+MCP-SAMPLING-TOOLS-7 | tests/test_client_sampling_tools.nim | Given a handler that answers toolUse without a tool_use block, when the server asks, then the server gets an internal error and not the answer
