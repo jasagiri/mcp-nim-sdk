@@ -50,6 +50,13 @@ Feature: Content of tools, resources and prompts
     When the client reads the answer
     Then the item is audio with its data and MIME type, and a block without them is a protocol error
 
+  @spec:MCP-AUDIO-4 @feature:ftAudioContent
+  Scenario: A sampling answer with audio is fitted to the version
+    Given a client whose sampling handler answers with audio content
+    When the server of a version without audio content asks
+    Then the answer's content is text that names the audio it stands for
+    And a version with audio content gets the audio block
+
   @spec:MCP-STRUCTOUT-1 @feature:ftStructuredToolOutput
   Scenario: outputSchema and structuredContent are sent to a version that has them
     Given a tool with an outputSchema and a result that conforms to it

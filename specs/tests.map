@@ -819,3 +819,12 @@ MCP-SUBSCRIBE-11 | tests/test_subscriptions.nim | Given an acknowledgment that i
 MCP-SUBSCRIBE-12 | tests/test_subscriptions.nim | Given a client and a server over stdio-style transport, when the tool list changes and the server shuts down, then the client is told and the stream ends gracefully
 MCP-SUBSCRIBE-12 | tests/test_subscriptions.nim | Given a client and a server over Streamable HTTP, when the tool list changes, then it arrives on the response stream, and cancelling closes the subscription
 MCP-SUBSCRIBE-12 | tests/test_subscriptions.nim | Given a client over Streamable HTTP, when the server ends the subscription, then the client sees a graceful end
+MCP-MRTR-16 | tests/test_mrtr.nim | Given a handler whose input request breaks the rules of its method, when it is called, then it is an internal error and nothing is asked
+MCP-MRTR-16 | tests/test_mrtr.nim | Given input requests whose params break the rules of their method, when checked, then each problem names its request
+MCP-MRTR-17 | tests/test_mrtr.nim | Given a URL elicitation or sampling with tools, when compared with a client's capabilities, then the mode and the tools must be declared too
+MCP-MRTR-17 | tests/test_mrtr.nim | Given a client that declared elicitation without the url mode, when the tool asks for a page, then the missing-capability error names the mode
+MCP-MRTR-17 | tests/test_mrtr.nim | Given a client that declared sampling without tools, when the tool asks the model with tools, then the missing-capability error names the tools
+MCP-MRTR-17 | tests/test_mrtr.nim | Given a URL elicitation, when the client declared only the form mode, then it raises without calling the handler or retrying
+MCP-MRTR-18 | tests/test_mrtr.nim | Given a form elicitation, when the client's handler accepts, then the retry carries the ElicitResult
+MCP-MRTR-18 | tests/test_mrtr.nim | Given a form elicitation, when the client's handler answers outside the schema, then the request is abandoned and nothing is retried
+MCP-AUDIO-4 | tests/test_client_server_requests.nim | Given a handler that answers with audio, when the version has no audio content, then the answer says so in text

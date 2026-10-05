@@ -514,10 +514,10 @@ proc answerInputRequests(client: McpClient, methodName: string,
   let declared = client.capabilities.toJson()
   for key, entry in pending.inputRequests.pairs:
     let inputMethod = entry{"method"}.getStr()
-    let needed = capabilityFor(inputMethod)
-    if not declared.hasKey(needed):
+    let undeclared = missingCapabilities(%*{key: entry}, declared)
+    if undeclared.len > 0:
       raise newException(McpProtocolError, methodName & ": the server asked for " &
-        inputMethod & ", but this client did not declare the " & needed & " capability")
+        inputMethod & ", but this client did not declare " & $undeclared)
     if inputMethod notin client.requestHandlers:
       raise newException(McpUnsupportedError, methodName & ": this client has no " &
         "handler for " & inputMethod)

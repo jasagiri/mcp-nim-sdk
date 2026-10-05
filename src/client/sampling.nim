@@ -7,6 +7,7 @@ import ./client
 import ./content
 import ../protocol/types
 import ../protocol/sampling_tools
+import ../protocol/content as wire
 
 type
   McpModelHint* = object
@@ -116,12 +117,20 @@ proc toJson*(response: McpSamplingResult): JsonNode =
     result["stopReason"] = %response.stopReason.get
 
 proc contentOfAnswerForVersion(answer: JsonNode, version: McpProtocolVersion): JsonNode =
-  ## The one place where the content blocks of a sampling answer are fitted
-  ## to the negotiated version (for example audio before 2025-03-26).
-  ## TODO: this passes `answer` through unchanged. At integration, call
-  ## `contentBlockFor` of `src/protocol/content.nim` here for each block, so
-  ## a block the version lacks becomes text.
-  answer
+  ## The answer with its content blocks fitted to the negotiated version: a
+  ## block of a type the version lacks (audio before 2025-03-26) becomes
+  ## text that says so. TODO: the `messages` of the request are not fitted.
+  result = answer.copy()
+  let content = answer{"content"}
+  if content.isNil:
+    return
+  if content.kind == JArray:
+    let blocks = newJArray()
+    for item in content:
+      blocks.add wire.contentBlockFor(version, item)
+    result["content"] = blocks
+  else:
+    result["content"] = wire.contentBlockFor(version, content)
 
 proc setSamplingHandler*(client: McpClient, handler: McpSamplingHandler,
                          tools = false) =

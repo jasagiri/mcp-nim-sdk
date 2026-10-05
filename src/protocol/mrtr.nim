@@ -5,11 +5,15 @@
 ## and the server's opaque `requestState`.
 ##
 ## Pure functions over JSON, shared by the server and the client. The
-## payloads of the individual requests (elicitation, sampling, roots) are
-## passed through as JSON.
+## params of an elicitation or sampling input request obey the rules of
+## that method (`protocol/elicitation`, `protocol/sampling_tools`).
 
 import std/[json, options, tables]
 import ./types
+import ./version
+import ./elicitation
+import ./sampling_tools
+import ./lifecycle
 
 const
   MrtrMethods* = ["tools/call", "prompts/get", "resources/read"]
@@ -101,15 +105,59 @@ func parseInputRequired*(resultNode: JsonNode): tuple[parsed: InputRequired,
   result.problem = invalidInputRequired(result.parsed.inputRequests,
                                         result.parsed.requestState)
 
+func inputRequestProblems*(requests: JsonNode,
+                           version: McpProtocolVersion): seq[string] {.raises: [].} =
+  ## What is wrong with the params of each request of `requests` by the
+  ## rules of its own method; each problem starts with the request it is in.
+  ## `requests` has passed `validateInputRequests`; roots/list has no params
+  ## to check.
+  if requests.isNil or requests.kind != JObject:
+    return
+  for key, request in requests.pairs:
+    let problems =
+      try:
+        case request{"method"}.getStr()
+        of ElicitationMethod: elicitationParamsProblems(request{"params"}, version)
+        of SamplingMethod: createMessageParamsProblems(request{"params"}, version)
+        else: @[]
+      except CatchableError as e:
+        # The checks index what they have just tested, so this is not
+        # expected; params that cannot be checked are not passed as valid.
+        @["the params could not be checked: " & e.msg]
+    for problem in problems:
+      result.add "inputRequests[\"" & key & "\"]: " & problem
+
+func undeclaredPart(inputMethod: string, params, declared: JsonNode): Option[JsonNode] {.raises: [].} =
+  ## What an input request of `inputMethod` needs of its capability that
+  ## `declared` (the client's object for that capability) lacks: the
+  ## elicitation mode, or the tools of sampling.
+  case inputMethod
+  of ElicitationMethod:
+    let mode =
+      try: elicitationModeOf(params)
+      except CatchableError: return none(JsonNode)  # `inputRequestProblems` reports it
+    if not modeSupported(declared.fromJson(McpElicitationCapability), mode):
+      return some(%*{$mode: {}})
+  of SamplingMethod:
+    let tools = declared{"tools"}
+    if params.usesTools and (tools.isNil or tools.kind != JObject):
+      return some(%*{"tools": {}})
+  else:
+    discard
+  none(JsonNode)
+
 func missingCapabilities*(requests: JsonNode, clientCapabilities: JsonNode): JsonNode {.raises: [].} =
   ## The capabilities `requests` need that `clientCapabilities` (an object,
   ## or nil) does not declare, as the `requiredCapabilities` of the
-  ## missing-capability error; an empty object when all are declared.
+  ## missing-capability error; an empty object when all are declared. A
+  ## capability the client declared without the part a request needs (the
+  ## url mode of elicitation, the tools of sampling) is named with that part.
   result = newJObject()
   if requests.isNil or requests.kind != JObject:
     return
   for _, request in requests.pairs:
-    let needed = capabilityFor(request{"method"}.getStr())
+    let inputMethod = request{"method"}.getStr()
+    let needed = capabilityFor(inputMethod)
     if needed.len == 0:
       continue
     let declaredNode =
@@ -117,6 +165,10 @@ func missingCapabilities*(requests: JsonNode, clientCapabilities: JsonNode): Jso
       else: clientCapabilities{needed}
     if declaredNode.isNil or declaredNode.kind != JObject:
       result[needed] = newJObject()
+      continue
+    let part = undeclaredPart(inputMethod, request{"params"}, declaredNode)
+    if part.isSome and not result.hasKey(needed):
+      result[needed] = part.get
 
 func inputResponsesOf*(params: JsonNode): JsonNode {.raises: [].} =
   ## The `inputResponses` object of a request, empty when it carries none or

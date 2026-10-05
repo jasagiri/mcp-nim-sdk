@@ -3,10 +3,10 @@
 ## `input_required`; the client answers the input requests and retries.
 ##
 ## Message shapes follow the examples published with the specification
-## (tests/fixtures/2026-07-28). The elicitation and sampling payloads are
-## passed through as JSON here; their construction belongs to elicitation.
+## (tests/fixtures/2026-07-28). The elicitation and sampling payloads obey
+## the rules of their own methods (protocol/elicitation, protocol/sampling_tools).
 
-import std/[unittest, asyncdispatch, json, options, os, strutils, tables]
+import std/[unittest, asyncdispatch, json, options, os, sequtils, strutils, tables]
 import ./server_harness
 import ./client_peer
 import client/client
@@ -14,6 +14,8 @@ import client/client as clientMod
 import server/errors as serverErrors
 import client/roots
 import client/sampling
+import client/elicitation
+import protocol/elicitation as elicitationRules
 import server/mrtr
 import server/request_state
 import protocol/mrtr
@@ -32,6 +34,12 @@ proc caps(capabilities: JsonNode): JsonNode =
 proc rootsRequest(): JsonNode =
   %*{"method": "roots/list", "params": {}}
 
+let LoginSchema = %*{"type": "object", "properties": {"name": {"type": "string"}},
+                     "required": ["name"]}
+
+proc askModel(): JsonNode =
+  %*{"messages": [{"role": "user", "content": {"type": "text", "text": "Hi"}}], "maxTokens": 1}
+
 proc loginServer(): McpServer =
   ## A tool that needs an elicitation before it can finish.
   result = newServer(McpServerCapabilities(
@@ -42,14 +50,14 @@ proc loginServer(): McpServer =
     case name
     of "login":
       let answer = ctx.requireInput("github_login", "elicitation/create",
-        %*{"message": "Please provide your GitHub username"},
+        %*{"message": "Please provide your GitHub username", "requestedSchema": LoginSchema},
         requestState = some("state-1"))
       return %*{"content": [{"type": "text", "text": "hello " &
         answer{"content"}{"name"}.getStr() & " " & ctx.requestState.get("no state")}]}
     of "two":
       let answers = ctx.requireInputs([
         (key: "a", methodName: "roots/list", params: newJObject()),
-        (key: "b", methodName: "sampling/createMessage", params: %*{"maxTokens": 1})])
+        (key: "b", methodName: "sampling/createMessage", params: askModel())])
       return %*{"content": [{"type": "text", "text": $answers.len}]}
     of "state_only":
       if ctx.requestState.isNone:
@@ -57,6 +65,22 @@ proc loginServer(): McpServer =
       return %*{"content": [{"type": "text", "text": ctx.requestState.get}]}
     of "nothing":
       raise newInputRequired()
+    of "form_without_schema":
+      discard ctx.requireInput("q", "elicitation/create", %*{"message": "Name?"})
+      return %*{"content": []}
+    of "sampling_without_messages":
+      discard ctx.requireInput("q", "sampling/createMessage", %*{"maxTokens": 1})
+      return %*{"content": []}
+    of "open_page":
+      discard ctx.requireInput("q", "elicitation/create", %*{
+        "mode": "url", "message": "Sign in", "elicitationId": "e-1",
+        "url": "https://example.com/signin"})
+      return %*{"content": []}
+    of "model_with_tools":
+      var params = askModel()
+      params["tools"] = %*[{"name": "lookup", "inputSchema": {"type": "object"}}]
+      discard ctx.requireInput("q", "sampling/createMessage", params)
+      return %*{"content": []}
     else:
       raise newUnknownTool(name))
   result.onPromptGet(proc(ctx: McpRequestContext, name: string,
@@ -104,6 +128,34 @@ suite "input required: the types of the specification":
     check missingCapabilities(requests, %*{"sampling": {}}) == %*{"elicitation": {}}
     check missingCapabilities(requests, %*{"sampling": {}, "elicitation": {}}).len == 0
     check missingCapabilities(requests, nil).len == 2
+
+  test "Given a URL elicitation or sampling with tools, when compared with a client's capabilities, then the mode and the tools must be declared too":
+    let page = %*{"q": {"method": "elicitation/create", "params": {
+      "mode": "url", "message": "Sign in", "elicitationId": "e", "url": "https://example.com/"}}}
+    check missingCapabilities(page, %*{"elicitation": {}}) == %*{"elicitation": {"url": {}}}
+    check missingCapabilities(page, %*{"elicitation": {"form": {}}}) == %*{"elicitation": {"url": {}}}
+    check missingCapabilities(page, %*{"elicitation": {"url": {}}}).len == 0
+    let form = %*{"q": {"method": "elicitation/create", "params": {"message": "Name?"}}}
+    check missingCapabilities(form, %*{"elicitation": {"url": {}}}) == %*{"elicitation": {"form": {}}}
+    check missingCapabilities(form, %*{"elicitation": {}}).len == 0
+    var withTools = askModel()
+    withTools["tools"] = %*[{"name": "lookup", "inputSchema": {"type": "object"}}]
+    let model = %*{"q": {"method": "sampling/createMessage", "params": withTools}}
+    check missingCapabilities(model, %*{"sampling": {}}) == %*{"sampling": {"tools": {}}}
+    check missingCapabilities(model, %*{"sampling": {"tools": {}}}).len == 0
+    check missingCapabilities(%*{"q": {"method": "sampling/createMessage", "params": askModel()}},
+                              %*{"sampling": {}}).len == 0
+
+  test "Given input requests whose params break the rules of their method, when checked, then each problem names its request":
+    for v in versionsWith(ftMultiRoundTripRequests):
+      check inputRequestProblems(fixture("InputRequests_elicitation-and-sampling-input-requests.json"), v).len == 0
+      check inputRequestProblems(%*{"where": rootsRequest()}, v).len == 0
+      let problems = inputRequestProblems(%*{
+        "a": {"method": "elicitation/create", "params": {"message": "Name?"}},
+        "b": {"method": "sampling/createMessage", "params": {"maxTokens": 1}}}, v)
+      check problems.len == 2
+      check problems.anyIt(it.startsWith("inputRequests[\"a\"]") and "requestedSchema" in it)
+      check problems.anyIt(it.startsWith("inputRequests[\"b\"]") and "messages" in it)
 
   test "Given original params, when a retry is built, then the responses are added, the state is echoed exactly and the original stays":
     let original = %*{"name": "login", "requestState": "stale"}
@@ -176,6 +228,38 @@ suite "input required on the server (2026-07-28 only)":
       let answer = peer.ask("tools/call", %*{"name": "login"}, meta = caps(%*{"roots": {}}))
       check answer.errorCode == -32021
       check answer["error"]["data"]["requiredCapabilities"] == %*{"elicitation": {}}
+
+  test "Given a client that declared elicitation without the url mode, when the tool asks for a page, then the missing-capability error names the mode":
+    for v in versionsWith(ftMultiRoundTripRequests):
+      let server = loginServer()
+      let peer = server.connect(server.attach(), v)
+      let answer = peer.ask("tools/call", %*{"name": "open_page"}, meta = caps(%*{"elicitation": {}}))
+      check answer.errorCode == -32021
+      check answer["error"]["data"]["requiredCapabilities"] == %*{"elicitation": {"url": {}}}
+      let allowed = peer.ask("tools/call", %*{"name": "open_page"},
+        meta = caps(%*{"elicitation": {"url": {}}}))
+      check allowed["result"]["resultType"].getStr() == "input_required"
+
+  test "Given a client that declared sampling without tools, when the tool asks the model with tools, then the missing-capability error names the tools":
+    for v in versionsWith(ftMultiRoundTripRequests):
+      let server = loginServer()
+      let peer = server.connect(server.attach(), v)
+      let answer = peer.ask("tools/call", %*{"name": "model_with_tools"}, meta = caps(%*{"sampling": {}}))
+      check answer.errorCode == -32021
+      check answer["error"]["data"]["requiredCapabilities"] == %*{"sampling": {"tools": {}}}
+      let allowed = peer.ask("tools/call", %*{"name": "model_with_tools"},
+        meta = caps(%*{"sampling": {"tools": {}}}))
+      check allowed["result"]["resultType"].getStr() == "input_required"
+
+  test "Given a handler whose input request breaks the rules of its method, when it is called, then it is an internal error and nothing is asked":
+    for v in versionsWith(ftMultiRoundTripRequests):
+      let server = loginServer()
+      let peer = server.connect(server.attach(), v)
+      for tool in ["form_without_schema", "sampling_without_messages"]:
+        let answer = peer.ask("tools/call", %*{"name": tool},
+          meta = caps(%*{"elicitation": {}, "sampling": {}}))
+        check answer.errorCode == -32603
+        check answer["error"]["message"].getStr() == "Internal error"
 
   test "Given a handler that asks for nothing, when it is called, then it is an internal error":
     for v in versionsWith(ftMultiRoundTripRequests):
@@ -359,6 +443,52 @@ suite "input required on the client":
       let client = peer.connectedClient(v)
       expect McpProtocolError:
         discard waitFor client.callMethod("tools/call", %*{"name": "t"})
+
+  test "Given a form elicitation, when the client's handler accepts, then the retry carries the ElicitResult":
+    for v in versionsWith(ftMultiRoundTripRequests):
+      let requests = %*{"github_login": fixture(
+        "InputRequests_elicitation-and-sampling-input-requests.json")["github_login"]}
+      let peer = startPeer(answerWith(@[inputRequired(requests),
+        %*{"resultType": "complete", "content": [{"type": "text", "text": "done"}]}]), modern = true)
+      var asked: seq[McpElicitRequest]
+      let client = peer.connectedClient(v, proc(c: McpClient) =
+        c.setElicitationHandler(proc(request: McpElicitRequest): Future[McpElicitResult] {.async.} =
+          asked.add request
+          return McpElicitResult(action: eaAccept, content: %*{"name": "octocat"})))
+      discard waitFor client.callMethod("tools/call", %*{"name": "t"})
+      check asked.len == 1
+      check asked[0].message == "Please provide your GitHub username"
+      let calls = peer.requestsFor("tools/call")
+      check calls.len == 2
+      check calls[1]["params"]["inputResponses"]["github_login"] ==
+        %*{"action": "accept", "content": {"name": "octocat"}}
+
+  test "Given a form elicitation, when the client's handler answers outside the schema, then the request is abandoned and nothing is retried":
+    for v in versionsWith(ftMultiRoundTripRequests):
+      let requests = %*{"github_login": fixture(
+        "InputRequests_elicitation-and-sampling-input-requests.json")["github_login"]}
+      let peer = startPeer(answerWith(@[inputRequired(requests)]), modern = true)
+      let client = peer.connectedClient(v, proc(c: McpClient) =
+        c.setElicitationHandler(proc(request: McpElicitRequest): Future[McpElicitResult] {.async.} =
+          return McpElicitResult(action: eaAccept, content: %*{"name": 7})))
+      expect clientMod.McpRequestError:
+        discard waitFor client.callMethod("tools/call", %*{"name": "t"})
+      check peer.requestsFor("tools/call").len == 1
+
+  test "Given a URL elicitation, when the client declared only the form mode, then it raises without calling the handler or retrying":
+    for v in versionsWith(ftMultiRoundTripRequests):
+      let peer = startPeer(answerWith(@[inputRequired(%*{"q": {"method": "elicitation/create",
+        "params": {"mode": "url", "message": "Sign in", "elicitationId": "e-1",
+                   "url": "https://example.com/signin"}}})]), modern = true)
+      let calls = new int
+      let client = peer.connectedClient(v, proc(c: McpClient) =
+        c.setElicitationHandler(proc(request: McpElicitRequest): Future[McpElicitResult] {.async.} =
+          inc calls[]
+          return McpElicitResult(action: eaAccept)))
+      expect McpProtocolError:
+        discard waitFor client.callMethod("tools/call", %*{"name": "t"})
+      check calls[] == 0
+      check peer.requestsFor("tools/call").len == 1
 
   test "Given a declared capability with no handler, when the server asks, then the client raises McpUnsupportedError":
     for v in versionsWith(ftMultiRoundTripRequests):

@@ -1042,6 +1042,9 @@ proc inputRequiredResponse(request: JsonRpcRequest, ctx: McpRequestContext,
   let problem = invalidInputRequired(asked.inputRequests, asked.requestState)
   if problem.isSome:
     return defect(problem.get)
+  let payloadProblems = inputRequestProblems(asked.inputRequests, ctx.version)
+  if payloadProblems.len > 0:
+    return defect(payloadProblems.join("; "))
   let missing = missingCapabilities(asked.inputRequests, ctx.clientCapabilities)
   if missing.len > 0:
     let error = missingCapabilityError(

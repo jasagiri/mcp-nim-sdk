@@ -8,6 +8,7 @@ import client/roots
 import client/sampling
 import protocol/types
 import protocol/lifecycle
+import protocol/features
 import ./client_peer
 
 proc responseTo(peer: Peer, id: string): JsonNode =
@@ -66,6 +67,24 @@ suite "sampling":
     check seen.modelPreferences.get.hints[0].name == "claude"
     check seen.modelPreferences.get.speedPriority == some(0.5)
     check seen.modelPreferences.get.costPriority.isNone
+
+  test "Given a handler that answers with audio, when the version has no audio content, then the answer says so in text":
+    proc audioSampler(request: McpSamplingRequest): Future[McpSamplingResult] {.async.} =
+      return McpSamplingResult(role: "assistant", model: "test-model",
+        content: McpContentItem(kind: mckAudio, audioData: "AAAA", audioMimeType: "audio/wav"))
+    for v in SupportedProtocolVersions:
+      if isModern(v):
+        continue
+      let peer = startPeer(nil)
+      discard peer.connectedClient(v, proc(client: McpClient) =
+        client.setSamplingHandler(audioSampler))
+      peer.ask(%"s1", "sampling/createMessage", samplingParams)
+      let content = peer.responseTo("s1")["result"]["content"]
+      if v.has(ftAudioContent):
+        check content == %*{"type": "audio", "data": "AAAA", "mimeType": "audio/wav"}
+      else:
+        check content["type"].getStr() == "text"
+        check "audio/wav" in content["text"].getStr()
 
   test "Given a sampling handler, when the client connects, then initialize declares sampling":
     let peer = startPeer(nil)

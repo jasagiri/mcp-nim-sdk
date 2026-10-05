@@ -92,3 +92,23 @@ Feature: Multi round-trip requests (2026-07-28)
     Given a slow answer to the input requests and a request timeout
     When the client collects the answers
     Then the timeout counts each attempt, not the answering
+
+  @spec:MCP-MRTR-16 @feature:ftMultiRoundTripRequests
+  Scenario: A server does not send an input request that breaks the rules of its method
+    Given a handler that asks for an elicitation without a requestedSchema, or a sampling without messages
+    When the request is answered
+    Then the answer is an internal error and nothing is asked of the client
+
+  @spec:MCP-MRTR-17 @feature:ftMultiRoundTripRequests
+  Scenario: An input request needs the part of the capability it uses
+    Given a client that declared elicitation without the url mode, or sampling without tools
+    When a handler asks for a URL elicitation, or a sampling with tools
+    Then the answer is the missing-capability error naming elicitation.url, or sampling.tools
+    And a client that receives such a request raises McpProtocolError without calling its handler or retrying
+
+  @spec:MCP-MRTR-18 @feature:ftMultiRoundTripRequests
+  Scenario: A client answers an elicitation input request through its elicitation handler
+    Given a server that answers tools/call with a form elicitation as an input request
+    When the client's handler accepts with content that fits the schema
+    Then the retry carries the ElicitResult under the request's key
+    And when the handler answers outside the schema, the request is abandoned and nothing is retried

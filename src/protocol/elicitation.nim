@@ -183,7 +183,7 @@ func allowedValues(prop: JsonNode): Option[seq[JsonNode]] =
     return some(choicesOf(items["anyOf"]))
   none(seq[JsonNode])
 
-func valueProblems(subject: string, prop, value: JsonNode): seq[string]
+func valueProblems(subject: string, prop, value: JsonNode): seq[string] {.raises: [KeyError, ValueError].}
 
 func propertyProblems(name: string, prop: JsonNode,
                       version: McpProtocolVersion): seq[string] =
