@@ -1,0 +1,23 @@
+{
+  "sources": [
+    "src/transport/transport.nim"
+  ],
+  "testCommand": "nim c -r --hints:off tests/test_era_matrix.nim && nim c -r --hints:off tests/test_legacy_handshake.nim && nim c -r --hints:off tests/test_stdio.nim",
+  "mutators": [
+    "AOR",
+    "ROR",
+    "LOR",
+    "BLR",
+    "SDL",
+    "RVR"
+  ],
+  "parallelism": 0,
+  "timeoutMs": 0,
+  "minScore": 0.0,
+  "reports": [
+    "console",
+    "json"
+  ],
+  "outputDir": ".nim-muter/transport",
+  "incremental": false
+}

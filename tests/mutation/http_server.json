@@ -1,0 +1,24 @@
+{
+  "sources": [
+    "src/transport/http_server.nim",
+    "src/transport/sse_stream.nim"
+  ],
+  "testCommand": "nim c -r --hints:off tests/test_http_streams.nim && nim c -r --hints:off tests/test_streamable_http.nim && nim c -r --hints:off tests/test_http_sse_legacy.nim",
+  "mutators": [
+    "AOR",
+    "ROR",
+    "LOR",
+    "BLR",
+    "SDL",
+    "RVR"
+  ],
+  "parallelism": 0,
+  "timeoutMs": 0,
+  "minScore": 0.0,
+  "reports": [
+    "console",
+    "json"
+  ],
+  "outputDir": ".nim-muter/http_server",
+  "incremental": false
+}

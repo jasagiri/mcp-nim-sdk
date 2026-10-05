@@ -1,0 +1,125 @@
+# G2（変異検出）。kura の裏の待ち行列に回す。
+#
+#     kuratsugi workflow-enqueue --file g2.yml --repo <このリポジトリ>
+#
+# ジョブは tests/mutation/<名前>.json と 1 対 1。結果は
+# ~/.kuratsugi/runs/mcp-nim-sdk/<コミット>/g2.yml/<回>/files/<名前>.report.json に残る。
+# 並列数は各設定で 0 とし、待ち行列が渡す KURATSUGI_PARALLELISM に任せる。
+
+name: g2
+
+on: push
+
+jobs:
+  auth_client:
+    steps:
+      - name: nim-muter auth_client
+        run: |
+          status=0
+          ../nim-muter/bin/nim-muter run --config tests/mutation/auth_client.json || status=$?
+          cp .nim-muter/auth_client/report.json "$KURATSUGI_RESULT_DIR/auth_client.report.json" || exit 1
+          exit $status
+  auth_oauth:
+    steps:
+      - name: nim-muter auth_oauth
+        run: |
+          status=0
+          ../nim-muter/bin/nim-muter run --config tests/mutation/auth_oauth.json || status=$?
+          cp .nim-muter/auth_oauth/report.json "$KURATSUGI_RESULT_DIR/auth_oauth.report.json" || exit 1
+          exit $status
+  auth_resource_server:
+    steps:
+      - name: nim-muter auth_resource_server
+        run: |
+          status=0
+          ../nim-muter/bin/nim-muter run --config tests/mutation/auth_resource_server.json || status=$?
+          cp .nim-muter/auth_resource_server/report.json "$KURATSUGI_RESULT_DIR/auth_resource_server.report.json" || exit 1
+          exit $status
+  client:
+    steps:
+      - name: nim-muter client
+        run: |
+          status=0
+          ../nim-muter/bin/nim-muter run --config tests/mutation/client.json || status=$?
+          cp .nim-muter/client/report.json "$KURATSUGI_RESULT_DIR/client.report.json" || exit 1
+          exit $status
+  event_stream:
+    steps:
+      - name: nim-muter event_stream
+        run: |
+          status=0
+          ../nim-muter/bin/nim-muter run --config tests/mutation/event_stream.json || status=$?
+          cp .nim-muter/event_stream/report.json "$KURATSUGI_RESULT_DIR/event_stream.report.json" || exit 1
+          exit $status
+  features:
+    steps:
+      - name: nim-muter features
+        run: |
+          status=0
+          ../nim-muter/bin/nim-muter run --config tests/mutation/features.json || status=$?
+          cp .nim-muter/features/report.json "$KURATSUGI_RESULT_DIR/features.report.json" || exit 1
+          exit $status
+  http_client:
+    steps:
+      - name: nim-muter http_client
+        run: |
+          status=0
+          ../nim-muter/bin/nim-muter run --config tests/mutation/http_client.json || status=$?
+          cp .nim-muter/http_client/report.json "$KURATSUGI_RESULT_DIR/http_client.report.json" || exit 1
+          exit $status
+  http_server:
+    steps:
+      - name: nim-muter http_server
+        run: |
+          status=0
+          ../nim-muter/bin/nim-muter run --config tests/mutation/http_server.json || status=$?
+          cp .nim-muter/http_server/report.json "$KURATSUGI_RESULT_DIR/http_server.report.json" || exit 1
+          exit $status
+  lifecycle:
+    steps:
+      - name: nim-muter lifecycle
+        run: |
+          status=0
+          ../nim-muter/bin/nim-muter run --config tests/mutation/lifecycle.json || status=$?
+          cp .nim-muter/lifecycle/report.json "$KURATSUGI_RESULT_DIR/lifecycle.report.json" || exit 1
+          exit $status
+  modern:
+    steps:
+      - name: nim-muter modern
+        run: |
+          status=0
+          ../nim-muter/bin/nim-muter run --config tests/mutation/modern.json || status=$?
+          cp .nim-muter/modern/report.json "$KURATSUGI_RESULT_DIR/modern.report.json" || exit 1
+          exit $status
+  server:
+    steps:
+      - name: nim-muter server
+        run: |
+          status=0
+          ../nim-muter/bin/nim-muter run --config tests/mutation/server.json || status=$?
+          cp .nim-muter/server/report.json "$KURATSUGI_RESULT_DIR/server.report.json" || exit 1
+          exit $status
+  stdio:
+    steps:
+      - name: nim-muter stdio
+        run: |
+          status=0
+          ../nim-muter/bin/nim-muter run --config tests/mutation/stdio.json || status=$?
+          cp .nim-muter/stdio/report.json "$KURATSUGI_RESULT_DIR/stdio.report.json" || exit 1
+          exit $status
+  transport:
+    steps:
+      - name: nim-muter transport
+        run: |
+          status=0
+          ../nim-muter/bin/nim-muter run --config tests/mutation/transport.json || status=$?
+          cp .nim-muter/transport/report.json "$KURATSUGI_RESULT_DIR/transport.report.json" || exit 1
+          exit $status
+  version:
+    steps:
+      - name: nim-muter version
+        run: |
+          status=0
+          ../nim-muter/bin/nim-muter run --config tests/mutation/version.json || status=$?
+          cp .nim-muter/version/report.json "$KURATSUGI_RESULT_DIR/version.report.json" || exit 1
+          exit $status

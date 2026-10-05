@@ -1,0 +1,26 @@
+{
+  "sources": [
+    "src/transport/http.nim",
+    "src/transport/http_wire.nim",
+    "src/transport/http_compat.nim",
+    "src/transport/sse_legacy.nim"
+  ],
+  "testCommand": "nim c -r --hints:off tests/test_http_client_streams.nim && nim c -r --hints:off tests/test_streamable_http.nim && nim c -r --hints:off tests/test_http_sse_legacy.nim && nim c -r --hints:off tests/test_http_error_propagation.nim && nim c -r --hints:off tests/test_auth_http_methods.nim",
+  "mutators": [
+    "AOR",
+    "ROR",
+    "LOR",
+    "BLR",
+    "SDL",
+    "RVR"
+  ],
+  "parallelism": 0,
+  "timeoutMs": 0,
+  "minScore": 0.0,
+  "reports": [
+    "console",
+    "json"
+  ],
+  "outputDir": ".nim-muter/http_client",
+  "incremental": false
+}

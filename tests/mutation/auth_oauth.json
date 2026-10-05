@@ -1,0 +1,34 @@
+{
+  "sources": [
+    "src/auth/oauth/authcode.nim",
+    "src/auth/oauth/challenge.nim",
+    "src/auth/oauth/discovery.nim",
+    "src/auth/oauth/errors.nim",
+    "src/auth/oauth/fetch.nim",
+    "src/auth/oauth/jsonfield.nim",
+    "src/auth/oauth/metadata.nim",
+    "src/auth/oauth/pkce.nim",
+    "src/auth/oauth/registration.nim",
+    "src/auth/oauth/sha256.nim",
+    "src/auth/oauth/tokens.nim",
+    "src/auth/oauth/urls.nim"
+  ],
+  "testCommand": "nim c -r --hints:off tests/test_auth_sha256.nim && nim c -r --hints:off tests/test_auth_oauth_basics.nim && nim c -r --hints:off tests/test_auth_client_flow.nim",
+  "mutators": [
+    "AOR",
+    "ROR",
+    "LOR",
+    "BLR",
+    "SDL",
+    "RVR"
+  ],
+  "parallelism": 0,
+  "timeoutMs": 0,
+  "minScore": 0.0,
+  "reports": [
+    "console",
+    "json"
+  ],
+  "outputDir": ".nim-muter/auth_oauth",
+  "incremental": false
+}

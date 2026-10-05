@@ -1,0 +1,23 @@
+{
+  "sources": [
+    "src/auth/resource_server.nim"
+  ],
+  "testCommand": "nim c -r --hints:off tests/test_auth_resource_server.nim",
+  "mutators": [
+    "AOR",
+    "ROR",
+    "LOR",
+    "BLR",
+    "SDL",
+    "RVR"
+  ],
+  "parallelism": 0,
+  "timeoutMs": 0,
+  "minScore": 0.0,
+  "reports": [
+    "console",
+    "json"
+  ],
+  "outputDir": ".nim-muter/auth_resource_server",
+  "incremental": false
+}

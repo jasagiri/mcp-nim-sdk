@@ -1,0 +1,23 @@
+{
+  "sources": [
+    "src/transport/event_stream.nim"
+  ],
+  "testCommand": "nim c -r --hints:off tests/test_event_stream.nim",
+  "mutators": [
+    "AOR",
+    "ROR",
+    "LOR",
+    "BLR",
+    "SDL",
+    "RVR"
+  ],
+  "parallelism": 0,
+  "timeoutMs": 0,
+  "minScore": 0.0,
+  "reports": [
+    "console",
+    "json"
+  ],
+  "outputDir": ".nim-muter/event_stream",
+  "incremental": false
+}

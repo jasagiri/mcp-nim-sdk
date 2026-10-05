@@ -1,0 +1,24 @@
+{
+  "sources": [
+    "src/auth/client.nim",
+    "src/auth/policy.nim"
+  ],
+  "testCommand": "nim c -r --hints:off tests/test_auth_client_flow.nim",
+  "mutators": [
+    "AOR",
+    "ROR",
+    "LOR",
+    "BLR",
+    "SDL",
+    "RVR"
+  ],
+  "parallelism": 0,
+  "timeoutMs": 0,
+  "minScore": 0.0,
+  "reports": [
+    "console",
+    "json"
+  ],
+  "outputDir": ".nim-muter/auth_client",
+  "incremental": false
+}
