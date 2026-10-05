@@ -8,7 +8,7 @@ This checkout speaks MCP **2026-07-28** and every earlier version: `2024-11-05`,
 
 ## Features of 2026-07-28
 
-36 of the 51 features of `2026-07-28` are implemented in this tree. The table lists every feature the specification of `2026-07-28` defines; "not implemented" means this SDK does not do it yet.
+37 of the 51 features of `2026-07-28` are implemented in this tree. The table lists every feature the specification of `2026-07-28` defines; "not implemented" means this SDK does not do it yet.
 
 | Feature | Status | Specification |
 |---|---|---|
@@ -31,7 +31,7 @@ This checkout speaks MCP **2026-07-28** and every earlier version: `2024-11-05`,
 | audio content | implemented | [server/tools](https://modelcontextprotocol.io/specification/2026-07-28/server/tools) |
 | progress messages | implemented | [basic/patterns/progress](https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/progress) |
 | MCP-Protocol-Version header | implemented | [basic/transports/streamable-http](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http) |
-| structured tool output | not implemented | [server/tools](https://modelcontextprotocol.io/specification/2026-07-28/server/tools) |
+| structured tool output | implemented | [server/tools](https://modelcontextprotocol.io/specification/2026-07-28/server/tools) |
 | resource links in tool results | not implemented | [server/tools](https://modelcontextprotocol.io/specification/2026-07-28/server/tools) |
 | elicitation | not implemented | [client/elicitation](https://modelcontextprotocol.io/specification/2026-07-28/client/elicitation) |
 | title fields | not implemented | [server/tools](https://modelcontextprotocol.io/specification/2026-07-28/server/tools) |

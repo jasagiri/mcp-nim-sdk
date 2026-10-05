@@ -1,9 +1,10 @@
 ## MCP client tool operations
 
-import asyncdispatch, json, options
+import asyncdispatch, json, options, strutils, tables
 import ./client
 import ./content
 import ../protocol/content as wire
+import ../protocol/json_schema
 export content
 export wire.McpToolAnnotations, wire.isReadOnly, wire.isDestructive,
   wire.isIdempotent, wire.isOpenWorld
@@ -26,8 +27,13 @@ type
     isError*: bool
       ## The tool ran and failed; a protocol failure raises instead.
     structuredContent*: Option[JsonNode]
-      ## As received (2025-06-18 and later); not validated against the
-      ## tool's outputSchema.
+      ## As received (2025-06-18 and later), after `callTool` has checked it
+      ## against the outputSchema of the tool as listed.
+
+  McpSchemaError* = object of McpError
+    ## A tool's outputSchema cannot be checked (a dialect or keyword this
+    ## library does not implement). Call the tool with `validateOutput = false`
+    ## to read its result unchecked.
 
   McpTool* = object
     name*: string
@@ -78,7 +84,12 @@ proc listTools*(client: McpClient, cursor: Option[string] = none(string),
   let reply = await client.callMethod("tools/list", pageParams(cursor), options)
   var tools: seq[McpTool]
   for item in requiredArray(reply, "tools", "tools/list"):
-    tools.add parseTool(item)
+    let tool = parseTool(item)
+    tools.add tool
+    if tool.outputSchema.isSome:
+      client.toolOutputSchemas[tool.name] = tool.outputSchema.get
+    else:
+      client.toolOutputSchemas.del(tool.name)
   return (tools: tools, nextCursor: parseNextCursor(reply))
 
 proc listAllTools*(client: McpClient,
@@ -89,7 +100,12 @@ proc listAllTools*(client: McpClient,
     return (items: page.tools, next: page.nextCursor))
 
 proc callTool*(client: McpClient, name: string, arguments: JsonNode = newJObject(),
-               options: McpRequestOptions = McpRequestOptions()): Future[McpToolContent] {.async.} =
+               options: McpRequestOptions = McpRequestOptions(),
+               validateOutput = true): Future[McpToolContent] {.async.} =
+  ## Call a tool. When the tool was listed with an outputSchema, the result
+  ## is checked against it (2025-06-18: clients SHOULD validate) and a result
+  ## that does not conform raises McpProtocolError; `validateOutput = false`
+  ## turns that off for the call.
   client.requireTools("tools/call")
   let reply = await client.callMethod("tools/call",
     %*{"name": name, "arguments": arguments}, options)
@@ -98,3 +114,15 @@ proc callTool*(client: McpClient, name: string, arguments: JsonNode = newJObject
     result.contentItems.add parseContentItem(item, "tools/call")
   if reply.hasKey("structuredContent"):
     result.structuredContent = some(reply["structuredContent"])
+  if validateOutput and name in client.toolOutputSchemas and client.negotiatedVersion.isSome:
+    var problems: seq[string]
+    try:
+      problems = outputProblems(client.negotiatedVersion.get,
+                                client.toolOutputSchemas[name], reply)
+    except InvalidSchemaError as e:
+      raise newException(McpSchemaError,
+        "tools/call: the outputSchema of tool '" & name & "' cannot be checked: " & e.msg)
+    if problems.len > 0:
+      raise newException(McpProtocolError,
+        "tools/call: the result of tool '" & name & "' does not conform to its outputSchema: " &
+        problems.join("; "))

@@ -8,6 +8,7 @@
 
 import std/[json, options]
 import ./features
+import ./json_schema
 import ./version
 
 type
@@ -100,6 +101,8 @@ proc toolFor*(version: McpProtocolVersion, tool: JsonNode): JsonNode =
   result = tool.copy()
   if not version.has(ftToolAnnotations):
     result.dropKey("annotations")
+  if not version.has(ftStructuredToolOutput):
+    result.dropKey("outputSchema")
 
 proc textBlock(text: string): JsonNode =
   %*{"type": "text", "text": text}
@@ -130,6 +133,14 @@ proc toolResultFor*(version: McpProtocolVersion, callResult: JsonNode): JsonNode
     for item in result["content"]:
       blocks.add version.contentBlockFor(item)
     result["content"] = blocks
+  if not version.has(ftStructuredToolOutput) and result.hasKey("structuredContent"):
+    # The data still reaches a client that has no field for it: as the text
+    # block the specification asks structured results to come with.
+    let structured = result["structuredContent"]
+    result.dropKey("structuredContent")
+    if not result.hasKey("content") or result["content"].kind != JArray or
+       result["content"].len == 0:
+      result["content"] = %*[textBlock($structured)]
 
 proc promptResultFor*(version: McpProtocolVersion, prompt: JsonNode): JsonNode =
   ## A GetPromptResult as `version` defines it.
@@ -140,3 +151,37 @@ proc promptResultFor*(version: McpProtocolVersion, prompt: JsonNode): JsonNode =
     for message in result["messages"]:
       if message.objectOnly and message.hasKey("content"):
         message["content"] = version.contentBlockFor(message["content"])
+
+proc withSerializedText*(callResult: JsonNode): JsonNode =
+  ## A result that has `structuredContent` and no content gains the
+  ## serialized JSON as a text block: "a tool that returns structured content
+  ## SHOULD also return the serialized JSON in a TextContent block"
+  ## (2025-06-18, server/tools).
+  if not callResult.objectOnly or not callResult.hasKey("structuredContent"):
+    return callResult
+  let content = callResult{"content"}
+  if not content.isNil and content.kind == JArray and content.len > 0:
+    return callResult
+  result = callResult.copy()
+  result["content"] = %*[textBlock($callResult["structuredContent"])]
+
+proc outputProblems*(version: McpProtocolVersion, outputSchema, callResult: JsonNode): seq[string] =
+  ## What is wrong with the `structuredContent` of `callResult` for a tool
+  ## whose `outputSchema` is given; empty when it is right. Raises
+  ## InvalidSchemaError (or a subclass, UnsupportedDialectError among them)
+  ## when the schema cannot be checked.
+  ##
+  ## Nothing is wrong when the version has no structured output, or when the
+  ## result reports a tool failure (`isError`): that is not a structured
+  ## result. Before 2026-07-28 `structuredContent` is a JSON object; from
+  ## then on it is any JSON value.
+  if not version.has(ftStructuredToolOutput) or not callResult.objectOnly or
+     callResult{"isError"}.getBool(false):
+    return
+  if not callResult.hasKey("structuredContent"):
+    return @["the tool has an outputSchema but the result has no structuredContent"]
+  let structured = callResult["structuredContent"]
+  if structured.kind != JObject and version < mpv20260728:
+    return @["structuredContent must be a JSON object in protocol version " & $version]
+  for violation in validate(outputSchema, structured):
+    result.add (if violation.path.len == 0: "" else: violation.path & ": ") & violation.message

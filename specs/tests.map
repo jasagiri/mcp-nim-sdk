@@ -539,3 +539,24 @@ MCP-AUDIO-2 | tests/test_audio_content.nim | Given a version without audio, when
 MCP-AUDIO-3 | tests/test_audio_content.nim | Given a tool result with audio, when the client calls the tool, then the item is audio with its data and type
 MCP-AUDIO-3 | tests/test_audio_content.nim | Given an audio block without mimeType, when the client calls the tool, then the protocol violation is raised
 MCP-AUDIO-3 | tests/test_audio_content.nim | Given a prompt message with audio, when the client gets the prompt, then the content is audio
+MCP-STRUCTOUT-1 | tests/test_structured_tool_output.nim | Given a version that has structured output, when tools are listed, then outputSchema is sent
+MCP-STRUCTOUT-1 | tests/test_structured_tool_output.nim | Given a conforming result, when a version with structured output is served, then structuredContent is sent
+MCP-STRUCTOUT-1 | tests/test_structured_tool_output.nim | Given structuredContent and no content, when the result is answered, then the serialized JSON is added as text
+MCP-STRUCTOUT-2 | tests/test_structured_tool_output.nim | Given a version without structured output, when tools are listed, then outputSchema is not sent
+MCP-STRUCTOUT-2 | tests/test_structured_tool_output.nim | Given a version without structured output, when a tool returns structuredContent, then it is not sent and the text carries the data
+MCP-STRUCTOUT-2 | tests/test_structured_tool_output.nim | Given a version without structured output, when the tool also wrote its own text, then that text is kept alone
+MCP-STRUCTOUT-3 | tests/test_structured_tool_output.nim | Given a result that breaks the outputSchema, when a version with structured output is served, then the server answers with an internal error
+MCP-STRUCTOUT-3 | tests/test_structured_tool_output.nim | Given an outputSchema and a result without structuredContent, when a version with structured output is served, then the server answers with an internal error
+MCP-STRUCTOUT-3 | tests/test_structured_tool_output.nim | Given a result with isError, when the tool has an outputSchema, then it is not checked
+MCP-STRUCTOUT-3 | tests/test_structured_tool_output.nim | Given a schema in a dialect that cannot be checked, when a result arrives, then the server answers with an internal error naming the dialect
+MCP-STRUCTOUT-4 | tests/test_structured_tool_output.nim | Given a version before 2026-07-28, when structuredContent is not an object, then the server answers with an internal error; 2026-07-28 accepts any JSON
+MCP-STRUCTOUT-5 | tests/test_structured_tool_output.nim | Given a listed tool with an outputSchema, when the result conforms, then structuredContent is returned
+MCP-STRUCTOUT-5 | tests/test_structured_tool_output.nim | Given a listed tool with an outputSchema, when the result breaks it, then the protocol violation names the tool and the path
+MCP-STRUCTOUT-5 | tests/test_structured_tool_output.nim | Given a listed tool with an outputSchema, when the result has no structuredContent, then it is a protocol violation
+MCP-STRUCTOUT-5 | tests/test_structured_tool_output.nim | Given a listed tool with an outputSchema, when the result is an error, then it is returned unchecked
+MCP-STRUCTOUT-5 | tests/test_structured_tool_output.nim | Given a result that breaks the schema, when validation is switched off for the call, then it is returned
+MCP-STRUCTOUT-5 | tests/test_structured_tool_output.nim | Given a schema in a dialect that cannot be checked, when the result arrives, then the dialect is reported and validateOutput = false reads it
+MCP-STRUCTOUT-6 | tests/test_structured_tool_output.nim | Given a version without structured output, when the result has no structuredContent, then it is served as it is
+MCP-STRUCTOUT-6 | tests/test_structured_tool_output.nim | Given a tool without an outputSchema, when it returns any structuredContent, then it is not checked
+MCP-STRUCTOUT-6 | tests/test_structured_tool_output.nim | Given a client of a version without structured output, when a result breaks the schema, then it is returned unchecked
+MCP-STRUCTOUT-6 | tests/test_structured_tool_output.nim | Given a tool that was never listed, when it is called, then its structuredContent is not checked

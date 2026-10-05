@@ -49,3 +49,39 @@ Feature: Content of tools, resources and prompts
     Given a server that answers with an audio block in a tool result or a prompt message
     When the client reads the answer
     Then the item is audio with its data and MIME type, and a block without them is a protocol error
+
+  @spec:MCP-STRUCTOUT-1 @feature:ftStructuredToolOutput
+  Scenario: outputSchema and structuredContent are sent to a version that has them
+    Given a tool with an outputSchema and a result that conforms to it
+    When a client of a version with structured output lists and calls the tool
+    Then the definition carries the outputSchema and the result carries structuredContent
+
+  @spec:MCP-STRUCTOUT-2 @feature:ftStructuredToolOutput
+  Scenario: A version without structured output gets neither field
+    Given a tool with an outputSchema and a result with structuredContent
+    When a client of a version before 2025-06-18 lists and calls the tool
+    Then neither field is sent and, when the result has no content of its own, the serialized JSON is its text
+
+  @spec:MCP-STRUCTOUT-3 @feature:ftStructuredToolOutput
+  Scenario: The server checks structuredContent against the outputSchema
+    Given a tool with an outputSchema
+    When its result has no structuredContent, or one that does not conform, or the schema cannot be checked
+    Then the client gets an internal error that names the tool, except for a result that reports a failure with isError
+
+  @spec:MCP-STRUCTOUT-4 @feature:ftStructuredToolOutput
+  Scenario: structuredContent is an object before 2026-07-28 and any JSON value after
+    Given a tool whose outputSchema describes an array
+    When it returns an array as structuredContent
+    Then a 2026-07-28 client receives it and an earlier one gets an internal error
+
+  @spec:MCP-STRUCTOUT-5 @feature:ftStructuredToolOutput
+  Scenario: The client checks the result of a listed tool
+    Given a tool that was listed with an outputSchema
+    When the client calls it and the result has no structuredContent or one that does not conform
+    Then the call raises a protocol error, unless validation is turned off for the call or the result reports a failure
+
+  @spec:MCP-STRUCTOUT-6 @feature:ftStructuredToolOutput
+  Scenario: A result is returned unchecked when nothing says what to check
+    Given a tool without an outputSchema, a tool that was never listed, or a client of a version without structured output
+    When the tool's result carries structuredContent
+    Then it is passed through unchecked

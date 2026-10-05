@@ -90,6 +90,9 @@ type
     nextProgressToken: int
     requestHandlers*: Table[string, McpServerRequestHandler]
     notificationHandlers*: Table[string, proc(notification: JsonRpcNotification): Future[void] {.async.}]
+    toolOutputSchemas*: Table[string, JsonNode]
+      ## The outputSchema of each tool listed so far, to check what callTool
+      ## returns against.
     onLogMessage*: proc(message: McpLogMessage) {.closure.}
     onResourceUpdated*: proc(uri: string) {.closure.}
     onToolsListChanged*: proc() {.closure.}
