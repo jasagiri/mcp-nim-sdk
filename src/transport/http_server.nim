@@ -55,24 +55,6 @@ method receiveMessage*(t: HttpServerTransport): Future[JsonNode] {.async.} =
   t.receiveWaiters.addLast(fut)
   return await fut
 
-proc encodeResponse*(resp: JsonRpcResponse): JsonNode =
-  ## Convert a JsonRpcResponse into a wire-format JSON-RPC node.
-  result = %*{
-    "jsonrpc": resp.jsonrpc,
-    "id":      resp.id,
-  }
-  if resp.result.isSome:
-    result["result"] = resp.result.get
-  if resp.error.isSome:
-    let e = resp.error.get
-    var errNode = %*{
-      "code":    e.code,
-      "message": e.message,
-    }
-    if not e.data.isNil and e.data.kind != JNull:
-      errNode["data"] = e.data
-    result["error"] = errNode
-
 method sendResponse*(t: HttpServerTransport,
                     response: JsonRpcResponse): Future[void] {.async.} =
   if not t.pendingResponses.hasKey(response.id):
@@ -134,7 +116,7 @@ proc start*(t: HttpServerTransport): Future[void] {.async.} =
       else:
         t.requestQueue.addLast(rpc)
       let resp = await respFut
-      let respBody = $encodeResponse(resp)
+      let respBody = encodeMessage(resp)
       let headers = newHttpHeaders({"Content-Type": "application/json"})
       await req.respond(Http200, respBody, headers)
   t.started = true

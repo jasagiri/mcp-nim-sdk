@@ -3,6 +3,7 @@
 import asyncdispatch, json, options, tables
 import ../protocol/types
 import ../protocol/lifecycle
+import ../protocol/modern
 import ../transport/transport
 
 type
@@ -14,6 +15,11 @@ type
     negotiatedVersion*: Option[McpProtocolVersion]
       ## The version agreed in the initialize handshake.
     serverInfo*: McpServerInfo
+    instructions*: string
+      ## How to use this server; sent with server/discover when not empty.
+    cachePolicy*: CachePolicy
+      ## What 2026-07-28 clients are told about reusing list and read
+      ## results. The default tells them not to.
     capabilities*: McpServerCapabilities
     clientCapabilities*: Option[McpClientCapabilities]
     transport*: McpTransport
@@ -63,6 +69,7 @@ proc newMcpServer*(
     state: mlsUninitialized,
     protocolVersion: protocolVersion,
     serverInfo: serverInfo,
+    cachePolicy: UncachedPolicy,
     capabilities: capabilities,
     clientCapabilities: none(McpClientCapabilities),
     requestHandlers: initTable[string, proc(request: JsonRpcRequest): Future[JsonRpcResponse] {.async.}](),
@@ -178,184 +185,142 @@ proc extractClientCapabilities(json: JsonNode): McpClientCapabilities =
   if not experimentalJson.isNil and experimentalJson.kind == JObject:
     result.experimental = some(experimentalJson)
 
-proc processRequest(server: McpServer, request: JsonRpcRequest): Future[void] {.async.} =
+proc notSupported(request: JsonRpcRequest): JsonRpcResponse =
+  newJsonRpcErrorResponse(request.id, ErrMethodNotFound, "Method not supported")
+
+proc stringParam(request: JsonRpcRequest, name: string): Option[string] =
+  let node = request.params{name}
+  if node.isNil or node.kind != JString: none(string) else: some(node.getStr())
+
+proc missingParam(request: JsonRpcRequest, name: string): JsonRpcResponse =
+  newJsonRpcErrorResponse(request.id, ErrInvalidParams,
+    request.`method` & " requires a string " & name)
+
+proc handleStandardRequest(server: McpServer, request: JsonRpcRequest): Future[JsonRpcResponse] {.async.} =
+  ## What a method does, independent of the protocol era it arrived in.
   if request.`method` in server.requestHandlers:
-    let handler = server.requestHandlers[request.`method`]
-    let response = await handler(request)
-    await server.transport.sendResponse(response)
+    return await server.requestHandlers[request.`method`](request)
+
+  case request.`method`
+  of "resources/list":
+    if server.capabilities.resources.isNone or server.resourceHandlers.listHandler.isNone:
+      return notSupported(request)
+    # TODO: pagination (cursor / nextCursor).
+    let resources = await server.resourceHandlers.listHandler.get()()
+    return newJsonRpcResponse(request.id, %*{"resources": resources})
+
+  of "resources/read":
+    if server.capabilities.resources.isNone or server.resourceHandlers.readHandler.isNone:
+      return notSupported(request)
+    let uri = stringParam(request, "uri")
+    if uri.isNone:
+      return missingParam(request, "uri")
+    try:
+      let content = await server.resourceHandlers.readHandler.get()(uri.get)
+      return newJsonRpcResponse(request.id, %*{"contents": [content]})
+    except CatchableError as e:
+      return newJsonRpcErrorResponse(request.id, ErrInvalidParams,
+        "Failed to read resource: " & e.msg)
+
+  of "tools/list":
+    if server.capabilities.tools.isNone or server.toolHandlers.listHandler.isNone:
+      return notSupported(request)
+    # TODO: pagination (cursor / nextCursor).
+    let tools = await server.toolHandlers.listHandler.get()()
+    return newJsonRpcResponse(request.id, %*{"tools": tools})
+
+  of "tools/call":
+    if server.capabilities.tools.isNone or server.toolHandlers.callHandler.isNone:
+      return notSupported(request)
+    let name = stringParam(request, "name")
+    if name.isNone:
+      return missingParam(request, "name")
+    let arguments = request.params{"arguments"}
+    try:
+      let callResult = await server.toolHandlers.callHandler.get()(
+        name.get, if arguments.isNil: newJObject() else: arguments)
+      return newJsonRpcResponse(request.id, callResult)
+    except CatchableError as e:
+      return newJsonRpcErrorResponse(request.id, ErrInvalidParams,
+        "Failed to call tool: " & e.msg)
+
+  of "prompts/list":
+    if server.capabilities.prompts.isNone or server.promptHandlers.listHandler.isNone:
+      return notSupported(request)
+    # TODO: pagination (cursor / nextCursor).
+    let prompts = await server.promptHandlers.listHandler.get()()
+    return newJsonRpcResponse(request.id, %*{"prompts": prompts})
+
+  of "prompts/get":
+    if server.capabilities.prompts.isNone or server.promptHandlers.getHandler.isNone:
+      return notSupported(request)
+    let name = stringParam(request, "name")
+    if name.isNone:
+      return missingParam(request, "name")
+    let arguments = request.params{"arguments"}
+    try:
+      let prompt = await server.promptHandlers.getHandler.get()(
+        name.get, if arguments.isNil: newJObject() else: arguments)
+      return newJsonRpcResponse(request.id, prompt)
+    except CatchableError as e:
+      return newJsonRpcErrorResponse(request.id, ErrInvalidParams,
+        "Failed to get prompt: " & e.msg)
+
   else:
-    # Handle standard MCP methods based on capabilities
-    case request.`method`:
-    of "resources/list":
-      if server.capabilities.resources.isSome and server.resourceHandlers.listHandler.isSome:
-        let handler = server.resourceHandlers.listHandler.get
-        let resources = await handler()
-        
-        let cursor = if request.params.hasKey("cursor"): 
-          request.params["cursor"].getStr() 
-        else: 
-          ""
-          
-        let result = %*{
-          "resources": %resources,
-        }
-        
-        # In a real implementation, we would handle pagination
-        
-        let response = newJsonRpcResponse(request.id, result)
-        await server.transport.sendResponse(response)
-      else:
-        let response = newJsonRpcErrorResponse(
-          request.id,
-          -32601,
-          "Method not supported"
-        )
-        await server.transport.sendResponse(response)
-    
-    of "resources/read":
-      if server.capabilities.resources.isSome and server.resourceHandlers.readHandler.isSome:
-        let handler = server.resourceHandlers.readHandler.get
-        let uri = request.params["uri"].getStr()
-        
-        try:
-          let content = await handler(uri)
-          let result = %*{
-            "contents": [content]
-          }
-          
-          let response = newJsonRpcResponse(request.id, result)
-          await server.transport.sendResponse(response)
-        except:
-          let e = getCurrentException()
-          let response = newJsonRpcErrorResponse(
-            request.id,
-            -32602,
-            "Failed to read resource: " & e.msg
-          )
-          await server.transport.sendResponse(response)
-      else:
-        let response = newJsonRpcErrorResponse(
-          request.id,
-          -32601,
-          "Method not supported"
-        )
-        await server.transport.sendResponse(response)
-    
-    of "tools/list":
-      if server.capabilities.tools.isSome and server.toolHandlers.listHandler.isSome:
-        let handler = server.toolHandlers.listHandler.get
-        let tools = await handler()
-        
-        let cursor = if request.params.hasKey("cursor"): 
-          request.params["cursor"].getStr() 
-        else: 
-          ""
-          
-        let result = %*{
-          "tools": %tools,
-        }
-        
-        # In a real implementation, we would handle pagination
-        
-        let response = newJsonRpcResponse(request.id, result)
-        await server.transport.sendResponse(response)
-      else:
-        let response = newJsonRpcErrorResponse(
-          request.id,
-          -32601,
-          "Method not supported"
-        )
-        await server.transport.sendResponse(response)
-    
-    of "tools/call":
-      if server.capabilities.tools.isSome and server.toolHandlers.callHandler.isSome:
-        let handler = server.toolHandlers.callHandler.get
-        let name = request.params["name"].getStr()
-        let arguments = request.params["arguments"]
-        
-        try:
-          let result = await handler(name, arguments)
-          let response = newJsonRpcResponse(request.id, result)
-          await server.transport.sendResponse(response)
-        except:
-          let e = getCurrentException()
-          let response = newJsonRpcErrorResponse(
-            request.id,
-            -32602,
-            "Failed to call tool: " & e.msg
-          )
-          await server.transport.sendResponse(response)
-      else:
-        let response = newJsonRpcErrorResponse(
-          request.id,
-          -32601,
-          "Method not supported"
-        )
-        await server.transport.sendResponse(response)
-    
-    of "prompts/list":
-      if server.capabilities.prompts.isSome and server.promptHandlers.listHandler.isSome:
-        let handler = server.promptHandlers.listHandler.get
-        let prompts = await handler()
-        
-        let cursor = if request.params.hasKey("cursor"): 
-          request.params["cursor"].getStr() 
-        else: 
-          ""
-          
-        let result = %*{
-          "prompts": %prompts,
-        }
-        
-        # In a real implementation, we would handle pagination
-        
-        let response = newJsonRpcResponse(request.id, result)
-        await server.transport.sendResponse(response)
-      else:
-        let response = newJsonRpcErrorResponse(
-          request.id,
-          -32601,
-          "Method not supported"
-        )
-        await server.transport.sendResponse(response)
-    
-    of "prompts/get":
-      if server.capabilities.prompts.isSome and server.promptHandlers.getHandler.isSome:
-        let handler = server.promptHandlers.getHandler.get
-        let name = request.params["name"].getStr()
-        let arguments = if request.params.hasKey("arguments"): 
-          request.params["arguments"] 
-        else: 
-          newJObject()
-        
-        try:
-          let result = await handler(name, arguments)
-          let response = newJsonRpcResponse(request.id, result)
-          await server.transport.sendResponse(response)
-        except:
-          let e = getCurrentException()
-          let response = newJsonRpcErrorResponse(
-            request.id,
-            -32602,
-            "Failed to get prompt: " & e.msg
-          )
-          await server.transport.sendResponse(response)
-      else:
-        let response = newJsonRpcErrorResponse(
-          request.id,
-          -32601,
-          "Method not supported"
-        )
-        await server.transport.sendResponse(response)
-    
+    return newJsonRpcErrorResponse(request.id, ErrMethodNotFound,
+      "Method not found: " & request.`method`)
+
+proc handleModernRequest(server: McpServer, request: JsonRpcRequest): Future[JsonRpcResponse] {.async.} =
+  ## A 2026-07-28 request: validated on its own metadata, served without
+  ## any handshake state.
+  let supported = versionsUpTo(server.protocolVersion)
+  let rejection = validateModernRequest(request.params, supported)
+  if rejection.isSome:
+    return newJsonRpcErrorResponse(request.id, rejection.get.code,
+      rejection.get.message, rejection.get.data)
+  if isRemovedInModern(request.`method`):
+    return newJsonRpcErrorResponse(request.id, ErrMethodNotFound,
+      "Method not found: " & request.`method`)
+
+  var response =
+    if request.`method` == DiscoverMethod:
+      newJsonRpcResponse(request.id, discoverPayload(
+        supported, server.capabilities.toJson(), server.instructions))
     else:
-      # Unknown method
-      let response = newJsonRpcErrorResponse(
-        request.id, 
-        -32601, 
-        "Method not found: " & request.`method`
-      )
-      await server.transport.sendResponse(response)
+      await server.handleStandardRequest(request)
+
+  if response.result.isSome:
+    let payload = response.result.get
+    if payload.isNil or payload.kind != JObject:
+      return newJsonRpcErrorResponse(request.id, ErrInternal,
+        "Handler for " & request.`method` & " returned a result that is not an object")
+    response.result = some(completeResult(
+      request.`method`, payload, server.serverInfo, server.cachePolicy))
+  return response
+
+proc handleRequest*(server: McpServer, request: JsonRpcRequest): Future[JsonRpcResponse] {.async.} =
+  ## The response to `request`. A server that speaks 2026-07-28 serves a
+  ## request in that era when the request names its own protocol version;
+  ## a server limited to earlier versions does not know that era at all.
+  var response =
+    if isModern(server.protocolVersion) and isModernRequest(request.params):
+      await server.handleModernRequest(request)
+    else:
+      await server.handleStandardRequest(request)
+  response.idNode = request.idNode
+  return response
+
+proc processRequest(server: McpServer, request: JsonRpcRequest): Future[void] {.async.} =
+  var response: JsonRpcResponse
+  try:
+    response = await server.handleRequest(request)
+  except CatchableError as e:
+    # The cause stays on this side; a peer gets no internal detail.
+    stderr.writeLine("[mcp-server] " & request.`method` & " failed with " &
+                      $e.name & ": " & e.msg)
+    response = newJsonRpcErrorResponse(request.id, ErrInternal, "Internal error")
+    response.idNode = request.idNode
+  await server.transport.sendResponse(response)
 
 proc processNotification(server: McpServer, notification: JsonRpcNotification): Future[void] {.async.} =
   if notification.`method` in server.notificationHandlers:

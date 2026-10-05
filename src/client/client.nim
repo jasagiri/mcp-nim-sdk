@@ -3,6 +3,7 @@
 import asyncdispatch, json, options, tables, strutils, uuids
 import ../protocol/types
 import ../protocol/lifecycle
+import ../protocol/modern
 import ../transport/transport
 import ../mcp/types as mcpTypes
 
@@ -18,6 +19,12 @@ type
     clientInfo*: McpClientInfo
     capabilities*: McpClientCapabilities
     serverCapabilities*: Option[McpServerCapabilities]
+    serverInfo*: Option[McpServerInfo]
+      ## The server's identity, when it stated one.
+    serverInstructions*: string
+    probeTimeoutMs*: int
+      ## How long connect() waits for an answer to the 2026-07-28
+      ## server/discover probe before treating the server as a legacy one.
     pendingRequests*: Table[string, Future[JsonRpcResponse]]
     requestHandlers*: Table[string, proc(request: JsonRpcRequest): Future[JsonRpcResponse] {.async.}]
     notificationHandlers*: Table[string, proc(notification: JsonRpcNotification): Future[void] {.async.}]
@@ -37,6 +44,8 @@ proc newMcpClient*(
     clientInfo: clientInfo,
     capabilities: capabilities,
     serverCapabilities: none(McpServerCapabilities),
+    serverInfo: none(McpServerInfo),
+    probeTimeoutMs: 5000,
     pendingRequests: initTable[string, Future[JsonRpcResponse]](),
     requestHandlers: initTable[string, proc(request: JsonRpcRequest): Future[JsonRpcResponse] {.async.}](),
     notificationHandlers: initTable[string, proc(notification: JsonRpcNotification): Future[void] {.async.}]()
@@ -101,15 +110,48 @@ proc processMessages*(client: McpClient): Future[void] {.async.} =
     stderr.writeLine("[mcp-client] transport loop ended with " &
                       $e.name & ": " & e.msg)
 
-proc sendRequest*(client: McpClient, methodName: string, params: JsonNode): Future[JsonRpcResponse] {.async.} =
+proc usesModernProtocol*(client: McpClient): bool =
+  ## Whether the connection uses 2026-07-28 or later, where every request
+  ## carries its own protocol version and client capabilities.
+  client.negotiatedVersion.isSome and isModern(client.negotiatedVersion.get)
+
+proc startRequest(client: McpClient, methodName: string,
+                  params: JsonNode): Future[tuple[id: string, response: Future[JsonRpcResponse]]] {.async.} =
   let id = $genUUID()
-  let request = newJsonRpcRequest(id, methodName, params)
-
-  var promise = newFuture[JsonRpcResponse]("sendRequest")
+  let promise = newFuture[JsonRpcResponse]("McpClient.request")
   client.pendingRequests[id] = promise
+  try:
+    await client.transport.sendRequest(newJsonRpcRequest(id, methodName, params))
+  except CatchableError as e:
+    client.pendingRequests.del(id)
+    raise e
+  return (id: id, response: promise)
 
-  await client.transport.sendRequest(request)
-  return await promise
+proc sendRequest*(client: McpClient, methodName: string, params: JsonNode): Future[JsonRpcResponse] {.async.} =
+  let modern = client.usesModernProtocol
+  let wireParams =
+    if modern:
+      withRequestMeta(params, requestMeta(
+        client.negotiatedVersion.get, client.clientInfo, client.capabilities.toJson()))
+    else:
+      params
+  let started = await client.startRequest(methodName, wireParams)
+  let response = await started.response
+
+  if modern and response.result.isSome:
+    case resultKind(response.result.get)
+    of rkComplete:
+      discard
+    of rkInputRequired:
+      # TODO: multi round-trip requests (answer inputRequests and resend).
+      raise newException(ValueError,
+        methodName & ": the server asked for client input (resultType " &
+        "input_required), which this client does not support yet")
+    of rkUnknown:
+      raise newException(ValueError,
+        methodName & ": the server answered with unknown resultType " &
+        $response.result.get{"resultType"})
+  return response
 
 proc sendNotification*(client: McpClient, methodName: string, params: JsonNode): Future[void] {.async.} =
   let notification = newJsonRpcNotification(methodName, params)
@@ -198,20 +240,98 @@ proc initialize*(client: McpClient): Future[McpServerCapabilities] {.async.} =
   return capabilities
 
 proc capabilities*(client: McpClient): Option[McpServerCapabilities] =
-  ## Server capabilities negotiated during `connect()` / `initialize()`.
-  ## Returns `none` until the handshake completes successfully.
+  ## Server capabilities learned during `connect()`.
+  ## Returns `none` until the connection is established.
   client.serverCapabilities
 
+proc spokenVersions(client: McpClient, offered: JsonNode): seq[McpProtocolVersion] =
+  ## The versions in a peer's list that this client speaks too.
+  if offered.isNil or offered.kind != JArray:
+    return @[]
+  for node in offered:
+    let parsed = parseProtocolVersion(node.getStr())
+    if parsed.isSome and parsed.get <= client.protocolVersion:
+      result.add parsed.get
+
+proc newestModern(versions: seq[McpProtocolVersion]): Option[McpProtocolVersion] =
+  for v in versions:
+    if isModern(v) and (result.isNone or v > result.get):
+      result = some(v)
+
+proc noCommonVersion(client: McpClient, offered: JsonNode): ref ValueError =
+  newException(ValueError,
+    "No protocol version in common: the server supports " &
+    (if offered.isNil: "none" else: $offered) & ", this client speaks up to " &
+    $client.protocolVersion)
+
+proc discover(client: McpClient): Future[bool] {.async.} =
+  ## Probe for a 2026-07-28 server. True when the connection is established
+  ## in that era; false when the server is a legacy one and `initialize`
+  ## must follow. Raises when the server is modern but shares no version.
+  var version = client.protocolVersion
+  for attempt in 0 .. 1:
+    let meta = requestMeta(version, client.clientInfo, client.capabilities.toJson())
+    var started: tuple[id: string, response: Future[JsonRpcResponse]]
+    try:
+      started = await client.startRequest(DiscoverMethod, withRequestMeta(nil, meta))
+    except McpTransportError:
+      # A legacy HTTP server rejects the probe without a JSON-RPC body.
+      return false
+    if not await withTimeout(started.response, client.probeTimeoutMs):
+      # A legacy stdio server may not answer a request before initialize.
+      client.pendingRequests.del(started.id)
+      return false
+
+    let response = started.response.read
+    if response.error.isSome:
+      let error = response.error.get
+      if error.code != ErrUnsupportedProtocolVersion:
+        # Legacy servers answer the probe with implementation-defined errors.
+        return false
+      let offered = error.data{"supported"}
+      let common = client.spokenVersions(offered)
+      let modernChoice = newestModern(common)
+      if modernChoice.isSome and attempt == 0:
+        version = modernChoice.get
+        continue
+      if common.len > 0 and modernChoice.isNone:
+        return false
+      raise client.noCommonVersion(offered)
+
+    let discovered = response.result.get
+    let offered = discovered{"supportedVersions"}
+    let common = client.spokenVersions(offered)
+    let modernChoice = newestModern(common)
+    if modernChoice.isNone:
+      if common.len > 0:
+        return false
+      raise client.noCommonVersion(offered)
+
+    client.negotiatedVersion = modernChoice
+    client.serverCapabilities = some(extractServerCapabilities(discovered{"capabilities"}))
+    client.serverInstructions = discovered{"instructions"}.getStr()
+    let identity = discovered{"_meta", MetaServerInfo}
+    if not identity.isNil and identity.kind == JObject:
+      client.serverInfo = some(McpServerInfo(
+        name: identity{"name"}.getStr(), version: identity{"version"}.getStr()))
+    client.state = mlsOperational
+    return true
+  return false
+
 proc connect*(client: McpClient, transport: McpTransport): Future[void] {.async.} =
+  ## Attach `transport` and establish the connection: with server/discover
+  ## when this client speaks 2026-07-28 and the server does too, otherwise
+  ## with the initialize handshake.
   client.transport = transport
 
   # Start message processing
   asyncCheck client.processMessages()
 
-  # Initialize the client. The returned capabilities are stored on
-  # `client.serverCapabilities` (audit #9); callers can inspect them via
-  # `client.capabilities()` after `connect()` resolves, so discarding the
-  # local copy here is intentional rather than silent.
+  if isModern(client.protocolVersion) and await client.discover():
+    return
+
+  # The returned capabilities are stored on `client.serverCapabilities`
+  # (audit #9); callers can inspect them via `client.capabilities()`.
   discard await client.initialize()
 
 proc close*(client: McpClient): Future[void] {.async.} =
@@ -233,8 +353,10 @@ type
     isInitialized*: bool
     mcpClient*: McpClient
 
-proc newClient*(name: string, version: string, capabilities: mcpTypes.ClientCapabilities): Client =
-  ## Creates a new high-level MCP client
+proc newClient*(name: string, version: string, capabilities: mcpTypes.ClientCapabilities,
+                protocolVersion: McpProtocolVersion = DefaultProtocolVersion): Client =
+  ## Creates a new high-level MCP client that speaks `protocolVersion` and
+  ## every earlier version
   let clientInfo = McpClientInfo(
     name: name,
     version: version
@@ -255,5 +377,5 @@ proc newClient*(name: string, version: string, capabilities: mcpTypes.ClientCapa
     transport: nil,
     serverInfo: none(mcpTypes.ServerMetadata),
     isInitialized: false,
-    mcpClient: newMcpClient(clientInfo, capabilities = mcpCaps)
+    mcpClient: newMcpClient(clientInfo, protocolVersion, mcpCaps)
   )

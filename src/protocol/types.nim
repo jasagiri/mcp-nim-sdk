@@ -10,12 +10,17 @@ type
   JsonRpcRequest* = object
     jsonrpc*: string
     id*: string
+      ## The id as text; requests and responses are matched on it.
+    idNode*: JsonNode
+      ## The id as the peer sent it (a string or a number), so that the
+      ## response echoes the same JSON type. nil for messages built here.
     `method`*: string
     params*: JsonNode
 
   JsonRpcResponse* = object
     jsonrpc*: string
     id*: string
+    idNode*: JsonNode
     result*: Option[JsonNode]
     error*: Option[JsonRpcError]
 

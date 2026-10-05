@@ -32,73 +32,98 @@ method receiveMessage*(t: McpTransport): Future[JsonNode] {.base, async.} =
 method close*(t: McpTransport): Future[void] {.base, async.} =
   raise newException(CatchableError, "Not implemented")
 
-# Helper functions for encoding/decoding
-proc encodeMessage*[T](message: T): string =
-  # Convert message to JSON string
-  let jsonNode = %message
-  return $jsonNode
+# Wire encoding
+
+proc wireId(id: string, idNode: JsonNode): JsonNode =
+  if idNode.isNil: %id else: idNode
+
+proc toJson*(request: JsonRpcRequest): JsonNode =
+  result = %*{
+    "jsonrpc": request.jsonrpc,
+    "id": wireId(request.id, request.idNode),
+    "method": request.`method`
+  }
+  if not request.params.isNil:
+    result["params"] = request.params
+
+proc toJson*(notification: JsonRpcNotification): JsonNode =
+  result = %*{
+    "jsonrpc": notification.jsonrpc,
+    "method": notification.`method`
+  }
+  if not notification.params.isNil:
+    result["params"] = notification.params
+
+proc toJson*(response: JsonRpcResponse): JsonNode =
+  ## A response carries exactly one of result and error.
+  result = %*{
+    "jsonrpc": response.jsonrpc,
+    "id": wireId(response.id, response.idNode)
+  }
+  if response.error.isSome:
+    let error = response.error.get
+    let errorJson = %*{"code": error.code, "message": error.message}
+    if not error.data.isNil and error.data.kind != JNull:
+      errorJson["data"] = error.data
+    result["error"] = errorJson
+  else:
+    result["result"] = response.result.get(newJObject())
+
+proc encodeMessage*(request: JsonRpcRequest): string = $request.toJson()
+proc encodeMessage*(notification: JsonRpcNotification): string = $notification.toJson()
+proc encodeMessage*(response: JsonRpcResponse): string = $response.toJson()
+
+proc idText(node: JsonNode): string =
+  ## Peers may use a string or a number as the id.
+  if node.isNil: ""
+  elif node.kind == JString: node.getStr()
+  else: $node
+
+proc paramsOf(json: JsonNode): JsonNode =
+  let params = json{"params"}
+  if params.isNil: newJObject() else: params
 
 proc decodeRequest*(json: JsonNode): JsonRpcRequest =
-  # Convert JSON to JsonRpcRequest
-  var request = JsonRpcRequest(
-    jsonrpc: json["jsonrpc"].getStr(),
-    id: json["id"].getStr(),
-    `method`: json["method"].getStr()
+  JsonRpcRequest(
+    jsonrpc: json{"jsonrpc"}.getStr(),
+    id: idText(json{"id"}),
+    idNode: json{"id"},
+    `method`: json{"method"}.getStr(),
+    params: paramsOf(json)
   )
-
-  if json.hasKey("params"):
-    request.params = json["params"]
-  else:
-    request.params = newJObject()
-
-  return request
 
 proc decodeResponse*(json: JsonNode): JsonRpcResponse =
-  # Convert JSON to JsonRpcResponse
-  var response = JsonRpcResponse(
-    jsonrpc: json["jsonrpc"].getStr(),
-    id: json["id"].getStr()
+  result = JsonRpcResponse(
+    jsonrpc: json{"jsonrpc"}.getStr(),
+    id: idText(json{"id"}),
+    idNode: json{"id"},
+    result: none(JsonNode),
+    error: none(JsonRpcError)
   )
-
-  if json.hasKey("result"):
-    response.result = some(json["result"])
-    response.error = none(JsonRpcError)
-  elif json.hasKey("error"):
-    let errorJson = json["error"]
-    var error = JsonRpcError(
-      code: errorJson["code"].getInt(),
-      message: errorJson["message"].getStr()
-    )
-
-    if errorJson.hasKey("data"):
-      error.data = errorJson["data"]
-    else:
-      error.data = newJNull()
-
-    response.result = none(JsonNode)
-    response.error = some(error)
-
-  return response
+  let errorJson = json{"error"}
+  if not errorJson.isNil and errorJson.kind == JObject:
+    let data = errorJson{"data"}
+    result.error = some(JsonRpcError(
+      code: errorJson{"code"}.getInt(),
+      message: errorJson{"message"}.getStr(),
+      data: if data.isNil: newJNull() else: data
+    ))
+  elif json.hasKey("result"):
+    result.result = some(json["result"])
 
 proc decodeNotification*(json: JsonNode): JsonRpcNotification =
-  # Convert JSON to JsonRpcNotification
-  var notification = JsonRpcNotification(
-    jsonrpc: json["jsonrpc"].getStr(),
-    `method`: json["method"].getStr()
+  JsonRpcNotification(
+    jsonrpc: json{"jsonrpc"}.getStr(),
+    `method`: json{"method"}.getStr(),
+    params: paramsOf(json)
   )
 
-  if json.hasKey("params"):
-    notification.params = json["params"]
-  else:
-    notification.params = newJObject()
-
-  return notification
-
 proc isRequest*(json: JsonNode): bool =
-  return json.hasKey("id") and json.hasKey("method")
+  json.kind == JObject and json.hasKey("id") and json.hasKey("method")
 
 proc isResponse*(json: JsonNode): bool =
-  return json.hasKey("id") and (json.hasKey("result") or json.hasKey("error"))
+  json.kind == JObject and json.hasKey("id") and
+    (json.hasKey("result") or json.hasKey("error"))
 
 proc isNotification*(json: JsonNode): bool =
-  return (not json.hasKey("id")) and json.hasKey("method")
+  json.kind == JObject and (not json.hasKey("id")) and json.hasKey("method")
