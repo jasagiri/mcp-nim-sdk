@@ -215,3 +215,32 @@ MCP-CANCEL-5 | tests/test_http_streams.nim | Given a request in progress, when t
 MCP-CANCEL-5 | tests/test_http_streams.nim | Given a request in progress with nothing sent yet, when the client closes the connection, then the server is told the request was cancelled
 MCP-CANCEL-5 | tests/test_http_streams.nim | Given a cancelled request, when the server answers it anyway, then the answer is dropped without an error
 MCP-CANCEL-6 | tests/test_http_streams.nim | Given a request whose connection was cut, when the server finishes it, then it was not treated as cancelled
+MCP-SERVERREQ-1 | tests/test_server_requests.nim | Given a client that can sample, when the server asks for a message, then the request names the session and the result comes back
+MCP-SERVERREQ-2 | tests/test_server_requests.nim | Given a client with roots, when the server lists them, then the roots come back
+MCP-SERVERREQ-3 | tests/test_server_requests.nim | Given a client, when the server pings it, then the ping completes on the empty result
+MCP-SERVERREQ-4 | tests/test_server_requests.nim | Given a client without the sampling or roots capability, when the server asks, then it raises and sends nothing
+MCP-SERVERREQ-4 | tests/test_server_requests.nim | Given a client that has not sent initialized, when the server asks, then it raises
+MCP-SERVERREQ-5 | tests/test_server_requests.nim | Given a client that answers with an error, when the server asks, then McpRemoteError carries its code
+MCP-SERVERREQ-5 | tests/test_server_requests.nim | Given a client that never answers, when the timeout passes, then McpRequestTimeout is raised and the request is cancelled
+MCP-SERVERREQ-5 | tests/test_server_requests.nim | Given a late answer after the timeout, when it arrives, then it is ignored and the server goes on
+MCP-SERVERREQ-6 | tests/test_server_requests.nim | Given a session that ends while the server waits, when it ends, then the wait fails
+MCP-SERVERREQ-6 | tests/test_server_requests.nim | Given a transport that closes while the server waits, when it closes, then the wait fails and in-flight requests are cancelled
+MCP-SERVERREQ-7 | tests/test_server_requests.nim | Given requests to two clients, when they answer in the other order, then each request gets its own answer
+MCP-SERVERREQ-7 | tests/test_server_requests.nim | Given a response to a request nobody sent, when it arrives, then the server ignores it
+MCP-SERVERREQ-8 | tests/test_server_requests.nim | Given a handler that asks the client, when a tool is called, then the request belongs to the tool call and its answer becomes the tool result
+MCP-SERVERREQ-9 | tests/test_server_requests.nim | Given a 2026-07-28 client, when the server asks for a message, then it raises and sends nothing
+MCP-SERVERREQ-9 | tests/test_server_requests.nim | Given a handler that asks the client, when a 2026-07-28 tool call arrives, then the call fails and no request is sent
+MCP-SERVERREQ-9 | tests/test_client_server_requests.nim | Given a 2026-07-28 connection, when the server sends a request, then the client answers method not found
+MCP-CLIENTREQ-1 | tests/test_client_server_requests.nim | Given a sampling handler, when the server asks, then the request is parsed and the result is sent in wire form
+MCP-CLIENTREQ-1 | tests/test_client_server_requests.nim | Given a sampling handler, when the client connects, then initialize declares sampling
+MCP-CLIENTREQ-1 | tests/test_client_server_requests.nim | Given a handler that refuses, when the server asks, then the handler's error code is sent
+MCP-CLIENTREQ-1 | tests/test_client_server_requests.nim | Given a handler that fails, when the server asks, then an internal error is sent and the client carries on
+MCP-CLIENTREQ-1 | tests/test_client_server_requests.nim | Given malformed sampling params, when the server asks, then the client answers invalid params
+MCP-CLIENTREQ-2 | tests/test_client_server_requests.nim | Given no sampling handler, when the server asks, then the client answers method not found
+MCP-CLIENTREQ-3 | tests/test_client_server_requests.nim | Given a roots provider, when the server asks, then the roots are listed
+MCP-CLIENTREQ-3 | tests/test_client_server_requests.nim | Given a roots provider, when the client connects, then initialize declares roots with listChanged
+MCP-CLIENTREQ-3 | tests/test_client_server_requests.nim | Given a client that declared no roots, when the server asks, then the client answers method not found
+MCP-CLIENTREQ-4 | tests/test_client_server_requests.nim | Given roots that changed, when the client notifies, then roots/list_changed is sent
+MCP-CLIENTREQ-4 | tests/test_client_server_requests.nim | Given roots declared without listChanged, when the client notifies, then McpUnsupportedError is raised
+MCP-CLIENTREQ-5 | tests/test_client_server_requests.nim | Given a legacy connection, when the server pings, then the client answers with an empty result
+MCP-CLIENTREQ-5 | tests/test_client_server_requests.nim | Given a numeric request id, when the client answers, then the id keeps its JSON type
