@@ -1064,7 +1064,9 @@ proc dispatchExtension(server: McpServer, request: JsonRpcRequest,
   ## A method an extension defines; the client must have declared the
   ## extension, otherwise the request needs a capability it did not offer.
   let registered = server.extensionMethods[request.`method`]
-  if not ctx.clientDeclaresExtension(registered.extensionId):
+  # An empty extension id is a method of a specification that asks nothing
+  # of the client's declaration (see `registerOpenMethod`).
+  if registered.extensionId.len > 0 and not ctx.clientDeclaresExtension(registered.extensionId):
     let error = missingCapabilityError(
       "Method " & request.`method` & " needs the extension " & registered.extensionId,
       requiredExtension(registered.extensionId))

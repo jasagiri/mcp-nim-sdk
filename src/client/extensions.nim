@@ -57,6 +57,16 @@ proc serverExtension*(client: McpClient, id: string): Option[JsonNode] =
   let settings = declared{id}
   if settings.isNil or settings.kind != JObject: none(JsonNode) else: some(settings)
 
+proc serverCapability*(client: McpClient, name: string): Option[JsonNode] =
+  ## The settings of a top-level capability the core does not define, as the
+  ## server declared it; none when it did not, before the client has
+  ## connected. Whether it means anything depends on the specification that
+  ## defines the capability; check the version it needs.
+  if client.serverCapabilities.isNone or client.serverCapabilities.get.additional.isNone:
+    return none(JsonNode)
+  let settings = client.serverCapabilities.get.additional.get{name}
+  if settings.isNil or settings.kind != JObject: none(JsonNode) else: some(settings)
+
 proc callExtension*(client: McpClient, extensionId, methodName: string,
                     params: JsonNode = nil,
                     options: McpRequestOptions = McpRequestOptions()): Future[JsonNode] {.async.} =

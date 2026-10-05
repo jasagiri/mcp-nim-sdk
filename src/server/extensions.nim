@@ -66,6 +66,33 @@ proc registerExtensionMethod*(server: McpServer, extensionId, methodName: string
   server.extensionMethods[methodName] = ExtensionMethod(
     extensionId: extensionId, handler: handler)
 
+proc registerTopLevelCapability*(server: McpServer, name: string, settings: JsonNode = nil) =
+  ## Declare a top-level capability the core does not define, for a
+  ## specification that names its own (to 2026-07-28 clients only). Raises
+  ## ValueError for a name the core defines or `extensions`, or settings that
+  ## are not an object.
+  if name in ["prompts", "resources", "tools", "logging", "completions", "tasks",
+              "experimental", "extensions", "roots", "sampling", "elicitation"]:
+    raise newException(ValueError, "'" & name & "' is a capability of the core")
+  if not settings.isNil and settings.kind != JObject:
+    raise newException(ValueError, "the settings of " & name & " must be a JSON object")
+  var declared =
+    if server.capabilities.additional.isSome: server.capabilities.additional.get
+    else: newJObject()
+  declared[name] = if settings.isNil: newJObject() else: settings
+  server.capabilities.additional = some(declared)
+
+proc registerOpenMethod*(server: McpServer, methodName: string,
+                         handler: ExtensionMethodHandler) =
+  ## Serve `methodName` of a specification that does not ask the client to
+  ## declare anything (its server-side capability, see
+  ## `registerTopLevelCapability`, is what a client looks at). 2026-07-28
+  ## only. Raises ValueError for a method of the core or one already defined.
+  if methodName in server.extensionMethods or methodName in server.requestHandlers or
+     isCoreMethod(methodName):
+    raise newException(ValueError, "method " & methodName & " is already defined")
+  server.extensionMethods[methodName] = ExtensionMethod(extensionId: "", handler: handler)
+
 proc clientExtension*(ctx: McpRequestContext, id: string): Option[JsonNode] =
   ## The settings the client of this request declared for extension `id`;
   ## none when it declared none. Before 2026-07-28 only what the `initialize`

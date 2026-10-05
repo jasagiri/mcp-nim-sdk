@@ -96,6 +96,10 @@ proc toJson*(capabilities: McpServerCapabilities): JsonNode =
     result["experimental"] = capabilities.experimental.get
   if capabilities.extensions.isSome:
     result["extensions"] = capabilities.extensions.get
+  if capabilities.additional.isSome:
+    for name, settings in capabilities.additional.get.pairs:
+      if not result.hasKey(name):
+        result[name] = settings
 
 func onlyNamed(extensions: Option[JsonNode],
                names: openArray[string]): Option[JsonNode] {.raises: [].} =
@@ -122,6 +126,7 @@ func forVersion*(capabilities: McpServerCapabilities,
     result.completions = none(McpCompletionsCapability)
   if not version.has(ftExtensions):
     result.extensions = capabilities.extensions.onlyNamed(legacyExtensions)
+    result.additional = none(JsonNode)
   if not version.has(ftTasks):
     result.tasks = none(McpTasksCapability)
 

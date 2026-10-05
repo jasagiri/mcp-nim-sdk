@@ -742,6 +742,17 @@ proc extractServerCapabilities(json: JsonNode): McpServerCapabilities =
   if not extensionsJson.isNil:
     result.extensions = some(extensionsJson)
 
+  # What the core does not define is kept for the extensions that read it.
+  const known = ["prompts", "resources", "tools", "logging", "completions", "tasks",
+                 "experimental", "extensions"]
+  if not json.isNil and json.kind == JObject:
+    var other = newJObject()
+    for name, settings in json.pairs:
+      if name notin known and settings.kind == JObject:
+        other[name] = settings
+    if other.len > 0:
+      result.additional = some(other)
+
 type ModernServerRefusedInitialize = object of ValueError
   ## The server answered initialize with a 2026-07-28 error: it is a
   ## modern server, whatever the probe showed.

@@ -75,6 +75,12 @@ type
     experimental*: Option[JsonNode]
     extensions*: Option[JsonNode]
       ## 2026-07-28: extension identifier -> settings object.
+    additional*: Option[JsonNode]
+      ## Top-level capabilities the core does not define, name -> settings
+      ## object: what a specification outside the core (a draft that names
+      ## its own capability) asks a server to declare. Sent and read for
+      ## 2026-07-28 only; none for a server that registered nothing, and then
+      ## nothing is added to the wire form.
 
   McpTasksCapability* = object
     ## 2025-11-25: which task operations a party supports and which of its
