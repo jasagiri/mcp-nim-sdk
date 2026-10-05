@@ -15,8 +15,11 @@
 ##   {{include path}}         the text of a file, relative to the repository root
 ##   {{#if cond}} ... {{/if}} the lines in between, when `cond` holds
 ##
-## `cond` is a feature (`ftTools`), `modern`, `legacy` or `all`, optionally
-## prefixed with `!`. `modern` holds when the build speaks 2026-07-28 or later.
+## `cond` is a feature (`ftTools`), `spoken:` and a feature, `modern`,
+## `legacy` or `all`, optionally prefixed with `!`. A feature holds when the
+## version has it; `spoken:ftTasks` holds when the version or an earlier one
+## has it, which is what a build that speaks them all can do. `modern` holds
+## when the build speaks 2026-07-28 or later.
 
 import std/[os, strformat, strutils, tables]
 import protocol/[version, features, implementation_status]
@@ -102,9 +105,18 @@ func holds(cond: string, version: McpProtocolVersion): bool =
   of "modern": version.isModern
   of "legacy": true  # every build speaks the first version, which is legacy
   else:
+    # `spoken:ftX`: some version the build speaks has the feature, though
+    # `version` itself may have dropped it.
+    let spoken = cond.startsWith("spoken:")
+    let name = if spoken: cond["spoken:".len .. ^1] else: cond
     for feature in McpFeature:
-      if $feature == cond:
-        return version.has(feature)
+      if $feature == name:
+        if not spoken:
+          return version.has(feature)
+        for earlier in versionsUpTo(version):
+          if earlier.has(feature):
+            return true
+        return false
     raise newException(ValueError, "unknown condition: " & cond)
 
 proc render*(templateText, root: string, version: McpProtocolVersion): string =

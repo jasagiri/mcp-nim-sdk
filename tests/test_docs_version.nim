@@ -31,6 +31,16 @@ func headings(markdown: string): seq[string] =
     if line.startsWith("## "):
       result.add line[3 .. ^1]
 
+func sectionOf(markdown, headingStart: string): string =
+  ## The lines under the `## ` heading that starts with `headingStart`, up to
+  ## the next `## ` heading.
+  var inside = false
+  for line in markdown.splitLines:
+    if line.startsWith("## "):
+      inside = line[3 .. ^1].startsWith(headingStart)
+    elif inside:
+      result.add line & "\n"
+
 func fileNamed(files: seq[GeneratedFile], path: string): string =
   for file in files:
     if file.path == path:
@@ -72,12 +82,14 @@ suite "generated documentation":
       check ("**" & $v & "**") in readme
       check ("`mcp-" & $v & "`") in readme
 
+      # The README has other tables; the features are the ones of this section.
+      let featureRows = tableRows(sectionOf(readme, "Features of "))
       var listed: HashSet[string]
-      for row in tableRows(readme):
+      for row in featureRows:
         listed.incl row[0]
       check listed == namesOf(v)
 
-      for row in tableRows(readme):
+      for row in featureRows:
         for feature in featuresOf(v):
           if displayName(feature) == row[0]:
             check row[1].startsWith($implementationOf(feature).status)
@@ -107,6 +119,14 @@ suite "generated documentation":
     expect ValueError: discard render("{{#if ftTools}}\nx", Root, mpv20260728)
     expect ValueError: discard render("x\n{{/if}}", Root, mpv20260728)
     expect ValueError: discard render("{{no_such_variable}}", Root, mpv20260728)
+
+  test "Given a spoken condition, when rendered, then a feature of an earlier version keeps its lines and one no spoken version has hides them":
+    # Tasks are core in 2025-11-25 alone: a 2026-07-28 build still speaks them.
+    let text = "{{#if spoken:ftTasks}}\ntasks\n{{/if}}\n{{#if ftTasks}}\nnow\n{{/if}}\n"
+    check render(text, ".", mpv20260728) == "tasks\n"
+    check render(text, ".", mpv20251125) == "tasks\nnow\n"
+    check render(text, ".", mpv20250618) == ""
+    check render("{{#if !spoken:ftTasks}}\nnone\n{{/if}}\n", ".", mpv20250618) == "none\n"
 
   test "Given conditions, when rendered, then a feature the version lacks hides its lines":
     let text = "{{#if ftDiscover}}\nA\n{{/if}}\n{{#if !ftDiscover}}\nB\n{{/if}}"

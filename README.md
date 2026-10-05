@@ -167,6 +167,274 @@ nim c -r examples/stdio_client.nim examples/stdio_server
 
 The same pair over Streamable HTTP is in [examples/http_server.nim](examples/http_server.nim) and [examples/http_client.nim](examples/http_client.nim).
 
+## Turning features on
+
+There are two switches. **Which protocol versions** a program speaks is decided when it is compiled. **Which features** it offers is decided in its code: a feature is on when the program declares it and registers what answers it. Nothing is on by default except the protocol itself.
+
+### 1. Protocol versions, at compile time
+
+A build speaks a range of versions, from its oldest to its default. This checkout's default is `2026-07-28`.
+
+| Define | Meaning | Default here |
+|---|---|---|
+| `-d:mcpDefaultProtocolVersion=<version>` | the newest version the build speaks | `2026-07-28` |
+| `-d:mcpOldestProtocolVersion=<version>` | the oldest version the build speaks | `2024-11-05` |
+| `-d:ssl` | `https://` URLs in the HTTP client and in authorization | off |
+
+```sh
+# Everything up to 2026-07-28 (what this checkout does without any define)
+nim c yourprogram.nim
+
+# Speak nothing newer than 2025-06-18
+nim c -d:mcpDefaultProtocolVersion=2025-06-18 yourprogram.nim
+
+# Speak 2026-07-28 alone: no initialize handshake, no sessions, no HTTP+SSE
+nim c -d:mcpOldestProtocolVersion=2026-07-28 yourprogram.nim
+
+# Connect to https:// servers
+nim c -d:ssl yourprogram.nim
+```
+
+To make a define permanent, put it in your project's `config.nims`:
+
+```nim
+switch("define", "mcpDefaultProtocolVersion=2025-06-18")
+switch("define", "ssl")
+```
+
+or in its `nim.cfg`:
+
+```
+-d:mcpDefaultProtocolVersion=2025-06-18
+-d:ssl
+```
+
+A version that is not a released one, or an oldest version newer than the default, stops the compilation with a message that names the define. A server or client created for a version outside the range raises `ValueError`.
+
+Within the range, one server can be held to an older ceiling at run time, for example to serve only up to `2025-03-26`:
+
+```nim
+let server = newMcpServer(info, protocolVersion = mpv20250326, capabilities = caps)
+```
+
+When this SDK is a dependency, name the branch of the version you want in your `.nimble` file (see [Install](#install)); the branch sets the default, and the defines above still apply. When working in a checkout of this repository, `nim.cfg` already adds `src` to the path; elsewhere pass `--path:<checkout>/src`.
+
+Requirements: Nim 2.2.2 or newer, the default memory management (`--mm:orc`), and the `uuids` package. No other define is needed; there is none per feature.
+
+### 2. Features, at run time
+
+A server declares a capability in `newMcpServer` and registers the handlers that answer it. A client registers a handler before `connect`, which declares the capability for it. Each side is then offered only what the version the two settled on has, so the same program serves old and new peers.
+
+[examples/features_server.nim](examples/features_server.nim) turns on everything a server has in the core protocol:
+
+```nim
+## A server that turns on every server-side feature of the core protocol:
+## tools, resources (with subscriptions), prompts, completion and logging.
+##
+##   nim c -r examples/features_server.nim
+##
+## A feature is on when its capability is declared in `newMcpServer` and its
+## handlers are registered; nothing else is needed. The server offers a
+## client only what the version they settled on has.
+
+import std/[asyncdispatch, json, options]
+import mcp
+
+proc main() =
+  let server = newMcpServer(
+    McpServerInfo(name: "features-server", version: "0.1.0"),
+    capabilities = McpServerCapabilities(
+      tools: some(McpToolsCapability(listChanged: true)),
+      resources: some(McpResourcesCapability(subscribe: true, listChanged: true)),
+      prompts: some(McpPromptsCapability(listChanged: true)),
+      completions: some(McpCompletionsCapability()),
+      logging: some(McpLoggingCapability())))
+
+  # Tools. The arguments of a call are checked against `inputSchema` before
+  # the handler runs.
+  server.onToolsList(proc(cursor: Option[string]): Future[McpPage] {.async.} =
+    return McpPage(items: @[%*{
+      "name": "add",
+      "description": "Adds two integers",
+      "inputSchema": {
+        "type": "object",
+        "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
+        "required": ["a", "b"]}}]))
+  server.onToolCall(proc(ctx: McpRequestContext, name: string,
+                         arguments: JsonNode): Future[JsonNode] {.async.} =
+    if name != "add":
+      raise newUnknownTool(name)
+    # Progress reaches the client only when its request asked for it;
+    # log messages only at the level the client asked for.
+    await ctx.reportProgress(0.5)
+    await ctx.log(mllInfo, %"adding")
+    let sum = arguments["a"].getInt() + arguments["b"].getInt()
+    return %*{"content": [{"type": "text", "text": $sum}]})
+
+  # Resources.
+  server.onResourcesList(proc(cursor: Option[string]): Future[McpPage] {.async.} =
+    return McpPage(items: @[%*{"uri": "memo://greeting", "name": "greeting",
+                               "mimeType": "text/plain"}]))
+  server.onResourceRead(proc(ctx: McpRequestContext,
+                             uri: string): Future[seq[JsonNode]] {.async.} =
+    if uri != "memo://greeting":
+      raise newResourceNotFound(uri)
+    return @[%*{"uri": uri, "mimeType": "text/plain", "text": "hello"}])
+
+  # Prompts.
+  server.onPromptsList(proc(cursor: Option[string]): Future[McpPage] {.async.} =
+    return McpPage(items: @[%*{
+      "name": "greet", "description": "Greets someone",
+      "arguments": [{"name": "who", "required": true}]}]))
+  server.onPromptGet(proc(ctx: McpRequestContext, name: string,
+                          arguments: JsonNode): Future[JsonNode] {.async.} =
+    if name != "greet":
+      raise newInvalidParams("Unknown prompt: " & name)
+    return %*{"messages": [{"role": "user", "content": {
+      "type": "text", "text": "Say hello to " & arguments{"who"}.getStr()}}]})
+
+  # Completion of prompt arguments and resource template variables.
+  server.onComplete(proc(ctx: McpRequestContext,
+                         request: McpCompletionRequest): Future[McpCompletion] {.async.} =
+    var names: seq[string]
+    for name in ["Ada", "Alan", "Grace"]:
+      if request.argumentValue.len == 0 or name[0] == request.argumentValue[0]:
+        names.add name
+    return McpCompletion(values: names))
+
+  server.transport = newStdioTransport()
+  waitFor server.processMessages()
+
+main()
+```
+
+[examples/features_client.nim](examples/features_client.nim) does the same for a client:
+
+```nim
+## A client that turns on every client-side feature of the core protocol:
+## roots, sampling and elicitation.
+##
+##   nim c examples/features_server.nim
+##   nim c -r examples/features_client.nim examples/features_server
+##
+## A feature is on when its handler is registered before `connect`; the
+## registration declares the capability. The client offers a server only
+## what the version they settled on has.
+
+import std/[asyncdispatch, json, options, os]
+import mcp
+
+proc run(command: string, args: seq[string]) {.async.} =
+  let client = newMcpClient(McpClientInfo(name: "features-client", version: "0.1.0"))
+
+  # Roots: the directories the server may work in.
+  client.setRootsProvider(proc(): Future[seq[McpRoot]] {.async.} =
+    return @[McpRoot(uri: "file://" & getCurrentDir(), name: some("work"))])
+
+  # Sampling: the server asks this client's model for a completion. A real
+  # host shows the request to its user before it runs a model.
+  client.setSamplingHandler(proc(request: McpSamplingRequest): Future[McpSamplingResult] {.async.} =
+    return McpSamplingResult(role: "assistant", model: "none",
+      content: McpContentItem(kind: mckText, text: "(no model attached)"),
+      stopReason: some("endTurn")))
+
+  # Elicitation: the server asks the user for input. Declining is always
+  # an answer.
+  client.setElicitationHandler(proc(request: McpElicitRequest): Future[McpElicitResult] {.async.} =
+    return McpElicitResult(action: eaDecline))
+
+  await client.connect(newProcessTransport(command, args))
+  echo "connected, protocol version ", client.negotiatedVersion.get
+
+  for tool in (await client.listTools()).tools:
+    echo "tool: ", tool.name
+  let sum = await client.callTool("add", %*{"a": 2, "b": 3})
+  echo "2 + 3 = ", sum.contentItems[0].text
+
+  await client.close()
+
+if paramCount() < 1:
+  stderr.writeLine "usage: features_client SERVER_COMMAND [ARGS...]"
+  quit(2)
+waitFor run(paramStr(1), commandLineParams()[1 .. ^1])
+```
+
+```sh
+nim c examples/features_server.nim
+nim c -r examples/features_client.nim examples/features_server
+```
+
+#### Server features
+
+| Feature | Declare in `McpServerCapabilities` | Register or call |
+|---|---|---|
+| Tools | `tools: some(McpToolsCapability(listChanged: ...))` | `onToolsList`, `onToolCall`; `notifyToolListChanged` |
+| Tool input validation | nothing: always on | the `inputSchema` of each tool in the list |
+| Structured tool output | nothing | `outputSchema` in the tool, `structuredContent` in the result; wrap the call handler with `outputChecked` to have results checked |
+| Resources | `resources: some(McpResourcesCapability(subscribe: ..., listChanged: ...))` | `onResourcesList`, `onResourceTemplatesList`, `onResourceRead`; `notifyResourceListChanged` |
+| Resource subscriptions | `subscribe: true` in the resources capability | `notifyResourceUpdated(uri)`; optionally `onResourceSubscribe`, `onResourceUnsubscribe` |
+| Prompts | `prompts: some(McpPromptsCapability(listChanged: ...))` | `onPromptsList`, `onPromptGet`; `notifyPromptListChanged` |
+| Completion | `completions: some(McpCompletionsCapability())` | `onComplete` |
+| Logging | `logging: some(McpLoggingCapability())` | `ctx.log(level, data)` in a handler, `server.log(...)` outside one |
+| Pagination | nothing | return `nextCursor` in `McpPage`, or wrap a whole list with `pagedList(all, pageSize)` |
+| Progress | nothing | `ctx.reportProgress(...)`; sent only when the request asked for progress |
+| Cancellation | nothing | read `ctx.cancelled` in a long handler |
+| Asking the client (before 2026-07-28) | nothing; the client must have declared the capability | `ctx.createMessage` (sampling), `ctx.listRoots`, `ctx.ping` |
+| Asking the user (before 2026-07-28) | nothing; the client must have declared `elicitation` | `ctx.elicit(message, requestedSchema)` |
+| Sending the user to a page (2025-11-25) | nothing; the client must have declared `elicitation.url` | `ctx.elicitUrl(message, elicitationId, url)` |
+| Asking the client (2026-07-28: multi round-trip) | nothing; the client must have declared the capability | `ctx.requireInput(key, method, params)` in a tool, prompt or resource handler |
+| Tasks (2025-11-25 only) | `server.enableTasks()` declares it | `execution.taskSupport` in the tool; `enableTasks` returns the store |
+| `subscriptions/listen` (2026-07-28) | the `listChanged` and `subscribe` flags above | the same `notify...` calls; `endSubscriptions` to close them |
+| Parameter headers (2026-07-28, HTTP) | nothing | `"x-mcp-header": "Name"` on a property of a tool's `inputSchema` |
+| Extensions (2026-07-28) | `server.registerExtension(id, settings)` declares it | `registerExtensionMethod` for the methods the extension defines |
+
+#### Client features
+
+| Feature | Register before `connect` | Notes |
+|---|---|---|
+| Roots | `client.setRootsProvider(provider)` | declares `roots` |
+| Sampling | `client.setSamplingHandler(handler)` | declares `sampling` |
+| Tool use in sampling (2025-11-25) | `client.setSamplingHandler(handler, tools = true)` | declares `sampling.tools` as well |
+| Elicitation | `client.setElicitationHandler(handler)` | declares `elicitation` (form mode) |
+| URL elicitation (2025-11-25) | `client.setElicitationHandler(handler, modes = {emForm, emUrl})` | declares `elicitation.url` as well |
+| Tasks (2025-11-25 only) | `client.enableClientTasks(config)` | after the handlers of the requests to run as tasks are set; `callToolAsTask` and `waitForTask` to use a server's tasks |
+| Multi round-trip requests (2026-07-28) | the handlers above | the client answers a server's input requests from them and retries, up to `maxInputRounds` |
+| `subscriptions/listen` (2026-07-28) | nothing | `client.listen(...)` returns a subscription; `cancel` ends it |
+| Extensions (2026-07-28) | `client.declareExtension(id, settings)` | `serverExtension(id)` tells whether the server has it; `callExtension` calls its methods |
+| Timeouts, cancellation, progress | nothing | per request, in `McpRequestOptions`: `timeoutMs`, `cancel`, `onProgress` |
+| Trace context (2026-07-28) | nothing | `traceContext` in `McpRequestOptions`; a server handler reads `ctx.traceContext` |
+
+Using a server's tools, resources and prompts needs no registration: `listTools`, `callTool`, `listResources`, `readResource`, `listPrompts`, `getPrompt` and `complete` raise `McpUnsupportedError` when the server did not declare the capability.
+
+#### Transports
+
+| Transport | Server | Client |
+|---|---|---|
+| stdio | `server.transport = newStdioTransport()` then `processMessages()` | `newProcessTransport(command, args)` starts the server as a child process |
+| Streamable HTTP | `newHttpServerTransport(host, port, path)`, `listen()`, `server.attachTransport(...)` | `newStreamableHttpTransport(url)` |
+| HTTP+SSE (2024-11-05, deprecated) | `newHttpServerTransport(host, port, path)` serves it on `legacySsePath` (`/sse`); set that to `""` to turn it off | `newSseLegacyTransport(url)` |
+| Either HTTP transport | the same server transport serves both | `newAutoHttpTransport(url)` tries Streamable HTTP first and falls back to HTTP+SSE |
+
+The HTTP server accepts requests from loopback origins only; add others to `transport.allowedOrigins`. See [docs/transports.md](docs/transports.md).
+
+#### Authorization
+
+Authorization is off until it is attached to an HTTP transport. A server sets `transport.auth = newResourceServerAuth(config, mcpPath)` with a token verifier of its own; a client sets `transport.auth` to an OAuth client made with `newOAuthClient`. Both live in `auth/` and are imported separately (`import auth/resource_server`, `import auth/client`). Build with `-d:ssl`: authorization servers are reached over `https://`.
+
+### 3. Extensions
+
+Extensions are optional additions to MCP that the two sides agree on by name. They are off unless a program registers them, as in the tables above; this checkout carries the registration mechanism and no extension of its own.
+
+### Checking a build
+
+```sh
+nimble test                # every test with this checkout's default version
+nimble testAllVersions     # the same, once per released version as the default
+nim c -r -d:mcpDefaultProtocolVersion=2025-06-18 tests/test_legacy_handshake.nim
+```
+
+`DefaultProtocolVersion`, `OldestProtocolVersion` and `SupportedProtocolVersions` (in `protocol/version`, exported by `mcp`) tell a program what it was built to speak.
+
 ## Other versions
 
 Each protocol version has a branch and a tag named `mcp-<version>`. Check one out, or name it in your `.nimble` file as above, and the SDK speaks that version and the earlier ones; its README, docs and examples describe exactly that version.
