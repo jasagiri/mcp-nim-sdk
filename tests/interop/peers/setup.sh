@@ -35,11 +35,13 @@ cp "$here"/ts/*.mjs "$dir/ts/"
   @modelcontextprotocol/client@2.3.1 @modelcontextprotocol/server@2.3.1 \
   @modelcontextprotocol/node@2.1.1 @modelcontextprotocol/sdk@1.32.1 zod)
 
+# zod 3: the 1.10 and 1.12 SDKs cannot read a zod 4 schema (tools/call fails with
+# "keyValidator._parse is not a function").
 ts_env() {  # ts_env SDK_VERSION
   mkdir -p "$dir/old/ts-$1"
   cp "$here/ts/ts1_client.mjs" "$here/ts/ts1_server.mjs" "$dir/old/ts-$1/"
   (cd "$dir/old/ts-$1" && npm init -y >/dev/null && \
-    npm install --silent --save-exact "@modelcontextprotocol/sdk@$1" zod)
+    npm install --silent --save-exact "@modelcontextprotocol/sdk@$1" zod@3)
 }
 ts_env 1.23.1  # 2025-06-18
 ts_env 1.12.3  # 2025-03-26
