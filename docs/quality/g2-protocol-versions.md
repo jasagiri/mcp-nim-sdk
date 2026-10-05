@@ -28,6 +28,13 @@
 | `src/server/pagination.nim` | `tests/test_server_pagination.nim` | 2026-10-06 |
 | `src/server/completion.nim` | `tests/test_server_completion.nim` | 2026-10-06 |
 | `src/protocol/log_level.nim` | `tests/test_server_logging.nim` | 2026-10-06 |
+| `src/transport/http.nim` (SSE の逐次読み取り、再開、GET ストリーム、DELETE、リダイレクト) | `tests/test_http_client_streams.nim` | 2026-10-06 |
+| `src/transport/http_server.nim` (SSE 応答、GET ストリーム、再開、バッチ、版ヘッダ、期限切れ、HTTP+SSE) | `tests/test_http_streams.nim`, `tests/test_http_sse_legacy.nim` | 2026-10-06 |
+| `src/transport/http_wire.nim` | `tests/test_http_client_streams.nim`, `tests/test_http_streams.nim` | 2026-10-06 |
+| `src/transport/sse_stream.nim` | `tests/test_http_streams.nim`, `tests/test_http_sse_legacy.nim` | 2026-10-06 |
+| `src/transport/sse_legacy.nim` | `tests/test_http_sse_legacy.nim` | 2026-10-06 |
+| `src/transport/http_compat.nim` | `tests/test_http_sse_legacy.nim` | 2026-10-06 |
+| `src/transport/event_stream.nim` (retry) | `tests/test_event_stream.nim` | 2026-10-06 |
 
 ## 手で確かめたもの (nim-muter の測定ではない)
 

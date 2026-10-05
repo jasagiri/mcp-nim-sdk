@@ -1,7 +1,9 @@
 ## A small MCP client used to check this SDK against other implementations.
 ##
 ##   nim_client stdio CMD [ARGS...]
-##   nim_client http URL
+##   nim_client http URL    Streamable HTTP
+##   nim_client sse URL     HTTP+SSE of 2024-11-05, URL of the event stream
+##   nim_client auto URL    Streamable HTTP, falling back to HTTP+SSE on a 4xx
 ##
 ## MCP_VERSION limits the newest version the client speaks (default: the
 ## build's). Prints one JSON line with the negotiated version and the result
@@ -12,6 +14,8 @@ import client/client
 import transport/transport
 import transport/stdio
 import transport/http
+import transport/sse_legacy
+import transport/http_compat
 import protocol/types
 
 proc run(): Future[JsonNode] {.async.} =
@@ -25,11 +29,13 @@ proc run(): Future[JsonNode] {.async.} =
 
   let args = commandLineParams()
   if args.len < 2:
-    raise newException(ValueError, "usage: nim_client stdio CMD [ARGS...] | http URL")
+    raise newException(ValueError, "usage: nim_client stdio CMD [ARGS...] | http URL | sse URL | auto URL")
   let transport: McpTransport =
     case args[0]
     of "stdio": newProcessTransport(args[1], args[2 .. ^1])
     of "http": newStreamableHttpTransport(args[1])
+    of "sse": newSseLegacyTransport(args[1])
+    of "auto": newAutoHttpTransport(args[1])
     else: raise newException(ValueError, "unknown transport: " & args[0])
 
   let client = newMcpClient(

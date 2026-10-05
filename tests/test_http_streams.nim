@@ -7,11 +7,11 @@
 ## Versions are named in the tests that need a particular one; a test runs
 ## only when the build speaks that version.
 
-import std/[unittest, asyncdispatch, asyncnet, uri, httpclient, json, options, strutils, deques,
+import std/[unittest, asyncdispatch, asyncnet, uri, httpclient, json, options, strutils,
             algorithm, sequtils]
 import transport/transport
 import transport/http_server
-import transport/http_wire as wire
+import sse_reader
 import transport/event_stream
 import transport/sse_stream
 import protocol/types
@@ -103,54 +103,6 @@ proc initialize(url: string, version: McpProtocolVersion): string =
                "clientInfo": {"name": "peer", "version": "0"}}})
   doAssert reply.code == Http200, reply.body
   $reply.headers["Mcp-Session-Id"]
-
-type Events = ref object
-  ## A response read as it arrives, so that what the server says during a
-  ## request can be told apart from what it says at the end.
-  response: WireResponse
-  parser: SseParser
-  queued: Deque[SseEvent]
-  ended: bool
-
-proc open(url: string, httpMethod: HttpMethod, body: string,
-          headers: openArray[(string, string)]): Events =
-  let allHeaders = newHttpHeaders({"Accept": "application/json, text/event-stream",
-                                   "Content-Type": "application/json"})
-  for (name, value) in headers:
-    allHeaders[name] = value
-  Events(response: waitFor wire.request(url, httpMethod, allHeaders, body),
-         parser: initSseParser())
-
-proc code(e: Events): HttpCode = e.response.code
-proc contentType(e: Events): string = e.response.headers.getOrDefault("Content-Type")
-
-proc next(e: Events, timeoutMs = 3000): Option[SseEvent] =
-  ## The next event, or none when the stream ended. A stream that stays
-  ## silent for `timeoutMs` fails the test.
-  while e.queued.len == 0 and not e.ended:
-    let read = e.response.readSome()
-    doAssert waitFor withTimeout(read, timeoutMs), "no event within " & $timeoutMs & " ms"
-    let chunk = read.read()
-    if chunk.len == 0:
-      e.ended = true
-    else:
-      for event in e.parser.feed(chunk):
-        e.queued.addLast event
-  if e.queued.len > 0:
-    some(e.queued.popFirst())
-  else:
-    none(SseEvent)
-
-proc messages(e: Events): seq[JsonNode] =
-  ## Every message until the stream ends; empty-data events are skipped.
-  while true:
-    let event = e.next()
-    if event.isNone:
-      break
-    if event.get.data.len > 0:
-      result.add parseJson(event.get.data)
-
-proc close(e: Events) = e.response.close()
 
 proc legacyHeaders(session: string, version: McpProtocolVersion): seq[(string, string)] =
   result = @[("Mcp-Session-Id", session)]
@@ -477,6 +429,23 @@ if SpeaksModern:
       check got.len == 3
       check got[0].methodOf == "notifications/progress"
       check got[2]["id"].getInt() == 7
+      stream.close()
+
+    test "Given a request of 2026-07-28, when the server tries to send a request of its own on its stream, then McpTransportError is raised":
+      let (transport, url, script) = startRaw(DefaultProtocolVersion)
+      let stream = modernPost(url, 7, "wait")
+      discard stream.next()
+      expect McpTransportError:
+        waitFor transport.sendRequest(newJsonRpcRequest("srv-1", "roots/list", newJObject()),
+          MessageRoute(requestId: "http-1"))
+      script.release.complete()
+      stream.close()
+
+    test "Given an event stream, when its head is read, then proxies are told not to buffer it":
+      let (_, url, _) = startRaw(DefaultProtocolVersion)
+      let stream = modernPost(url, 7, "work")
+      check $stream.response.headers["X-Accel-Buffering"] == "no"
+      discard stream.messages()
       stream.close()
 
     test "Given a stream of 2026-07-28, when its events are read, then it has no priming event":

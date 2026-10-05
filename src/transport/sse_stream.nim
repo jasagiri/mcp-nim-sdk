@@ -140,6 +140,7 @@ proc serveStream*(req: Request, stream: SseStream, afterSeq: int,
   stream.wake()  # a connection already serving the stream notices and leaves
   headers["Content-Type"] = "text/event-stream"
   headers["Cache-Control"] = "no-cache"
+  headers["X-Accel-Buffering"] = "no"  # a proxy must not hold events back
   var cursor = afterSeq
   var idle = sleepAsync(keepAliveMs)
   result = seDrained

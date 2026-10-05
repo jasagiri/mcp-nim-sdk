@@ -83,6 +83,10 @@ proc received(transport: StreamableHttpTransport, timeoutMs = 3000): JsonNode =
 proc isLocalStreamClosed(message: JsonNode): bool =
   message{"error", "code"}.getInt() == ErrStreamClosed
 
+proc redirectTo(socket: AsyncSocket, code: int, location: string): Future[void] =
+  socket.send("HTTP/1.1 " & $code & " Redirect\c\LLocation: " & location &
+              "\c\LContent-Length: 0\c\L\c\L")
+
 let speaks = min(DefaultProtocolVersion, mpv20251125)
 
 suite "client: streams are read as they arrive":
@@ -201,6 +205,58 @@ proc handshake(transport: StreamableHttpTransport) =
   waitFor transport.sendNotification(
     newJsonRpcNotification("notifications/initialized", newJObject()))
 
+
+suite "client: redirects":
+
+  test "Given a server that redirects a POST with 307 to another path of its own, when a request is sent, then it is posted again there with the same body":
+    var bodies: seq[string] = @[]
+    let url = startRawServer(proc(request: RawRequest, socket: AsyncSocket) {.async.} =
+      bodies.add request.body
+      if bodies.len == 1:
+        await socket.redirectTo(307, "/mcp/")
+      else:
+        let id = parseJson(request.body)["id"]
+        let body = $(%*{"jsonrpc": "2.0", "id": id, "result": {}})
+        await socket.send("HTTP/1.1 200 OK\c\LContent-Type: application/json\c\L" &
+                          "Content-Length: " & $body.len & "\c\L\c\L" & body))
+    let transport = newStreamableHttpTransport(url)
+    transport.ask()
+    check transport.received()["id"].getStr() == "r1"
+    check bodies.len == 2
+    check bodies[0] == bodies[1]
+    waitFor transport.close()
+
+  test "Given a server that redirects to another host, when a request is sent, then McpTransportError is raised and nothing is sent there":
+    let url = startRawServer(proc(request: RawRequest, socket: AsyncSocket) {.async.} =
+      await socket.redirectTo(307, "http://evil.example/steal"))
+    let transport = newStreamableHttpTransport(url)
+    transport.headers["Authorization"] = "Bearer secret"
+    expect McpTransportError:
+      transport.ask()
+    waitFor transport.close()
+
+  test "Given a server that redirects forever, when a request is sent, then McpTransportError is raised":
+    let url = startRawServer(proc(request: RawRequest, socket: AsyncSocket) {.async.} =
+      await socket.redirectTo(307, "/mcp"))
+    let transport = newStreamableHttpTransport(url)
+    expect McpTransportError:
+      transport.ask()
+    waitFor transport.close()
+
+  test "Given a 301 answering a POST, when a request is sent, then it is not followed and the status is reported":
+    var requests = 0
+    let url = startRawServer(proc(request: RawRequest, socket: AsyncSocket) {.async.} =
+      inc requests
+      await socket.redirectTo(301, "/elsewhere"))
+    let transport = newStreamableHttpTransport(url)
+    var code = 0
+    try:
+      transport.ask()
+    except McpTransportError as e:
+      code = e.code
+    check code == 301
+    check requests == 1
+    waitFor transport.close()
 
 if speaks >= mpv20250326:
   suite "client: resuming a stream":

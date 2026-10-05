@@ -28,6 +28,12 @@
 ##
 ## Sessions that stay idle for `sessionIdleTimeoutMs` are dropped.
 ##
+## The HTTP+SSE transport of 2024-11-05 is served alongside, for clients that
+## only speak it: a GET on `legacySsePath` opens an event stream whose first
+## event names the endpoint (`legacyMessagesPath`) to POST to, and the
+## server's messages follow as `message` events. The connection is the
+## session. Set `legacySsePath` to "" to turn it off.
+##
 ## TODO (2026-07-28): `subscriptions/listen` and `Mcp-Param-*` validation.
 
 import std/[asyncdispatch, asyncnet, asynchttpserver, httpcore, json, tables, deques,
@@ -63,6 +69,7 @@ type
       ## The client cancelled; whatever the server still sends is dropped.
     opensSession: bool
     isBatch: bool
+    modern: bool
     settled: Future[void]
       ## Completes when the answer's shape is known: the first message
       ## besides a response, or the last response.
@@ -70,6 +77,9 @@ type
   Exchange = object
     ## An HTTP request waiting for its JSON-RPC response.
     group: Group
+      ## nil for a request of the HTTP+SSE transport: its answer goes to the
+      ## event stream of `legacySession`.
+    legacySession: string
     idNode: JsonNode  ## the id the client used, restored on the response
 
   Session = ref object
@@ -82,6 +92,9 @@ type
       ## Streams of POSTs that a client may resume.
     listen: SseStream
       ## The GET stream: what the server says outside any request.
+    legacy: bool
+      ## A session of the HTTP+SSE transport: `listen` is its only stream,
+      ## and it lasts as long as the connection.
 
   HttpServerTransport* = ref object of McpTransport
     server*:          AsyncHttpServer
@@ -106,6 +119,11 @@ type
     sessionIdleTimeoutMs*: int
       ## A session unused for this long, with nothing in progress, is
       ## dropped; 0 keeps sessions until DELETE.
+    legacySsePath*: string
+      ## Where the HTTP+SSE transport of 2024-11-05 opens its event stream;
+      ## "" does not serve it.
+    legacyMessagesPath*: string
+      ## Where clients of that transport POST, named by the first event.
     sessions:         Table[string, Session]
     requestQueue:     Deque[McpIncoming]
     receiveWaiters:   Deque[Future[McpIncoming]]
@@ -133,6 +151,8 @@ proc newHttpServerTransport*(host: string = "127.0.0.1",
     maxStreamEvents:  DefaultMaxStreamEvents,
     maxStoredStreams: DefaultMaxStoredStreams,
     sessionIdleTimeoutMs: DefaultSessionIdleTimeoutMs,
+    legacySsePath:    "/sse",
+    legacyMessagesPath: "/messages",
     sessions:         initTable[string, Session](),
     requestQueue:     initDeque[McpIncoming](),
     receiveWaiters:   initDeque[Future[McpIncoming]](),
@@ -168,12 +188,18 @@ method sendResponse*(t: HttpServerTransport,
       "no HTTP exchange is waiting for response id " & response.id)
   let exchange = t.exchanges[response.id]
   t.exchanges.del(response.id)
+  var restored = response
+  restored.idNode = exchange.idNode
+  if exchange.group.isNil:
+    # HTTP+SSE: the answer travels on the event stream. A client that has
+    # left is not waiting for it.
+    if t.sessions.hasKey(exchange.legacySession):
+      discard t.sessions[exchange.legacySession].listen.push($restored.toJson(), "message")
+    return
   let group = exchange.group
   if group.abandoned:
     # The client cancelled this request and does not wait for an answer.
     return
-  var restored = response
-  restored.idNode = exchange.idNode
   group.responses.add restored
   discard group.stream.push($restored.toJson())
   dec group.pending
@@ -197,6 +223,9 @@ proc listenStream(t: HttpServerTransport, session: Session): SseStream =
     session.listen = newSseStream(newStreamId(), t.maxStreamEvents)
   session.listen
 
+proc pushTo(session: Session, data: string): bool =
+  session.listen.push(data, if session.legacy: "message" else: "")
+
 proc deliver(t: HttpServerTransport, route: MessageRoute, message: JsonNode,
              what: string) =
   ## Put a message the server initiates on the stream `route` names.
@@ -205,7 +234,16 @@ proc deliver(t: HttpServerTransport, route: MessageRoute, message: JsonNode,
     if not t.exchanges.hasKey(route.requestId):
       raise newException(McpTransportError,
         what & " names request " & route.requestId & ", which is not in progress")
-    let group = t.exchanges[route.requestId].group
+    let exchange = t.exchanges[route.requestId]
+    if exchange.group.isNil:
+      if t.sessions.hasKey(exchange.legacySession):
+        discard t.sessions[exchange.legacySession].pushTo(data)
+      return
+    let group = exchange.group
+    if group.modern and what == "request":
+      raise newException(McpTransportError,
+        "a 2026-07-28 request's stream carries notifications only; " &
+        "the server's own requests are part of its result")
     if group.abandoned:
       return
     discard group.stream.push(data)
@@ -215,7 +253,9 @@ proc deliver(t: HttpServerTransport, route: MessageRoute, message: JsonNode,
     if not t.sessions.hasKey(route.session):
       raise newException(McpTransportError,
         what & " names an unknown session " & route.session)
-    discard t.listenStream(t.sessions[route.session]).push(data)
+    let session = t.sessions[route.session]
+    discard t.listenStream(session)
+    discard session.pushTo(data)
   else:
     # Every client hears a notification once; a request has one addressee.
     if what == "request":
@@ -223,7 +263,8 @@ proc deliver(t: HttpServerTransport, route: MessageRoute, message: JsonNode,
         raise newException(McpTransportError,
           "a request needs a session to go to; there are " & $t.sessions.len)
     for session in t.sessions.values:
-      discard t.listenStream(session).push(data)
+      discard t.listenStream(session)
+      discard session.pushTo(data)
 
 method sendNotification*(t: HttpServerTransport,
                         notification: JsonRpcNotification,
@@ -270,7 +311,8 @@ proc expireIdleSessions*(t: HttpServerTransport) =
   let now = epochTime()
   var idle: seq[string] = @[]
   for id, session in t.sessions:
-    if session.busy == 0 and (now - session.lastActive) * 1000 >= t.sessionIdleTimeoutMs.float:
+    if not session.legacy and session.busy == 0 and
+       (now - session.lastActive) * 1000 >= t.sessionIdleTimeoutMs.float:
       idle.add id
   for id in idle:
     t.endSession(id)
@@ -278,6 +320,11 @@ proc expireIdleSessions*(t: HttpServerTransport) =
 method close*(t: HttpServerTransport): Future[void] {.async.} =
   t.started = false
   t.server.close()
+  var open: seq[string] = @[]
+  for id in t.sessions.keys:
+    open.add id
+  for id in open:
+    t.endSession(id)
 
 proc securityHeaders(contentType = ""): HttpHeaders =
   result = newHttpHeaders({
@@ -392,7 +439,7 @@ proc sessionFor(t: HttpServerTransport, req: Request, id: JsonNode): Future[Sess
   if named.isNone:
     await req.respondError(Http400, id, invalidRequest(SessionHeader & " header is required"))
     return nil
-  if not t.sessions.hasKey(named.get):
+  if not t.sessions.hasKey(named.get) or t.sessions[named.get].legacy:
     await req.respondError(Http404, id, invalidRequest("Session not found"))
     return nil
   result = t.sessions[named.get]
@@ -401,7 +448,7 @@ proc handleDelete(t: HttpServerTransport, req: Request) {.async.} =
   let session = req.header(SessionHeader)
   if session.isNone:
     await req.respondError(Http400, nil, invalidRequest(SessionHeader & " header is required"))
-  elif session.get notin t.sessions:
+  elif session.get notin t.sessions or t.sessions[session.get].legacy:
     await req.respondError(Http404, nil, invalidRequest("Session not found"))
   else:
     t.endSession(session.get)
@@ -559,7 +606,7 @@ proc handlePost(t: HttpServerTransport, req: Request) {.async.} =
   let group = Group(
     stream: newSseStream(newStreamId(), t.maxStreamEvents),
     session: sessionId, pending: requests.len, opensSession: opensSession,
-    isBatch: isBatch, settled: newFuture[void]("HttpServerTransport.group"))
+    isBatch: isBatch, modern: modern, settled: newFuture[void]("HttpServerTransport.group"))
   if not session.isNil and session.version.has(ftSsePolling):
     discard group.stream.push("")
   for item in items:
@@ -595,27 +642,102 @@ proc handlePost(t: HttpServerTransport, req: Request) {.async.} =
   if ended == seClientGone and modern and group.pending > 0:
     t.cancel(group)
 
+proc handleLegacySse(t: HttpServerTransport, req: Request) {.async.} =
+  ## HTTP+SSE: the connection is the session. Its first event names where
+  ## to POST.
+  if t.sessions.len >= t.maxSessions:
+    t.expireIdleSessions()
+  if t.sessions.len >= t.maxSessions:
+    await req.respondEmpty(Http503)
+    return
+  let id = newSessionId()
+  let session = Session(version: mpv20241105, legacy: true,
+                        streams: initOrderedTable[string, SseStream](),
+                        listen: newSseStream(newStreamId(), t.maxStreamEvents,
+                                             emitIds = false))
+  session.touch()
+  discard session.listen.push(t.legacyMessagesPath & "?sessionId=" & id, "endpoint")
+  t.sessions[id] = session
+  let gone = watchDisconnect(req.client)
+  try:
+    discard await serveStream(req, session.listen, 0, securityHeaders(), gone)
+  finally:
+    t.endSession(id)
+
+proc handleLegacyPost(t: HttpServerTransport, req: Request) {.async.} =
+  var id = ""
+  for (name, value) in decodeQuery(req.url.query):
+    if name == "sessionId":
+      id = value
+  if id.len == 0:
+    await req.respondError(Http400, nil, invalidRequest("sessionId is required"))
+    return
+  if not t.sessions.hasKey(id) or not t.sessions[id].legacy:
+    await req.respondError(Http404, nil, invalidRequest("Session not found"))
+    return
+  var message: JsonNode
+  try:
+    message = parseJson(req.body)
+  except CatchableError:
+    await req.respondError(Http400, nil, JsonRpcError(code: ErrParse, message: "Parse error"))
+    return
+  if message.kind != JObject:
+    await req.respondError(Http400, nil, invalidRequest("Request must be a JSON object"))
+    return
+  if isRequest(message):
+    inc t.exchangeCount
+    let exchangeId = "http-" & $t.exchangeCount
+    t.exchanges[exchangeId] = Exchange(legacySession: id, idNode: message["id"])
+    let forwarded = message.copy()
+    forwarded["id"] = %exchangeId
+    t.enqueue(forwarded, id)
+  else:
+    t.enqueue(message, id)
+  await req.respondEmpty(Http202)
+
+type Endpoint = enum
+  epMcp, epLegacySse, epLegacyMessages, epNone
+
+func endpointOf(t: HttpServerTransport, path: string): Endpoint =
+  if path == t.path: epMcp
+  elif t.legacySsePath.len > 0 and path == t.legacySsePath: epLegacySse
+  elif t.legacySsePath.len > 0 and path == t.legacyMessagesPath: epLegacyMessages
+  else: epNone
+
 proc dispatch(t: HttpServerTransport, req: Request) {.async.} =
-  if req.url.path != t.path:
+  let endpoint = t.endpointOf(req.url.path)
+  if endpoint == epNone:
     await req.respondEmpty(Http404)
     return
   let origin = req.header("Origin")
   if origin.isSome and not t.originAllowed(origin.get):
     await req.respondEmpty(Http403)
     return
-  case req.reqMethod
-  of HttpPost:
-    await t.handlePost(req)
-  of HttpDelete:
-    await t.handleDelete(req)
-  of HttpGet:
-    if t.getStreamAvailable:
-      await t.handleGet(req)
+  case endpoint
+  of epLegacySse:
+    if req.reqMethod == HttpGet:
+      await t.handleLegacySse(req)
     else:
-      await req.respondEmpty(Http405, {"Allow": "POST, DELETE"})
+      await req.respondEmpty(Http405, {"Allow": "GET"})
+  of epLegacyMessages:
+    if req.reqMethod == HttpPost:
+      await t.handleLegacyPost(req)
+    else:
+      await req.respondEmpty(Http405, {"Allow": "POST"})
   else:
-    let allowed = if t.getStreamAvailable: "POST, GET, DELETE" else: "POST, DELETE"
-    await req.respondEmpty(Http405, {"Allow": allowed})
+    case req.reqMethod
+    of HttpPost:
+      await t.handlePost(req)
+    of HttpDelete:
+      await t.handleDelete(req)
+    of HttpGet:
+      if t.getStreamAvailable:
+        await t.handleGet(req)
+      else:
+        await req.respondEmpty(Http405, {"Allow": "POST, DELETE"})
+    else:
+      let allowed = if t.getStreamAvailable: "POST, GET, DELETE" else: "POST, DELETE"
+      await req.respondEmpty(Http405, {"Allow": allowed})
 
 proc handle(t: HttpServerTransport, req: Request) {.async.} =
   try:
@@ -649,7 +771,12 @@ proc serve*(t: HttpServerTransport): Future[void] {.async.} =
   asyncCheck t.sweepIdleSessions()
   while t.started:
     if t.server.shouldAcceptRequest():
-      await t.server.acceptRequest(requestHandler)
+      try:
+        await t.server.acceptRequest(requestHandler)
+      except OSError:
+        # `close` closes the listening socket under a pending accept.
+        if t.started:
+          raise
     else:
       # Out of file descriptors; let in-flight exchanges finish.
       await sleepAsync(50)

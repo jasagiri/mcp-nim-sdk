@@ -17,6 +17,7 @@ import ./transport
 const
   MaxHeadSize = 64 * 1024
   ReadSize = 16 * 1024
+  MaxRedirects = 5
 
 type
   BodyMode = enum
@@ -103,11 +104,8 @@ proc chooseBodyMode(r: WireResponse, httpMethod: HttpMethod) =
     r.mode = bmUntilClose
   r.finished = r.mode == bmNone or (r.mode == bmLength and r.remaining == 0)
 
-proc request*(url: string, httpMethod: HttpMethod, headers: HttpHeaders = nil,
-              body = ""): Future[WireResponse] {.async.} =
-  ## Send the request and read the response head. The body is read with
-  ## `readSome` / `readAll`. Raises McpTransportError when the server cannot
-  ## be reached or does not answer in HTTP.
+proc requestOnce(url: string, httpMethod: HttpMethod, headers: HttpHeaders,
+                 body: string): Future[WireResponse] {.async.} =
   let target = parseUri(url)
   let response = WireResponse()
   try:
@@ -148,6 +146,37 @@ proc close*(r: WireResponse) =
     r.socket.close()
 
 func isFinished*(r: WireResponse): bool = r.finished
+
+func isRedirect(code: HttpCode, httpMethod: HttpMethod): bool =
+  ## A 307 or 308 repeats the request as it was; the older codes turn a POST
+  ## into a GET, which would drop the message, so they are not followed.
+  code in [Http307, Http308] or
+    (httpMethod == HttpGet and code in [Http301, Http302, Http303])
+
+func sameOrigin(a, b: Uri): bool =
+  a.scheme == b.scheme and a.hostname.toLowerAscii() == b.hostname.toLowerAscii() and
+    a.port == b.port
+
+proc request*(url: string, httpMethod: HttpMethod, headers: HttpHeaders = nil,
+              body = ""): Future[WireResponse] {.async.} =
+  ## Send the request and read the response head. The body is read with
+  ## `readSome` / `readAll`. Redirects to the same server are followed (up
+  ## to `MaxRedirects`); one to another server is an error, so that
+  ## credentials in `headers` do not travel there. Raises McpTransportError
+  ## when the server cannot be reached or does not answer in HTTP.
+  var current = url
+  for hop in 0 .. MaxRedirects:
+    let response = await requestOnce(current, httpMethod, headers, body)
+    let location = response.headers.getOrDefault("Location")
+    if not isRedirect(response.code, httpMethod) or location.len == 0:
+      return response
+    let next = combine(parseUri(current), parseUri(location))
+    response.close()
+    if not sameOrigin(parseUri(current), next):
+      raise httpFailure(current & " redirects to another server, " & $next)
+    current = $next
+  raise httpFailure("more than " & $MaxRedirects & " redirects from " & url)
+
 
 proc decodeChunked(r: WireResponse, input: string): string =
   var i = 0
@@ -201,7 +230,11 @@ proc readSome*(r: WireResponse): Future[string] {.async.} =
       data = move(r.pending)
       r.pending = ""
     else:
-      data = await r.socket.recv(ReadSize)
+      try:
+        data = await r.socket.recv(ReadSize)
+      except OSError as e:
+        r.close()
+        raise httpFailure("reading the response failed: " & e.msg)
     case r.mode
     of bmNone:
       r.finished = true
