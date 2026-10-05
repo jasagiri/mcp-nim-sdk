@@ -1,0 +1,179 @@
+{
+  "meta": {
+    "toolVersion": "0.2.11",
+    "commit": "03f387e5d55fbb700afb73a4261c3109253749e4",
+    "commitSource": "git rev-parse HEAD",
+    "workspace": "/Users/jasagiri/GodsGolemInc/sources/foundation/mcp-nim-sdk",
+    "startedAt": "2026-10-19T12:39:07Z",
+    "totalDurationMs": 48250,
+    "timeoutMs": 60000,
+    "buildTimeoutMs": 0,
+    "cpuLimitSec": 0,
+    "parallelism": 1,
+    "shadowCopy": {
+      "ignoreRules": "git",
+      "ignoredPaths": 9,
+      "bytesPerWorker": 6329676,
+      "workers": 1,
+      "bytesTotal": 6329676,
+      "freeBytes": 29873393664
+    },
+    "config": {
+      "sources": [
+        "src/protocol/version.nim"
+      ],
+      "exclude": [],
+      "buildCommand": "",
+      "testCommand": "nim c -r --hints:off tests/external/test_version_build_config.nim",
+      "setup": "",
+      "mutators": [
+        "SDL"
+      ],
+      "customMutators": [],
+      "parallelism": 1,
+      "timeoutMs": 0,
+      "testOutput": "unittest",
+      "baselineRuns": 0,
+      "cpuTimeoutSec": 0,
+      "minScore": 0.0,
+      "reports": [
+        "console",
+        "json"
+      ],
+      "outputDir": ".nim-muter/version-config-probe",
+      "incremental": false,
+      "detectEquivalents": false,
+      "excludeMacroBodies": true
+    }
+  },
+  "baseline": {
+    "durationMs": 4282,
+    "buildMs": 0,
+    "runMs": 4282,
+    "runs": 3,
+    "renderedDurationMs": 4315,
+    "tests": [
+      "protocol version: build-time settings::Given an oldest version that is not newer than the default, when the build is checked, then it is accepted",
+      "protocol version: build-time settings::Given a default version that was never released, when the build is checked, then it fails naming the setting",
+      "protocol version: build-time settings::Given an oldest version that was never released, when the build is checked, then it fails naming the setting",
+      "protocol version: build-time settings::Given an oldest version newer than the default, when the build is checked, then it fails naming both"
+    ],
+    "success": true
+  },
+  "summary": {
+    "killed": 3,
+    "survived": 3,
+    "timeout": 0,
+    "compileError": 1,
+    "runError": 0,
+    "skipped": 0,
+    "equivalent": 0,
+    "total": 7,
+    "score": 0.5
+  },
+  "mutants": [
+    {
+      "id": "1",
+      "fingerprint": "src/protocol/version.nim:SDL:a17ede9411b3cb84:0",
+      "file": "src/protocol/version.nim",
+      "line": 34,
+      "col": 7,
+      "mutator": "SDL",
+      "original": "none(McpProtocolVersion)",
+      "replacement": "discard",
+      "status": "survived",
+      "durationMs": 4332,
+      "failedTests": [],
+      "stderrTail": "2026-10-19 21:39:26.150 xcodebuild[39364:87328431]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:26.151 xcodebuild[39366:87328434]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:26.157 xcodebuild[39362:87328432]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:26.158 xcodebuild[39363:87328436]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:26.158 xcodebuild[39361:87328428]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:26.171 xcodebuild[39367:87328443]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:26.172 xcodebuild[39360:87328439]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:26.175 xcodebuild[39365:87328441]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:26.378 xcodebuild[39364:87328418] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n2026-10-19 21:39:26.379 xcodebuild[39361:87328412] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n2026-10-19 21:39:26.380 xcodebuild[39366:87328424] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n2026-10-19 21:39:26.384 xcodebuild[39363:87328420] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n2026-10-19 21:39:26.385 xcodebuild[39362:87328411] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n2026-10-19 21:39:26.388 xcodebuild[39367:87328427] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n2026-10-19 21:39:26.390 xcodebuild[39365:87328423] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n2026-10-19 21:39:26.395 xcodebuild[39360:87328408] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n\n[Suite] protocol version: build-time settings\n  [OK] Given an oldest version that is not newer than the default, when the build is checked, then it is accepted\n  [OK] Given a default version that was never released, when the build is checked, then it fails naming the setting\n  [OK] Given an oldest version that was never released, when the build is checked, then it fails naming the setting\n  [OK] Given an oldest version newer than the default, when the build is checked, then it fails naming both\n"
+    },
+    {
+      "id": "2",
+      "fingerprint": "src/protocol/version.nim:SDL:b7a6a1bf00e257ad:0",
+      "file": "src/protocol/version.nim",
+      "line": 39,
+      "col": 5,
+      "mutator": "SDL",
+      "original": "doAssert parsed.isSome, \"mcpDefaultProtocolVersion is not a released MCP version: \" &; mcpDefaultProtocolVersion",
+      "replacement": "discard",
+      "status": "killed",
+      "durationMs": 4349,
+      "failedTests": [
+        "protocol version: build-time settings::Given a default version that was never released, when the build is checked, then it fails naming the setting"
+      ],
+      "stderrTail": "2026-10-19 21:39:30.481 xcodebuild[39476:87328798]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:30.481 xcodebuild[39479:87328792]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:30.483 xcodebuild[39473:87328788]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:30.489 xcodebuild[39478:87328796]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:30.498 xcodebuild[39474:87328793]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:30.498 xcodebuild[39475:87328790]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:30.499 xcodebuild[39477:87328786]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:30.529 xcodebuild[39480:87328800]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:30.704 xcodebuild[39478:87328779] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n2026-10-19 21:39:30.705 xcodebuild[39477:87328776] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n2026-10-19 21:39:30.705 xcodebuild[39474:87328769] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n2026-10-19 21:39:30.706 xcodebuild[39479:87328781] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n2026-10-19 21:39:30.709 xcodebuild[39475:87328771] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n2026-10-19 21:39:30.709 xcodebuild[39473:87328764] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n2026-10-19 21:39:30.712 xcodebuild[39476:87328772] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n2026-10-19 21:39:30.756 xcodebuild[39480:87328784] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n\n[Suite] protocol version: build-time settings\n  [OK] Given an oldest version that is not newer than the default, when the build is checked, then it is accepted\n    /Users/jasagiri/GodsGolemInc/sources/foundation/mcp-nim-sdk/.nim-muter/version-config-probe/worker_0/tests/external/test_version_build_config.nim(36, 10): Check failed: namesDefault\n  [FAILED] Given a default version that was never released, when the build is checked, then it fails naming the setting\n  [OK] Given an oldest version that was never released, when the build is checked, then it fails naming the setting\n  [OK] Given an oldest version newer than the default, when the build is checked, then it fails naming both\nError: execution of an external program failed: '/Users/jasagiri/GodsGolemInc/sources/foundation/mcp-nim-sdk/.nim-muter/version-config-probe/worker_0/build/tests/test_version_build_config'\n"
+    },
+    {
+      "id": "3",
+      "fingerprint": "src/protocol/version.nim:SDL:e852ebda4e036971:0",
+      "file": "src/protocol/version.nim",
+      "line": 46,
+      "col": 5,
+      "mutator": "SDL",
+      "original": "doAssert parsed.isSome, \"mcpOldestProtocolVersion is not a released MCP version: \" &; mcpOldestProtocolVersion",
+      "replacement": "discard",
+      "status": "killed",
+      "durationMs": 4317,
+      "failedTests": [
+        "protocol version: build-time settings::Given an oldest version that was never released, when the build is checked, then it fails naming the setting"
+      ],
+      "stderrTail": "2026-10-19 21:39:34.827 xcodebuild[39590:87329187]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:34.832 xcodebuild[39586:87329180]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:34.832 xcodebuild[39591:87329189]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:34.836 xcodebuild[39587:87329182]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:34.840 xcodebuild[39588:87329185]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:34.847 xcodebuild[39592:87329191]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:34.861 xcodebuild[39589:87329193]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:34.861 xcodebuild[39593:87329195]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:35.062 xcodebuild[39592:87329177] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n2026-10-19 21:39:35.064 xcodebuild[39590:87329174] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n2026-10-19 21:39:35.065 xcodebuild[39588:87329169] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n2026-10-19 21:39:35.065 xcodebuild[39587:87329161] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n2026-10-19 21:39:35.066 xcodebuild[39586:87329160] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n2026-10-19 21:39:35.068 xcodebuild[39591:87329173] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n2026-10-19 21:39:35.074 xcodebuild[39593:87329179] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n2026-10-19 21:39:35.076 xcodebuild[39589:87329166] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n\n[Suite] protocol version: build-time settings\n  [OK] Given an oldest version that is not newer than the default, when the build is checked, then it is accepted\n  [OK] Given a default version that was never released, when the build is checked, then it fails naming the setting\n    /Users/jasagiri/GodsGolemInc/sources/foundation/mcp-nim-sdk/.nim-muter/version-config-probe/worker_0/tests/external/test_version_build_config.nim(42, 10): Check failed: namesOldest\n  [FAILED] Given an oldest version that was never released, when the build is checked, then it fails naming the setting\n  [OK] Given an oldest version newer than the default, when the build is checked, then it fails naming both\nError: execution of an external program failed: '/Users/jasagiri/GodsGolemInc/sources/foundation/mcp-nim-sdk/.nim-muter/version-config-probe/worker_0/build/tests/test_version_build_config'\n"
+    },
+    {
+      "id": "4",
+      "fingerprint": "src/protocol/version.nim:SDL:7191500bfba3b9fd:0",
+      "file": "src/protocol/version.nim",
+      "line": 49,
+      "col": 5,
+      "mutator": "SDL",
+      "original": "doAssert parsed.get <= DefaultProtocolVersion, \"mcpOldestProtocolVersion \" &; mcpOldestProtocolVersion &; \" is newer than mcpDefaultProtocolVersion \" &; mcpDefaultProtocolVersion",
+      "replacement": "discard",
+      "status": "killed",
+      "durationMs": 4330,
+      "failedTests": [
+        "protocol version: build-time settings::Given an oldest version newer than the default, when the build is checked, then it fails naming both"
+      ],
+      "stderrTail": "2026-10-19 21:39:39.152 xcodebuild[39703:87329566]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:39.153 xcodebuild[39702:87329562]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:39.155 xcodebuild[39707:87329573]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:39.160 xcodebuild[39706:87329576]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:39.160 xcodebuild[39705:87329570]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:39.167 xcodebuild[39700:87329560]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:39.169 xcodebuild[39704:87329567]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:39.183 xcodebuild[39701:87329564]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:39.372 xcodebuild[39700:87329544] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n2026-10-19 21:39:39.373 xcodebuild[39702:87329543] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n2026-10-19 21:39:39.375 xcodebuild[39703:87329554] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n2026-10-19 21:39:39.376 xcodebuild[39706:87329556] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n2026-10-19 21:39:39.381 xcodebuild[39707:87329559] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n2026-10-19 21:39:39.382 xcodebuild[39704:87329549] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n2026-10-19 21:39:39.394 xcodebuild[39705:87329555] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n2026-10-19 21:39:39.398 xcodebuild[39701:87329542] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n\n[Suite] protocol version: build-time settings\n  [OK] Given an oldest version that is not newer than the default, when the build is checked, then it is accepted\n  [OK] Given a default version that was never released, when the build is checked, then it fails naming the setting\n  [OK] Given an oldest version that was never released, when the build is checked, then it fails naming the setting\n    /Users/jasagiri/GodsGolemInc/sources/foundation/mcp-nim-sdk/.nim-muter/version-config-probe/worker_0/tests/external/test_version_build_config.nim(47, 19): Check failed: exitCode != 0\n    exitCode was 0\n    /Users/jasagiri/GodsGolemInc/sources/foundation/mcp-nim-sdk/.nim-muter/version-config-probe/worker_0/tests/external/test_version_build_config.nim(49, 10): Check failed: namesBoth\n  [FAILED] Given an oldest version newer than the default, when the build is checked, then it fails naming both\nError: execution of an external program failed: '/Users/jasagiri/GodsGolemInc/sources/foundation/mcp-nim-sdk/.nim-muter/version-config-probe/worker_0/build/tests/test_version_build_config'\n"
+    },
+    {
+      "id": "5",
+      "fingerprint": "src/protocol/version.nim:SDL:109448fa3c82237c:0",
+      "file": "src/protocol/version.nim",
+      "line": 62,
+      "col": 13,
+      "mutator": "SDL",
+      "original": "result.add v",
+      "replacement": "discard",
+      "status": "survived",
+      "durationMs": 4358,
+      "failedTests": [],
+      "stderrTail": "2026-10-19 21:39:43.487 xcodebuild[39813:87329951]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:43.487 xcodebuild[39814:87329956]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:43.489 xcodebuild[39816:87329958]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:43.489 xcodebuild[39815:87329953]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:43.505 xcodebuild[39817:87329961]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:43.506 xcodebuild[39812:87329955]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:43.522 xcodebuild[39819:87329967]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:43.522 xcodebuild[39818:87329964]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:43.715 xcodebuild[39815:87329940] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n2026-10-19 21:39:43.716 xcodebuild[39812:87329938] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n2026-10-19 21:39:43.716 xcodebuild[39814:87329937] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n2026-10-19 21:39:43.717 xcodebuild[39813:87329934] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n2026-10-19 21:39:43.717 xcodebuild[39817:87329945] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n2026-10-19 21:39:43.717 xcodebuild[39816:87329941] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n2026-10-19 21:39:43.732 xcodebuild[39818:87329947] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n2026-10-19 21:39:43.740 xcodebuild[39819:87329950] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n\n[Suite] protocol version: build-time settings\n  [OK] Given an oldest version that is not newer than the default, when the build is checked, then it is accepted\n  [OK] Given a default version that was never released, when the build is checked, then it fails naming the setting\n  [OK] Given an oldest version that was never released, when the build is checked, then it fails naming the setting\n  [OK] Given an oldest version newer than the default, when the build is checked, then it fails naming both\n"
+    },
+    {
+      "id": "6",
+      "fingerprint": "src/protocol/version.nim:SDL:109448fa3c82237c:1",
+      "file": "src/protocol/version.nim",
+      "line": 92,
+      "col": 13,
+      "mutator": "SDL",
+      "original": "result.add v",
+      "replacement": "discard",
+      "status": "survived",
+      "durationMs": 4323,
+      "failedTests": [],
+      "stderrTail": "2026-10-19 21:39:47.844 xcodebuild[39929:87330317]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:47.847 xcodebuild[39928:87330321]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:47.848 xcodebuild[39934:87330327]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:47.849 xcodebuild[39931:87330319]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:47.852 xcodebuild[39932:87330325]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:47.853 xcodebuild[39930:87330322]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:47.861 xcodebuild[39933:87330329]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:47.871 xcodebuild[39935:87330331]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:48.068 xcodebuild[39930:87330308] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n2026-10-19 21:39:48.069 xcodebuild[39928:87330309] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n2026-10-19 21:39:48.069 xcodebuild[39932:87330311] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n2026-10-19 21:39:48.070 xcodebuild[39929:87330307] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n2026-10-19 21:39:48.070 xcodebuild[39931:87330304] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n2026-10-19 21:39:48.071 xcodebuild[39934:87330313] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n2026-10-19 21:39:48.074 xcodebuild[39933:87330306] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n2026-10-19 21:39:48.083 xcodebuild[39935:87330316] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n\n[Suite] protocol version: build-time settings\n  [OK] Given an oldest version that is not newer than the default, when the build is checked, then it is accepted\n  [OK] Given a default version that was never released, when the build is checked, then it fails naming the setting\n  [OK] Given an oldest version that was never released, when the build is checked, then it fails naming the setting\n  [OK] Given an oldest version newer than the default, when the build is checked, then it fails naming both\n"
+    },
+    {
+      "id": "7",
+      "fingerprint": "src/protocol/version.nim:SDL:94baf6b26f32e654:0",
+      "file": "src/protocol/version.nim",
+      "line": 108,
+      "col": 24,
+      "mutator": "SDL",
+      "original": "latestLegacyVersion(supported)",
+      "replacement": "discard",
+      "status": "compileError",
+      "durationMs": 4353,
+      "stderrTail": "2026-10-19 21:39:52.168 xcodebuild[40046:87330697]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:52.174 xcodebuild[40044:87330699]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:52.175 xcodebuild[40043:87330701]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:52.177 xcodebuild[40048:87330713]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:52.186 xcodebuild[40045:87330709]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:52.189 xcodebuild[40047:87330704]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:52.195 xcodebuild[40049:87330706]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:52.197 xcodebuild[40042:87330708]  DVTFilePathFSEvents: Failed to start fs event stream.\n2026-10-19 21:39:52.394 xcodebuild[40046:87330692] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n2026-10-19 21:39:52.397 xcodebuild[40044:87330681] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n2026-10-19 21:39:52.400 xcodebuild[40048:87330695] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n2026-10-19 21:39:52.403 xcodebuild[40045:87330686] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n2026-10-19 21:39:52.404 xcodebuild[40043:87330679] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n2026-10-19 21:39:52.406 xcodebuild[40047:87330693] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n2026-10-19 21:39:52.408 xcodebuild[40042:87330678] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n2026-10-19 21:39:52.415 xcodebuild[40049:87330696] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 \"Input/output error\". Using NSCachesDirectory instead.\n\n[Suite] protocol version: build-time settings\n    /Users/jasagiri/GodsGolemInc/sources/foundation/mcp-nim-sdk/.nim-muter/version-config-probe/worker_0/tests/external/test_version_build_config.nim(29, 19): Check failed: exitCode == 0\n    exitCode was 1\n    /Users/jasagiri/GodsGolemInc/sources/foundation/mcp-nim-sdk/.nim-muter/version-config-probe/worker_0/tests/external/test_version_build_config.nim(30, 18): Check failed: \"Error\" notin output\n    output was /Users/jasagiri/GodsGolemInc/sources/foundation/mcp-nim-sdk/.nim-muter/version-config-probe/worker_0/nim_muter_tmp/run_dIw37Z1f/mcp_version_config_40132_1/version.nim(103, 5) Error: expression 'parsed' is of type 'Option[version.McpProtocolVersion]' and has to be used (or discarded)\n\n  [FAILED] Given an oldest version that is not newer than the default, when the build is checked, then it is accepted\n  [OK] Given a default version that was never released, when the build is checked, then it fails naming the setting\n  [OK] Given an oldest version that was never released, when the build is checked, then it fails naming the setting\n  [OK] Given an oldest version newer than the default, when the build is checked, then it fails naming both\n"
+    }
+  ]
+}

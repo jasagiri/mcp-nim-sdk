@@ -1,0 +1,32 @@
+{
+  "version": 2,
+  "fileHashes": {
+    "src/protocol/version.nim": "28c5343c30130cd8"
+  },
+  "entries": {
+    "src/protocol/version.nim:28c5343c30130cd8:SDL:62:13:12:result.add v:discard": {
+      "status": "survived",
+      "durationMs": 4358
+    },
+    "src/protocol/version.nim:28c5343c30130cd8:SDL:92:13:12:result.add v:discard": {
+      "status": "survived",
+      "durationMs": 4323
+    },
+    "src/protocol/version.nim:28c5343c30130cd8:SDL:34:7:24:none(McpProtocolVersion):discard": {
+      "status": "survived",
+      "durationMs": 4332
+    },
+    "src/protocol/version.nim:28c5343c30130cd8:SDL:46:5:110:doAssert parsed.isSome, \"mcpOldestProtocolVersion is not a released MCP version: \" &; mcpOldestProtocolVersion:discard": {
+      "status": "killed",
+      "durationMs": 4317
+    },
+    "src/protocol/version.nim:28c5343c30130cd8:SDL:49:5:178:doAssert parsed.get <= DefaultProtocolVersion, \"mcpOldestProtocolVersion \" &; mcpOldestProtocolVersion &; \" is newer than mcpDefaultProtocolVersion \" &; mcpDefaultProtocolVersion:discard": {
+      "status": "killed",
+      "durationMs": 4330
+    },
+    "src/protocol/version.nim:28c5343c30130cd8:SDL:39:5:112:doAssert parsed.isSome, \"mcpDefaultProtocolVersion is not a released MCP version: \" &; mcpDefaultProtocolVersion:discard": {
+      "status": "killed",
+      "durationMs": 4349
+    }
+  }
+}

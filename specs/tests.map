@@ -2218,3 +2218,54 @@ MCP-SEC-WIRE-23 | tests/external/test_security_wire_shapes.nim | Given a well-fo
 MCP-SEC-WIRE-23 | tests/external/test_security_wire_shapes.nim | Given an item that is not an object, when its icons are read, then it is a shape error
 MCP-TASKS-7 | tests/external/test_tasks_store.nim | Given a time whose minute or second is out of range, when a task is read, then none is returned
 MCP-TASKS-7 | tests/external/test_tasks_store.nim | Given a time that is not RFC 3339, such as a signed year, when a task is read, then none is returned
+MCP-EXT-AUTH-1 | tests/test_ext_auth_client_credentials.nim | Given a 401 and a client secret, when a request is sent, then one client_credentials request carries resource and the secret in Basic, and the retry succeeds without any user step
+MCP-EXT-AUTH-1 | tests/test_ext_auth_client_credentials.nim | Given a signing key, when a request is sent, then the assertion names the issuer as audience, client_id is not in the body, and the retry succeeds
+MCP-EXT-AUTH-1 | tests/test_ext_auth_client_credentials.nim | Given a server that expects the token endpoint as audience, when the config asks for it, then the assertion carries the token endpoint URL
+MCP-EXT-AUTH-1 | tests/test_ext_auth_client_credentials.nim | Given a server that lists only client_secret_post besides private_key_jwt, when the client has a secret, then the secret goes in the body
+MCP-EXT-AUTH-1 | tests/test_ext_auth_client_credentials.nim | Given a stored token, when more requests are sent, then they reuse it and no second token is requested
+MCP-EXT-AUTH-1 | tests/test_ext_auth_client_credentials.nim | Given a token that has expired, when the next request is sent, then a new one is requested before it and the request needs no 401
+MCP-EXT-AUTH-1 | tests/test_ext_auth_client_credentials.nim | Given an access token, when requests are sent, then the token is in no URL and goes to the resource server only
+MCP-EXT-AUTH-2 | tests/test_ext_auth_client_credentials.nim | Given a challenge with a scope, when the token is requested, then it asks for that scope
+MCP-EXT-AUTH-2 | tests/test_ext_auth_client_credentials.nim | Given no scope in the challenge but scopes_supported, when the token is requested, then it asks for those
+MCP-EXT-AUTH-2 | tests/test_ext_auth_client_credentials.nim | Given scopes in the config, when the token is requested, then they replace the challenge's
+MCP-EXT-AUTH-2 | tests/test_ext_auth_client_credentials.nim | Given a 403 insufficient_scope, when the request is sent, then the client asks again for the union and the request succeeds
+MCP-EXT-AUTH-2 | tests/test_ext_auth_client_credentials.nim | Given a 403 that names a scope the client already asked for, when it repeats, then the client does not ask again and the request fails
+MCP-EXT-AUTH-3 | tests/test_ext_auth_client_credentials.nim | Given metadata without token_endpoint_auth_methods_supported, when a request is sent, then no credential is sent
+MCP-EXT-AUTH-3 | tests/test_ext_auth_client_credentials.nim | Given metadata that lists neither private_key_jwt nor client_secret_basic, when a request is sent, then no credential is sent
+MCP-EXT-AUTH-3 | tests/test_ext_auth_client_credentials.nim | Given a signing client and metadata without private_key_jwt, when a request is sent, then no assertion is sent
+MCP-EXT-AUTH-3 | tests/test_ext_auth_client_credentials.nim | Given a signer whose algorithm the server does not list, when a request is sent, then no assertion is sent
+MCP-EXT-AUTH-3 | tests/test_ext_auth_client_credentials.nim | Given metadata without token_endpoint_auth_signing_alg_values_supported, when a signing client sends a request, then no assertion is sent
+MCP-EXT-AUTH-3 | tests/test_ext_auth_client_credentials.nim | Given a secret client and metadata that lists only private_key_jwt, when a request is sent, then the secret is not sent
+MCP-EXT-AUTH-3 | tests/test_ext_auth_client_credentials.nim | Given a grant_types_supported without client_credentials, when a request is sent, then nothing is sent
+MCP-EXT-AUTH-3 | tests/test_ext_auth_client_credentials.nim | Given metadata whose token_endpoint_auth_methods_supported is not an array, when a request is sent, then it is refused
+MCP-EXT-AUTH-4 | tests/test_ext_auth_client_credentials.nim | Given a wrong secret, when a request is sent, then the failure names the error and neither the secret nor the assertion key
+MCP-EXT-AUTH-4 | tests/test_ext_auth_client_credentials.nim | Given an assertion signed with a wrong key, when a request is sent, then the failure does not contain the key
+MCP-EXT-AUTH-4 | tests/test_ext_auth_client_credentials.nim | Given a signer that fails, when a request is sent, then the failure is reported without the signer's message
+MCP-EXT-AUTH-4 | tests/test_ext_auth_client_credentials.nim | Given an authorization server that is not the one the resource lists, when the config chooses it, then the client refuses
+MCP-EXT-AUTH-4 | tests/test_ext_auth_client_credentials.nim | Given metadata that names another issuer, when a request is sent, then the client refuses and sends no credential
+MCP-EXT-AUTH-4 | tests/test_ext_auth_client_credentials.nim | Given metadata with a token endpoint that is plain http on a public host, when a request is sent, then the client refuses and sends no credential
+MCP-EXT-AUTH-4 | tests/test_ext_auth_client_credentials.nim | Given a token response that is not Bearer, when a request is sent, then the client refuses it
+MCP-EXT-AUTH-5 | tests/test_ext_auth_client_credentials.nim | Given a transport without the extension's auth, when the server answers 401, then the request fails and no token is requested
+MCP-EXT-AUTH-5 | tests/test_ext_auth_client_credentials.nim | Given a config that could never succeed, when the auth is made, then ValueError says why
+MCP-EXT-AUTH-6 | tests/test_ext_auth_client_credentials.nim | Given a client that declares the extension, when it sends a 2026-07-28 request, then clientCapabilities carries the identifier with empty settings
+MCP-EXT-AUTH-6 | tests/test_ext_auth_client_credentials.nim | Given a client that did not declare the extension, when it sends a request, then clientCapabilities has no extensions
+MCP-EXT-AUTH-6 | tests/test_ext_auth_client_credentials.nim | Given a server that advertises the extension, when a 2026-07-28 client discovers it, then the capabilities list the identifier
+MCP-EXT-AUTH-6 | tests/test_ext_auth_client_credentials.nim | Given a server that did not advertise it, when a client discovers it, then the capabilities do not list the identifier
+MCP-EXT-AUTH-6 | tests/test_ext_auth_client_credentials.nim | Given a build that speaks no version with the extensions capability, when the extension is declared or advertised, then ValueError names the limit and nothing is registered
+MCP-EXT-AUTH-6 | tests/test_ext_auth_client_credentials.nim | Given enableClientCredentials, when called, then the transport authorizes with it and the extension is declared
+MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given RFC 4231 test case 1, when HMAC-SHA256 of the fixtures is computed, then it matches (the signer the other tests rely on is right)
+MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given claims and a signer, when signed and decoded, then header, claims and signature come back and verify
+MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given the algorithm none or an empty signer, when a signer is made, then it is refused
+MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given a signer that raises or returns nothing, when signing, then OAuthError names neither the key nor the message
+MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given malformed JWTs, when decoded, then each is refused
+MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given a client assertion, when decoded, then iss and sub are the client, aud the server, and every one is fresh
+MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given a client secret sent with HTTP Basic, when client credentials are requested, then the secret is in the header only and a token comes back
+MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given a client id and secret with characters that need form encoding, when sent with Basic, then the server decodes them as RFC 6749 2.3.1 says
+MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given a client secret sent in the body, when client credentials are requested, then client_id and client_secret are form fields and there is no Authorization header
+MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given a signing key, when client credentials are requested with private_key_jwt, then the assertion authenticates and client_id is not sent
+MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given an assertion signed with another key, when client credentials are requested, then the server refuses and the error shows no secret
+MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given a wrong client secret, when requested, then OAuthServerError carries the error and not the secret
+MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given an ID-JAG like assertion, when the JWT bearer grant is requested, then grant_type and assertion are sent and the client authenticates separately
+MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given a subject token, when exchanged, then every RFC 8693 parameter is sent and the issued token is returned with its type and lifetime
+MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given an empty subject token, when exchanged, then nothing is sent
+MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given token exchange responses with a missing field, when parsed, then each is refused

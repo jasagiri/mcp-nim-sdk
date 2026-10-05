@@ -1,0 +1,328 @@
+{
+  "version": 2,
+  "fileHashes": {
+    "src/protocol/param_headers.nim": "2f593e20e4b8cd2f"
+  },
+  "entries": {
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:SDL:235:7:18:none(JsonRpcError):discard": {
+      "status": "survived",
+      "durationMs": 17553
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:LOR:97:30:45:key == \"properties\" and child.kind == JObject:<and -> or>": {
+      "status": "killed",
+      "durationMs": 13037
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:RVR:163:9:75:return some(\"argument \\'\" & binding.path.join(\".\") & \"\\' must be a string\"):<return default>": {
+      "status": "killed",
+      "durationMs": 31968
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:RVR:67:9:11:return true:<return default>": {
+      "status": "killed",
+      "durationMs": 10365
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:SDL:210:15:16:values.add value:discard": {
+      "status": "killed",
+      "durationMs": 13394
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:BLR:49:12:5:false:true": {
+      "status": "survived",
+      "durationMs": 27544
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:LOR:103:22:52:reason.isSome or not node.hasKey(ParamHeaderKeyword):<or -> and>": {
+      "status": "killed",
+      "durationMs": 14073
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:ROR:106:17:13:path.len == 0:<== -> !=>": {
+      "status": "killed",
+      "durationMs": 13884
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:ROR:48:15:13:name.len == 0:<== -> !=>": {
+      "status": "killed",
+      "durationMs": 14264
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:ROR:57:15:13:path.len == 0:<== -> !=>": {
+      "status": "killed",
+      "durationMs": 13691
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:RVR:49:5:12:return false:<return default>": {
+      "status": "survived",
+      "durationMs": 30355
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:ROR:146:36:21:current.kind == JNull:<== -> !=>": {
+      "status": "killed",
+      "durationMs": 14541
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:SDL:114:13:90:reject(ParamHeaderKeyword & \" of \" & pathText(path) &; \" is not an HTTP field-name token\"):discard": {
+      "status": "killed",
+      "durationMs": 13583
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:ROR:162:21:21:value.kind != JString:<!= -> ==>": {
+      "status": "killed",
+      "durationMs": 33022
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:ROR:168:32:38:value.getBiggestInt() > MaxSafeInteger:<> -> >=>": {
+      "status": "killed",
+      "durationMs": 33697
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:ROR:122:40:24:declared.kind != JString:<!= -> ==>": {
+      "status": "killed",
+      "durationMs": 13963
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:SDL:176:10:55:found.add (binding.headerName, encodeHeaderValue(text)):discard": {
+      "status": "killed",
+      "durationMs": 32050
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:SDL:178:7:12:none(string):discard": {
+      "status": "survived",
+      "durationMs": 32312
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:ROR:184:19:29:text.runeLen > MaxQuotedValue:<> -> >=>": {
+      "status": "survived",
+      "durationMs": 31171
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:ROR:194:16:22:fromHeader == fromBody:<== -> !=>": {
+      "status": "killed",
+      "durationMs": 13767
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:ROR:193:33:17:body.kind == JInt:<== -> !=>": {
+      "status": "killed",
+      "durationMs": 13531
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:ROR:109:62:28:annotation.getStr().len == 0:<== -> !=>": {
+      "status": "killed",
+      "durationMs": 13296
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:ROR:109:24:26:annotation.kind != JString:<!= -> ==>": {
+      "status": "killed",
+      "durationMs": 13414
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:ROR:173:21:19:value.kind != JBool:<!= -> ==>": {
+      "status": "killed",
+      "durationMs": 32597
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:ROR:214:21:14:values.len > 0:<> -> >=>": {
+      "status": "killed",
+      "durationMs": 31697
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:LOR:92:19:34:node.isNil or node.kind != JObject:<or -> and>": {
+      "status": "killed",
+      "durationMs": 12057
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:RVR:215:9:83:return mismatch(binding.headerName &; \" header is present but the argument is not\"):<return default>": {
+      "status": "killed",
+      "durationMs": 31380
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:ROR:92:32:20:node.kind != JObject:<!= -> ==>": {
+      "status": "killed",
+      "durationMs": 13880
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:LOR:122:23:42:declared.isNil or declared.kind != JString:<or -> and>": {
+      "status": "killed",
+      "durationMs": 13484
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:ROR:217:19:15:values.len == 0:<== -> !=>": {
+      "status": "killed",
+      "durationMs": 13854
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:RVR:220:7:70:return mismatch(binding.headerName & \" header is sent more than once\"):<return default>": {
+      "status": "killed",
+      "durationMs": 12081
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:LOR:92:43:51:node.isNil or node.kind != JObject or reason.isSome:<or -> and>": {
+      "status": "killed",
+      "durationMs": 13284
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:SDL:123:13:100:reject(ParamHeaderKeyword & \" of \" & pathText(path) &; \" needs the type string, integer or boolean\"):discard": {
+      "status": "killed",
+      "durationMs": 13987
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:LOR:143:22:40:current.isNil or current.kind != JObject:<or -> and>": {
+      "status": "killed",
+      "durationMs": 32495
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:ROR:228:24:21:text == body.getStr():<== -> !=>": {
+      "status": "killed",
+      "durationMs": 13734
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:BLR:69:16:4:true:false": {
+      "status": "killed",
+      "durationMs": 14036
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:BLR:53:14:5:false:true": {
+      "status": "killed",
+      "durationMs": 13977
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:ROR:66:14:25:key == ParamHeaderKeyword:<== -> !=>": {
+      "status": "killed",
+      "durationMs": 13251
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:LOR:66:36:51:key == ParamHeaderKeyword and child.kind != JObject:<and -> or>": {
+      "status": "killed",
+      "durationMs": 6362
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:SDL:131:13:61:bindings.add ParamBinding(name: name, path: path, kind: kind):discard": {
+      "status": "killed",
+      "durationMs": 14450
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:SDL:130:9:29:seen.incl name.toLowerAscii():discard": {
+      "status": "killed",
+      "durationMs": 13847
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:BLR:74:16:4:true:false": {
+      "status": "killed",
+      "durationMs": 12945
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:RVR:69:9:11:return true:<return default>": {
+      "status": "killed",
+      "durationMs": 13576
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:BLR:77:5:5:false:true": {
+      "status": "killed",
+      "durationMs": 11931
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:BLR:75:5:5:false:true": {
+      "status": "killed",
+      "durationMs": 12891
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:ROR:95:14:25:key == ParamHeaderKeyword:<== -> !=>": {
+      "status": "killed",
+      "durationMs": 13896
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:RVR:174:9:76:return some(\"argument \\'\" & binding.path.join(\".\") & \"\\' must be a boolean\"):<return default>": {
+      "status": "killed",
+      "durationMs": 32470
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:LOR:109:35:58:annotation.kind != JString or annotation.getStr().len == 0:<or -> and>": {
+      "status": "killed",
+      "durationMs": 13232
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:RVR:233:7:103:return mismatch(binding.headerName & \" header value \\'\" & quoted(text) &; \"\\' does not match the body\"):<return default>": {
+      "status": "killed",
+      "durationMs": 12868
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:ROR:166:21:18:value.kind != JInt:<!= -> ==>": {
+      "status": "killed",
+      "durationMs": 33185
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:ROR:97:14:19:key == \"properties\":<== -> !=>": {
+      "status": "killed",
+      "durationMs": 13467
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:SDL:118:13:68:reject(ParamHeaderKeyword & \" value \\'\" & name & \"\\' is used twice\"):discard": {
+      "status": "killed",
+      "durationMs": 14287
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:RVR:169:9:97:return some(\"argument \\'\" & binding.path.join(\".\") &; \"\\' is outside the range of safe integers\"):<return default>": {
+      "status": "killed",
+      "durationMs": 32198
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:ROR:209:30:29:name.toLowerAscii() == wanted:<== -> !=>": {
+      "status": "killed",
+      "durationMs": 13993
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:SDL:110:13:85:reject(ParamHeaderKeyword & \" of \" & pathText(path) &; \" must be a non-empty string\"):discard": {
+      "status": "killed",
+      "durationMs": 14630
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:RVR:74:9:11:return true:<return default>": {
+      "status": "killed",
+      "durationMs": 12348
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:ROR:168:74:39:value.getBiggestInt() < -MaxSafeInteger:<< -> <=>": {
+      "status": "killed",
+      "durationMs": 32493
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:ROR:97:45:21:child.kind == JObject:<== -> !=>": {
+      "status": "killed",
+      "durationMs": 13143
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:SDL:101:15:132:reject(ParamHeaderKeyword & \" appears under \\'\" & key & \"\\' of \" &; pathText(path) &; \", which a header value cannot be taken from\"):discard": {
+      "status": "killed",
+      "durationMs": 13579
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:BLR:196:5:5:false:true": {
+      "status": "killed",
+      "durationMs": 12443
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:SDL:187:7:84:some(JsonRpcError(code: ErrHeaderMismatch,; message: \"Header mismatch: \" & message)):discard": {
+      "status": "killed",
+      "durationMs": 14511
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:ROR:229:22:57:text ==; (; if body.getBool():; \"true\"; else:; \"false\"; ):<== -> !=>": {
+      "status": "killed",
+      "durationMs": 14254
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:RVR:53:7:12:return false:<return default>": {
+      "status": "killed",
+      "durationMs": 14726
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:LOR:122:51:103:declared.isNil or declared.kind != JString or; declared.getStr() notin [\"string\", \"integer\", \"boolean\"]:<or -> and>": {
+      "status": "killed",
+      "durationMs": 13802
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:RVR:167:9:77:return some(\"argument \\'\" & binding.path.join(\".\") & \"\\' must be an integer\"):<return default>": {
+      "status": "killed",
+      "durationMs": 33056
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:SDL:99:15:27:walk(property, path & name):discard": {
+      "status": "killed",
+      "durationMs": 13871
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:SDL:177:10:17:headers.add found:discard": {
+      "status": "killed",
+      "durationMs": 32107
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:LOR:168:49:82:value.getBiggestInt() > MaxSafeInteger or; value.getBiggestInt() < -MaxSafeInteger:<or -> and>": {
+      "status": "killed",
+      "durationMs": 31604
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:BLR:231:13:5:false:true": {
+      "status": "killed",
+      "durationMs": 13420
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:SDL:133:7:22:walk(inputSchema, @[]):discard": {
+      "status": "killed",
+      "durationMs": 14376
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:LOR:146:20:38:current.isNil or current.kind == JNull:<or -> and>": {
+      "status": "killed",
+      "durationMs": 31392
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:BLR:67:16:4:true:false": {
+      "status": "killed",
+      "durationMs": 11341
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:BLR:70:5:5:false:true": {
+      "status": "killed",
+      "durationMs": 13449
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:RVR:224:7:66:return mismatch(binding.headerName & \" header value is malformed\"):<return default>": {
+      "status": "killed",
+      "durationMs": 25719
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:SDL:107:13:72:reject(ParamHeaderKeyword & \" is on the schema root, not on a property\"):discard": {
+      "status": "killed",
+      "durationMs": 13715
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:RVR:218:7:58:return mismatch(binding.headerName & \" header is missing\"):<return default>": {
+      "status": "killed",
+      "durationMs": 14328
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:ROR:219:19:14:values.len > 1:<> -> >=>": {
+      "status": "killed",
+      "durationMs": 12685
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:BLR:54:3:4:true:false": {
+      "status": "killed",
+      "durationMs": 15293
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:ROR:66:51:21:child.kind != JObject:<!= -> ==>": {
+      "status": "killed",
+      "durationMs": 9217
+    },
+    "src/protocol/param_headers.nim:2f593e20e4b8cd2f:ROR:143:38:23:current.kind != JObject:<!= -> ==>": {
+      "status": "killed",
+      "durationMs": 13968
+    }
+  }
+}
