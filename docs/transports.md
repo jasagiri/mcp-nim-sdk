@@ -47,5 +47,5 @@ Full programs: [examples/http_server.nim](../examples/http_server.nim), [example
 
 ## HTTP+SSE
 
-Status: not implemented.
+Status: implemented.
 

@@ -57,26 +57,47 @@ func implementationOf*(feature: McpFeature): Implementation {.raises: [].} =
     done("tests/test_modern_protocol.nim")
   of ftMirroredHeaders:
     done("tests/test_modern_protocol.nim", "tests/test_streamable_http.nim")
-  of ftResources, ftPrompts:
-    notYet("requests are routed to handlers, but no test covers it yet")
-  of ftLogging:
-    notYet("the server can send a log message, but no test covers it and the " &
-           "2026-07-28 per-request log level is not honoured")
+  of ftResources:
+    done("tests/test_server_errors.nim", "tests/test_server_pagination.nim",
+         "tests/test_client_operations.nim")
+  of ftResourceTemplates:
+    done("tests/test_server_pagination.nim", "tests/test_client_operations.nim")
+  of ftResourceSubscribe:
+    done("tests/test_server_notifications.nim", "tests/test_client_operations.nim")
+  of ftResourceNotFoundInvalidParams:
+    done("tests/test_server_errors.nim")
+  of ftPrompts:
+    done("tests/test_server_pagination.nim", "tests/test_client_operations.nim")
+  of ftPagination:
+    done("tests/test_server_pagination.nim", "tests/test_client_operations.nim")
+  of ftCompletion, ftCompletionContext, ftCompletionsCapability:
+    done("tests/test_server_completion.nim", "tests/test_client_operations.nim")
+  of ftLogging, ftLoggingSetLevel:
+    done("tests/test_server_logging.nim", "tests/test_client_operations.nim")
+  of ftProgress, ftProgressMessage, ftCancellation:
+    done("tests/test_server_progress_cancel.nim", "tests/test_client_requests.nim")
+  of ftSampling, ftRoots, ftServerInitiatedRequests:
+    done("tests/test_server_requests.nim", "tests/test_client_server_requests.nim")
+  of ftRootsListChanged:
+    done("tests/test_client_server_requests.nim")
+  of ftHttpSse:
+    done("tests/test_http_sse_legacy.nim")
+  of ftHttpGetStream, ftHttpResumability, ftSsePolling:
+    done("tests/test_http_streams.nim", "tests/test_http_client_streams.nim")
+  of ftJsonRpcBatch:
+    done("tests/test_http_streams.nim")
+  of ftAuthorization, ftProtectedResourceMetadata, ftIncrementalScopeConsent:
+    done("tests/test_auth_client_flow.nim", "tests/test_auth_resource_server.nim")
+  of ftAuthorizationServerMetadata, ftOidcDiscovery:
+    done("tests/test_auth_oauth_basics.nim", "tests/test_auth_client_flow.nim")
+  of ftDynamicClientRegistration, ftClientIdMetadataDocuments,
+     ftAuthDefaultEndpoints, ftResourceIndicators, ftIssuerParameter:
+    done("tests/test_auth_client_flow.nim")
   of ftMultiRoundTripRequests:
     notYet("the client raises on an input_required result")
-  of ftCancellation, ftProgress, ftPagination, ftResourceTemplates,
-     ftResourceSubscribe, ftCompletion, ftLoggingSetLevel, ftSampling, ftRoots,
-     ftRootsListChanged, ftServerInitiatedRequests, ftHttpSse, ftHttpGetStream,
-     ftHttpResumability, ftJsonRpcBatch, ftAuthorization, ftToolAnnotations,
-     ftAudioContent, ftProgressMessage, ftStructuredToolOutput, ftResourceLinks,
-     ftElicitation, ftTitleFields, ftCompletionContext,
-     ftProtectedResourceMetadata, ftTasks, ftIcons, ftUrlElicitation,
-     ftSamplingTools, ftClientIdMetadataDocuments, ftSubscriptionsListen,
-     ftParameterHeaders, ftExtensions, ftCompletionsCapability,
-     ftDynamicClientRegistration, ftAuthorizationServerMetadata,
-     ftAuthDefaultEndpoints,
-     ftResourceIndicators, ftOidcDiscovery, ftIncrementalScopeConsent,
-     ftEnumSchemas, ftElicitationDefaults, ftSsePolling,
-     ftImplementationDescription, ftJsonSchema2020, ftTraceContext,
-     ftIssuerParameter, ftResourceNotFoundInvalidParams:
+  of ftToolAnnotations, ftAudioContent, ftStructuredToolOutput, ftResourceLinks,
+     ftElicitation, ftTitleFields, ftTasks, ftIcons, ftUrlElicitation,
+     ftSamplingTools, ftSubscriptionsListen, ftParameterHeaders, ftExtensions,
+     ftEnumSchemas, ftElicitationDefaults, ftImplementationDescription,
+     ftJsonSchema2020, ftTraceContext:
     notYet()
