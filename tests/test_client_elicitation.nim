@@ -106,3 +106,27 @@ if LegacyDefault >= mpv20250618:
       let client = peer.connectedClient(LegacyDefault)
       expect McpError:
         client.setElicitationHandler(answering(eaCancel))
+
+if LegacyDefault >= mpv20251125:
+  suite "elicitation answered by the client: enum schemas (2025-11-25)":
+
+    let titled = %*{"message": "Pick", "requestedSchema": {"type": "object", "properties": {
+      "colour": {"type": "string", "oneOf": [{"const": "#f00", "title": "Red"}], "default": "#f00"}}}}
+
+    test "Given a connection of 2025-11-25, when the server asks for a titled enum, then the handler is called and its answer is checked against the options":
+      var called = false
+      let peer = startPeer(nil)
+      discard peer.connectedClient(mpv20251125, proc(client: McpClient) =
+        client.setElicitationHandler(proc(request: McpElicitRequest): Future[McpElicitResult] {.async.} =
+          called = true
+          return McpElicitResult(action: eaAccept, content: %*{"colour": "#f00"})))
+      peer.ask(%"e1", "elicitation/create", titled)
+      check peer.responseTo("e1")["result"]["content"]["colour"].getStr() == "#f00"
+      check called
+
+    test "Given a connection of 2025-06-18, when the server asks for a titled enum, then the client answers invalid params":
+      let peer = startPeer(nil)
+      discard peer.connectedClient(mpv20250618, proc(client: McpClient) =
+        client.setElicitationHandler(answering(eaCancel)))
+      peer.ask(%"e1", "elicitation/create", titled)
+      check peer.responseTo("e1")["error"]["code"].getInt() == -32602

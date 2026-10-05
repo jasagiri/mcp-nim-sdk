@@ -11,7 +11,22 @@ import protocol/version
 import protocol/features
 import protocol/elicitation
 
-const FormVersions = [mpv20250618, mpv20251125, mpv20260728]
+const
+  FormVersions = [mpv20250618, mpv20251125, mpv20260728]
+  EnumVersions = [mpv20251125, mpv20260728]
+
+func schemaOf(prop: JsonNode): JsonNode =
+  %*{"type": "object", "properties": {"x": prop}}
+
+let
+  titledSingle = %*{"type": "string", "oneOf": [
+    {"const": "#f00", "title": "Red"}, {"const": "#0f0", "title": "Green"}],
+    "default": "#f00"}
+  untitledMulti = %*{"type": "array", "minItems": 1, "maxItems": 2,
+    "items": {"type": "string", "enum": ["r", "g", "b"]}, "default": ["r", "g"]}
+  titledMulti = %*{"type": "array", "items": {"anyOf": [
+    {"const": "#f00", "title": "Red"}, {"const": "#0f0", "title": "Green"}]},
+    "default": ["#f00"]}
 
 let contactSchema = %*{
   "type": "object",
@@ -84,6 +99,87 @@ suite "elicitation: the requested schema":
   test "Given a boolean with a default in 2025-06-18, when checked, then it is accepted":
     let schema = %*{"type": "object", "properties": {"ok": {"type": "boolean", "default": true}}}
     check requestedSchemaProblems(schema, mpv20250618).len == 0
+
+suite "elicitation: enum schemas (2025-11-25)":
+
+  test "Given titled and untitled, single and multi-select enums, when checked in 2025-11-25 and later, then they are accepted":
+    let untitledSingle = %*{"type": "string", "enum": ["a", "b"], "default": "a"}
+    for v in EnumVersions:
+      for prop in [untitledSingle, titledSingle, untitledMulti, titledMulti]:
+        check requestedSchemaProblems(schemaOf(prop), v).len == 0
+
+  test "Given oneOf or an array property, when checked in 2025-06-18, then it is reported":
+    check requestedSchemaProblems(schemaOf(%*{"type": "string", "oneOf": [
+      {"const": "a", "title": "A"}]}), mpv20250618).mentions("oneOf")
+    check requestedSchemaProblems(schemaOf(untitledMulti), mpv20250618).mentions("array")
+
+  test "Given a oneOf entry without const or title, when checked, then the property is named":
+    for bad in [%*{"const": "a"}, %*{"title": "A"}, %*{"const": 1, "title": "A"}]:
+      let prop = %*{"type": "string", "oneOf": [bad]}
+      for v in EnumVersions:
+        check requestedSchemaProblems(schemaOf(prop), v).mentions("'x'")
+    check requestedSchemaProblems(schemaOf(%*{"type": "string", "oneOf": []}),
+                                  mpv20251125).mentions("oneOf")
+
+  test "Given a property with both enum and oneOf, when checked, then it is reported":
+    let both = %*{"type": "string", "enum": ["a"], "oneOf": [{"const": "a", "title": "A"}]}
+    check requestedSchemaProblems(schemaOf(both), mpv20251125).mentions("both")
+
+  test "Given a multi-select whose items are neither an enum nor anyOf, when checked, then it is reported":
+    for items in [%*{"type": "string"}, %*{"type": "integer"}, %*{"anyOf": []}, %*"x"]:
+      let prop = %*{"type": "array", "items": items}
+      check requestedSchemaProblems(schemaOf(prop), mpv20251125).mentions("items")
+
+  test "Given minItems above maxItems, when checked, then it is reported":
+    let prop = %*{"type": "array", "minItems": 3, "maxItems": 2,
+                  "items": {"type": "string", "enum": ["a", "b", "c"]}}
+    check requestedSchemaProblems(schemaOf(prop), mpv20251125).mentions("minItems")
+
+  test "Given a titled single-select, when a value is checked, then only a const is accepted":
+    let ask = %*{"message": "m", "requestedSchema": schemaOf(titledSingle)}
+    check elicitationResultProblems(%*{"action": "accept", "content": {"x": "#0f0"}}, ask).len == 0
+    check elicitationResultProblems(%*{"action": "accept", "content": {"x": "Green"}}, ask).mentions("'x'")
+
+  test "Given a multi-select, when values are checked, then they are an array of allowed values within the counts":
+    let ask = %*{"message": "m", "requestedSchema": schemaOf(untitledMulti)}
+    proc accepts(value: JsonNode): seq[string] =
+      elicitationResultProblems(%*{"action": "accept", "content": {"x": value}}, ask)
+    check accepts(%*["r", "b"]).len == 0
+    check accepts(%*"r").mentions("'x'")
+    check accepts(%*["r", "z"]).mentions("'x'")
+    check accepts(%*[1]).mentions("'x'")
+    check accepts(%*[]).mentions("minItems")
+    check accepts(%*["r", "g", "b"]).mentions("maxItems")
+
+  test "Given a titled multi-select, when values are checked, then they are consts":
+    let ask = %*{"message": "m", "requestedSchema": schemaOf(titledMulti)}
+    check elicitationResultProblems(%*{"action": "accept", "content": {"x": ["#f00"]}}, ask).len == 0
+    check elicitationResultProblems(%*{"action": "accept", "content": {"x": ["Red"]}},
+                                    ask).mentions("'x'")
+
+suite "elicitation: default values (2025-11-25)":
+
+  test "Given defaults on string, number, integer and enum properties, when checked in 2025-11-25 and later, then they are accepted":
+    for v in EnumVersions:
+      for prop in [%*{"type": "string", "default": "hi"}, %*{"type": "number", "default": 1.5},
+                   %*{"type": "integer", "default": 3, "minimum": 1},
+                   %*{"type": "string", "enum": ["a"], "default": "a"},
+                   %*{"type": "boolean", "default": false}]:
+        check requestedSchemaProblems(schemaOf(prop), v).len == 0
+
+  test "Given a default on a string, number or enum property, when checked in 2025-06-18, then it is reported":
+    for prop in [%*{"type": "string", "default": "hi"}, %*{"type": "number", "default": 1},
+                 %*{"type": "string", "enum": ["a"], "default": "a"}]:
+      check requestedSchemaProblems(schemaOf(prop), mpv20250618).mentions("default")
+
+  test "Given a default that does not fit its property, when checked, then it is reported":
+    for prop in [%*{"type": "string", "default": 5}, %*{"type": "integer", "default": 1.5},
+                 %*{"type": "number", "default": 5, "maximum": 3},
+                 %*{"type": "string", "minLength": 3, "default": "ab"},
+                 %*{"type": "string", "enum": ["a"], "default": "b"},
+                 %*{"type": "boolean", "default": "no"},
+                 %*{"type": "array", "items": {"type": "string", "enum": ["a"]}, "default": ["z"]}]:
+      check requestedSchemaProblems(schemaOf(prop), mpv20251125).mentions("default")
 
 suite "elicitation: a form request":
 

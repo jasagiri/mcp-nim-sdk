@@ -626,3 +626,21 @@ MCP-ELICIT-5 | tests/test_client_elicitation.nim | Given an elicitation handler,
 MCP-ELICIT-5 | tests/test_client_elicitation.nim | Given a request whose schema breaks the rules, when it arrives, then the client answers invalid params and the handler is not called
 MCP-ELICIT-5 | tests/test_client_elicitation.nim | Given no elicitation handler, when the server asks, then the client answers method not found
 MCP-ELICIT-5 | tests/test_client_elicitation.nim | Given a connection of a version before elicitation, when the server asks, then the client answers method not found
+MCP-ELICIT-ENUM-1 | tests/test_elicitation_payload.nim | Given titled and untitled, single and multi-select enums, when checked in 2025-11-25 and later, then they are accepted
+MCP-ELICIT-ENUM-1 | tests/test_elicitation_payload.nim | Given oneOf or an array property, when checked in 2025-06-18, then it is reported
+MCP-ELICIT-ENUM-1 | tests/test_elicitation_payload.nim | Given a oneOf entry without const or title, when checked, then the property is named
+MCP-ELICIT-ENUM-1 | tests/test_elicitation_payload.nim | Given a property with both enum and oneOf, when checked, then it is reported
+MCP-ELICIT-ENUM-1 | tests/test_elicitation_payload.nim | Given a multi-select whose items are neither an enum nor anyOf, when checked, then it is reported
+MCP-ELICIT-ENUM-1 | tests/test_elicitation_payload.nim | Given minItems above maxItems, when checked, then it is reported
+MCP-ELICIT-ENUM-1 | tests/test_elicitation_payload.nim | Given a plain enum with display names, when checked, then it is accepted in every version
+MCP-ELICIT-ENUM-2 | tests/test_elicitation_payload.nim | Given a titled single-select, when a value is checked, then only a const is accepted
+MCP-ELICIT-ENUM-2 | tests/test_elicitation_payload.nim | Given a multi-select, when values are checked, then they are an array of allowed values within the counts
+MCP-ELICIT-ENUM-2 | tests/test_elicitation_payload.nim | Given a titled multi-select, when values are checked, then they are consts
+MCP-ELICIT-ENUM-2 | tests/test_server_elicitation.nim | Given a client of 2025-11-25, when the server asks for a multi-select with defaults, then the schema is sent as given and the answer is checked against it
+MCP-ELICIT-ENUM-2 | tests/test_client_elicitation.nim | Given a connection of 2025-11-25, when the server asks for a titled enum, then the handler is called and its answer is checked against the options
+MCP-ELICIT-ENUM-3 | tests/test_server_elicitation.nim | Given a client of 2025-06-18, when the server asks for a multi-select, then McpPayloadError says the version has none and nothing is sent
+MCP-ELICIT-ENUM-3 | tests/test_client_elicitation.nim | Given a connection of 2025-06-18, when the server asks for a titled enum, then the client answers invalid params
+MCP-ELICIT-DEFAULT-1 | tests/test_elicitation_payload.nim | Given defaults on string, number, integer and enum properties, when checked in 2025-11-25 and later, then they are accepted
+MCP-ELICIT-DEFAULT-1 | tests/test_elicitation_payload.nim | Given a default on a string, number or enum property, when checked in 2025-06-18, then it is reported
+MCP-ELICIT-DEFAULT-1 | tests/test_elicitation_payload.nim | Given a boolean with a default in 2025-06-18, when checked, then it is accepted
+MCP-ELICIT-DEFAULT-2 | tests/test_elicitation_payload.nim | Given a default that does not fit its property, when checked, then it is reported

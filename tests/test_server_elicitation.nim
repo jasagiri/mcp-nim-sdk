@@ -129,3 +129,32 @@ if DefaultProtocolVersion >= mpv20250618:
         check asked.related == callId
         t.answer(asked, %*{"action": "accept", "content": {"name": "Mona"}})
         check textOf(t.responseTo(callId)) == "Mona"
+
+
+if DefaultProtocolVersion >= mpv20251125:
+  suite "elicitation requested by the server: enum schemas and defaults (2025-11-25)":
+
+    let colours = %*{"type": "object", "properties": {
+      "colours": {"type": "array", "items": {"anyOf": [
+        {"const": "#f00", "title": "Red"}, {"const": "#0f0", "title": "Green"}]},
+        "minItems": 1, "default": ["#f00"]},
+      "nick": {"type": "string", "default": "anon"}}}
+
+    test "Given a client of 2025-11-25, when the server asks for a multi-select with defaults, then the schema is sent as given and the answer is checked against it":
+      let server = elicitServer()
+      let t = server.attach()
+      discard server.connect(t, mpv20251125, clientCapabilities = FormOnly)
+      let pending = server.elicit("", "m", colours)
+      let asked = t.awaitRequest("elicitation/create")
+      check asked.message["params"]["requestedSchema"] == colours
+      t.answer(asked, %*{"action": "accept", "content": {"colours": ["Red"]}})
+      expect McpPayloadError:
+        discard waitFor pending
+
+    test "Given a client of 2025-06-18, when the server asks for a multi-select, then McpPayloadError says the version has none and nothing is sent":
+      let server = elicitServer()
+      let t = server.attach()
+      discard server.connect(t, mpv20250618, clientCapabilities = FormOnly)
+      expect McpPayloadError:
+        discard waitFor server.elicit("", "m", colours)
+      check t.messagesOf("elicitation/create").len == 0

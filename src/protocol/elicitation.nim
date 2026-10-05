@@ -11,7 +11,7 @@
 ## keyword the schema does not define is not checked (JSON Schema ignores
 ## what it does not know), `pattern` among them: it is not enforced.
 
-import std/[json, math, strutils, times, unicode]
+import std/[json, math, options, strutils, times, unicode]
 import ./version
 import ./features
 import ./payload
@@ -145,6 +145,42 @@ func plainEnumProblems(prop: JsonNode, subject: string): seq[string] =
           result.add subject & ": enumNames holds a name that is not a string"
           break
 
+func titledOptionProblems(options: JsonNode, key, subject: string): seq[string] =
+  ## `options` is the oneOf / anyOf list of a titled enum: {const, title}.
+  if options.kind != JArray or options.len == 0:
+    return @[subject & ": " & key & " is not a non-empty array"]
+  for option in options:
+    if option.kind != JObject or not option.isString("const") or
+       not option.isString("title"):
+      return @[subject & ": " & key & " holds an entry without a string const and title"]
+
+func countBoundsProblems(prop: JsonNode, subject: string): seq[string] =
+  for key in ["minItems", "maxItems"]:
+    if prop.has(key) and (prop[key].kind != JInt or prop[key].getInt() < 0):
+      result.add subject & ": " & key & " is not a non-negative integer"
+  if result.len == 0 and prop.has("minItems") and prop.has("maxItems") and
+     prop["minItems"].getInt() > prop["maxItems"].getInt():
+    result.add subject & ": minItems is above maxItems"
+
+func choicesOf(options: JsonNode): seq[JsonNode] =
+  ## The values a titled enum offers.
+  for option in options:
+    result.add option["const"]
+
+func allowedValues(prop: JsonNode): Option[seq[JsonNode]] =
+  ## The values a single- or multi-select property offers, none for a
+  ## property that is not an enum. The property has passed its checks.
+  if prop{"type"} == %"string":
+    if prop.has("enum"): return some(prop["enum"].getElems())
+    if prop.has("oneOf"): return some(choicesOf(prop["oneOf"]))
+  elif prop{"type"} == %"array":
+    let items = prop["items"]
+    if items.has("enum"): return some(items["enum"].getElems())
+    return some(choicesOf(items["anyOf"]))
+  none(seq[JsonNode])
+
+func valueProblems(subject: string, prop, value: JsonNode): seq[string]
+
 func propertyProblems(name: string, prop: JsonNode,
                       version: McpProtocolVersion): seq[string] =
   let subject = "property '" & name & "'"
@@ -154,8 +190,15 @@ func propertyProblems(name: string, prop: JsonNode,
     return @[subject & ": type is missing"]
   case prop["type"].getStr()
   of "string":
-    if prop.has("enum"):
+    if prop.has("enum") and prop.has("oneOf"):
+      result.add subject & ": has both enum and oneOf"
+    elif prop.has("enum"):
       result.add plainEnumProblems(prop, subject)
+    elif prop.has("oneOf"):
+      if not version.has(ftEnumSchemas):
+        result.add subject & ": oneOf is not part of protocol version " & $version
+      else:
+        result.add titledOptionProblems(prop["oneOf"], "oneOf", subject)
     else:
       result.add boundsProblems(prop, "minLength", "maxLength", subject)
       if prop.has("format"):
@@ -166,11 +209,28 @@ func propertyProblems(name: string, prop: JsonNode,
   of "boolean":
     discard
   of "array":
-    result.add subject & ": array properties are not supported"
+    if not version.has(ftEnumSchemas):
+      return @[subject & ": array properties are not part of protocol version " & $version]
+    result.add countBoundsProblems(prop, subject)
+    let items = prop{"items"}
+    if items.isNil or items.kind != JObject:
+      return result & (subject & ": items is missing")
+    if items.has("enum"):
+      if items{"type"} != %"string":
+        result.add subject & ": items of an enum must have type \"string\""
+      result.add plainEnumProblems(items, subject & " items")
+    elif items.has("anyOf"):
+      result.add titledOptionProblems(items["anyOf"], "items.anyOf", subject)
+    else:
+      result.add subject & ": items must be a string enum or anyOf titled options"
   else:
     result.add subject & ": type '" & prop["type"].getStr() & "' is not supported"
-  if prop.has("default") and prop["type"].getStr() != "boolean":
-    result.add subject & ": default is not allowed here"
+  if result.len == 0 and prop.has("default"):
+    if prop["type"].getStr() != "boolean" and not version.has(ftElicitationDefaults):
+      result.add subject & ": default is not part of protocol version " & $version
+    else:
+      for problem in valueProblems("default of " & subject, prop, prop["default"]):
+        result.add problem
 
 func requestedSchemaProblems*(schema: JsonNode,
                               version: McpProtocolVersion): seq[string] =
@@ -239,19 +299,16 @@ func modeSupported*(capability: McpElicitationCapability, mode: ElicitMode): boo
   of emForm: capability.form
   of emUrl: capability.url
 
-func valueProblems(name: string, prop, value: JsonNode): seq[string] =
-  let subject = "content '" & name & "'"
+func valueProblems(subject: string, prop, value: JsonNode): seq[string] =
+  ## Whether `value` fits `prop`, a property that has passed its checks.
   case prop{"type"}.getStr()
   of "string":
     if value.kind != JString:
       return @[subject & " is not a string"]
     let text = value.getStr()
-    if prop.has("enum"):
-      var known = false
-      for v in prop["enum"]:
-        known = known or v == value
-      if not known:
-        result.add subject & " is not one of the enum values"
+    let allowed = allowedValues(prop)
+    if allowed.isSome and value notin allowed.get:
+      result.add subject & " is not one of the enum values"
     let length = text.runeLen
     if prop.has("minLength") and length < prop["minLength"].getInt():
       result.add subject & " is shorter than minLength"
@@ -271,13 +328,26 @@ func valueProblems(name: string, prop, value: JsonNode): seq[string] =
   of "boolean":
     if value.kind != JBool:
       result.add subject & " is not a boolean"
+  of "array":
+    if value.kind != JArray:
+      return @[subject & " is not an array"]
+    let allowed = allowedValues(prop).get
+    for entry in value:
+      if entry.kind != JString or entry notin allowed:
+        result.add subject & " holds a value that is not one of the enum values"
+        break
+    if prop.has("minItems") and value.len < prop["minItems"].getInt():
+      result.add subject & " has fewer entries than minItems"
+    if prop.has("maxItems") and value.len > prop["maxItems"].getInt():
+      result.add subject & " has more entries than maxItems"
   else:
     discard
 
 func contentProblems*(requestedSchema, content: JsonNode): seq[string] =
-  ## Whether `content` matches `requestedSchema`: required properties are
-  ## there and each given value fits its property. Properties the schema does
-  ## not list are allowed, as JSON Schema allows them.
+  ## Whether `content` matches `requestedSchema`, which must have passed
+  ## `requestedSchemaProblems`: required properties are there and each given
+  ## value fits its property. Properties the schema does not list are
+  ## allowed, as JSON Schema allows them.
   if content.isNil or content.kind != JObject:
     return @["content is not an object"]
   let properties = requestedSchema{"properties"}
@@ -290,7 +360,7 @@ func contentProblems*(requestedSchema, content: JsonNode): seq[string] =
     return
   for name, value in content.pairs:
     if properties.hasKey(name):
-      result.add valueProblems(name, properties[name], value)
+      result.add valueProblems("content '" & name & "'", properties[name], value)
 
 func elicitationResultProblems*(answer, params: JsonNode): seq[string] =
   ## What is wrong with `result`, the answer to a request with `params`.
