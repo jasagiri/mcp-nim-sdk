@@ -31,12 +31,6 @@ type
       ## `io.modelcontextprotocol/model-immediate-response`: text a host may
       ## hand to the model as the tool result while the task runs.
 
-  TaskStatusCallback* = proc(task: McpTask) {.closure.}
-
-  SleepProc* = proc(ms: int): Future[void] {.closure.}
-    ## How `waitForTask` waits between polls; replace it to wait on something
-    ## other than the clock.
-
   ClientTaskConfig* = object
     list*: bool = true
     cancel*: bool = true
@@ -46,9 +40,6 @@ type
     elicitation*: bool = false
       ## Likewise for `elicitation/create`, once its handler is set.
     pageSize*: int = 50
-
-const DefaultPollIntervalMs* = 1_000
-  ## Used when a task suggests no `pollInterval`.
 
 proc taskSupport*(tool: McpTool): TaskSupport =
   ## What the tool says about being called as a task; nothing is forbidden.
@@ -141,20 +132,8 @@ proc waitForTask*(client: McpClient, taskId: string, onStatus: TaskStatusCallbac
   ## until the task is over or needs input; the task then is returned. A task
   ## that needs input is waited for with `taskResult`, not by polling.
   ## `onStatus` sees every change of status.
-  var lastStatus = none(TaskStatus)
-  while true:
-    let task = await client.getTask(taskId, options)
-    if lastStatus != some(task.status):
-      lastStatus = some(task.status)
-      if not onStatus.isNil:
-        onStatus(task)
-    if task.status != tsWorking:
-      return task
-    let pause = task.pollIntervalMs.get(defaultPollMs)
-    if sleep.isNil:
-      await sleepAsync(pause)
-    else:
-      await sleep(pause)
+  return await pollTask(proc(): Future[McpTask] = client.getTask(taskId, options),
+                        onStatus, sleep, defaultPollMs)
 
 proc callToolWithTask*(client: McpClient, tool: McpTool, arguments: JsonNode = newJObject(),
                        ttlMs = none(int64), onStatus: TaskStatusCallback = nil,

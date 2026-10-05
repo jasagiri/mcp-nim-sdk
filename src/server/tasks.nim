@@ -126,3 +126,100 @@ proc enableTasks*(server: McpServer, config = TaskConfig(),
     return some(newJsonRpcResponse(request.id,
                                    createTaskResult(created, config.immediateResponse))))
   tasksStore
+
+# The server as the requestor of a task-augmented request of a client
+
+proc requireClientTasks(server: McpServer, session, operation: string): McpTasksCapability =
+  ## What the client on `session` declared, once its connection is one that
+  ## has tasks. Raises McpCapabilityError otherwise: nothing is to be sent.
+  let known = server.session(session)
+  if known.negotiatedVersion.isNone or not known.negotiatedVersion.get.has(ftTasks):
+    raise newException(McpCapabilityError,
+      operation & ": the client on session '" & session & "' has not agreed on a version with tasks")
+  if known.clientCapabilities.isNone or known.clientCapabilities.get.tasks.isNone:
+    raise newException(McpCapabilityError,
+      operation & ": the client on session '" & session & "' did not declare the tasks capability")
+  known.clientCapabilities.get.tasks.get
+
+proc taskOf(node: JsonNode, operation: string): McpTask =
+  let parsed = taskFromJson(node)
+  if parsed.isNone:
+    raise newException(McpRemoteError, operation & ": the answer is not a task")
+  parsed.get
+
+proc requestAsTask*(server: McpServer, session, methodName: string, params: JsonNode,
+                    ttlMs = none(int64), relatedRequestId = "",
+                    relatedTask = ""): Future[McpTask] {.async.} =
+  ## Send `methodName` to the client on `session` as a task-augmented request
+  ## and return the task the client made of it. Known: sampling/createMessage
+  ## and elicitation/create, which the client must have declared in
+  ## `tasks.requests`; raises McpCapabilityError, sending nothing, if not.
+  let declared = server.requireClientTasks(session, methodName)
+  let allowed = case methodName
+    of "sampling/createMessage": declared.samplingCreateMessage
+    of "elicitation/create": declared.elicitationCreate
+    else: false
+  if not allowed:
+    raise newException(McpCapabilityError,
+      methodName & ": the client on session '" & session & "' did not declare tasks for it")
+  var augmented = params.copy()
+  augmented["task"] = if ttlMs.isSome: %*{"ttl": ttlMs.get} else: newJObject()
+  let answer = resultOf(await server.request(session, methodName, augmented,
+    relatedRequestId, relatedTask = relatedTask), methodName)
+  return taskOf(answer{"task"}, methodName)
+
+proc getClientTask*(server: McpServer, session, taskId: string): Future[McpTask] {.async.} =
+  discard server.requireClientTasks(session, "tasks/get")
+  return taskOf(resultOf(await server.request(session, "tasks/get", %*{"taskId": taskId}),
+                         "tasks/get"), "tasks/get")
+
+proc listClientTasks*(server: McpServer, session: string,
+                      cursor = none(string)): Future[tuple[tasks: seq[McpTask],
+                                                           nextCursor: Option[string]]] {.async.} =
+  ## One page of the client's tasks; needs its `tasks.list`.
+  let declared = server.requireClientTasks(session, "tasks/list")
+  if not declared.list:
+    raise newException(McpCapabilityError,
+      "tasks/list: the client on session '" & session & "' did not declare tasks.list")
+  let answer = resultOf(await server.request(session, "tasks/list",
+    if cursor.isSome: %*{"cursor": cursor.get} else: newJObject()), "tasks/list")
+  for item in answer{"tasks"}.getElems():
+    result.tasks.add taskOf(item, "tasks/list")
+  if answer{"nextCursor"}.kind == JString:
+    result.nextCursor = some(answer["nextCursor"].getStr())
+
+proc cancelClientTask*(server: McpServer, session, taskId: string): Future[McpTask] {.async.} =
+  ## Needs the client's `tasks.cancel`.
+  let declared = server.requireClientTasks(session, "tasks/cancel")
+  if not declared.cancel:
+    raise newException(McpCapabilityError,
+      "tasks/cancel: the client on session '" & session & "' did not declare tasks.cancel")
+  return taskOf(resultOf(await server.request(session, "tasks/cancel", %*{"taskId": taskId}),
+                         "tasks/cancel"), "tasks/cancel")
+
+proc clientTaskResult*(server: McpServer, session, taskId: string,
+                       timeoutMs = 0): Future[JsonNode] {.async.} =
+  ## What the request behind the client's task returned, as the client sent
+  ## it; waits until the task is over (`timeoutMs` 0: no limit). A request
+  ## that ended in a JSON-RPC error raises McpRemoteError.
+  discard server.requireClientTasks(session, "tasks/result")
+  return resultOf(await server.request(session, "tasks/result", %*{"taskId": taskId},
+                                       timeoutMs = timeoutMs), "tasks/result")
+
+proc awaitClientTask*(server: McpServer, session, taskId: string,
+                      onStatus: TaskStatusCallback = nil, sleep: SleepProc = nil,
+                      defaultPollMs = DefaultPollIntervalMs): Future[McpTask] =
+  ## Poll the client's task until it is over or needs input.
+  pollTask(proc(): Future[McpTask] = server.getClientTask(session, taskId),
+           onStatus, sleep, defaultPollMs)
+
+proc createMessageAsTask*(server: McpServer, session: string, params: JsonNode,
+                          ttlMs = none(int64), onStatus: TaskStatusCallback = nil,
+                          sleep: SleepProc = nil,
+                          defaultPollMs = DefaultPollIntervalMs): Future[JsonNode] {.async.} =
+  ## `createMessage` through a task of the client: create it, wait for it,
+  ## fetch the result. The client must have declared
+  ## `tasks.requests.sampling.createMessage`.
+  let created = await server.requestAsTask(session, "sampling/createMessage", params, ttlMs)
+  discard await server.awaitClientTask(session, created.taskId, onStatus, sleep, defaultPollMs)
+  return await server.clientTaskResult(session, created.taskId)

@@ -499,3 +499,84 @@ suite "tasks server: input_required":
     untilTrue("the sampling request", proc(): bool =
       fx.transport.messagesOf("sampling/createMessage").len == 1)
     check fx.transport.messagesOf("sampling/createMessage")[0].related == waiting
+
+proc immediately(): Future[void] =
+  result = newFuture[void]("immediately")
+  result.complete()
+
+proc noSleep(ms: int): Future[void] =
+  immediately()
+
+proc clientTask(id, status: string): JsonNode =
+  %*{"taskId": id, "status": status, "createdAt": "2025-11-25T10:30:00Z",
+     "lastUpdatedAt": "2025-11-25T10:40:00Z", "ttl": 60000, "pollInterval": 100}
+
+proc answerNext(fx: Fixture, session, methodName: string, nth: int, body: JsonNode) =
+  ## Answer the `nth` (from 0) request of the server with this method as the
+  ## client of `session` would.
+  untilTrue("the " & methodName & " request", proc(): bool =
+    fx.transport.messagesOf(methodName).len > nth)
+  let request = fx.transport.messagesOf(methodName)[nth].message
+  fx.transport.inject(session, %*{"jsonrpc": "2.0", "id": request["id"], "result": body})
+
+let samplingParams = %*{"messages": [], "maxTokens": 1}
+let samplingTasks = %*{"sampling": {}, "tasks": {"list": {}, "cancel": {}, "requests": {"sampling": {"createMessage": {}}}}}
+
+suite "tasks server: as the requestor of a task-augmented sampling request":
+  taskTest "Given a client that allows tasks on sampling, when the server asks as a task, then it creates, polls and fetches the result":
+    let fx = fixture()
+    let peer = fx.connectTo(clientCapabilities = samplingTasks)
+    let work = fx.server.createMessageAsTask(peer.session, samplingParams,
+                                             ttlMs = some(20_000'i64), sleep = noSleep)
+    fx.answerNext("", "sampling/createMessage", 0, %*{"task": clientTask("c-1", "working")})
+    let created = fx.transport.messagesOf("sampling/createMessage")[0].message["params"]
+    check created["task"]["ttl"].getInt() == 20_000
+    fx.answerNext("", "tasks/get", 0, clientTask("c-1", "working"))
+    fx.answerNext("", "tasks/get", 1, clientTask("c-1", "completed"))
+    fx.answerNext("", "tasks/result", 0, %*{"role": "assistant", "model": "m",
+      "content": {"type": "text", "text": "hi"}, "_meta": {RelatedTask: {"taskId": "c-1"}}})
+    let answer = waitFor work
+    check answer["content"]["text"].getStr() == "hi"
+    check fx.transport.messagesOf("tasks/get")[0].message["params"]["taskId"].getStr() == "c-1"
+
+  taskTest "Given a client that did not allow tasks on sampling, when the server asks as a task, then nothing is sent":
+    let fx = fixture()
+    let peer = fx.connectTo(clientCapabilities = %*{"sampling": {}, "tasks": {"list": {}}})
+    expect McpCapabilityError:
+      discard waitFor fx.server.createMessageAsTask(peer.session, samplingParams)
+    check fx.transport.messagesOf("sampling/createMessage").len == 0
+
+  taskTest "Given a client of an older version, when the server asks as a task, then nothing is sent":
+    let fx = fixture()
+    let peer = fx.connectTo(version = mpv20250618, clientCapabilities = samplingTasks)
+    expect McpCapabilityError:
+      discard waitFor fx.server.createMessageAsTask(peer.session, samplingParams)
+    check fx.transport.messagesOf("sampling/createMessage").len == 0
+
+  taskTest "Given a task of the client that failed with an error, when its result is fetched, then the error is raised":
+    let fx = fixture()
+    let peer = fx.connectTo(clientCapabilities = samplingTasks)
+    let work = fx.server.createMessageAsTask(peer.session, samplingParams, sleep = noSleep)
+    fx.answerNext("", "sampling/createMessage", 0, %*{"task": clientTask("c-1", "working")})
+    fx.answerNext("", "tasks/get", 0, clientTask("c-1", "failed"))
+    untilTrue("the tasks/result request", proc(): bool =
+      fx.transport.messagesOf("tasks/result").len == 1)
+    let request = fx.transport.messagesOf("tasks/result")[0].message
+    fx.transport.inject("", %*{"jsonrpc": "2.0", "id": request["id"],
+      "error": {"code": -1, "message": "User rejected sampling request"}})
+    try:
+      discard waitFor work
+      fail()
+    except McpRemoteError as e:
+      check e.code == -1
+
+  taskTest "Given a client without the cancel capability, when the server cancels one of its tasks, then nothing is sent":
+    let fx = fixture()
+    let peer = fx.connectTo(clientCapabilities = %*{"sampling": {}, "tasks": {
+      "requests": {"sampling": {"createMessage": {}}}}})
+    expect McpCapabilityError:
+      discard waitFor fx.server.cancelClientTask(peer.session, "c-1")
+    expect McpCapabilityError:
+      discard waitFor fx.server.listClientTasks(peer.session)
+    check fx.transport.messagesOf("tasks/cancel").len == 0
+    check fx.transport.messagesOf("tasks/list").len == 0

@@ -84,6 +84,29 @@ type
   TaskWork* = tuple[response: Future[JsonRpcResponse],
                     cancel: proc(reason: string) {.closure.}]
 
+const DefaultPollIntervalMs* = 1_000
+  ## Used when a task suggests no `pollInterval`.
+
+proc pollTask*(fetch: proc(): Future[McpTask] {.closure.}, onStatus: TaskStatusCallback,
+               sleep: SleepProc, defaultPollMs: int): Future[McpTask] {.async.} =
+  ## Poll a task of a peer with `fetch` (a `tasks/get`), at the task's own
+  ## `pollInterval` when it suggests one, until it is no longer working: over,
+  ## or needing input. `onStatus` sees every change of status.
+  var lastStatus = none(TaskStatus)
+  while true:
+    let task = await fetch()
+    if lastStatus != some(task.status):
+      lastStatus = some(task.status)
+      if not onStatus.isNil:
+        onStatus(task)
+    if task.status != tsWorking:
+      return task
+    let pause = task.pollIntervalMs.get(defaultPollMs)
+    if sleep.isNil:
+      await sleepAsync(pause)
+    else:
+      await sleep(pause)
+
 proc finishWhenDone(store: TaskStore, taskId: string,
                     response: Future[JsonRpcResponse]) {.async.} =
   var outcome: TaskOutcome

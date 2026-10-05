@@ -59,6 +59,12 @@ type
   TaskClock* = proc(): int64 {.closure.}
     ## Milliseconds since the Unix epoch.
 
+  TaskStatusCallback* = proc(task: McpTask) {.closure.}
+
+  SleepProc* = proc(ms: int): Future[void] {.closure.}
+    ## How a requestor waits between polls; replace it to wait on something
+    ## other than the clock.
+
   TaskEntry = ref object
     task: McpTask
     owner: string
