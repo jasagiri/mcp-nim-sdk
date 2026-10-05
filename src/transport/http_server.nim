@@ -34,7 +34,7 @@
 ## server's messages follow as `message` events. The connection is the
 ## session. Set `legacySsePath` to "" to turn it off.
 ##
-## TODO (2026-07-28): `subscriptions/listen` and `Mcp-Param-*` validation.
+## TODO (2026-07-28): `subscriptions/listen`.
 
 import std/[asyncdispatch, asyncnet, asynchttpserver, httpcore, json, tables, deques,
              options, uri, nativesockets, sysrand, strutils, sequtils, times]
@@ -43,6 +43,7 @@ import ./sse_stream
 import ./auth_hook
 import ../protocol/types
 import ../protocol/modern
+import ../protocol/param_headers
 import ../protocol/version
 import ../protocol/features
 
@@ -372,8 +373,27 @@ func originAllowed(t: HttpServerTransport, origin: string): bool =
 
 func header(req: Request, name: string): Option[string] =
   ## A header sent on several lines (Accept often is) reads as one value.
-  if req.headers.hasKey(name): some(seq[string](req.headers[name]).join(", "))
+  ## Whitespace around a value is not part of it (RFC 9110 section 5.5).
+  if req.headers.hasKey(name):
+    some(seq[string](req.headers[name]).join(", ").strip(chars = {' ', '\t'}))
   else: none(string)
+
+func paramHeaders(req: Request): seq[(string, string)] =
+  ## The Mcp-Param-* headers of the request, one entry per line sent.
+  let prefix = ParamHeaderPrefix.toLowerAscii()
+  for name, values in req.headers.table.pairs:
+    if name.toLowerAscii().startsWith(prefix):
+      for value in values:
+        result.add (name, value.strip(chars = {' ', '\t'}))
+
+func namesModernVersion(req: Request): bool =
+  ## Whether the version header says 2026-07-28 or later, which is how a
+  ## request without the `_meta` fields still reveals its era.
+  let named = req.header(HeaderProtocolVersion)
+  if named.isNone:
+    return false
+  let parsed = parseProtocolVersion(named.get)
+  parsed.isSome and isModern(parsed.get)
 
 func httpStatusFor(response: JsonRpcResponse, modern: bool): HttpCode =
   ## 2026-07-28 maps some protocol errors onto HTTP statuses.
@@ -385,8 +405,10 @@ func httpStatusFor(response: JsonRpcResponse, modern: bool): HttpCode =
      ErrHeaderMismatch: Http400
   else: Http200
 
-proc enqueue(t: HttpServerTransport, message: JsonNode, session: string) =
-  let incoming = McpIncoming(message: message, session: session)
+proc enqueue(t: HttpServerTransport, message: JsonNode, session: string,
+             paramHeaders = none(seq[(string, string)])) =
+  let incoming = McpIncoming(message: message, session: session,
+                             paramHeaders: paramHeaders)
   if t.receiveWaiters.len > 0:
     t.receiveWaiters.popFirst().complete(incoming)
   else:
@@ -554,7 +576,8 @@ proc handlePost(t: HttpServerTransport, req: Request) {.async.} =
   let isRpcRequest = not isBatch and isRequest(rpc)
   let methodName = rpc{"method"}.getStr()
   let params = rpc{"params"}
-  let modern = isModern(t.protocolVersion) and isRpcRequest and isModernRequest(params)
+  let modern = isModern(t.protocolVersion) and isRpcRequest and
+               (isModernRequest(params) or req.namesModernVersion)
   let opensSession = not modern and isRpcRequest and methodName == "initialize"
   if isBatch and items.anyIt(isRequest(it) and it{"method"}.getStr() == "initialize"):
     await req.respondError(Http400, nil,
@@ -564,13 +587,18 @@ proc handlePost(t: HttpServerTransport, req: Request) {.async.} =
   var session: Session = nil
   var sessionId = ""
   if modern:
+    # A request that lacks the per-request fields is malformed (-32602)
+    # whatever its headers say; only a well-formed one can disagree with them.
+    let rejection = validateModernRequest(params, versionsUpTo(t.protocolVersion))
+    if rejection.isSome and rejection.get.code == ErrInvalidParams:
+      await req.respondError(Http400, rpc{"id"}, rejection.get)
+      return
     let mismatch = checkRequestHeaders(
       req.header(HeaderProtocolVersion), req.header(HeaderMethod),
       req.header(HeaderName), methodName, params)
     if mismatch.isSome:
       await req.respondError(Http400, rpc{"id"}, mismatch.get)
       return
-    let rejection = validateModernRequest(params, versionsUpTo(t.protocolVersion))
     if rejection.isSome:
       await req.respondError(Http400, rpc{"id"}, rejection.get)
       return
@@ -624,7 +652,8 @@ proc handlePost(t: HttpServerTransport, req: Request) {.async.} =
     t.exchanges[exchangeId] = Exchange(group: group, idNode: item["id"])
     let forwarded = item.copy()
     forwarded["id"] = %exchangeId
-    t.enqueue(forwarded, sessionId)
+    t.enqueue(forwarded, sessionId,
+              if modern: some(req.paramHeaders) else: none(seq[(string, string)]))
 
   # The connection is watched for the whole exchange, which is why it is
   # closed at the end: the watcher would otherwise eat the next request.

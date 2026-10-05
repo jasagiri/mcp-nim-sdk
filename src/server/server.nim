@@ -4,6 +4,7 @@ import std/[asyncdispatch, json, options, sequtils, sets, strutils, tables]
 import ../protocol/types
 import ../protocol/lifecycle
 import ../protocol/modern
+import ../protocol/param_headers
 import ../protocol/features
 import ../protocol/log_level
 import ../transport/transport
@@ -690,6 +691,26 @@ proc listPage(request: JsonRpcRequest, handler: ListHandler,
     payload["nextCursor"] = %page.nextCursor.get
   return newJsonRpcResponse(request.id, payload)
 
+proc withoutInvalidParamHeaders(response: JsonRpcResponse): JsonRpcResponse =
+  ## A tool whose `x-mcp-header` declarations are invalid cannot be called
+  ## over HTTP, and clients drop it; the server does not publish it. The
+  ## handler's mistake is logged, not hidden.
+  result = response
+  if response.result.isNone:
+    return
+  let tools = response.result.get{"tools"}
+  if tools.isNil or tools.kind != JArray:
+    return
+  var kept = newJArray()
+  for tool in tools:
+    let declared = declaredParamHeaders(tool{"inputSchema"})
+    if declared.invalid.isSome:
+      stderr.writeLine("[mcp-server] not listing tool '" & tool{"name"}.getStr() &
+                       "': " & declared.invalid.get)
+    else:
+      kept.add tool
+  response.result.get["tools"] = kept
+
 proc toolFailureResult(message: string): JsonNode =
   %*{"content": [{"type": "text", "text": message}], "isError": true}
 
@@ -699,6 +720,41 @@ proc requireObjectResult(request: JsonRpcRequest, node: JsonNode): Option[JsonRp
       "Handler for " & request.`method` & " returned a result that is not an object"))
   else:
     none(JsonRpcResponse)
+
+const MaxToolListPages = 1000
+  ## A handler that never stops issuing cursors must not hold a request.
+
+proc toolInputSchema(server: McpServer, name: string): Future[Option[JsonNode]] {.async.} =
+  ## The `inputSchema` the tool list publishes for `name`. The list is read
+  ## afresh: tools may change between calls.
+  if server.toolsList.isNil:
+    return none(JsonNode)
+  var cursor = none(string)
+  for _ in 1 .. MaxToolListPages:
+    let page = await server.toolsList(cursor)
+    for tool in page.items:
+      if tool{"name"}.getStr() == name:
+        let schema = tool{"inputSchema"}
+        return if schema.isNil: none(JsonNode) else: some(schema)
+    if page.nextCursor.isNone:
+      return none(JsonNode)
+    cursor = page.nextCursor
+  stderr.writeLine("[mcp-server] tools/list of this server has more than " &
+                   $MaxToolListPages & " pages; '" & name & "' was not found")
+  none(JsonNode)
+
+proc paramHeaderMismatch(server: McpServer, name: string, arguments: JsonNode,
+                         received: seq[(string, string)]): Future[Option[JsonRpcError]] {.async.} =
+  ## Whether the `Mcp-Param-*` headers of an HTTP call disagree with the
+  ## arguments, by what the tool declared. A tool the server does not list,
+  ## or lists with invalid declarations, has nothing to check.
+  let schema = await server.toolInputSchema(name)
+  if schema.isNone:
+    return none(JsonRpcError)
+  let declared = declaredParamHeaders(schema.get)
+  if declared.invalid.isSome:
+    return none(JsonRpcError)
+  return checkParamHeaders(declared.bindings, arguments, received)
 
 proc dispatchStandard(server: McpServer, request: JsonRpcRequest,
                       ctx: McpRequestContext): Future[JsonRpcResponse] {.async.} =
@@ -749,7 +805,10 @@ proc dispatchStandard(server: McpServer, request: JsonRpcRequest,
   of "tools/list":
     if caps.tools.isNone or server.toolsList.isNil:
       return notSupported(request)
-    return await listPage(request, server.toolsList, "tools")
+    let page = await listPage(request, server.toolsList, "tools")
+    if ctx.version.has(ftParameterHeaders):
+      return withoutInvalidParamHeaders(page)
+    return page
 
   of "tools/call":
     if caps.tools.isNone or server.toolCall.isNil:
@@ -761,6 +820,11 @@ proc dispatchStandard(server: McpServer, request: JsonRpcRequest,
     if not arguments.isNil and arguments.kind != JObject:
       return newJsonRpcErrorResponse(request.id, ErrInvalidParams,
         "tools/call arguments must be an object")
+    if request.paramHeaders.isSome and ctx.version.has(ftParameterHeaders):
+      let mismatch = await server.paramHeaderMismatch(name.get, arguments,
+                                                      request.paramHeaders.get)
+      if mismatch.isSome:
+        return newJsonRpcErrorResponse(request.id, mismatch.get.code, mismatch.get.message)
     var callResult: JsonNode
     try:
       callResult = await server.toolCall(ctx, name.get,
@@ -943,6 +1007,7 @@ proc processMessages*(server: McpServer): Future[void] {.async.} =
       if isRequest(json):
         var request = decodeRequest(json)
         request.session = incoming.session
+        request.paramHeaders = incoming.paramHeaders
         asyncCheck server.processRequest(request)
       elif isNotification(json):
         var notification = decodeNotification(json)

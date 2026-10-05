@@ -39,6 +39,10 @@ type
     message*: JsonNode
     session*: string
       ## Empty for a transport with a single peer.
+    paramHeaders*: Option[seq[(string, string)]]
+      ## The `Mcp-Param-*` headers of the HTTP request that carried the
+      ## message, for the server to check against the arguments. None where
+      ## the transport has no headers (stdio).
 
   McpTransportError* = object of CatchableError
     code*: int

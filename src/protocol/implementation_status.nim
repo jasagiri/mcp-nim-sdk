@@ -56,6 +56,8 @@ func implementationOf*(feature: McpFeature): Implementation {.raises: [].} =
     done("tests/test_modern_protocol.nim", "tests/test_era_matrix.nim")
   of ftCacheHints:
     done("tests/test_modern_protocol.nim")
+  of ftParameterHeaders:
+    done("tests/test_param_headers.nim", "tests/test_param_headers_http.nim")
   of ftMirroredHeaders:
     done("tests/test_modern_protocol.nim", "tests/test_streamable_http.nim")
   of ftResources:
@@ -105,7 +107,7 @@ func implementationOf*(feature: McpFeature): Implementation {.raises: [].} =
     notYet("the client raises on an input_required result")
   of ftToolAnnotations, ftAudioContent, ftStructuredToolOutput, ftResourceLinks,
      ftElicitation, ftTitleFields, ftTasks, ftIcons, ftUrlElicitation,
-     ftSamplingTools, ftSubscriptionsListen, ftParameterHeaders, ftExtensions,
+     ftSamplingTools, ftSubscriptionsListen, ftExtensions,
      ftEnumSchemas, ftElicitationDefaults, ftImplementationDescription,
      ftJsonSchema2020, ftTraceContext:
     notYet()

@@ -69,3 +69,38 @@ Feature: Streamable HTTP transport
     And a stream that ends without the response gives a local stream-closed error
     And an HTTP error with a JSON-RPC error body arrives as the response, under the request's own id
     And an HTTP error without one raises McpTransportError naming the status
+
+  @spec:MCP-HTTP-10 @feature:ftParameterHeaders
+  Scenario: A server checks the Mcp-Param headers of a tool call against its arguments
+    Given a server with a tool whose input schema marks a property with x-mcp-header
+    When a call carries the Mcp-Param header with the argument's value, plain or in the Base64 form
+    Then the answer is 200
+    And a header that differs, or is missing though the argument is there, or is sent though the argument is not, is 400 header mismatch
+    And an argument that is null or absent expects no header
+
+  @spec:MCP-HTTP-11 @feature:ftParameterHeaders
+  Scenario: Invalid x-mcp-header declarations keep a tool out of the list
+    Given tools of which one declares x-mcp-header on a number, a duplicate name or an unreachable property
+    When the server lists tools, it leaves the invalid tool out
+    And a client that is handed such a list drops the invalid tool and keeps the others
+
+  @spec:MCP-HTTP-12 @feature:ftParameterHeaders
+  Scenario: A client mirrors the arguments of a tool call into Mcp-Param headers
+    Given a client that has listed the tools of a 2026-07-28 server
+    When it calls a tool with x-mcp-header properties
+    Then the request carries one Mcp-Param header per argument present, encoded as the specification says
+    And an argument that cannot be mirrored is refused before anything is sent
+
+  @spec:MCP-HTTP-13 @feature:ftParameterHeaders
+  Scenario: Which tool declarations are valid
+    Given the rules for x-mcp-header values and the properties they may sit on
+    When declarations are read from an input schema
+    Then a token name on a string, integer or boolean property reachable through properties keys is valid
+    And every other declaration makes the tool invalid
+
+  @spec:MCP-HTTP-14 @feature:ftMirroredHeaders
+  Scenario: The version header also tells a 2026-07-28 request from an older one
+    Given a server that speaks 2026-07-28
+    When a request names 2026-07-28 in its version header but lacks the per-request fields in the body
+    Then the answer is 400 invalid params, not an error about sessions
+    And an Mcp-Name with spaces or tabs around it is read without them

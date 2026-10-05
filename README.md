@@ -8,7 +8,7 @@ This checkout speaks MCP **2026-07-28** and every earlier version: `2024-11-05`,
 
 ## Features of 2026-07-28
 
-33 of the 51 features of `2026-07-28` are implemented in this tree. The table lists every feature the specification of `2026-07-28` defines; "not implemented" means this SDK does not do it yet.
+34 of the 51 features of `2026-07-28` are implemented in this tree. The table lists every feature the specification of `2026-07-28` defines; "not implemented" means this SDK does not do it yet.
 
 | Feature | Status | Specification |
 |---|---|---|
@@ -48,7 +48,7 @@ This checkout speaks MCP **2026-07-28** and every earlier version: `2024-11-05`,
 | subscriptions/listen | not implemented | [basic/patterns/subscriptions](https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/subscriptions) |
 | cache hints (ttlMs, cacheScope) | implemented | [server/utilities/caching](https://modelcontextprotocol.io/specification/2026-07-28/server/utilities/caching) |
 | mirrored request headers (Mcp-Method, Mcp-Name) | implemented | [basic/transports/streamable-http](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http) |
-| parameter headers (x-mcp-header) | not implemented | [basic/transports/streamable-http](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http) |
+| parameter headers (x-mcp-header) | implemented | [basic/transports/streamable-http](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http) |
 | extensions | not implemented | [basic](https://modelcontextprotocol.io/specification/2026-07-28/basic) |
 | completions capability | implemented | [server/utilities/completion](https://modelcontextprotocol.io/specification/2026-07-28/server/utilities/completion) |
 | dynamic client registration | implemented | [basic/authorization/client-registration](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization/client-registration) |

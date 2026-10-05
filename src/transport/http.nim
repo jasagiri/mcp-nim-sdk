@@ -19,7 +19,11 @@
 ## `cancelRequest` gives up on a request by closing its connection, which is
 ## how a 2026-07-28 client cancels.
 ##
-## TODO (2026-07-28): Mcp-Param-* headers from x-mcp-header annotations.
+## From 2026-07-28 a `tools/call` also carries the `Mcp-Param-*` headers its
+## tool declared with `x-mcp-header`. The transport learns the declarations
+## from the `tools/list` results that pass through it, and drops from those
+## results the tools whose declarations are invalid. A call to a tool never
+## listed through this transport carries no such headers.
 
 import std/[asyncdispatch, httpcore, json, options, strutils, deques, tables, sets]
 import ./transport
@@ -28,6 +32,7 @@ import ./http_wire as wire
 import ./auth_hook
 import ../protocol/types
 import ../protocol/modern
+import ../protocol/param_headers
 import ../protocol/version
 import ../protocol/features
 
@@ -72,6 +77,10 @@ type
     inflight: Table[string, WireResponse]
       ## POSTs of requests, by JSON-RPC id, from connecting until answered.
     abandoned: HashSet[string]
+    toolListIds: HashSet[string]
+      ## Ids of `tools/list` requests of an era with parameter headers.
+    paramBindings: Table[string, seq[ParamBinding]]
+      ## The `x-mcp-header` properties of each listed tool, by tool name.
     listening: bool
     closed: bool
 
@@ -92,12 +101,45 @@ proc newStreamableHttpTransport*(baseUrl: string): StreamableHttpTransport =
     waiters: initDeque[Future[JsonNode]](),
     inflight: initTable[string, WireResponse](),
     abandoned: initHashSet[string](),
+    toolListIds: initHashSet[string](),
+    paramBindings: initTable[string, seq[ParamBinding]](),
   )
 
 proc newHttpTransport*(baseUrl: string): HttpTransport =
   newStreamableHttpTransport(baseUrl)
 
+func idKey(id: JsonNode): string =
+  if id.kind == JString: id.getStr() else: $id
+
+proc learnToolHeaders(t: StreamableHttpTransport, result: JsonNode) =
+  ## A `tools/list` result: remember what each tool mirrors into headers and
+  ## leave out the tools whose declarations are invalid, so one malformed
+  ## definition does not keep the others from being used.
+  let tools = result{"tools"}
+  if tools.isNil or tools.kind != JArray:
+    return
+  var kept = newJArray()
+  for tool in tools:
+    let name = tool{"name"}.getStr()
+    let declared = declaredParamHeaders(tool{"inputSchema"})
+    if declared.invalid.isSome:
+      stderr.writeLine("[mcp-http] ignoring tool '" & name & "' of " & t.baseUrl &
+                       ": " & declared.invalid.get)
+      t.paramBindings.del name
+      continue
+    if declared.bindings.len > 0:
+      t.paramBindings[name] = declared.bindings
+    else:
+      t.paramBindings.del name
+    kept.add tool
+  result["tools"] = kept
+
 proc deliver(t: StreamableHttpTransport, message: JsonNode) =
+  if isResponse(message) and message.hasKey("id") and idKey(message["id"]) in t.toolListIds:
+    t.toolListIds.excl idKey(message["id"])
+    let listed = message{"result"}
+    if not listed.isNil and listed.kind == JObject:
+      t.learnToolHeaders(listed)
   if t.waiters.len > 0:
     t.waiters.popFirst().complete(message)
   else:
@@ -154,9 +196,6 @@ proc authorize(t: StreamableHttpTransport, headers: HttpHeaders) {.async.} =
 
 func isEventStream(response: WireResponse): bool =
   response.headers.getOrDefault("Content-Type").toLowerAscii().startsWith("text/event-stream")
-
-func idKey(id: JsonNode): string =
-  if id.kind == JString: id.getStr() else: $id
 
 proc track(t: StreamableHttpTransport, response: WireResponse) =
   t.streams.add response
@@ -412,14 +451,47 @@ proc post(t: StreamableHttpTransport, body: string,
       inc retries
 
 
+func hasParamHeaders(params: JsonNode): bool =
+  ## Whether the request names a version with parameter headers.
+  let named = params{"_meta", MetaProtocolVersion}
+  if named.isNil or named.kind != JString:
+    return false
+  let parsed = parseProtocolVersion(named.getStr())
+  parsed.isSome and parsed.get.has(ftParameterHeaders)
+
+proc paramHeaderFor(t: StreamableHttpTransport, request: JsonRpcRequest,
+                    headers: var seq[(string, string)]) =
+  ## Add the `Mcp-Param-*` headers of a `tools/call`. A value that cannot be
+  ## mirrored is an error here, not a request the server must reject.
+  let name = request.params{"name"}
+  if name.isNil or name.kind != JString or not t.paramBindings.hasKey(name.getStr()):
+    return
+  let refusal = paramHeadersFor(t.paramBindings[name.getStr()],
+                                request.params{"arguments"}, headers)
+  if refusal.isSome:
+    raise newException(McpTransportError,
+      "tools/call " & name.getStr() & ": " & refusal.get)
+
 method sendRequest*(t: StreamableHttpTransport, request: JsonRpcRequest): Future[void] {.async.} =
-  let headers =
+  var headers =
     if isModernRequest(request.params):
       modernRequestHeaders(request.`method`, request.params)
     else:
       t.legacyHeaders()
   let message = request.toJson()
-  await t.post($message, headers, message["id"])
+  if request.params.hasParamHeaders:
+    case request.`method`
+    of "tools/list":
+      t.toolListIds.incl idKey(message["id"])
+    of "tools/call":
+      t.paramHeaderFor(request, headers)
+    else:
+      discard
+  try:
+    await t.post($message, headers, message["id"])
+  except CatchableError:
+    t.toolListIds.excl idKey(message["id"])
+    raise
 
 method sendNotification*(t: StreamableHttpTransport, notification: JsonRpcNotification): Future[void] {.async.} =
   await t.post(encodeMessage(notification), t.legacyHeaders(), nil)

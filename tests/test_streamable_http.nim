@@ -315,6 +315,56 @@ if SpeaksModern:
       check reply.code == Http400
       check parseJson(reply.body)["error"]["code"].getInt() == -32602
 
+    test "Given a version header that names 2026-07-28 and a body without _meta, when posted, then the answer is 400 invalid params":
+      let (_, url, _) = startServer()
+      let reply = send(url, HttpPost,
+        $(%*{"jsonrpc": "2.0", "id": 1, "method": "tools/list"}),
+        {"MCP-Protocol-Version": "2026-07-28", "Mcp-Method": "tools/list"})
+      check reply.code == Http400
+      check parseJson(reply.body)["error"]["code"].getInt() == -32602
+
+    test "Given a version header that names 2026-07-28 and a _meta without the version, when posted, then the answer is 400 invalid params":
+      let (_, url, _) = startServer()
+      let reply = send(url, HttpPost,
+        $(%*{"jsonrpc": "2.0", "id": 1, "method": "tools/list",
+             "params": {"_meta": {"progressToken": "p"}}}),
+        {"MCP-Protocol-Version": "2026-07-28", "Mcp-Method": "tools/list"})
+      check reply.code == Http400
+      check parseJson(reply.body)["error"]["code"].getInt() == -32602
+
+    test "Given a version header that names an earlier version and a body without _meta, when posted, then the request is not taken for a 2026-07-28 one":
+      let (_, url, _) = startServer()
+      let reply = send(url, HttpPost,
+        $(%*{"jsonrpc": "2.0", "id": 1, "method": "tools/list"}),
+        {"MCP-Protocol-Version": "2025-06-18"})
+      check reply.code == Http400
+      check parseJson(reply.body)["error"]["code"].getInt() == -32600
+
+    test "Given a version header that differs from a complete body, when posted, then the answer is 400 header mismatch, not invalid params":
+      let (_, url, _) = startServer()
+      let reply = send(url, HttpPost,
+        $(%*{"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {"_meta": modernMeta()}}),
+        {"MCP-Protocol-Version": "2026-07-28", "Mcp-Method": "tools/call"})
+      check reply.code == Http400
+      check parseJson(reply.body)["error"]["code"].getInt() == -32020
+
+    test "Given an Mcp-Name with spaces or tabs around it, when posted, then the spaces are not part of the value and the request is served":
+      let (_, url, _) = startServer()
+      for padded in ["  get_weather  ", "\tget_weather\t"]:
+        let reply = send(url, HttpPost, toolCall(%1), {
+          "Content-Type": "application/json", "MCP-Protocol-Version": "2026-07-28",
+          "Mcp-Method": "tools/call", "Mcp-Name": padded})
+        check reply.code == Http200
+
+    test "Given a Base64 Mcp-Name that decodes to a name with spaces around it, when posted, then the spaces are part of the value":
+      let (_, url, _) = startServer()
+      # "  get_weather  " does not equal the body's "get_weather".
+      let reply = send(url, HttpPost, toolCall(%1), {
+        "MCP-Protocol-Version": "2026-07-28", "Mcp-Method": "tools/call",
+        "Mcp-Name": "=?base64?ICBnZXRfd2VhdGhlciAg?="})
+      check reply.code == Http400
+      check parseJson(reply.body)["error"]["code"].getInt() == -32020
+
     test "Given a method the server does not implement, when posted, then the answer is 404 method not found":
       let (_, url, _) = startServer()
       for name in ["no/such/method", "ping"]:

@@ -455,3 +455,59 @@ MCP-AUTH-30 | tests/test_auth_oauth_basics.nim | Given loopback disallowed, when
 MCP-AUTH-30 | tests/test_auth_oauth_basics.nim | Given the cloud metadata address, when checked, then it is always refused
 MCP-AUTH-30 | tests/test_auth_oauth_basics.nim | Given private ranges, when checked, then they are refused unless allowed
 MCP-AUTH-30 | tests/test_auth_oauth_basics.nim | Given other schemes, fragments or credentials, when checked, then they are refused
+MCP-HTTP-10 | tests/test_param_headers_http.nim | Given a tool with x-mcp-header, when a call carries the matching header, then the answer is 200
+MCP-HTTP-10 | tests/test_param_headers_http.nim | Given a tool with x-mcp-header, when the header differs from the body, then the answer is 400 header mismatch
+MCP-HTTP-10 | tests/test_param_headers_http.nim | Given a tool with x-mcp-header, when the call omits the header though the body has the value, then the answer is 400 header mismatch
+MCP-HTTP-10 | tests/test_param_headers_http.nim | Given a tool with x-mcp-header, when the argument is absent and so is the header, then the answer is 200
+MCP-HTTP-10 | tests/test_param_headers_http.nim | Given a tool with x-mcp-header, when the argument is null and the header is absent, then the answer is 200
+MCP-HTTP-10 | tests/test_param_headers_http.nim | Given a tool with x-mcp-header, when the header is sent without the argument, then the answer is 400 header mismatch
+MCP-HTTP-10 | tests/test_param_headers_http.nim | Given a Base64 header, when it decodes to the body value, then the answer is 200
+MCP-HTTP-10 | tests/test_param_headers_http.nim | Given a tool without x-mcp-header, when a Mcp-Param header is sent, then it is ignored
+MCP-HTTP-10 | tests/test_param_headers.nim | Given a header that equals the body, when checked, then the request is accepted
+MCP-HTTP-10 | tests/test_param_headers.nim | Given a header name in another case, when checked, then it is still the same header
+MCP-HTTP-10 | tests/test_param_headers.nim | Given a header that differs from the body, when checked, then the error is HeaderMismatch
+MCP-HTTP-10 | tests/test_param_headers.nim | Given a body value and no header, when checked, then the request is rejected
+MCP-HTTP-10 | tests/test_param_headers.nim | Given a header and no body value, when checked, then the request is rejected
+MCP-HTTP-10 | tests/test_param_headers.nim | Given a null body value and no header, when checked, then no header is expected
+MCP-HTTP-10 | tests/test_param_headers.nim | Given a Base64 header, when checked, then it is decoded before the comparison
+MCP-HTTP-10 | tests/test_param_headers.nim | Given a header with characters a plain value may not have, when checked, then it is rejected
+MCP-HTTP-10 | tests/test_param_headers.nim | Given the same header twice, when checked, then the request is rejected
+MCP-HTTP-10 | tests/test_param_headers.nim | Given an integer header, when checked, then it is compared numerically with the body
+MCP-HTTP-10 | tests/test_param_headers.nim | Given a boolean header, when checked, then only true and false in lowercase agree
+MCP-HTTP-10 | tests/test_param_headers.nim | Given headers the tool did not declare, when checked, then they are left alone
+MCP-HTTP-10 | tests/test_param_headers.nim | Given a long mismatching value, when the error is built, then the message quotes only a prefix
+MCP-HTTP-11 | tests/test_param_headers_http.nim | Given a tool whose x-mcp-header is invalid, when tools are listed, then the server does not publish it
+MCP-HTTP-11 | tests/test_param_headers_http.nim | Given a server that lists an invalid tool, when the client lists tools, then the invalid tool is excluded and the others stay
+MCP-HTTP-12 | tests/test_param_headers_http.nim | Given a client that listed tools, when it calls one with x-mcp-header, then the request carries Mcp-Param-Region
+MCP-HTTP-12 | tests/test_param_headers_http.nim | Given a scripted server, when a client calls a tool listed with x-mcp-header, then the headers are exactly the specification's
+MCP-HTTP-12 | tests/test_param_headers_http.nim | Given a call whose integer argument is beyond the safe range, when it is sent, then the transport refuses it before the wire
+MCP-HTTP-12 | tests/test_param_headers.nim | Given the specification's call, when headers are built, then Mcp-Param-Region carries the region
+MCP-HTTP-12 | tests/test_param_headers.nim | Given an argument that is absent or null, when headers are built, then the header is omitted
+MCP-HTTP-12 | tests/test_param_headers.nim | Given an argument at a nested path, when headers are built, then the value at the exact path is used
+MCP-HTTP-12 | tests/test_param_headers.nim | Given integer and boolean arguments, when headers are built, then they are decimal and lowercase
+MCP-HTTP-12 | tests/test_param_headers.nim | Given values that are not plain header values, when headers are built, then they use the Base64 sentinel as in the specification's table
+MCP-HTTP-12 | tests/test_param_headers.nim | Given an integer beyond the safe range, when headers are built, then the value is refused and no header is added
+MCP-HTTP-12 | tests/test_param_headers.nim | Given an argument of the wrong type, when headers are built, then the value is refused
+MCP-HTTP-13 | tests/test_param_headers.nim | Given the specification's execute_sql schema, when declarations are read, then Region is bound to region
+MCP-HTTP-13 | tests/test_param_headers.nim | Given a schema without annotations, when declarations are read, then it is valid and binds nothing
+MCP-HTTP-13 | tests/test_param_headers.nim | Given no schema at all, when declarations are read, then it is valid and binds nothing
+MCP-HTTP-13 | tests/test_param_headers.nim | Given an annotated property in a nested object, when declarations are read, then the path follows the properties keys
+MCP-HTTP-13 | tests/test_param_headers.nim | Given integer, string and boolean properties, when declarations are read, then all three are accepted
+MCP-HTTP-13 | tests/test_param_headers.nim | Given a property named x-mcp-header, when declarations are read, then it is a property and not an annotation
+MCP-HTTP-13 | tests/test_param_headers.nim | Given an empty name, when declarations are read, then the tool is invalid
+MCP-HTTP-13 | tests/test_param_headers.nim | Given a name that is not a token, when declarations are read, then the tool is invalid
+MCP-HTTP-13 | tests/test_param_headers.nim | Given a name that is not a string, when declarations are read, then the tool is invalid
+MCP-HTTP-13 | tests/test_param_headers.nim | Given two names that differ only in case, when declarations are read, then the tool is invalid
+MCP-HTTP-13 | tests/test_param_headers.nim | Given a number property, when declarations are read, then the tool is invalid
+MCP-HTTP-13 | tests/test_param_headers.nim | Given an object or array property, when declarations are read, then the tool is invalid
+MCP-HTTP-13 | tests/test_param_headers.nim | Given an annotated property with no type, when declarations are read, then the tool is invalid
+MCP-HTTP-13 | tests/test_param_headers.nim | Given an annotation on the schema root, when declarations are read, then the tool is invalid
+MCP-HTTP-13 | tests/test_param_headers.nim | Given an annotation under items, when declarations are read, then the tool is invalid
+MCP-HTTP-13 | tests/test_param_headers.nim | Given an annotation under composition, conditional or $ref keywords, when declarations are read, then the tool is invalid
+MCP-HTTP-13 | tests/test_param_headers.nim | Given an invalid declaration, when declarations are read, then no bindings are offered
+MCP-HTTP-14 | tests/test_streamable_http.nim | Given a version header that names 2026-07-28 and a body without _meta, when posted, then the answer is 400 invalid params
+MCP-HTTP-14 | tests/test_streamable_http.nim | Given a version header that names 2026-07-28 and a _meta without the version, when posted, then the answer is 400 invalid params
+MCP-HTTP-14 | tests/test_streamable_http.nim | Given a version header that names an earlier version and a body without _meta, when posted, then the request is not taken for a 2026-07-28 one
+MCP-HTTP-14 | tests/test_streamable_http.nim | Given a version header that differs from a complete body, when posted, then the answer is 400 header mismatch, not invalid params
+MCP-HTTP-14 | tests/test_streamable_http.nim | Given an Mcp-Name with spaces or tabs around it, when posted, then the spaces are not part of the value and the request is served
+MCP-HTTP-14 | tests/test_streamable_http.nim | Given a Base64 Mcp-Name that decodes to a name with spaces around it, when posted, then the spaces are part of the value

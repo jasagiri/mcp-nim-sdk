@@ -19,6 +19,9 @@ type
     session*: string
       ## Which of the transport's connections the request arrived on; empty
       ## for a transport with a single peer. Not part of the wire format.
+    paramHeaders*: Option[seq[(string, string)]]
+      ## The `Mcp-Param-*` headers the HTTP request carried; none on a
+      ## transport without headers. Not part of the wire format.
     relatedRequestId*: string
       ## For a request the server sends while it handles a client request:
       ## the id of that client request, so that an HTTP transport can put it on
