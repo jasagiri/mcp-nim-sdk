@@ -5,11 +5,7 @@
 
 import std/[algorithm, json, options, os, strutils, unittest]
 import ext/skills
-
-const
-  SkillMd* = "---\nname: pdf-processing\ndescription: Extract, fill, and assemble PDF documents\n---\n\n# PDF processing\n\nChoose the matching template from `templates/`.\n"
-  Invoice* = "# Invoice\n\nCustomer:\nAmount:\n"
-  PurchaseOrder* = "# Purchase order\n\nSupplier:\nItems:\n"
+import ./ext_skills_fixtures
 
 proc specEntry(): JsonNode =
   %*{

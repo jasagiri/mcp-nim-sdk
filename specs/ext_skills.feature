@@ -38,3 +38,117 @@ Feature: Skills over MCP (extension io.modelcontextprotocol/skills)
     Given entries that break one rule each: the name, the path, the manifest, the digest, the size, the limits
     When they are parsed
     Then each is refused with the rule it breaks, and the specification's own entries are accepted
+
+  @spec:MCP-EXT-SKILLS-6
+  Scenario: Nothing is served until the extension is registered
+    Given a server with a catalog that was not registered
+    When a client asks for skills/list or reads a skill file
+    Then the method is unknown, the file is not found, and the capabilities do not mention the extension
+
+  @spec:MCP-EXT-SKILLS-7
+  Scenario: Registering declares the extension, its settings and the resources capability
+    Given a server with a catalog
+    When registerSkills is called with and without directoryRead
+    Then server/discover lists io.modelcontextprotocol/skills with the settings, resources is declared, and a legacy handshake does not mention extensions
+
+  @spec:MCP-EXT-SKILLS-8
+  Scenario: Registering is refused where the extension cannot work
+    Given a server that speaks no 2026-07-28, or one that already registered skills
+    When registerSkills is called
+    Then ValueError is raised
+
+  @spec:MCP-EXT-SKILLS-9
+  Scenario: skills/list returns complete manifests with digests and cache fields
+    Given the skills of the specification's example
+    When a client that declared the extension lists them
+    Then each entry carries the frontmatter and every file with its sha256 digest and size, and the result has resultType complete, ttlMs and cacheScope
+
+  @spec:MCP-EXT-SKILLS-10
+  Scenario: skills/list pages like the base list methods
+    Given a catalog of several skills and a page size
+    When the client follows nextCursor
+    Then every skill arrives once, and a cursor the server did not issue is invalid params
+
+  @spec:MCP-EXT-SKILLS-11
+  Scenario: skills/get returns one entry and refuses what is not a skill
+    Given a served skill
+    When skills/get names its SKILL.md, another file of it, an unknown URI or no string
+    Then the first is the entry and the others are -32602
+
+  @spec:MCP-EXT-SKILLS-12
+  Scenario: A skill file is an ordinary resource for every client
+    Given a served skill with a text file and a binary file
+    When any client reads them, and a URI that is not a skill
+    Then text comes back as text, binary as base64 blob, and the other URI goes to the server's own handler
+
+  @spec:MCP-EXT-SKILLS-13
+  Scenario: The skills methods need the client to have declared the extension
+    Given a registered server
+    When a client that did not declare the extension asks skills/list
+    Then the answer is -32021 naming the extension
+
+  @spec:MCP-EXT-SKILLS-14
+  Scenario: resources/directory/read lists direct children when directoryRead is declared
+    Given a server registered with directoryRead
+    When a client reads a skill root, a subdirectory, a file and an unknown URI
+    Then directories carry inode/directory, files their metadata, and the last two are -32602; without directoryRead the method is unknown
+
+  @spec:MCP-EXT-SKILLS-15
+  Scenario: A skill whose content is generated says dynamic
+    Given a skill added with a file provider
+    When the client lists it and reads its files
+    Then the entry's resources is the string dynamic and the files are what the provider returns now
+
+  @spec:MCP-EXT-SKILLS-16
+  Scenario: A skill nested in another is listed on its own and as part of the enclosing one
+    Given skills at acme/billing and acme/billing/refunds
+    When the client lists them
+    Then the enclosing skill's resources include the nested skill's files
+
+  @spec:MCP-EXT-SKILLS-17
+  Scenario: A skill the server cannot serve correctly is refused when it is added
+    Given a skill with a frontmatter that does not name it, no SKILL.md, an unsafe path, a duplicate or too many files
+    When it is added to the catalog
+    Then SkillsError is raised
+
+  @spec:MCP-EXT-SKILLS-18
+  Scenario: A skill kept in a directory is served, and a symbolic link is refused
+    Given a directory with SKILL.md and a subdirectory
+    When it is added with addSkillDirectory
+    Then its files are served, and a directory with a symbolic link is refused
+
+  @spec:MCP-EXT-SKILLS-19
+  Scenario: The client lists skills and reports the entries it must not load
+    Given a server whose listing holds a valid entry and an invalid one
+    When the client lists the skills
+    Then the valid entry is returned and the invalid one is reported with its reason
+
+  @spec:MCP-EXT-SKILLS-20
+  Scenario: Fetched content is verified against the held entry
+    Given an opened skill
+    When the content has a wrong digest or size, the frontmatter differs, or the file is not listed
+    Then SkillVerificationError is raised and no content is returned
+
+  @spec:MCP-EXT-SKILLS-21
+  Scenario: A skill with generated content is refused unless the host allows it
+    Given an entry whose resources is dynamic
+    When the host reads it without allowing dynamic skills, and with
+    Then the first raises and sends nothing, and the second reads the file
+
+  @spec:MCP-EXT-SKILLS-22
+  Scenario: A directory read needs the server's directoryRead and does not extend the manifest
+    Given a server without directoryRead, and one with it that lists a file the entry does not
+    When the client lists a directory
+    Then the first raises with nothing sent, and listedIn leaves out the unlisted file
+
+  @spec:MCP-EXT-SKILLS-23
+  Scenario: A changed skill is noticed when its entry is fetched again
+    Given an approval bound to an entry
+    When skills/get returns a different set of files
+    Then the binding differs and refreshEntry says changed
+
+  @spec:MCP-EXT-SKILLS-24
+  Scenario: The SDK's server and client agree on the wire
+    Given a server that registered skills and a client that declared them, over one transport
+    When the client lists, gets, loads a skill and lists a directory
+    Then every step succeeds and the loaded instructions are the served ones
