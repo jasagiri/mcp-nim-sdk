@@ -1,6 +1,6 @@
 ## The table of which protocol version has which feature.
 
-import std/unittest
+import std/[strutils, unittest]
 import protocol/version
 import protocol/features
 
@@ -49,3 +49,32 @@ suite "protocol features by version":
       let listed = featuresOf(v)
       for feature in McpFeature:
         check (feature in listed) == v.has(feature)
+
+  test "Given the rows added after checking the changelogs, when each version is asked, then each appears in the version its changelog names":
+    let introduced = [
+      (ftCompletionsCapability, mpv20250326), (ftDynamicClientRegistration, mpv20250326),
+      (ftAuthorizationServerMetadata, mpv20250326), (ftResourceIndicators, mpv20250618),
+      (ftOidcDiscovery, mpv20251125), (ftIncrementalScopeConsent, mpv20251125),
+      (ftEnumSchemas, mpv20251125), (ftElicitationDefaults, mpv20251125),
+      (ftSsePolling, mpv20251125), (ftImplementationDescription, mpv20251125),
+      (ftJsonSchema2020, mpv20251125), (ftTraceContext, mpv20260728),
+      (ftIssuerParameter, mpv20260728), (ftResourceNotFoundInvalidParams, mpv20260728)]
+    for (feature, since) in introduced:
+      for v in McpProtocolVersion:
+        if feature == ftSsePolling:
+          check v.has(feature) == (v == mpv20251125)
+        else:
+          check v.has(feature) == (v >= since)
+
+  test "Given any feature, when it is documented, then it has a name and a specification page in every version that has it":
+    for v in McpProtocolVersion:
+      for feature in featuresOf(v):
+        check displayName(feature).len > 0
+        check specPage(feature, v).len > 0
+        check not specPage(feature, v).endsWith(".mdx")
+
+  test "Given the 2026-07-28 reorganisation, when the page of a moved feature is asked, then each version names its own page":
+    check specPage(ftStdio, mpv20251125) == "basic/transports"
+    check specPage(ftStdio, mpv20260728) == "basic/transports/stdio"
+    check specPage(ftAuthorization, mpv20251125) == "basic/authorization"
+    check specPage(ftAuthorization, mpv20260728) == "basic/authorization/index"
