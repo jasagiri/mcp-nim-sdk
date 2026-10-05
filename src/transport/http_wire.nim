@@ -36,6 +36,8 @@ type
     chunk: ChunkState
     line: string           ## the size line or trailer line being read
     finished: bool
+    leftOpen: Future[void]
+      ## Completes when `close` is called, to wake a read that waits on the socket.
 
 proc httpFailure(message: string): ref McpTransportError =
   newException(McpTransportError, message)
@@ -104,16 +106,48 @@ proc chooseBodyMode(r: WireResponse, httpMethod: HttpMethod) =
     r.mode = bmUntilClose
   r.finished = r.mode == bmNone or (r.mode == bmLength and r.remaining == 0)
 
+proc close*(r: WireResponse) =
+  ## Drop the connection; a body not read to its end is abandoned.
+  r.finished = true
+  if not r.leftOpen.finished:
+    r.leftOpen.complete()
+  if not r.socket.isNil and not r.socket.isClosed:
+    r.socket.close()
+
+proc receive(r: WireResponse): Future[tuple[data: string, interrupted: bool]] {.async.} =
+  ## The next bytes from the socket; `interrupted` when `close` was called
+  ## while waiting. A socket closed under a pending read never wakes it.
+  let pending = r.socket.recv(ReadSize)
+  try:
+    await (pending or r.leftOpen)
+  except OSError as e:
+    r.close()
+    raise httpFailure("reading the response failed: " & e.msg)
+  if not pending.finished:
+    return (data: "", interrupted: true)
+  try:
+    return (data: pending.read(), interrupted: false)
+  except OSError as e:
+    r.close()
+    raise httpFailure("reading the response failed: " & e.msg)
+
+type Connected* = proc(response: WireResponse) {.closure, gcsafe.}
+  ## Called with the response object as soon as the connection exists, before
+  ## the server has said anything: the caller can `close` it to abandon a
+  ## request still waiting for its answer.
+
 proc requestOnce(url: string, httpMethod: HttpMethod, headers: HttpHeaders,
-                 body: string): Future[WireResponse] {.async.} =
+                 body: string, connected: Connected): Future[WireResponse] {.async.} =
   let target = parseUri(url)
-  let response = WireResponse()
+  let response = WireResponse(leftOpen: newFuture[void]("WireResponse.leftOpen"))
   try:
     response.socket = await connect(target)
   except McpTransportError:
     raise
   except CatchableError as e:
     raise httpFailure("cannot connect to " & url & ": " & e.msg)
+  if not connected.isNil:
+    connected(response)
   try:
     let sent = if headers.isNil: newHttpHeaders() else: headers
     await response.socket.send(requestText(target, httpMethod, sent, body))
@@ -126,24 +160,20 @@ proc requestOnce(url: string, httpMethod: HttpMethod, headers: HttpHeaders,
         break
       if head.len > MaxHeadSize:
         raise httpFailure("response head from " & url & " is too long")
-      let data = await response.socket.recv(ReadSize)
+      let (data, interrupted) = await response.receive()
+      if interrupted:
+        raise httpFailure("the request to " & url & " was abandoned")
       if data.len == 0:
         raise httpFailure("connection to " & url & " closed before the response")
       head.add data
     response.parseHead(head)
     response.chooseBodyMode(httpMethod)
   except CatchableError as e:
-    response.socket.close()
+    response.close()
     if e of McpTransportError:
       raise
     raise httpFailure("request to " & url & " failed: " & e.msg)
   return response
-
-proc close*(r: WireResponse) =
-  ## Drop the connection; a body not read to its end is abandoned.
-  r.finished = true
-  if not r.socket.isClosed:
-    r.socket.close()
 
 func isFinished*(r: WireResponse): bool = r.finished
 
@@ -158,7 +188,7 @@ func sameOrigin(a, b: Uri): bool =
     a.port == b.port
 
 proc request*(url: string, httpMethod: HttpMethod, headers: HttpHeaders = nil,
-              body = ""): Future[WireResponse] {.async.} =
+              body = "", connected: Connected = nil): Future[WireResponse] {.async.} =
   ## Send the request and read the response head. The body is read with
   ## `readSome` / `readAll`. Redirects to the same server are followed (up
   ## to `MaxRedirects`); one to another server is an error, so that
@@ -166,7 +196,7 @@ proc request*(url: string, httpMethod: HttpMethod, headers: HttpHeaders = nil,
   ## when the server cannot be reached or does not answer in HTTP.
   var current = url
   for hop in 0 .. MaxRedirects:
-    let response = await requestOnce(current, httpMethod, headers, body)
+    let response = await requestOnce(current, httpMethod, headers, body, connected)
     let location = response.headers.getOrDefault("Location")
     if not isRedirect(response.code, httpMethod) or location.len == 0:
       return response
@@ -230,11 +260,10 @@ proc readSome*(r: WireResponse): Future[string] {.async.} =
       data = move(r.pending)
       r.pending = ""
     else:
-      try:
-        data = await r.socket.recv(ReadSize)
-      except OSError as e:
-        r.close()
-        raise httpFailure("reading the response failed: " & e.msg)
+      let (received, interrupted) = await r.receive()
+      if interrupted:
+        return ""
+      data = received
     case r.mode
     of bmNone:
       r.finished = true

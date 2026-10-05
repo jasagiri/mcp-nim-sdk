@@ -206,6 +206,53 @@ proc handshake(transport: StreamableHttpTransport) =
     newJsonRpcNotification("notifications/initialized", newJObject()))
 
 
+suite "client: cancelling a request":
+
+  test "Given a request the server has not answered, when the client cancels it, then the connection is closed and sendRequest returns without an error":
+    let hangedUp = newFuture[void]("hangedUp")
+    let url = startRawServer(proc(request: RawRequest, socket: AsyncSocket) {.async.} =
+      # Reads until the client closes the connection.
+      let gone = await socket.recv(1)
+      if gone.len == 0:
+        hangedUp.complete())
+    let transport = newStreamableHttpTransport(url)
+    let sending = transport.sendRequest(newJsonRpcRequest("r1", "tools/call", newJObject()))
+    waitFor sleepAsync(50)
+    transport.cancelRequest("r1")
+    check waitFor withTimeout(sending, 2000)
+    check not sending.failed
+    check waitFor withTimeout(hangedUp, 2000)
+    let waiting = transport.receiveMessage()
+    waitFor sleepAsync(30)
+    check not waiting.finished  # no answer and no error stand in for the request
+    waitFor transport.close()
+
+  test "Given a request whose event stream is open, when the client cancels it, then the stream ends and no stream-closed error is delivered":
+    let url = startRawServer(proc(request: RawRequest, socket: AsyncSocket) {.async.} =
+      await eventStreamHead(socket)
+      await socket.send(formatSseEvent($notification(1)))
+      discard await socket.recv(1))
+    let transport = newStreamableHttpTransport(url)
+    transport.ask()
+    check transport.received()["method"].getStr() == "notifications/progress"
+    transport.cancelRequest("r1")
+    let waiting = transport.receiveMessage()
+    waitFor sleepAsync(50)
+    check not waiting.finished
+    waitFor transport.close()
+
+  test "Given a request that was answered, when the client cancels it, then nothing happens":
+    let url = startRawServer(proc(request: RawRequest, socket: AsyncSocket) {.async.} =
+      let id = parseJson(request.body)["id"]
+      let body = $(%*{"jsonrpc": "2.0", "id": id, "result": {}})
+      await socket.send("HTTP/1.1 200 OK\c\LContent-Type: application/json\c\L" &
+                        "Content-Length: " & $body.len & "\c\L\c\L" & body))
+    let transport = newStreamableHttpTransport(url)
+    transport.ask()
+    transport.cancelRequest("r1")
+    check transport.received()["id"].getStr() == "r1"
+    waitFor transport.close()
+
 suite "client: redirects":
 
   test "Given a server that redirects a POST with 307 to another path of its own, when a request is sent, then it is posted again there with the same body":

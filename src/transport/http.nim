@@ -16,9 +16,12 @@
 ## id seen, up to `maxReconnects` times; and `close` ends the session with
 ## DELETE.
 ##
+## `cancelRequest` gives up on a request by closing its connection, which is
+## how a 2026-07-28 client cancels.
+##
 ## TODO (2026-07-28): Mcp-Param-* headers from x-mcp-header annotations.
 
-import std/[asyncdispatch, httpcore, json, options, strutils, deques]
+import std/[asyncdispatch, httpcore, json, options, strutils, deques, tables, sets]
 import ./transport
 import ./event_stream
 import ./http_wire as wire
@@ -61,6 +64,9 @@ type
     inbox: Deque[JsonNode]
     waiters: Deque[Future[JsonNode]]
     streams: seq[WireResponse]
+    inflight: Table[string, WireResponse]
+      ## POSTs of requests, by JSON-RPC id, from connecting until answered.
+    abandoned: HashSet[string]
     listening: bool
     closed: bool
 
@@ -79,6 +85,8 @@ proc newStreamableHttpTransport*(baseUrl: string): StreamableHttpTransport =
     listenForServerMessages: true,
     inbox: initDeque[JsonNode](),
     waiters: initDeque[Future[JsonNode]](),
+    inflight: initTable[string, WireResponse](),
+    abandoned: initHashSet[string](),
   )
 
 proc newHttpTransport*(baseUrl: string): HttpTransport =
@@ -133,6 +141,9 @@ proc requestHeaders(t: StreamableHttpTransport, accept: string,
 
 func isEventStream(response: WireResponse): bool =
   response.headers.getOrDefault("Content-Type").toLowerAscii().startsWith("text/event-stream")
+
+func idKey(id: JsonNode): string =
+  if id.kind == JString: id.getStr() else: $id
 
 proc track(t: StreamableHttpTransport, response: WireResponse) =
   t.streams.add response
@@ -237,8 +248,9 @@ proc pump(t: StreamableHttpTransport, response: WireResponse,
   var answered = outcome.answered
   if not answered and t.canResume:
     answered = await t.resume(outcome, requestId)
-  if not answered and not t.closed:
+  if not answered and not t.closed and idKey(requestId) notin t.abandoned:
     t.deliver(streamClosed(requestId))
+  t.abandoned.excl idKey(requestId)
 
 proc listen(t: StreamableHttpTransport) {.async.} =
   ## The GET stream: what the server says outside any request. Kept open for
@@ -274,7 +286,21 @@ proc post(t: StreamableHttpTransport, body: string,
   let headers = t.requestHeaders("application/json, text/event-stream", extraHeaders)
   headers["Content-Type"] = "application/json"
 
-  let response = await wire.request(t.baseUrl, HttpPost, headers, body)
+  let key = if requestId.isNil: "" else: idKey(requestId)
+  let connected: wire.Connected = proc(connection: WireResponse) {.closure, gcsafe.} =
+    if key.len > 0:
+      t.inflight[key] = connection
+  var response: WireResponse
+  try:
+    response = await wire.request(t.baseUrl, HttpPost, headers, body, connected)
+  except McpTransportError:
+    if key.len > 0:
+      t.inflight.del key
+    if key in t.abandoned:
+      # Cancelled while waiting: nobody wants an answer or an error.
+      t.abandoned.excl key
+      return
+    raise
 
   # Only a successful exchange establishes a session; some servers put a
   # throwaway session id on error responses too.
@@ -289,7 +315,14 @@ proc post(t: StreamableHttpTransport, body: string,
   var text: string
   try:
     text = await response.readAll(t.maxResponseSize)
+  except McpTransportError:
+    if key in t.abandoned:
+      t.abandoned.excl key
+      return
+    raise
   finally:
+    if key.len > 0:
+      t.inflight.del key
     response.close()
 
   if response.code.is2xx:
@@ -314,6 +347,17 @@ proc post(t: StreamableHttpTransport, body: string,
       t.deliver(errorBody)
       return
   raise httpError(response, t.baseUrl, text)
+
+proc cancelRequest*(t: StreamableHttpTransport, requestId: string) =
+  ## Give up on a request that was sent, by closing the connection that
+  ## carries it: for a 2026-07-28 server that is the cancellation. Nothing
+  ## is delivered for the request afterwards, not even an error. Does
+  ## nothing for a request that has been answered.
+  if not t.inflight.hasKey(requestId):
+    return
+  t.abandoned.incl requestId
+  t.inflight[requestId].close()
+  t.inflight.del requestId
 
 method sendRequest*(t: StreamableHttpTransport, request: JsonRpcRequest): Future[void] {.async.} =
   let headers =
