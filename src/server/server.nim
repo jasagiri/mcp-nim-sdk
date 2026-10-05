@@ -26,6 +26,8 @@ type
     negotiatedVersion*: Option[McpProtocolVersion]
       ## The version agreed in the initialize handshake.
     clientCapabilities*: Option[McpClientCapabilities]
+    clientInfo*: Option[McpClientInfo]
+      ## Who the client said it is in the initialize request.
     subscriptions*: HashSet[string]
       ## The URIs of the resources this client subscribed to.
     logLevel*: Option[McpLogLevel]
@@ -377,10 +379,18 @@ proc handleInitialize(server: McpServer, request: JsonRpcRequest): Future[JsonRp
       extractClientCapabilities(params["capabilities"])
     else:
       McpClientCapabilities()
+  var clientInfo = none(McpClientInfo)
+  if params.hasKey("clientInfo"):
+    try:
+      clientInfo = some(parseClientInfo(params["clientInfo"]))
+    except McpShapeError as e:
+      return newJsonRpcErrorResponse(request.id, ErrInvalidParams,
+        "initialize: clientInfo: " & e.msg)
   server.sessions[request.session] = McpSession(
     state: mlsInitializing,
     negotiatedVersion: negotiated,
-    clientCapabilities: some(clientCapabilities))
+    clientCapabilities: some(clientCapabilities),
+    clientInfo: clientInfo)
   
   # Create response
   return createInitializeResponse(

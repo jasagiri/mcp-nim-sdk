@@ -105,12 +105,24 @@ type
 
   # MCP initialization
   McpClientInfo* = object
+    ## An `Implementation`: name and version are always sent; the rest only
+    ## to a protocol version that has the field (title: 2025-06-18;
+    ## description, websiteUrl, icons: 2025-11-25).
     name*: string
     version*: string
+    title*: Option[string]
+    description*: Option[string]
+    websiteUrl*: Option[string]
+    icons*: seq[McpIcon]
 
   McpServerInfo* = object
+    ## The same fields, for the server.
     name*: string
     version*: string
+    title*: Option[string]
+    description*: Option[string]
+    websiteUrl*: Option[string]
+    icons*: seq[McpIcon]
 
   # MCP message meta-data
   McpRequestMeta* = object

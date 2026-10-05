@@ -7,6 +7,7 @@
 
 import std/[json, options, base64, strutils]
 import ./types
+import ./content
 
 const
   MetaProtocolVersion* = "io.modelcontextprotocol/protocolVersion"
@@ -165,7 +166,7 @@ func completeResult*(methodName: string, payload: JsonNode,
     meta = newJObject()
     result["_meta"] = meta
   if not meta.hasKey(MetaServerInfo):
-    meta[MetaServerInfo] = %*{"name": serverInfo.name, "version": serverInfo.version}
+    meta[MetaServerInfo] = mpv20260728.implementationFor(serverInfo)
 
 func discoverPayload*(supported: openArray[McpProtocolVersion],
                       capabilities: JsonNode,
@@ -182,7 +183,7 @@ func requestMeta*(version: McpProtocolVersion, clientInfo: McpClientInfo,
                   capabilities: JsonNode): JsonNode {.raises: [].} =
   %*{
     MetaProtocolVersion: $version,
-    MetaClientInfo: {"name": clientInfo.name, "version": clientInfo.version},
+    MetaClientInfo: version.implementationFor(clientInfo),
     MetaClientCapabilities: capabilities
   }
 

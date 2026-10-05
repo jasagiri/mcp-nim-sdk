@@ -8,7 +8,7 @@ This checkout speaks MCP **2026-07-28** and every earlier version: `2024-11-05`,
 
 ## Features of 2026-07-28
 
-40 of the 51 features of `2026-07-28` are implemented in this tree. The table lists every feature the specification of `2026-07-28` defines; "not implemented" means this SDK does not do it yet.
+41 of the 51 features of `2026-07-28` are implemented in this tree. The table lists every feature the specification of `2026-07-28` defines; "not implemented" means this SDK does not do it yet.
 
 | Feature | Status | Specification |
 |---|---|---|
@@ -58,7 +58,7 @@ This checkout speaks MCP **2026-07-28** and every earlier version: `2024-11-05`,
 | incremental scope consent | implemented | [basic/authorization](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization) |
 | enum schemas in elicitation | not implemented | [client/elicitation](https://modelcontextprotocol.io/specification/2026-07-28/client/elicitation) |
 | elicitation default values | not implemented | [client/elicitation](https://modelcontextprotocol.io/specification/2026-07-28/client/elicitation) |
-| implementation description | not implemented | [server/discover](https://modelcontextprotocol.io/specification/2026-07-28/server/discover) |
+| implementation description | implemented | [server/discover](https://modelcontextprotocol.io/specification/2026-07-28/server/discover) |
 | JSON Schema 2020-12 | implemented | [server/tools](https://modelcontextprotocol.io/specification/2026-07-28/server/tools) |
 | trace context in _meta | not implemented | [basic](https://modelcontextprotocol.io/specification/2026-07-28/basic) |
 | authorization response issuer (iss) | implemented | [basic/authorization/security-considerations](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization/security-considerations) |

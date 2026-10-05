@@ -3,6 +3,7 @@
 import json, options
 import ./types
 import ./features
+import ./content
 
 type
   McpLifecycleState* = enum
@@ -55,10 +56,7 @@ proc createInitializeRequest*(
 ): JsonRpcRequest =
   let params = %*{
     "protocolVersion": $protocolVersion,
-    "clientInfo": {
-      "name": clientInfo.name,
-      "version": clientInfo.version
-    },
+    "clientInfo": protocolVersion.implementationFor(clientInfo),
     "capabilities": capabilities.toJson()
   }
   
@@ -72,10 +70,7 @@ proc createInitializeResponse*(
 ): JsonRpcResponse =
   let initializeResult = %*{
     "protocolVersion": $protocolVersion,
-    "serverInfo": {
-      "name": serverInfo.name,
-      "version": serverInfo.version
-    },
+    "serverInfo": protocolVersion.implementationFor(serverInfo),
     "capabilities": capabilities.toJson()
   }
 

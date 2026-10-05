@@ -108,9 +108,11 @@ func implementationOf*(feature: McpFeature): Implementation {.raises: [].} =
   of ftAudioContent:
     done("tests/test_audio_content.nim")
   of ftIcons:
-    done("tests/test_icons.nim")
+    done("tests/test_icons.nim", "tests/test_implementation_info.nim")
   of ftTitleFields:
-    done("tests/test_title_fields.nim")
+    done("tests/test_title_fields.nim", "tests/test_implementation_info.nim")
+  of ftImplementationDescription:
+    done("tests/test_implementation_info.nim")
   of ftResourceLinks:
     done("tests/test_resource_links.nim")
   of ftStructuredToolOutput:
@@ -119,7 +121,6 @@ func implementationOf*(feature: McpFeature): Implementation {.raises: [].} =
     done("tests/test_json_schema.nim", "tests/test_structured_tool_output.nim")
   of ftMultiRoundTripRequests:
     notYet("the client raises on an input_required result")
-  of ftElicitation, ftTasks, ftUrlElicitation, ftSamplingTools, ftSubscriptionsListen, ftExtensions,
-     ftEnumSchemas, ftElicitationDefaults, ftImplementationDescription,
+  of ftElicitation, ftTasks, ftUrlElicitation, ftSamplingTools, ftSubscriptionsListen, ftExtensions, ftEnumSchemas, ftElicitationDefaults,
      ftTraceContext:
     notYet()

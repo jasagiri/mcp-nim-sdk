@@ -145,3 +145,33 @@ Feature: Content of tools, resources and prompts
     Given icons with various URIs
     When the client screens them, with or without the server's origin
     Then only https URLs (of the server's origin when it is given) and base64 image data URIs remain
+
+  @spec:MCP-IMPL-1 @feature:ftImplementationDescription
+  Scenario: A server describes itself with the fields of the version
+    Given a server with a title, description, website URL and icons
+    When a legacy client of each version initializes
+    Then serverInfo has the fields of that version, and from 2025-11-25 description and websiteUrl
+
+  @spec:MCP-IMPL-2 @feature:ftImplementationDescription
+  Scenario: A client describes itself with the fields of the version
+    Given a client with a title, description, website URL and icons
+    When it initializes in each legacy version
+    Then clientInfo has the fields of that version
+
+  @spec:MCP-IMPL-3 @feature:ftImplementationDescription
+  Scenario: The peer's description is read
+    Given a peer whose Implementation has a description and a website URL
+    When the server reads clientInfo or the client reads serverInfo, in the handshake or in 2026-07-28 discovery and request metadata
+    Then the fields are kept, and a field of the wrong type is invalid params for the server and a protocol error for the client
+
+  @spec:MCP-TITLE-4 @feature:ftTitleFields
+  Scenario: An Implementation has a title only in versions with title fields
+    Given a server and a client with titles
+    When they introduce themselves in each version
+    Then the title is sent from 2025-06-18 on
+
+  @spec:MCP-ICONS-5 @feature:ftIcons
+  Scenario: An Implementation has icons only in versions with icons
+    Given a server and a client with icons
+    When they introduce themselves in each version
+    Then the icons are sent from 2025-11-25 on

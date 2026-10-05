@@ -589,3 +589,17 @@ MCP-ICONS-4 | tests/test_icons.nim | Given https and base64 image data uris, whe
 MCP-ICONS-4 | tests/test_icons.nim | Given unsafe schemes, when screened, then every one is dropped
 MCP-ICONS-4 | tests/test_icons.nim | Given a server origin, when screened, then an https icon from another origin is dropped and data stays
 MCP-ICONS-4 | tests/test_icons.nim | Given scheme and host in other letter cases, when screened, then they are compared case-insensitively
+MCP-IMPL-1 | tests/test_implementation_info.nim | Given a server with a full identity, when each legacy version initializes, then serverInfo has the fields of that version
+MCP-IMPL-1 | tests/test_implementation_info.nim | Given a server with only a name and version, when it initializes, then serverInfo has only those
+MCP-IMPL-1 | tests/test_implementation_info.nim | Given a server with a full identity, when a 2026-07-28 client asks to discover, then serverInfo in _meta has every field
+MCP-IMPL-2 | tests/test_implementation_info.nim | Given a client with a full identity, when it initializes in each legacy version, then clientInfo has the fields of that version
+MCP-IMPL-2 | tests/test_implementation_info.nim | Given a client with a full identity, when it sends a 2026-07-28 request, then _meta carries every field
+MCP-IMPL-3 | tests/test_implementation_info.nim | Given a client that describes itself, when it initializes, then the server keeps what it said
+MCP-IMPL-3 | tests/test_implementation_info.nim | Given a clientInfo field of the wrong type, when the client initializes, then the server answers invalid params
+MCP-IMPL-3 | tests/test_implementation_info.nim | Given a server that describes itself in the handshake, when the client connects, then serverInfo holds what the server said
+MCP-IMPL-3 | tests/test_implementation_info.nim | Given a server whose serverInfo has a field of the wrong type, when the client connects, then the connection fails with a protocol error
+MCP-IMPL-3 | tests/test_implementation_info.nim | Given a 2026-07-28 server that describes itself, when the client discovers it, then serverInfo holds what it said
+MCP-TITLE-4 | tests/test_implementation_info.nim | Given a server with a full identity, when each legacy version initializes, then serverInfo has the fields of that version
+MCP-TITLE-4 | tests/test_implementation_info.nim | Given a client with a full identity, when it initializes in each legacy version, then clientInfo has the fields of that version
+MCP-ICONS-5 | tests/test_implementation_info.nim | Given a server with a full identity, when each legacy version initializes, then serverInfo has the fields of that version
+MCP-ICONS-5 | tests/test_implementation_info.nim | Given a client with a full identity, when it initializes in each legacy version, then clientInfo has the fields of that version

@@ -5,6 +5,7 @@ import ../protocol/types
 import ../protocol/lifecycle
 import ../protocol/modern
 import ../protocol/features
+import ../protocol/content as wire
 import ../transport/transport
 import ../mcp/types as mcpTypes
 
@@ -470,6 +471,14 @@ type ModernServerRefusedInitialize = object of ValueError
 
 proc spokenVersions(client: McpClient, offered: JsonNode): seq[McpProtocolVersion]
 
+proc parseServerIdentity(client: McpClient, node: JsonNode,
+                         context: string): McpServerInfo =
+  ## The server's Implementation; a field of the wrong type is a protocol error.
+  try:
+    wire.parseServerInfo(node)
+  except McpShapeError as e:
+    raise newException(McpProtocolError, context & ": serverInfo: " & e.msg)
+
 proc initialize*(client: McpClient): Future[McpServerCapabilities] {.async.} =
   if client.state != mlsUninitialized:
     raise newException(ValueError, "Client already initialized")
@@ -511,6 +520,8 @@ proc initialize*(client: McpClient): Future[McpServerCapabilities] {.async.} =
   # Extract server capabilities
   let capabilities = extractServerCapabilities(resultData{"capabilities"})
   client.serverCapabilities = some(capabilities)
+  if resultData.hasKey("serverInfo"):
+    client.serverInfo = some(client.parseServerIdentity(resultData["serverInfo"], "initialize"))
 
   # Change state
   client.state = mlsInitializing
@@ -600,8 +611,7 @@ proc discover(client: McpClient, timeoutMs: int): Future[ProbeVerdict] {.async.}
     client.serverInstructions = discovered{"instructions"}.getStr()
     let identity = discovered{"_meta", MetaServerInfo}
     if not identity.isNil and identity.kind == JObject:
-      client.serverInfo = some(McpServerInfo(
-        name: identity{"name"}.getStr(), version: identity{"version"}.getStr()))
+      client.serverInfo = some(client.parseServerIdentity(identity, DiscoverMethod))
     client.state = mlsOperational
     return pvModern
   return pvLegacy

@@ -127,6 +127,51 @@ proc iconsOf*(node: JsonNode): seq[McpIcon] =
     return
   parseIcons(node["icons"])
 
+func implementationFor*(version: McpProtocolVersion, name, appVersion: string,
+                        title, description, websiteUrl: Option[string],
+                        icons: seq[McpIcon]): JsonNode =
+  ## An `Implementation` as `version` defines it.
+  result = %*{"name": name, "version": appVersion}
+  if title.isSome and version.has(ftTitleFields):
+    result["title"] = %title.get
+  if description.isSome and version.has(ftImplementationDescription):
+    result["description"] = %description.get
+  if websiteUrl.isSome and version.has(ftImplementationDescription):
+    result["websiteUrl"] = %websiteUrl.get
+  if icons.len > 0 and version.has(ftIcons):
+    var list = newJArray()
+    for icon in icons:
+      list.add icon.toJson
+    result["icons"] = list
+
+func implementationFor*(version: McpProtocolVersion, info: McpClientInfo): JsonNode =
+  version.implementationFor(info.name, info.version, info.title,
+                            info.description, info.websiteUrl, info.icons)
+
+func implementationFor*(version: McpProtocolVersion, info: McpServerInfo): JsonNode =
+  version.implementationFor(info.name, info.version, info.title,
+                            info.description, info.websiteUrl, info.icons)
+
+proc parseClientInfo*(node: JsonNode): McpClientInfo =
+  ## The `clientInfo` of an initialize request. Raises McpShapeError when a
+  ## field has the wrong type.
+  if node.isNil or node.kind != JObject:
+    raise newException(McpShapeError, "an Implementation must be a JSON object")
+  McpClientInfo(
+    name: optionalStringField(node, "name").get(""),
+    version: optionalStringField(node, "version").get(""),
+    title: optionalStringField(node, "title"),
+    description: optionalStringField(node, "description"),
+    websiteUrl: optionalStringField(node, "websiteUrl"),
+    icons: iconsOf(node))
+
+proc parseServerInfo*(node: JsonNode): McpServerInfo =
+  ## The `serverInfo` of an initialize result or a discover result.
+  let parsed = parseClientInfo(node)
+  McpServerInfo(name: parsed.name, version: parsed.version, title: parsed.title,
+                description: parsed.description, websiteUrl: parsed.websiteUrl,
+                icons: parsed.icons)
+
 # What a version sends
 
 proc dropKey(node: JsonNode, key: string) =
