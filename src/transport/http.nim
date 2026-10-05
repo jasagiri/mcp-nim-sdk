@@ -25,6 +25,7 @@ import std/[asyncdispatch, httpcore, json, options, strutils, deques, tables, se
 import ./transport
 import ./event_stream
 import ./http_wire as wire
+import ./auth_hook
 import ../protocol/types
 import ../protocol/modern
 import ../protocol/version
@@ -41,6 +42,7 @@ const
   SessionHeader = "Mcp-Session-Id"
   ErrorBodyPreview = 512
   DeleteTimeoutMs = 5000
+  MaxAuthRetries = 3
 
 type
   StreamableHttpTransport* = ref object of McpTransport
@@ -61,6 +63,9 @@ type
       ## Open the GET stream once initialized (versions 2025-03-26 to
       ## 2025-11-25). Turn off for a client that needs nothing from it.
     negotiated: Option[McpProtocolVersion]
+    auth*: HttpClientAuth
+      ## Authorization (see `auth/client`): adds the Authorization header and
+      ## reacts to 401 and 403. Nil: requests carry only `headers`.
     inbox: Deque[JsonNode]
     waiters: Deque[Future[JsonNode]]
     streams: seq[WireResponse]
@@ -139,6 +144,14 @@ proc requestHeaders(t: StreamableHttpTransport, accept: string,
   for (name, value) in extra:
     result[name] = value
 
+proc authorize(t: StreamableHttpTransport, headers: HttpHeaders) {.async.} =
+  ## A protected server wants the token on every request, the GET stream and
+  ## DELETE included.
+  if not t.auth.isNil:
+    let authorization = await t.auth.authorization()
+    if authorization.isSome:
+      headers["Authorization"] = authorization.get
+
 func isEventStream(response: WireResponse): bool =
   response.headers.getOrDefault("Content-Type").toLowerAscii().startsWith("text/event-stream")
 
@@ -201,10 +214,11 @@ proc openStream(t: StreamableHttpTransport, lastEventId: string): Future[Option[
   var extra = t.legacyHeaders()
   if lastEventId.len > 0:
     extra.add ("Last-Event-ID", lastEventId)
+  let headers = t.requestHeaders("text/event-stream", extra)
+  await t.authorize(headers)
   var response: WireResponse
   try:
-    response = await wire.request(t.baseUrl, HttpGet,
-      t.requestHeaders("text/event-stream", extra))
+    response = await wire.request(t.baseUrl, HttpGet, headers)
   except McpTransportError as e:
     stderr.writeLine("[mcp-http] GET " & t.baseUrl & " failed: " & e.msg)
     return none(WireResponse)
@@ -279,12 +293,18 @@ proc startListening(t: StreamableHttpTransport) =
   t.listening = true
   asyncCheck t.listen()
 
-proc post(t: StreamableHttpTransport, body: string,
-          extraHeaders: seq[(string, string)], requestId: JsonNode) {.async.} =
+type AuthChallenged = object of CatchableError
+  ## The server answered 401 or 403; `post` hands this to `t.auth`.
+  status: int
+  wwwAuthenticate: seq[string]
+
+proc postOnce(t: StreamableHttpTransport, body: string,
+              extraHeaders: seq[(string, string)], requestId: JsonNode) {.async.} =
   if t.closed:
     raise newException(McpTransportError, "transport is closed")
   let headers = t.requestHeaders("application/json, text/event-stream", extraHeaders)
   headers["Content-Type"] = "application/json"
+  await t.authorize(headers)
 
   let key = if requestId.isNil: "" else: idKey(requestId)
   let connected: wire.Connected = proc(connection: WireResponse) {.closure, gcsafe.} =
@@ -330,6 +350,13 @@ proc post(t: StreamableHttpTransport, body: string,
       t.deliver(t.parseMessage(text))
     return
 
+  if not t.auth.isNil and response.code.int in [401, 403]:
+    var challenged = newException(AuthChallenged, "HTTP " & $response.code & " from " & t.baseUrl)
+    challenged.status = response.code.int
+    for value in seq[string](response.headers.getOrDefault("WWW-Authenticate")):
+      challenged.wwwAuthenticate.add value
+    raise challenged
+
   # 2026-07-28 servers report protocol errors with an HTTP error status and
   # a JSON-RPC error body; that is an answer, not a transport failure.
   if text.len > 0:
@@ -358,6 +385,32 @@ proc cancelRequest*(t: StreamableHttpTransport, requestId: string) =
   t.abandoned.incl requestId
   t.inflight[requestId].close()
   t.inflight.del requestId
+
+proc post(t: StreamableHttpTransport, body: string,
+          extraHeaders: seq[(string, string)], requestId: JsonNode) {.async.} =
+  ## `postOnce`, repeated when `t.auth` improved the situation after a 401
+  ## or 403.
+  var retries = 0
+  while true:
+    try:
+      await t.postOnce(body, extraHeaders, requestId)
+      return
+    except AuthChallenged as challenged:
+      if retries >= MaxAuthRetries:
+        raise newException(McpTransportError,
+          "HTTP " & $challenged.status & " from " & t.baseUrl &
+          " after " & $retries & " authorization attempts")
+      var retry = false
+      try:
+        retry = await t.auth.onChallenge(challenged.status, challenged.wwwAuthenticate)
+      except CatchableError as e:
+        raise newException(McpTransportError,
+          "authorization for " & t.baseUrl & " failed: " & e.msg)
+      if not retry:
+        raise newException(McpTransportError,
+          "HTTP " & $challenged.status & " from " & t.baseUrl & ": not authorized")
+      inc retries
+
 
 method sendRequest*(t: StreamableHttpTransport, request: JsonRpcRequest): Future[void] {.async.} =
   let headers =
@@ -398,6 +451,7 @@ proc endSession(t: StreamableHttpTransport) {.async.} =
   ## (405); any other refusal or failure is logged, as the client is
   ## leaving either way.
   let headers = t.requestHeaders("application/json", t.legacyHeaders())
+  await t.authorize(headers)
   try:
     let attempt = wire.request(t.baseUrl, HttpDelete, headers)
     if not await withTimeout(attempt, DeleteTimeoutMs):

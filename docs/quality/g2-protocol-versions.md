@@ -35,6 +35,10 @@
 | `src/transport/sse_legacy.nim` | `tests/test_http_sse_legacy.nim` | 2026-10-06 |
 | `src/transport/http_compat.nim` | `tests/test_http_sse_legacy.nim` | 2026-10-06 |
 | `src/transport/event_stream.nim` (retry) | `tests/test_event_stream.nim` | 2026-10-06 |
+| `src/auth/oauth/*.nim` | `tests/test_auth_sha256.nim`, `tests/test_auth_oauth_basics.nim`, `tests/test_auth_client_flow.nim` | 2026-10-06 |
+| `src/auth/policy.nim`, `src/auth/client.nim` | `tests/test_auth_client_flow.nim` | 2026-10-06 |
+| `src/auth/resource_server.nim` | `tests/test_auth_resource_server.nim` | 2026-10-06 |
+| `src/transport/auth_hook.nim` | `tests/test_auth_client_flow.nim`, `tests/test_auth_resource_server.nim` | 2026-10-06 |
 
 ## 手で確かめたもの (nim-muter の測定ではない)
 
