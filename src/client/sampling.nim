@@ -89,8 +89,8 @@ proc parseSamplingRequest*(params: JsonNode): McpSamplingRequest =
     parsed.speedPriority = priority("speedPriority")
     parsed.intelligencePriority = priority("intelligencePriority")
     result.modelPreferences = some(parsed)
-  result.systemPrompt = optionalString(params, "systemPrompt")
-  result.includeContext = optionalString(params, "includeContext")
+  result.systemPrompt = optionalString(params, "systemPrompt", "sampling/createMessage")
+  result.includeContext = optionalString(params, "includeContext", "sampling/createMessage")
   if params.hasKey("temperature"):
     result.temperature = some(params["temperature"].getFloat())
   let stops = params{"stopSequences"}

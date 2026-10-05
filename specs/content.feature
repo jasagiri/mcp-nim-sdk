@@ -182,3 +182,9 @@ Feature: Content of tools, resources and prompts
     Given a server and a client with icons
     When they introduce themselves in each version
     Then the icons are sent from 2025-11-25 on
+
+  @spec:MCP-CONTENT-FIELDS-1
+  Scenario: An optional string field of another type is a protocol violation
+    Given a server whose answer has a title, description, mimeType, text, blob or nextCursor that is not a string
+    When the client reads the answer
+    Then it raises a protocol error naming the operation and the field, and an absent field is still none

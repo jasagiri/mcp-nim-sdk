@@ -43,7 +43,7 @@ proc requirePrompts(client: McpClient, operation: string) =
 proc parsePrompt(item: JsonNode): McpPrompt =
   result = McpPrompt(
     name: requiredString(item, "name", "prompts/list"),
-    title: optionalString(item, "title"),
+    title: optionalString(item, "title", "prompts/list"),
     description: item{"description"}.getStr(),
     icons: iconsOf(item, "prompts/list"))
   let arguments = item{"arguments"}
@@ -51,8 +51,8 @@ proc parsePrompt(item: JsonNode): McpPrompt =
     for argument in arguments:
       result.arguments.add McpPromptArgument(
         name: requiredString(argument, "name", "prompts/list"),
-        title: optionalString(argument, "title"),
-        description: optionalString(argument, "description"),
+        title: optionalString(argument, "title", "prompts/list"),
+        description: optionalString(argument, "description", "prompts/list"),
         required: argument{"required"}.getBool(false))
 
 proc listPrompts*(client: McpClient, cursor: Option[string] = none(string),
@@ -63,7 +63,7 @@ proc listPrompts*(client: McpClient, cursor: Option[string] = none(string),
   var prompts: seq[McpPrompt]
   for item in requiredArray(reply, "prompts", "prompts/list"):
     prompts.add parsePrompt(item)
-  return (prompts: prompts, nextCursor: parseNextCursor(reply))
+  return (prompts: prompts, nextCursor: parseNextCursor(reply, "prompts/list"))
 
 proc listAllPrompts*(client: McpClient,
                      options: McpRequestOptions = McpRequestOptions()): Future[seq[McpPrompt]] =
@@ -74,7 +74,7 @@ proc listAllPrompts*(client: McpClient,
 proc fetchPrompt(client: McpClient, params: JsonNode,
                  options: McpRequestOptions): Future[McpPromptResult] {.async.} =
   let reply = await client.callMethod("prompts/get", params, options)
-  result.description = optionalString(reply, "description")
+  result.description = optionalString(reply, "description", "prompts/get")
   for message in requiredArray(reply, "messages", "prompts/get"):
     result.messages.add McpPromptMessage(
       role: requiredString(message, "role", "prompts/get"),

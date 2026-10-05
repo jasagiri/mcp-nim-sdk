@@ -994,3 +994,9 @@ MCP-TASKS-23 | tests/test_tasks_http.nim | Given a task whose held questions are
 MCP-TASKS-24 | tests/test_tasks_principal.nim | Given a task made by one principal, when another with the same session id asks for it, then it is unknown to them
 MCP-TASKS-24 | tests/test_tasks_principal.nim | Given an authorized request, when a tool runs, then ctx.principal is the subject of the token
 MCP-TASKS-24 | tests/test_tasks_principal.nim | Given an endpoint without authorization, when a tool runs, then ctx.principal is none and tasks belong to the session
+MCP-CONTENT-FIELDS-1 | tests/test_client_field_types.nim | Given a tool whose title is a number, when tools are listed, then it is a protocol error naming the field
+MCP-CONTENT-FIELDS-1 | tests/test_client_field_types.nim | Given a resource whose mimeType is an object, when resources are listed, then it is a protocol error
+MCP-CONTENT-FIELDS-1 | tests/test_client_field_types.nim | Given a nextCursor that is a number, when tools are listed, then it is a protocol error
+MCP-CONTENT-FIELDS-1 | tests/test_client_field_types.nim | Given a prompt description that is a list, when the prompt is fetched, then it is a protocol error
+MCP-CONTENT-FIELDS-1 | tests/test_client_field_types.nim | Given an embedded text resource whose text is a number, when parsed, then it is a protocol error
+MCP-CONTENT-FIELDS-1 | tests/test_client_field_types.nim | Given optional strings that are absent or strings, when read, then they are none or the string

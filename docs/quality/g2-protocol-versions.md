@@ -68,3 +68,4 @@
 - `src/server/tasks.nim` (task の質問の保留と `tasks/result` での送出)、`src/server/server.nim` の `holdForTask` / `sendHeld` / task の通知の経路、`src/transport/http_server.nim` の `sendRequest` の経路選択、`src/server/elicit.nim` の task 連携。
 - 認可の主体の経路: `src/auth/resource_server.nim` (principal)、`src/transport/auth_hook.nim` (check)、`src/transport/http_server.nim` (authenticate)、`src/server/tasks.nim` (ownerOf)。
 - `src/server/server.nim` の tools/call の出力検査 (`outputProblems`、`toolDefinition`)。
+- `src/client/content.nim` の `optionalString` (型違いを McpProtocolError にした)。

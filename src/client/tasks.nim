@@ -94,7 +94,7 @@ proc listTasks*(client: McpClient, cursor: Option[string] = none(string),
   let reply = await client.callMethod("tasks/list", pageParams(cursor), options)
   for item in requiredArray(reply, "tasks", "tasks/list"):
     result.tasks.add taskOf(item, "tasks/list")
-  result.nextCursor = parseNextCursor(reply)
+  result.nextCursor = parseNextCursor(reply, "tasks/list")
 
 proc listAllTasks*(client: McpClient,
                    options: McpRequestOptions = McpRequestOptions()): Future[seq[McpTask]] =

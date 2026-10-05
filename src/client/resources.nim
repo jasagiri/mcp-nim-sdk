@@ -45,9 +45,9 @@ proc parseResource(item: JsonNode): McpResource =
   McpResource(
     uri: requiredString(item, "uri", "resources/list"),
     name: requiredString(item, "name", "resources/list"),
-    title: optionalString(item, "title"),
-    description: optionalString(item, "description"),
-    mimeType: optionalString(item, "mimeType"),
+    title: optionalString(item, "title", "resources/list"),
+    description: optionalString(item, "description", "resources/list"),
+    mimeType: optionalString(item, "mimeType", "resources/list"),
     size: (if item.hasKey("size"): some(item["size"].getInt()) else: none(int)),
     icons: iconsOf(item, "resources/list"))
 
@@ -55,9 +55,9 @@ proc parseTemplate(item: JsonNode): McpResourceTemplate =
   McpResourceTemplate(
     uriTemplate: requiredString(item, "uriTemplate", "resources/templates/list"),
     name: requiredString(item, "name", "resources/templates/list"),
-    title: optionalString(item, "title"),
-    description: optionalString(item, "description"),
-    mimeType: optionalString(item, "mimeType"),
+    title: optionalString(item, "title", "resources/templates/list"),
+    description: optionalString(item, "description", "resources/templates/list"),
+    mimeType: optionalString(item, "mimeType", "resources/templates/list"),
     icons: iconsOf(item, "resources/templates/list"))
 
 proc listResources*(client: McpClient, cursor: Option[string] = none(string),
@@ -68,7 +68,7 @@ proc listResources*(client: McpClient, cursor: Option[string] = none(string),
   var resources: seq[McpResource]
   for item in requiredArray(reply, "resources", "resources/list"):
     resources.add parseResource(item)
-  return (resources: resources, nextCursor: parseNextCursor(reply))
+  return (resources: resources, nextCursor: parseNextCursor(reply, "resources/list"))
 
 proc listAllResources*(client: McpClient,
                        options: McpRequestOptions = McpRequestOptions()): Future[seq[McpResource]] =
@@ -84,7 +84,7 @@ proc listResourceTemplates*(client: McpClient, cursor: Option[string] = none(str
   var templates: seq[McpResourceTemplate]
   for item in requiredArray(reply, "resourceTemplates", "resources/templates/list"):
     templates.add parseTemplate(item)
-  return (templates: templates, nextCursor: parseNextCursor(reply))
+  return (templates: templates, nextCursor: parseNextCursor(reply, "resources/templates/list"))
 
 proc listAllResourceTemplates*(client: McpClient,
     options: McpRequestOptions = McpRequestOptions()): Future[seq[McpResourceTemplate]] =

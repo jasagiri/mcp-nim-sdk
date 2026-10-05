@@ -74,7 +74,7 @@ proc requireTools(client: McpClient, operation: string) =
 proc parseTool(item: JsonNode): McpTool =
   McpTool(
     name: requiredString(item, "name", "tools/list"),
-    title: optionalString(item, "title"),
+    title: optionalString(item, "title", "tools/list"),
     description: item{"description"}.getStr(),
     icons: iconsOf(item, "tools/list"),
     inputSchema: item{"inputSchema"},
@@ -96,7 +96,7 @@ proc listTools*(client: McpClient, cursor: Option[string] = none(string),
       client.toolOutputSchemas[tool.name] = tool.outputSchema.get
     else:
       client.toolOutputSchemas.del(tool.name)
-  return (tools: tools, nextCursor: parseNextCursor(reply))
+  return (tools: tools, nextCursor: parseNextCursor(reply, "tools/list"))
 
 proc listAllTools*(client: McpClient,
                    options: McpRequestOptions = McpRequestOptions()): Future[seq[McpTool]] =

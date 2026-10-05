@@ -40,9 +40,16 @@ type
       raw*: JsonNode
         ## A block whose type this client does not know, kept as received.
 
-proc optionalString*(node: JsonNode, key: string): Option[string] =
+proc optionalString*(node: JsonNode, key: string, context: string): Option[string] =
+  ## The string field `key`, none when it is absent. Raises McpProtocolError
+  ## when it is there and not a string: the specification types these fields,
+  ## and a value of another type is the peer's defect, not an absent field.
   let value = node{key}
-  if value.isNil or value.kind != JString: none(string) else: some(value.getStr())
+  if value.isNil: return none(string)
+  if value.kind != JString:
+    raise newException(McpProtocolError,
+      context & ": '" & key & "' must be a string, not " & $value.kind)
+  some(value.getStr())
 
 proc requiredString*(node: JsonNode, key: string, context: string): string =
   ## Raises McpProtocolError when a field the specification requires is missing.
@@ -71,8 +78,8 @@ proc parseEmbeddedResource*(node: JsonNode, context: string): McpEmbeddedResourc
   McpEmbeddedResource(
     uri: requiredString(node, "uri", context),
     mimeType: node{"mimeType"}.getStr(),
-    text: optionalString(node, "text"),
-    blob: optionalString(node, "blob"))
+    text: optionalString(node, "text", context),
+    blob: optionalString(node, "blob", context))
 
 proc parseContentItem*(node: JsonNode, context: string): McpContentItem =
   if node.isNil or node.kind != JObject:
@@ -95,9 +102,9 @@ proc parseContentItem*(node: JsonNode, context: string): McpContentItem =
     McpContentItem(kind: mckResourceLink,
       linkUri: requiredString(node, "uri", context),
       linkName: requiredString(node, "name", context),
-      linkTitle: optionalString(node, "title"),
-      linkDescription: optionalString(node, "description"),
-      linkMimeType: optionalString(node, "mimeType"),
+      linkTitle: optionalString(node, "title", context),
+      linkDescription: optionalString(node, "description", context),
+      linkMimeType: optionalString(node, "mimeType", context),
       linkSize: (if node.hasKey("size"): some(node["size"].getInt()) else: none(int)),
       linkIcons: iconsOf(node, context))
   else:
@@ -126,8 +133,8 @@ proc toJson*(item: McpContentItem): JsonNode =
         result["icons"].add icon.toJson
   of mckUnknown: result = item.raw
 
-proc parseNextCursor*(reply: JsonNode): Option[string] =
-  optionalString(reply, "nextCursor")
+proc parseNextCursor*(reply: JsonNode, context: string): Option[string] =
+  optionalString(reply, "nextCursor", context)
 
 proc pageParams*(cursor: Option[string]): JsonNode =
   result = newJObject()
