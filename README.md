@@ -8,7 +8,7 @@ This checkout speaks MCP **2026-07-28** and every earlier version: `2024-11-05`,
 
 ## Features of 2026-07-28
 
-38 of the 51 features of `2026-07-28` are implemented in this tree. The table lists every feature the specification of `2026-07-28` defines; "not implemented" means this SDK does not do it yet.
+39 of the 51 features of `2026-07-28` are implemented in this tree. The table lists every feature the specification of `2026-07-28` defines; "not implemented" means this SDK does not do it yet.
 
 | Feature | Status | Specification |
 |---|---|---|
@@ -34,7 +34,7 @@ This checkout speaks MCP **2026-07-28** and every earlier version: `2024-11-05`,
 | structured tool output | implemented | [server/tools](https://modelcontextprotocol.io/specification/2026-07-28/server/tools) |
 | resource links in tool results | implemented | [server/tools](https://modelcontextprotocol.io/specification/2026-07-28/server/tools) |
 | elicitation | not implemented | [client/elicitation](https://modelcontextprotocol.io/specification/2026-07-28/client/elicitation) |
-| title fields | not implemented | [server/tools](https://modelcontextprotocol.io/specification/2026-07-28/server/tools) |
+| title fields | implemented | [server/tools](https://modelcontextprotocol.io/specification/2026-07-28/server/tools) |
 | completion context | implemented | [server/utilities/completion](https://modelcontextprotocol.io/specification/2026-07-28/server/utilities/completion) |
 | protected resource metadata | implemented | [basic/authorization](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization) |
 | icons | not implemented | [server/tools](https://modelcontextprotocol.io/specification/2026-07-28/server/tools) |

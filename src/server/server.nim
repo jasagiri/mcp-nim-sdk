@@ -680,8 +680,6 @@ proc missingParam(request: JsonRpcRequest, name: string): JsonRpcResponse =
   newJsonRpcErrorResponse(request.id, ErrInvalidParams,
     request.`method` & " requires a string " & name)
 
-func asIs(version: McpProtocolVersion, item: JsonNode): JsonNode = item
-
 proc listPage(request: JsonRpcRequest, handler: ListHandler, key: string,
               version: McpProtocolVersion,
               forVersion: proc(version: McpProtocolVersion, item: JsonNode): JsonNode
@@ -770,7 +768,7 @@ proc dispatchStandard(server: McpServer, request: JsonRpcRequest,
   of "resources/list":
     if caps.resources.isNone or server.resourcesList.isNil:
       return notSupported(request)
-    return await listPage(request, server.resourcesList, "resources", ctx.version, asIs)
+    return await listPage(request, server.resourcesList, "resources", ctx.version, resourceFor)
 
   of "resources/templates/list":
     if caps.resources.isNone:
@@ -778,7 +776,7 @@ proc dispatchStandard(server: McpServer, request: JsonRpcRequest,
     if server.resourceTemplatesList.isNil:
       return newJsonRpcResponse(request.id, %*{"resourceTemplates": []})
     return await listPage(request, server.resourceTemplatesList, "resourceTemplates",
-                           ctx.version, asIs)
+                           ctx.version, resourceFor)
 
   of "resources/read":
     if caps.resources.isNone or server.resourceRead.isNil:
@@ -847,7 +845,7 @@ proc dispatchStandard(server: McpServer, request: JsonRpcRequest,
   of "prompts/list":
     if caps.prompts.isNone or server.promptsList.isNil:
       return notSupported(request)
-    return await listPage(request, server.promptsList, "prompts", ctx.version, asIs)
+    return await listPage(request, server.promptsList, "prompts", ctx.version, promptFor)
 
   of "prompts/get":
     if caps.prompts.isNone or server.promptGet.isNil:

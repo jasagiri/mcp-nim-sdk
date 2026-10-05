@@ -8,6 +8,7 @@ export content
 type
   McpPromptArgument* = object
     name*: string
+    title*: Option[string]
     description*: Option[string]
     required*: bool
 
@@ -25,6 +26,13 @@ type
     description*: Option[string]
     messages*: seq[McpPromptMessage]
 
+func displayName*(argument: McpPromptArgument): string =
+  ## `title` when the server gave one, else `name`.
+  argument.title.get(argument.name)
+
+func displayName*(prompt: McpPrompt): string =
+  prompt.title.get(prompt.name)
+
 proc requirePrompts(client: McpClient, operation: string) =
   if client.serverCapabilities.isNone:
     raise newException(McpConnectionClosedError, operation & ": the client is not connected")
@@ -41,6 +49,7 @@ proc parsePrompt(item: JsonNode): McpPrompt =
     for argument in arguments:
       result.arguments.add McpPromptArgument(
         name: requiredString(argument, "name", "prompts/list"),
+        title: optionalString(argument, "title"),
         description: optionalString(argument, "description"),
         required: argument{"required"}.getBool(false))
 

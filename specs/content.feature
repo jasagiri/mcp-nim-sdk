@@ -103,3 +103,21 @@ Feature: Content of tools, resources and prompts
     Given a tool result with a resource_link block
     When the client reads the result and then reads the resource the link names
     Then the item carries uri, name, title, description, MIME type and size, a link without uri or name is a protocol error, and resources/read asks for the link's uri
+
+  @spec:MCP-TITLE-1 @feature:ftTitleFields
+  Scenario: Titles are sent to a version that has them
+    Given tools, resources, resource templates, prompts and prompt arguments that have titles
+    When a client of a version with title fields lists them
+    Then every title is sent
+
+  @spec:MCP-TITLE-2 @feature:ftTitleFields
+  Scenario: A version without title fields gets none
+    Given the same items
+    When a client of a version before 2025-06-18 lists them
+    Then no title is sent, the names are, and a tool's annotations.title stays where the version has annotations
+
+  @spec:MCP-TITLE-3 @feature:ftTitleFields
+  Scenario: A client shows the title and falls back to the name
+    Given listed items with and without titles
+    When the client asks for their display names
+    Then it is the title when there is one and the name otherwise

@@ -570,3 +570,9 @@ MCP-RESLINK-3 | tests/test_resource_links.nim | Given a resource link with title
 MCP-RESLINK-3 | tests/test_resource_links.nim | Given a resource link without a name or uri, when the client reads it, then the protocol violation is raised
 MCP-RESLINK-3 | tests/test_resource_links.nim | Given a resource link in a tool result, when the client reads the resource it names, then the link's uri is requested
 MCP-RESLINK-3 | tests/test_resource_links.nim | Given a prompt message with a resource link, when the client gets the prompt, then the content is a link
+MCP-TITLE-1 | tests/test_title_fields.nim | Given a version that has titles, when each list is requested, then every title is sent
+MCP-TITLE-1 | tests/test_title_fields.nim | Given a resource link with a title, when a version decides, then the title goes where titles do
+MCP-TITLE-2 | tests/test_title_fields.nim | Given a version without titles, when each list is requested, then no title is sent and the names stay
+MCP-TITLE-2 | tests/test_title_fields.nim | Given a version without titles but with tool annotations, when tools are listed, then annotations.title is kept
+MCP-TITLE-3 | tests/test_title_fields.nim | Given titled lists, when the client lists them, then every title is read
+MCP-TITLE-3 | tests/test_title_fields.nim | Given items without a title, when their display names are read, then it is the name

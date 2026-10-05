@@ -25,6 +25,13 @@ type
     description*: Option[string]
     mimeType*: Option[string]
 
+func displayName*(resource: McpResource): string =
+  ## `title` when the server gave one, else `name`.
+  resource.title.get(resource.name)
+
+func displayName*(resourceTemplate: McpResourceTemplate): string =
+  resourceTemplate.title.get(resourceTemplate.name)
+
 proc requireResources(client: McpClient, operation: string): McpResourcesCapability =
   if client.serverCapabilities.isNone:
     raise newException(McpConnectionClosedError, operation & ": the client is not connected")

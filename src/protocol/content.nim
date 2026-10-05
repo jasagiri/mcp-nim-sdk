@@ -94,15 +94,38 @@ proc dropKey(node: JsonNode, key: string) =
 func objectOnly(node: JsonNode): bool =
   not node.isNil and node.kind == JObject
 
+proc describedFor(version: McpProtocolVersion, item: JsonNode): JsonNode =
+  ## `item` without the descriptive fields `version` does not have, which
+  ## every kind of listed item shares.
+  if not item.objectOnly:
+    return item
+  result = item.copy()
+  if not version.has(ftTitleFields):
+    result.dropKey("title")
+
 proc toolFor*(version: McpProtocolVersion, tool: JsonNode): JsonNode =
   ## `tool` (an entry of tools/list) as `version` defines it.
-  if not tool.objectOnly:
-    return tool
-  result = tool.copy()
+  result = version.describedFor(tool)
+  if not result.objectOnly:
+    return
   if not version.has(ftToolAnnotations):
     result.dropKey("annotations")
   if not version.has(ftStructuredToolOutput):
     result.dropKey("outputSchema")
+
+proc resourceFor*(version: McpProtocolVersion, resource: JsonNode): JsonNode =
+  ## An entry of resources/list or resources/templates/list as `version`
+  ## defines it.
+  version.describedFor(resource)
+
+proc promptFor*(version: McpProtocolVersion, prompt: JsonNode): JsonNode =
+  ## An entry of prompts/list as `version` defines it.
+  result = version.describedFor(prompt)
+  if result.objectOnly and result.hasKey("arguments") and result["arguments"].kind == JArray:
+    var arguments = newJArray()
+    for argument in result["arguments"]:
+      arguments.add version.describedFor(argument)
+    result["arguments"] = arguments
 
 proc textBlock(text: string): JsonNode =
   %*{"type": "text", "text": text}
@@ -122,7 +145,7 @@ proc contentBlockFor*(version: McpProtocolVersion, blk: JsonNode): JsonNode =
               ") omitted: protocol version " & $version & " has no audio content]")
   of "resource_link":
     if version.has(ftResourceLinks):
-      return blk
+      return version.describedFor(blk)
     textBlock(blk{"name"}.getStr() & ": " & blk{"uri"}.getStr())
   else:
     blk
