@@ -398,7 +398,7 @@ proc handleInitialize(server: McpServer, request: JsonRpcRequest): Future[JsonRp
     )
 
   let requested = params["protocolVersion"].getStr()
-  let supported = versionsUpTo(server.protocolVersion)
+  let supported = spokenVersionsUpTo(server.protocolVersion)
   let negotiated = negotiateLegacyVersion(requested, supported)
   if negotiated.isNone:
     var supportedJson = newJArray()
@@ -497,10 +497,18 @@ proc legacyVersionOf(server: McpServer, session: string): McpProtocolVersion =
   if not known.isNil and known.negotiatedVersion.isSome:
     known.negotiatedVersion.get
   else:
-    latestLegacyVersion(versionsUpTo(server.protocolVersion)).get
+    # A server that speaks no legacy version serves no request this way; the
+    # context of one it is about to refuse still needs a version.
+    latestLegacyVersion(spokenVersionsUpTo(server.protocolVersion)).get(server.protocolVersion)
+
+func speaksLegacy(server: McpServer): bool =
+  latestLegacyVersion(spokenVersionsUpTo(server.protocolVersion)).isSome
 
 proc isModernPath(server: McpServer, request: JsonRpcRequest): bool =
-  isModern(server.protocolVersion) and isModernRequest(request.params)
+  ## A request that names its own protocol version, or any request at all
+  ## when the server speaks nothing older than 2026-07-28.
+  isModern(server.protocolVersion) and
+    (isModernRequest(request.params) or not server.speaksLegacy)
 
 proc newContext(server: McpServer, request: JsonRpcRequest): McpRequestContext =
   ## The context of `request`. What the request's `_meta` gets wrong is
@@ -1107,7 +1115,12 @@ proc handleModernRequest(server: McpServer, request: JsonRpcRequest,
                          ctx: McpRequestContext): Future[JsonRpcResponse] {.async.} =
   ## A 2026-07-28 request: validated on its own metadata, served without
   ## any handshake state.
-  let supported = versionsUpTo(server.protocolVersion)
+  let supported = spokenVersionsUpTo(server.protocolVersion)
+  if request.`method` == "initialize" and not isModernRequest(request.params):
+    # A legacy client at a server without legacy versions cannot move
+    # forward; the versions named here are all it can show its user.
+    let refusal = unsupportedVersionError(request.params{"protocolVersion"}.getStr(), supported)
+    return newJsonRpcErrorResponse(request.id, refusal.code, refusal.message, refusal.data)
   let rejection = validateModernRequest(request.params, supported)
   if rejection.isSome:
     return newJsonRpcErrorResponse(request.id, rejection.get.code,

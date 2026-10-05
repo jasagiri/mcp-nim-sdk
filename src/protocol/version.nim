@@ -16,6 +16,13 @@ const
     ## branch changes only this string; `-d:mcpDefaultProtocolVersion=...`
     ## overrides it so one tree can be tested as every release.
 
+  mcpOldestProtocolVersion {.strdefine.} = "2024-11-05"
+    ## The oldest version this build speaks. A build speaks every version
+    ## from this one to the default; `-d:mcpOldestProtocolVersion=2026-07-28`
+    ## gives one that knows nothing of the initialize handshake. Tested are
+    ## the oldest version (the default) and 2026-07-28; values in between
+    ## compile and are not tested.
+
   FirstModernProtocolVersion* = mpv20260728
     ## From this version on there is no initialize handshake: every request
     ## carries its own protocol version and client capabilities.
@@ -34,21 +41,34 @@ const
       mcpDefaultProtocolVersion
     parsed.get
 
-  SupportedProtocolVersions* = block:
-    var versions: seq[McpProtocolVersion] = @[]
-    for v in McpProtocolVersion:
-      if v <= DefaultProtocolVersion:
-        versions.add v
-    versions
+  OldestProtocolVersion* = block:
+    let parsed = parseProtocolVersion(mcpOldestProtocolVersion)
+    doAssert parsed.isSome,
+      "mcpOldestProtocolVersion is not a released MCP version: " &
+      mcpOldestProtocolVersion
+    doAssert parsed.get <= DefaultProtocolVersion,
+      "mcpOldestProtocolVersion " & mcpOldestProtocolVersion &
+      " is newer than mcpDefaultProtocolVersion " & mcpDefaultProtocolVersion
+    parsed.get
 
 func isSupported*(v: McpProtocolVersion): bool {.raises: [].} =
-  v <= DefaultProtocolVersion
+  v >= OldestProtocolVersion and v <= DefaultProtocolVersion
+
+func spokenVersionsUpTo*(ceiling: McpProtocolVersion): seq[McpProtocolVersion] {.raises: [].} =
+  ## The versions this build speaks that are not newer than `ceiling`, in
+  ## ascending order: what a server or client limited to `ceiling` offers.
+  for v in McpProtocolVersion:
+    if v >= OldestProtocolVersion and v <= ceiling:
+      result.add v
+
+const
+  SupportedProtocolVersions* = spokenVersionsUpTo(DefaultProtocolVersion)
 
 func requireSupported*(v: McpProtocolVersion) {.raises: [ValueError].} =
   if not isSupported(v):
     raise newException(ValueError,
-      "protocol version " & $v & " is newer than this build's default " &
-      $DefaultProtocolVersion)
+      "protocol version " & $v & " is outside what this build speaks, " &
+      $OldestProtocolVersion & " to " & $DefaultProtocolVersion)
 
 func isModern*(v: McpProtocolVersion): bool {.raises: [].} =
   v >= FirstModernProtocolVersion

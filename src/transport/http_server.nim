@@ -461,7 +461,7 @@ proc touch(session: Session) =
 
 proc legacyCeiling(t: HttpServerTransport): McpProtocolVersion =
   ## The newest version spoken with an initialize handshake.
-  latestLegacyVersion(versionsUpTo(t.protocolVersion)).get(mpv20241105)
+  latestLegacyVersion(spokenVersionsUpTo(t.protocolVersion)).get(mpv20241105)
 
 proc rememberStream(t: HttpServerTransport, session: Session, stream: SseStream) =
   session.streams[stream.id] = stream
@@ -520,8 +520,24 @@ proc handleDelete(t: HttpServerTransport, req: Request) {.async.} =
     t.endSession(session.get)
     await req.respondEmpty(Http200)
 
-func getStreamAvailable(t: HttpServerTransport): bool =
-  versionsUpTo(t.protocolVersion).anyIt(it.has(ftHttpGetStream))
+func speaks(t: HttpServerTransport, feature: McpFeature): bool =
+  ## Whether some version this transport speaks has `feature`.
+  spokenVersionsUpTo(t.protocolVersion).anyIt(it.has(feature))
+
+func speaksLegacy(t: HttpServerTransport): bool =
+  latestLegacyVersion(spokenVersionsUpTo(t.protocolVersion)).isSome
+
+func allowedMethods(t: HttpServerTransport, req: Request): seq[HttpMethod] =
+  ## What the MCP endpoint serves for this request. GET (the stream of
+  ## 2025-03-26 to 2025-11-25) and DELETE (the end of a session) exist only
+  ## where a spoken version has them, and never for a request that names
+  ## 2026-07-28, which has neither. A request that names no version may come
+  ## from 2025-03-26, which has no version header, so it is not refused here.
+  result = @[HttpPost]
+  if req.namesModernVersion:
+    return
+  if t.speaks(ftHttpGetStream): result.add HttpGet
+  if t.speaks(ftHttpSessions): result.add HttpDelete
 
 proc handleGet(t: HttpServerTransport, req: Request) {.async.} =
   ## The stream of messages that belong to no request, or the rest of an
@@ -615,8 +631,9 @@ proc handlePost(t: HttpServerTransport, req: Request) {.async.} =
   let isRpcRequest = not isBatch and isRequest(rpc)
   let methodName = rpc{"method"}.getStr()
   let params = rpc{"params"}
+  let sessionless = not t.speaksLegacy
   let modern = isModern(t.protocolVersion) and isRpcRequest and
-               (isModernRequest(params) or req.namesModernVersion)
+               (isModernRequest(params) or req.namesModernVersion or sessionless)
   let opensSession = not modern and isRpcRequest and methodName == "initialize"
   if isBatch and items.anyIt(isRequest(it) and it{"method"}.getStr() == "initialize"):
     await req.respondError(Http400, nil,
@@ -625,10 +642,16 @@ proc handlePost(t: HttpServerTransport, req: Request) {.async.} =
 
   var session: Session = nil
   var sessionId = ""
+  if modern and sessionless and methodName == "initialize" and not isModernRequest(params):
+    # A legacy client cannot move forward; the versions named here are all
+    # it can show its user.
+    await req.respondError(Http400, rpc{"id"}, unsupportedVersionError(
+      params{"protocolVersion"}.getStr(), spokenVersionsUpTo(t.protocolVersion)))
+    return
   if modern:
     # A request that lacks the per-request fields is malformed (-32602)
     # whatever its headers say; only a well-formed one can disagree with them.
-    let rejection = validateModernRequest(params, versionsUpTo(t.protocolVersion))
+    let rejection = validateModernRequest(params, spokenVersionsUpTo(t.protocolVersion))
     if rejection.isSome and rejection.get.code == ErrInvalidParams:
       await req.respondError(Http400, rpc{"id"}, rejection.get)
       return
@@ -648,6 +671,13 @@ proc handlePost(t: HttpServerTransport, req: Request) {.async.} =
       await req.respondEmpty(Http503)
       return
     sessionId = newSessionId()
+  elif sessionless:
+    # Notifications and responses of 2026-07-28: there is no session to
+    # name, and Mcp-Session-Id is ignored when a client sends one.
+    if isBatch:
+      await req.respondError(Http400, nil, invalidRequest(
+        "JSON-RPC batches are not supported by protocol version " & $t.protocolVersion))
+      return
   else:
     session = await t.sessionFor(req, rpc{"id"})
     if session.isNil:
@@ -790,9 +820,11 @@ type Endpoint = enum
   epMcp, epLegacySse, epLegacyMessages, epNone
 
 func endpointOf(t: HttpServerTransport, path: string): Endpoint =
+  ## The HTTP+SSE paths exist only where a spoken version has that transport.
+  let legacySse = t.legacySsePath.len > 0 and t.speaks(ftHttpSse)
   if path == t.path: epMcp
-  elif t.legacySsePath.len > 0 and path == t.legacySsePath: epLegacySse
-  elif t.legacySsePath.len > 0 and path == t.legacyMessagesPath: epLegacyMessages
+  elif legacySse and path == t.legacySsePath: epLegacySse
+  elif legacySse and path == t.legacyMessagesPath: epLegacyMessages
   else: epNone
 
 proc dispatch(t: HttpServerTransport, req: Request) {.async.} =
@@ -819,19 +851,15 @@ proc dispatch(t: HttpServerTransport, req: Request) {.async.} =
     else:
       await req.respondEmpty(Http405, {"Allow": "POST"})
   else:
-    case req.reqMethod
-    of HttpPost:
+    let allowed = t.allowedMethods(req)
+    if req.reqMethod notin allowed:
+      await req.respondEmpty(Http405, {"Allow": allowed.mapIt(($it).toUpperAscii).join(", ")})
+    elif req.reqMethod == HttpPost:
       await t.handlePost(req)
-    of HttpDelete:
+    elif req.reqMethod == HttpDelete:
       await t.handleDelete(req)
-    of HttpGet:
-      if t.getStreamAvailable:
-        await t.handleGet(req)
-      else:
-        await req.respondEmpty(Http405, {"Allow": "POST, DELETE"})
     else:
-      let allowed = if t.getStreamAvailable: "POST, GET, DELETE" else: "POST, DELETE"
-      await req.respondEmpty(Http405, {"Allow": allowed})
+      await t.handleGet(req)
 
 proc handle(t: HttpServerTransport, req: Request) {.async.} =
   try:

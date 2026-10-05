@@ -20,7 +20,20 @@ MCP has five dated versions. This build speaks `2026-07-28` (its default) and ev
 nim c -d:mcpDefaultProtocolVersion=2025-06-18 yourprogram.nim
 ```
 
-A server or client created with `protocolVersion` newer than the default raises `ValueError`.
+A server or client created with `protocolVersion` outside what the build speaks raises `ValueError`.
+
+## The oldest version
+
+`mcpOldestProtocolVersion` is the oldest version a build speaks; it is `2024-11-05` unless overridden. A build that speaks `2026-07-28` alone knows nothing of the `initialize` handshake, of sessions or of the HTTP+SSE transport:
+
+```sh
+nim c -d:mcpOldestProtocolVersion=2026-07-28 yourprogram.nim
+```
+
+Such a server answers `initialize` with an error that names the versions it speaks, answers GET and DELETE at its HTTP endpoint with `405`, and ignores `Mcp-Session-Id` and `Last-Event-ID`. The tests run with the oldest version at `2024-11-05` and at `2026-07-28`; values in between compile and are not tested.
+
+A build that speaks earlier versions as well still answers a GET or DELETE that names `2026-07-28` in `MCP-Protocol-Version` with `405`: that version has neither.
+
 
 ## Two ways of starting
 

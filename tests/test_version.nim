@@ -26,21 +26,22 @@ suite "protocol version: parsing":
 
 suite "protocol version: what this build speaks":
 
-  test "Given the default version, when listing supported versions, then they are every version up to the default in ascending order":
+  test "Given the oldest and the default version, when listing supported versions, then they are every version between them in ascending order":
     var expected: seq[McpProtocolVersion] = @[]
     for v in McpProtocolVersion:
-      if v <= DefaultProtocolVersion:
+      if v >= OldestProtocolVersion and v <= DefaultProtocolVersion:
         expected.add v
     check SupportedProtocolVersions == expected
+    check SupportedProtocolVersions[0] == OldestProtocolVersion
     check SupportedProtocolVersions[^1] == DefaultProtocolVersion
 
-  test "Given a version above the default, when checked, then it is not supported":
+  test "Given a version outside the build's range, when checked, then it is not supported":
     for v in McpProtocolVersion:
-      check isSupported(v) == (v <= DefaultProtocolVersion)
+      check isSupported(v) == (v >= OldestProtocolVersion and v <= DefaultProtocolVersion)
 
-  test "Given a version above the default, when required, then ValueError names both versions":
+  test "Given a version outside the build's range, when required, then ValueError names it and both ends of the range":
     for v in McpProtocolVersion:
-      if v <= DefaultProtocolVersion:
+      if isSupported(v):
         requireSupported(v)
       else:
         var message = ""
@@ -49,6 +50,7 @@ suite "protocol version: what this build speaks":
         except ValueError as e:
           message = e.msg
         check $v in message
+        check $OldestProtocolVersion in message
         check $DefaultProtocolVersion in message
 
 suite "protocol version: eras":

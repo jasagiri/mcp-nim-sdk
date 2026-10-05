@@ -104,3 +104,20 @@ Feature: Streamable HTTP transport
     When a request names 2026-07-28 in its version header but lacks the per-request fields in the body
     Then the answer is 400 invalid params, not an error about sessions
     And an Mcp-Name with spaces or tabs around it is read without them
+
+  @spec:MCP-HTTP-15 @feature:ftStreamableHttp
+  Scenario: GET and DELETE exist only where a spoken version has them
+    Given a server's endpoint
+    When a GET or DELETE names no version and no session
+    Then it is 400 where a spoken version has the stream or sessions, since the session id is what is missing
+    And it is 405 where none has, and Allow names the methods the spoken versions use
+    And a GET or DELETE that names 2026-07-28 is 405 with Allow: POST, whatever else the server speaks
+
+  @spec:MCP-HTTP-16 @feature:ftPerRequestMetadata
+  Scenario: A server that speaks 2026-07-28 alone ignores the mechanisms of earlier revisions
+    Given a build whose oldest version is 2026-07-28
+    When a request carries Mcp-Session-Id and Last-Event-ID
+    Then both are ignored and no session id comes back
+    And a posted initialize is answered 400 naming the versions the server speaks
+    And the HTTP+SSE paths do not exist
+

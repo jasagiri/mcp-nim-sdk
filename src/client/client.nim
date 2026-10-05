@@ -665,7 +665,7 @@ proc initialize*(client: McpClient): Future[McpServerCapabilities] {.async.} =
   if client.state != mlsUninitialized:
     raise newException(ValueError, "Client already initialized")
 
-  let supported = versionsUpTo(client.protocolVersion)
+  let supported = spokenVersionsUpTo(client.protocolVersion)
   let offered = latestLegacyVersion(supported)
   if offered.isNone:
     raise newException(ValueError,

@@ -14,17 +14,18 @@ Feature: Protocol versions
     And a version written out is its dated string
 
   @spec:MCP-VERSION-2
-  Scenario: The build speaks the default version and every version before it
-    Given a build whose default version is V
+  Scenario: The build speaks every version from its oldest to its default
+    Given a build whose oldest version is O and whose default version is V
     When the supported versions are listed
-    Then they are every released version up to V in ascending order
-    And a version newer than V is not supported
+    Then they are every released version from O to V in ascending order
+    And a version older than O or newer than V is not supported
+    And a server or client limited to a ceiling offers the versions from O to that ceiling
 
   @spec:MCP-VERSION-3
-  Scenario: A server or client cannot be created for a version newer than the default
-    Given a build whose default version is V
-    When a server or a client is created for a version newer than V
-    Then ValueError is raised naming both versions
+  Scenario: A server or client cannot be created for a version outside the build's range
+    Given a build whose oldest version is O and whose default version is V
+    When a server or a client is created for a version outside O to V
+    Then ValueError is raised naming the version and both ends of the range
 
   @spec:MCP-VERSION-4
   Scenario: Only 2026-07-28 and later are the modern era
@@ -56,3 +57,10 @@ Feature: Protocol versions
     Given a client that speaks a newer version than the server
     When the client connects
     Then both use the server's version
+
+  @spec:MCP-VERSION-9 @feature:ftPerRequestMetadata
+  Scenario: A server without legacy versions tells a legacy client what it speaks
+    Given a build whose oldest version is 2026-07-28
+    When a client sends initialize
+    Then the error is unsupported protocol version and names the versions the server speaks
+    And any other request without the per-request fields is invalid params

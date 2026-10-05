@@ -51,8 +51,31 @@ proc generateDocs(extraFlags: string) =
   ## README.md and docs/*.md for the protocol version the flags select.
   exec "nim r --hints:off --nimcache:build/nc_gen --path:src " & extraFlags & " tools/gen_docs.nim"
 
+const modernOnlyTests = [
+  "test_version_floor", "test_version", "test_features", "test_modern_protocol",
+  "test_mrtr", "test_subscriptions", "test_trace_context", "test_param_headers"
+]
+  ## What holds on a build that speaks 2026-07-28 alone. The other tests need
+  ## a legacy peer and cannot run there.
+
+proc buildDefaultVersion(): string =
+  ## The default version written in src/protocol/version.nim.
+  result = staticExec("sed -n 's/.*mcpDefaultProtocolVersion {.strdefine.} = \"\\(.*\\)\"/\\1/p' src/protocol/version.nim").strip()
+  if result notin releasedProtocolVersions:
+    raise newException(ValueError, "could not read the default protocol version from src/protocol/version.nim: '" & result & "'")
+
+proc runModernOnlyTests() =
+  ## The build without the initialize handshake (`mcpOldestProtocolVersion`).
+  exec "mkdir -p build/tests"
+  for name in modernOnlyTests:
+    echo "Running test (2026-07-28 only): " & name
+    exec "nim c -r -d:mcpDefaultProtocolVersion=2026-07-28 -d:mcpOldestProtocolVersion=2026-07-28" &
+         " --nimcache:build/nc_modern_only -o:build/tests/modern_only_" & name & " tests/" & name & ".nim"
+
 task test, "Run tests":
   runTests("")
+  if buildDefaultVersion() == "2026-07-28":
+    runModernOnlyTests()
   compileOnly("tests/interop", "")
   compileOnly("examples", "")
 
@@ -65,6 +88,7 @@ task testAllVersions, "Run tests once per released protocol version as the build
     compileOnly("tests/interop", flag)
     compileOnly("examples", flag)
   generateDocs("")  # leave the documents of the build's own default
+  runModernOnlyTests()
 
 task genDocs, "Regenerate README.md and docs/ from templates/":
   generateDocs("")

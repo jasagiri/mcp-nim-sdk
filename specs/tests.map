@@ -1,9 +1,9 @@
 MCP-VERSION-1 | tests/test_version.nim | Given a released version string, when parsed, then the matching version is returned
 MCP-VERSION-1 | tests/test_version.nim | Given a string that is not a released version, when parsed, then none is returned
 MCP-VERSION-1 | tests/test_version.nim | Given a version, when rendered, then it is the wire string
-MCP-VERSION-2 | tests/test_version.nim | Given the default version, when listing supported versions, then they are every version up to the default in ascending order
-MCP-VERSION-2 | tests/test_version.nim | Given a version above the default, when checked, then it is not supported
-MCP-VERSION-3 | tests/test_version.nim | Given a version above the default, when required, then ValueError names both versions
+MCP-VERSION-2 | tests/test_version.nim | Given the oldest and the default version, when listing supported versions, then they are every version between them in ascending order
+MCP-VERSION-2 | tests/test_version.nim | Given a version outside the build's range, when checked, then it is not supported
+MCP-VERSION-3 | tests/test_version.nim | Given a version outside the build's range, when required, then ValueError names it and both ends of the range
 MCP-VERSION-3 | tests/test_legacy_handshake.nim | Given a version above the build default, when a server is created with it, then ValueError is raised
 MCP-VERSION-3 | tests/test_legacy_handshake.nim | Given a version above the build default, when a client is created with it, then ValueError is raised
 MCP-VERSION-4 | tests/test_version.nim | Given each version, when asked whether it is modern, then only 2026-07-28 onward is
@@ -828,3 +828,15 @@ MCP-MRTR-17 | tests/test_mrtr.nim | Given a URL elicitation, when the client dec
 MCP-MRTR-18 | tests/test_mrtr.nim | Given a form elicitation, when the client's handler accepts, then the retry carries the ElicitResult
 MCP-MRTR-18 | tests/test_mrtr.nim | Given a form elicitation, when the client's handler answers outside the schema, then the request is abandoned and nothing is retried
 MCP-AUDIO-4 | tests/test_client_server_requests.nim | Given a handler that answers with audio, when the version has no audio content, then the answer says so in text
+MCP-VERSION-2 | tests/test_version_floor.nim | Given a build, when its versions are listed, then they are every version from the oldest to the default
+MCP-VERSION-2 | tests/test_version_floor.nim | Given a ceiling, when the spoken versions up to it are listed, then none is older than the build's oldest
+MCP-VERSION-3 | tests/test_version_floor.nim | Given a version outside the build's range, when a server is created for it, then ValueError is raised
+MCP-VERSION-9 | tests/test_version_floor.nim | Given an initialize request, when the server speaks no legacy version, then the error names the versions it speaks
+MCP-VERSION-9 | tests/test_version_floor.nim | Given a request without the per-request fields, when the server speaks no legacy version, then it is invalid params
+MCP-HTTP-15 | tests/test_version_floor.nim | Given a GET that names no version and no session, when it arrives, then it is 400 where a spoken version has the stream and 405 otherwise
+MCP-HTTP-15 | tests/test_version_floor.nim | Given a DELETE that names no version and no session, when it arrives, then it is 400 where a spoken version has sessions and 405 otherwise
+MCP-HTTP-15 | tests/test_version_floor.nim | Given a method the endpoint does not serve, when it arrives, then Allow names what the spoken versions use
+MCP-HTTP-15 | tests/test_version_floor.nim | Given a GET or DELETE that names 2026-07-28, when it arrives, then it is 405 and only POST is allowed
+MCP-HTTP-16 | tests/test_version_floor.nim | Given a request with Mcp-Session-Id and Last-Event-ID, when it is served, then both are ignored and no session id comes back
+MCP-HTTP-16 | tests/test_version_floor.nim | Given a legacy initialize, when it is posted, then the answer is 400 and names the versions the server speaks
+MCP-HTTP-16 | tests/test_version_floor.nim | Given the HTTP+SSE paths, when no spoken version has that transport, then they do not exist
