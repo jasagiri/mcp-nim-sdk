@@ -75,3 +75,16 @@ task docs, "Generate API documentation":
 
 task clean, "Remove build artifacts":
   rmDir "build"
+
+proc interopEnvironment() =
+  ## The official Python / TypeScript SDKs and the conformance suite, pinned (needs uv, node, npm).
+  if not dirExists("build/interop/conformance"):
+    exec "sh tests/interop/peers/setup.sh build/interop"
+
+task interop, "Interop matrix: Nim against the official SDKs, per protocol version (slow; needs network and uv/node/npm; not part of test)":
+  interopEnvironment()
+  exec "python3 tests/interop/peers/run_nim.py --env build/interop "
+
+task conformance, "Run the official conformance suite against the Nim server and client (needs uv/node/npm; not part of test)":
+  interopEnvironment()
+  exec "python3 tests/interop/peers/run_conformance.py --env build/interop"
