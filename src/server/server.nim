@@ -10,6 +10,7 @@ import ../protocol/content
 import ../protocol/log_level
 import ../protocol/sampling_tools
 import ../protocol/trace_context
+import ../protocol/extensions
 import ../transport/transport
 import ./errors
 import ./pagination
@@ -50,6 +51,9 @@ type
       ## nil when the client did not ask for progress.
     logLevel*: Option[McpLogLevel]
       ## 2026-07-28: the level the request asked for in its `_meta`.
+    clientCapabilities*: JsonNode
+      ## 2026-07-28: what the request declared in its `_meta`; nil in
+      ## earlier versions.
     traceContext*: TraceContext
       ## 2026-07-28: the trace context the request carried in its `_meta`;
       ## empty when it carried none. What the server sends for this request
@@ -81,6 +85,15 @@ type
   CompletionHandler* = proc(ctx: McpRequestContext,
                             request: McpCompletionRequest): Future[McpCompletion] {.async.}
 
+  ExtensionMethodHandler* = proc(ctx: McpRequestContext,
+                                 params: JsonNode): Future[JsonNode] {.async.}
+    ## Returns the result object of an extension's request. It may set its
+    ## own `resultType` when the extension declared that type.
+
+  ExtensionMethod* = object
+    extensionId*: string
+    handler*: ExtensionMethodHandler
+
   SubscriptionHandler* = proc(ctx: McpRequestContext, uri: string): Future[void] {.async.}
     ## Called when a client subscribes to, or unsubscribes from, `uri`; the
     ## server keeps the subscriptions itself.
@@ -109,6 +122,10 @@ type
     promptsList: ListHandler
     promptGet: PromptGetHandler
     completer: CompletionHandler
+    extensionMethods*: Table[string, ExtensionMethod]
+      ## The methods extensions define, by method name; see `registerExtensionMethod`.
+    extensionResultTypes*: Table[string, string]
+      ## The result types extensions define, mapped to the extension.
     requestHandlers*: Table[string, proc(request: JsonRpcRequest): Future[JsonRpcResponse] {.async.}]
     notificationHandlers*: Table[string, proc(notification: JsonRpcNotification): Future[void] {.async.}]
     inFlight: Table[string, McpRequestContext]
@@ -162,6 +179,8 @@ proc newMcpServer*(
     serverInfo: serverInfo,
     cachePolicy: UncachedPolicy,
     capabilities: capabilities,
+    extensionMethods: initTable[string, ExtensionMethod](),
+    extensionResultTypes: initTable[string, string](),
     requestHandlers: initTable[string, proc(request: JsonRpcRequest): Future[JsonRpcResponse] {.async.}](),
     notificationHandlers: initTable[string, proc(notification: JsonRpcNotification): Future[void] {.async.}]()
   )
@@ -494,6 +513,7 @@ proc newContext(server: McpServer, request: JsonRpcRequest): McpRequestContext =
       if not level.isNil and level.kind == JString:
         result.logLevel = parseLogLevel(level.getStr())
       result.traceContext = traceContextOf(request.params)
+      result.clientCapabilities = meta{MetaClientCapabilities}
 
 proc metaRejection(request: JsonRpcRequest, version: McpProtocolVersion): Option[JsonRpcError] =
   ## Why the request's own `_meta` entries cannot be served.
@@ -798,6 +818,25 @@ proc paramHeaderMismatch(server: McpServer, name: string, arguments: JsonNode,
     return none(JsonRpcError)
   return checkParamHeaders(declared.bindings, arguments, received)
 
+proc clientDeclaresExtension(ctx: McpRequestContext, id: string): bool =
+  settingsOf(ctx.clientCapabilities, id).isSome
+
+proc dispatchExtension(server: McpServer, request: JsonRpcRequest,
+                       ctx: McpRequestContext): Future[JsonRpcResponse] {.async.} =
+  ## A method an extension defines; the client must have declared the
+  ## extension, otherwise the request needs a capability it did not offer.
+  let registered = server.extensionMethods[request.`method`]
+  if not ctx.clientDeclaresExtension(registered.extensionId):
+    let error = missingCapabilityError(
+      "Method " & request.`method` & " needs the extension " & registered.extensionId,
+      requiredExtension(registered.extensionId))
+    return newJsonRpcErrorResponse(request.id, error.code, error.message, error.data)
+  let answer = await registered.handler(ctx, request.params)
+  let malformed = requireObjectResult(request, answer)
+  if malformed.isSome:
+    return malformed.get
+  return newJsonRpcResponse(request.id, answer)
+
 proc dispatchStandard(server: McpServer, request: JsonRpcRequest,
                       ctx: McpRequestContext): Future[JsonRpcResponse] {.async.} =
   let caps = server.capabilities
@@ -924,6 +963,8 @@ proc dispatchStandard(server: McpServer, request: JsonRpcRequest,
     return newJsonRpcResponse(request.id, newJObject())
 
   else:
+    if request.`method` in server.extensionMethods and ctx.version.has(ftExtensions):
+      return await server.dispatchExtension(request, ctx)
     return newJsonRpcErrorResponse(request.id, ErrMethodNotFound,
       "Method not found: " & request.`method`)
 
@@ -942,6 +983,33 @@ proc handleStandardRequest(server: McpServer, request: JsonRpcRequest,
       if ctx.version.has(ftResourceNotFoundInvalidParams): ErrInvalidParams
       else: ErrResourceNotFoundLegacy
     return newJsonRpcErrorResponse(request.id, code, e.plainMessage, %*{"uri": e.uri})
+
+proc unusableResultType(server: McpServer, request: JsonRpcRequest,
+                        ctx: McpRequestContext,
+                        payload: JsonNode): Option[JsonRpcResponse] =
+  ## An answer whose `resultType` is neither a core one nor defined by an
+  ## extension is a defect of the server; one defined by an extension the
+  ## client did not declare is not something the client can read.
+  let node = payload{"resultType"}
+  if node.isNil:
+    return none(JsonRpcResponse)
+  if node.kind != JString:
+    return some(newJsonRpcErrorResponse(request.id, ErrInternal,
+      "Handler for " & request.`method` & " returned a resultType that is not a string"))
+  let resultType = node.getStr()
+  if resultType in CoreResultTypes:
+    return none(JsonRpcResponse)
+  let owner = server.extensionResultTypes.getOrDefault(resultType)
+  if owner.len == 0:
+    stderr.writeLine("[mcp-server] " & request.`method` & " returned resultType '" &
+                     resultType & "', which no extension defines")
+    return some(newJsonRpcErrorResponse(request.id, ErrInternal, "Internal error"))
+  if not ctx.clientDeclaresExtension(owner):
+    let error = missingCapabilityError(
+      "Result type " & resultType & " needs the extension " & owner,
+      requiredExtension(owner))
+    return some(newJsonRpcErrorResponse(request.id, error.code, error.message, error.data))
+  none(JsonRpcResponse)
 
 proc handleModernRequest(server: McpServer, request: JsonRpcRequest,
                          ctx: McpRequestContext): Future[JsonRpcResponse] {.async.} =
@@ -971,6 +1039,9 @@ proc handleModernRequest(server: McpServer, request: JsonRpcRequest,
     if payload.isNil or payload.kind != JObject:
       return newJsonRpcErrorResponse(request.id, ErrInternal,
         "Handler for " & request.`method` & " returned a result that is not an object")
+    let unusable = server.unusableResultType(request, ctx, payload)
+    if unusable.isSome:
+      return unusable.get
     response.result = some(completeResult(
       request.`method`, payload, server.serverInfo, server.cachePolicy))
   return response

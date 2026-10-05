@@ -20,6 +20,9 @@ import client/utilities
 import client/roots
 import client/sampling
 import client/elicitation
+import client/extensions as clientExtensions
+import server/extensions as serverExtensions
+import protocol/trace_context
 import transport/transport
 import transport/stdio
 import transport/http
@@ -29,6 +32,7 @@ import transport/event_stream
 export types, lifecycle, modern, content, json_schema
 export server, tool_output, client
 export tools, resources, prompts, utilities, roots, sampling, elicit, elicitation
+export clientExtensions, serverExtensions, trace_context
 export transport, stdio, http, http_server, event_stream
 
 const

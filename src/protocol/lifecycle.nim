@@ -29,6 +29,8 @@ proc toJson*(capabilities: McpClientCapabilities): JsonNode =
     result["elicitation"] = elicitation
   if capabilities.experimental.isSome:
     result["experimental"] = capabilities.experimental.get
+  if capabilities.extensions.isSome:
+    result["extensions"] = capabilities.extensions.get
 
 proc fromJson*(node: JsonNode, T: typedesc[McpElicitationCapability]): McpElicitationCapability =
   ## An empty object is the form mode alone.
@@ -55,6 +57,8 @@ proc toJson*(capabilities: McpServerCapabilities): JsonNode =
     result["completions"] = newJObject()
   if capabilities.experimental.isSome:
     result["experimental"] = capabilities.experimental.get
+  if capabilities.extensions.isSome:
+    result["extensions"] = capabilities.extensions.get
 
 func forVersion*(capabilities: McpServerCapabilities,
                  version: McpProtocolVersion): McpServerCapabilities {.raises: [].} =
@@ -63,6 +67,16 @@ func forVersion*(capabilities: McpServerCapabilities,
   result = capabilities
   if not version.has(ftCompletionsCapability):
     result.completions = none(McpCompletionsCapability)
+  if not version.has(ftExtensions):
+    result.extensions = none(JsonNode)
+
+func forVersion*(capabilities: McpClientCapabilities,
+                 version: McpProtocolVersion): McpClientCapabilities {.raises: [].} =
+  ## What a client declares to a server of `version`: a capability that
+  ## version's schema does not know is left out.
+  result = capabilities
+  if not version.has(ftExtensions):
+    result.extensions = none(JsonNode)
 
 proc createInitializeRequest*(
   clientInfo: McpClientInfo,
@@ -72,7 +86,7 @@ proc createInitializeRequest*(
   let params = %*{
     "protocolVersion": $protocolVersion,
     "clientInfo": protocolVersion.implementationFor(clientInfo),
-    "capabilities": capabilities.toJson()
+    "capabilities": capabilities.forVersion(protocolVersion).toJson()
   }
   
   result = newJsonRpcRequest("1", "initialize", params)

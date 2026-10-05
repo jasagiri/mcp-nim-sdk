@@ -1,0 +1,58 @@
+Feature: Extensions (2026-07-28)
+  As the author of an MCP extension
+  I want to declare it, negotiate it and plug its methods and result types into the SDK
+  So that an extension needs no change to the core
+
+  @spec:MCP-EXT-1 @feature:ftExtensions
+  Scenario: Identifiers and the capability wire form follow the specification
+    Given extension identifiers and the specification's capability examples
+    When they are validated, parsed and written
+    Then malformed identifiers are rejected and the examples round-trip
+
+  @spec:MCP-EXT-2 @feature:ftExtensions
+  Scenario: The server declares the extensions it registered
+    Given a server with a registered extension
+    When a 2026-07-28 client discovers it or a legacy client initializes
+    Then the discover capabilities list the extension and the legacy ones do not
+
+  @spec:MCP-EXT-3 @feature:ftExtensions
+  Scenario: An extension method is served for clients that declared the extension
+    Given a registered extension method
+    When a client that declared the extension calls it
+    Then the handler runs with the client's settings and its result is returned
+
+  @spec:MCP-EXT-4 @feature:ftExtensions
+  Scenario: A client without the extension gets the missing-capability error
+    Given a registered extension method or a handler that requires the extension
+    When a client that did not declare the extension makes the request
+    Then the answer is -32021 naming the extension in requiredCapabilities
+
+  @spec:MCP-EXT-5 @feature:ftExtensions
+  Scenario: An extension defines a result type
+    Given an extension that declared a resultType
+    When its handler returns it
+    Then the result passes through, and a type no extension defines is an internal error
+
+  @spec:MCP-EXT-6 @feature:ftExtensions
+  Scenario: Registrations are checked
+    Given an identifier without a prefix, a core method or a core result type
+    When it is registered
+    Then registration raises ValueError
+
+  @spec:MCP-EXT-7 @feature:ftExtensions
+  Scenario: A client declares its extensions and reads the server's
+    Given a client that declared an extension before connecting
+    When it sends requests and connects to a server that declared extensions
+    Then its capabilities carry the declaration in 2026-07-28 only and it can read the server's settings
+
+  @spec:MCP-EXT-8 @feature:ftExtensions
+  Scenario: A client does not call what the server cannot serve
+    Given a server without the extension
+    When the client calls an extension method
+    Then it raises McpUnsupportedError and sends nothing
+
+  @spec:MCP-EXT-9 @feature:ftExtensions
+  Scenario: A client accepts the result types of its extensions
+    Given both sides support an extension that defines a resultType
+    When the server answers with it
+    Then the client returns the result, and raises for a type it does not know

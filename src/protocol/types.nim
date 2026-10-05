@@ -57,6 +57,8 @@ type
     sampling*: Option[McpSamplingCapability]
     elicitation*: Option[McpElicitationCapability]
     experimental*: Option[JsonNode]
+    extensions*: Option[JsonNode]
+      ## 2026-07-28: extension identifier -> settings object.
 
   McpServerCapabilities* = object
     prompts*: Option[McpPromptsCapability]
@@ -65,6 +67,8 @@ type
     logging*: Option[McpLoggingCapability]
     completions*: Option[McpCompletionsCapability]
     experimental*: Option[JsonNode]
+    extensions*: Option[JsonNode]
+      ## 2026-07-28: extension identifier -> settings object.
 
   McpRootsCapability* = object
     listChanged*: bool

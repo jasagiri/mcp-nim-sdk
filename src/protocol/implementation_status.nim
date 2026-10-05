@@ -130,7 +130,9 @@ func implementationOf*(feature: McpFeature): Implementation {.raises: [].} =
          "tests/test_client_sampling_tools.nim")
   of ftMultiRoundTripRequests:
     notYet("the client raises on an input_required result")
-  of ftTasks, ftSubscriptionsListen, ftExtensions:
+  of ftTasks, ftSubscriptionsListen:
     notYet()
   of ftTraceContext:
     done("tests/test_trace_context.nim")
+  of ftExtensions:
+    done("tests/test_extensions.nim")

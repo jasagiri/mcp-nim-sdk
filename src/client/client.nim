@@ -94,6 +94,9 @@ type
     pendingRequests*: Table[string, Future[JsonRpcResponse]]
     progressCallbacks: Table[string, McpProgressCallback]
     nextProgressToken: int
+    extensionResultTypes*: seq[string]
+      ## The `resultType` values of the extensions this client declared;
+      ## see `declareExtension`.
     requestHandlers*: Table[string, McpServerRequestHandler]
     notificationHandlers*: Table[string, proc(notification: JsonRpcNotification): Future[void] {.async.}]
     toolOutputSchemas*: Table[string, JsonNode]
@@ -403,9 +406,10 @@ proc sendRequest*(client: McpClient, methodName: string, params: JsonNode,
         methodName & ": the server asked for client input (resultType " &
         "input_required), which this client does not support yet")
     of rkUnknown:
-      raise newException(ValueError,
-        methodName & ": the server answered with unknown resultType " &
-        $response.result.get{"resultType"})
+      let declared = response.result.get{"resultType"}
+      if declared.kind != JString or declared.getStr() notin client.extensionResultTypes:
+        raise newException(ValueError,
+          methodName & ": the server answered with unknown resultType " & $declared)
   return response
 
 proc requireFeature*(client: McpClient, feature: McpFeature, operation: string) =
@@ -477,6 +481,10 @@ proc extractServerCapabilities(json: JsonNode): McpServerCapabilities =
   let experimentalJson = declared("experimental")
   if not experimentalJson.isNil:
     result.experimental = some(experimentalJson)
+
+  let extensionsJson = declared("extensions")
+  if not extensionsJson.isNil:
+    result.extensions = some(extensionsJson)
 
 type ModernServerRefusedInitialize = object of ValueError
   ## The server answered initialize with a 2026-07-28 error: it is a
