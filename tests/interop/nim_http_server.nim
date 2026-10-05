@@ -26,7 +26,7 @@ proc main() =
   let callTool: typeof(McpToolHandlers().callHandler.get) =
     proc(name: string, arguments: JsonNode): Future[JsonNode] {.async.} =
       if name != "echo":
-        raise newException(ValueError, "Unknown tool: " & name)
+        raise newUnknownTool(name)
       return %*{"content": [{"type": "text", "text": arguments{"text"}.getStr()}],
                 "isError": false}
   server.setToolHandlers(McpToolHandlers(

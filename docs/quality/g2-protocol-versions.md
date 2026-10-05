@@ -23,6 +23,11 @@
 | `src/transport/http.nim` | `tests/test_streamable_http.nim` | 2026-10-05 |
 | `src/transport/http_server.nim` | `tests/test_streamable_http.nim` | 2026-10-05 |
 | `src/transport/stdio.nim` | `tests/test_stdio.nim`, `tests/test_silent_dead.nim` | 2026-10-06 |
+| `src/server/server.nim` (ページネーション、購読、ログ、進捗、キャンセル、サーバー発リクエスト、通知) | `tests/test_server_*.nim` | 2026-10-06 |
+| `src/server/errors.nim` | `tests/test_server_errors.nim` | 2026-10-06 |
+| `src/server/pagination.nim` | `tests/test_server_pagination.nim` | 2026-10-06 |
+| `src/server/completion.nim` | `tests/test_server_completion.nim` | 2026-10-06 |
+| `src/protocol/log_level.nim` | `tests/test_server_logging.nim` | 2026-10-06 |
 
 ## 手で確かめたもの (nim-muter の測定ではない)
 
