@@ -1,0 +1,99 @@
+MCP-VERSION-1 | tests/test_version.nim | Given a released version string, when parsed, then the matching version is returned
+MCP-VERSION-1 | tests/test_version.nim | Given a string that is not a released version, when parsed, then none is returned
+MCP-VERSION-1 | tests/test_version.nim | Given a version, when rendered, then it is the wire string
+MCP-VERSION-2 | tests/test_version.nim | Given the default version, when listing supported versions, then they are every version up to the default in ascending order
+MCP-VERSION-2 | tests/test_version.nim | Given a version above the default, when checked, then it is not supported
+MCP-VERSION-3 | tests/test_version.nim | Given a version above the default, when required, then ValueError names both versions
+MCP-VERSION-3 | tests/test_legacy_handshake.nim | Given a version above the build default, when a server is created with it, then ValueError is raised
+MCP-VERSION-3 | tests/test_legacy_handshake.nim | Given a version above the build default, when a client is created with it, then ValueError is raised
+MCP-VERSION-4 | tests/test_version.nim | Given each version, when asked whether it is modern, then only 2026-07-28 onward is
+MCP-VERSION-5 | tests/test_legacy_handshake.nim | Given a server, when a client requests a version the server speaks, then the response carries the same version
+MCP-VERSION-5 | tests/test_version.nim | Given a requested legacy version that is supported, when negotiated, then the same version is chosen
+MCP-VERSION-6 | tests/test_legacy_handshake.nim | Given a server, when a client requests an unknown version, then the response carries the server's latest legacy version
+MCP-VERSION-6 | tests/test_legacy_handshake.nim | Given a server limited to 2024-11-05, when a client requests a newer version, then the response carries 2024-11-05
+MCP-VERSION-6 | tests/test_version.nim | Given a requested version that is not supported, when negotiated, then the latest supported legacy version is chosen
+MCP-VERSION-6 | tests/test_version.nim | Given an unknown version string, when negotiated, then the latest supported legacy version is chosen
+MCP-VERSION-6 | tests/test_version.nim | Given the modern version requested through initialize, when negotiated, then a legacy version is chosen
+MCP-VERSION-7 | tests/test_legacy_handshake.nim | Given a client limited to 2024-11-05, when the server answers with a newer version, then connect fails naming that version
+MCP-VERSION-7 | tests/test_legacy_handshake.nim | Given a client, when the server answers with an unknown version, then connect fails naming that version
+MCP-VERSION-8 | tests/test_legacy_handshake.nim | Given a client newer than the server, when it connects, then both settle on the server's version
+MCP-LIFECYCLE-1 | tests/test_legacy_handshake.nim | Given a server, when initialize has no protocolVersion, then it answers invalid params
+MCP-LIFECYCLE-1 | tests/test_legacy_handshake.nim | Given a server, when initialize carries a non-string protocolVersion, then it answers invalid params
+MCP-LIFECYCLE-2 | tests/test_legacy_handshake.nim | Given a server, when initialize omits capabilities, then it still answers with a result
+MCP-LIFECYCLE-2 | tests/test_legacy_handshake.nim | Given a server that declares only tools, when it answers initialize, then no other capability key is present
+MCP-LIFECYCLE-2 | tests/test_legacy_handshake.nim | Given a server, when initialize carries null for a capability, then it treats the capability as not declared
+MCP-LIFECYCLE-3 | tests/test_legacy_handshake.nim | Given a client limited to a legacy version, when it connects, then initialize offers that version as a string
+MCP-LIFECYCLE-3 | tests/test_legacy_handshake.nim | Given a client that declares only roots, when it connects, then initialize carries no other capability key
+MCP-LIFECYCLE-3 | tests/test_legacy_handshake.nim | Given a legacy client, when the handshake completes, then it sends notifications/initialized
+MCP-LIFECYCLE-4 | tests/test_era_matrix.nim | Given a legacy client, when it pings, then it gets an empty result
+MCP-LIFECYCLE-5 | tests/test_era_matrix.nim | Given the specification's discover request, when it is answered, then the result describes the server
+MCP-LIFECYCLE-5 | tests/test_modern_protocol.nim | Given a server's versions and capabilities, when the discover result is built, then it matches the specification's example
+MCP-LIFECYCLE-5 | tests/test_modern_protocol.nim | Given a server that also speaks legacy versions, when the discover result is built, then versions are listed newest first
+MCP-LIFECYCLE-5 | tests/test_modern_protocol.nim | Given instructions, when the discover result is built, then it carries them, and omits the field when there are none
+MCP-LIFECYCLE-6 | tests/test_era_matrix.nim | Given no initialize, when a 2026-07-28 tools/list arrives, then it is served and the server keeps no handshake state
+MCP-LIFECYCLE-6 | tests/test_era_matrix.nim | Given a 2026-07-28 request without client capabilities, when it is answered, then it is invalid params
+MCP-LIFECYCLE-6 | tests/test_era_matrix.nim | Given a request naming an unknown version, when it is answered, then the error lists the supported versions
+MCP-LIFECYCLE-7 | tests/test_era_matrix.nim | Given a server limited to a legacy version, when a 2026-07-28 discover probe arrives, then it answers method not found
+MCP-LIFECYCLE-8 | tests/test_era_matrix.nim | Given an initialized legacy client, when it lists tools, then the result carries no 2026-07-28 fields
+MCP-LIFECYCLE-8 | tests/test_era_matrix.nim | Given one server, when a legacy client and a 2026-07-28 client use it in turn, then each is answered in its own era
+MCP-LIFECYCLE-9 | tests/test_era_matrix.nim | Given a 2026-07-28 server, when the client connects, then it discovers the server and sends no initialize
+MCP-LIFECYCLE-9 | tests/test_era_matrix.nim | Given a connected 2026-07-28 client, when it sends a request, then the request carries the protocol metadata beside its own params
+MCP-LIFECYCLE-10 | tests/test_era_matrix.nim | Given a server limited to a legacy version, when a 2026-07-28 client connects, then it falls back to initialize
+MCP-LIFECYCLE-10 | tests/test_era_matrix.nim | Given a peer that never answers the discover probe, when the probe times out, then the client sends initialize
+MCP-LIFECYCLE-11 | tests/test_era_matrix.nim | Given a modern peer that supports only a version the client does not speak, when the client connects, then connect fails naming that version and no initialize is sent
+MCP-LIFECYCLE-11 | tests/test_era_matrix.nim | Given a discover result that lists no version the client speaks, when the client connects, then connect fails
+MCP-LIFECYCLE-12 | tests/test_era_matrix.nim | Given a 2026-07-28 request for a method the version removed, when it is answered, then it is method not found
+MCP-LIFECYCLE-12 | tests/test_era_matrix.nim | Given a 2026-07-28 request for an unknown method, when it is answered, then it is method not found
+MCP-RESULT-1 | tests/test_modern_protocol.nim | Given a tools/call result, when completed, then it gains resultType and the server identity but no cache fields
+MCP-RESULT-1 | tests/test_modern_protocol.nim | Given results with each resultType, when classified, then absent means complete and unknown values are unknown
+MCP-RESULT-1 | tests/test_era_matrix.nim | Given a result with a resultType the client does not know, when a request completes, then the client raises instead of returning it
+MCP-RESULT-1 | tests/test_era_matrix.nim | Given a result without resultType from an older server, when a request completes, then it is returned as complete
+MCP-CACHE-1 | tests/test_modern_protocol.nim | Given a tools/list result and a cache policy, when completed, then it carries that policy
+MCP-CACHE-1 | tests/test_modern_protocol.nim | Given a cacheable result and no policy, when completed, then it is marked not reusable and private
+MCP-CACHE-1 | tests/test_modern_protocol.nim | Given a result whose handler already set cache fields, when completed, then the handler's values are kept
+MCP-STDIO-1 | tests/test_stdio.nim | Given two messages on two lines, when received, then each line is one message
+MCP-STDIO-1 | tests/test_stdio.nim | Given blank lines between messages, when received, then they are skipped
+MCP-STDIO-1 | tests/test_stdio.nim | Given lines that end in CRLF, when received, then the messages parse
+MCP-STDIO-1 | tests/test_stdio.nim | Given a message, when sent, then it is written as one line
+MCP-STDIO-2 | tests/test_stdio.nim | Given the end of input, when received, then the transport reports the peer closed it
+MCP-STDIO-2 | tests/test_stdio.nim | Given a line that is not JSON, when a server receives it, then it answers a parse error with a null id and reads on
+MCP-STDIO-3 | tests/test_stdio.nim | Given a server started as a child, when the client connects and calls a tool, then the call succeeds in the build's default version
+MCP-STDIO-3 | tests/test_stdio.nim | Given a child limited to 2024-11-05, when the client connects, then both settle on 2024-11-05
+MCP-STDIO-3 | tests/test_stdio.nim | Given a client, when it closes the transport, then the child process has exited
+MCP-STDIO-4 | tests/test_stdio.nim | Given a child that never answers, when the client connects, then the dispatcher keeps running and the wait can time out
+MCP-STDIO-4 | tests/test_stdio.nim | Given a command that does not exist, when a process transport is made, then McpTransportError names the command
+MCP-HTTP-1 | tests/test_streamable_http.nim | Given a path other than the endpoint, when posted to, then the answer is 404
+MCP-HTTP-1 | tests/test_streamable_http.nim | Given the endpoint, when it receives GET or PUT, then the answer is 405 naming the allowed methods
+MCP-HTTP-1 | tests/test_streamable_http.nim | Given a body that is not JSON, when posted, then the answer is 400 with a parse error
+MCP-HTTP-1 | tests/test_streamable_http.nim | Given a JSON body that is not an object, when posted, then the answer is 400 invalid request
+MCP-HTTP-1 | tests/test_streamable_http.nim | Given a body larger than the limit, when posted, then the answer is 413
+MCP-HTTP-2 | tests/test_streamable_http.nim | Given an Origin that is neither loopback nor allowed, when posted, then the answer is 403
+MCP-HTTP-2 | tests/test_streamable_http.nim | Given a loopback Origin, when posted, then the request is served
+MCP-HTTP-2 | tests/test_streamable_http.nim | Given an Origin the operator allowed, when posted, then the request is served
+MCP-HTTP-3 | tests/test_streamable_http.nim | Given an initialized session, when a notification is posted on it, then the answer is 202 with no body
+MCP-HTTP-3 | tests/test_streamable_http.nim | Given any answer, when its headers are read, then the security headers are present
+MCP-HTTP-4 | tests/test_streamable_http.nim | Given a legacy initialize, when answered, then the answer names an unguessable session
+MCP-HTTP-4 | tests/test_streamable_http.nim | Given a server one client has initialized, when a second client initializes, then it gets its own session
+MCP-HTTP-4 | tests/test_streamable_http.nim | Given a legacy request without a session id, when posted, then the answer is 400
+MCP-HTTP-4 | tests/test_streamable_http.nim | Given a session id the server did not issue, when a request names it, then the answer is 404
+MCP-HTTP-4 | tests/test_streamable_http.nim | Given an initialized session, when a request names it, then it is served
+MCP-HTTP-5 | tests/test_streamable_http.nim | Given a session, when the client sends DELETE, then the session ends on the transport and the server
+MCP-HTTP-5 | tests/test_streamable_http.nim | Given DELETE without a session id or with an unknown one, when sent, then the answer is 400 or 404
+MCP-HTTP-5 | tests/test_streamable_http.nim | Given the session limit is reached, when another client initializes, then the answer is 503
+MCP-HTTP-5 | tests/test_streamable_http.nim | Given an initialize the server rejects, when answered, then no session is opened
+MCP-HTTP-6 | tests/test_streamable_http.nim | Given the specification's tools/call request, when posted with its headers, then the answer is 200 with a complete result
+MCP-HTTP-6 | tests/test_streamable_http.nim | Given an Mcp-Name that differs from the body, when posted, then the answer is 400 header mismatch
+MCP-HTTP-6 | tests/test_streamable_http.nim | Given each required header missing in turn, when posted, then the answer is 400 header mismatch
+MCP-HTTP-7 | tests/test_streamable_http.nim | Given a 2026-07-28 request, when sent, then it carries the mirrored headers and no session id
+MCP-HTTP-8 | tests/test_streamable_http.nim | Given an HTTP server, when the client connects and calls a tool, then the call succeeds in the newest common version
+MCP-HTTP-8 | tests/test_streamable_http.nim | Given an HTTP server limited to a legacy version, when a newer client connects, then it falls back to initialize and calls a tool
+MCP-HTTP-9 | tests/test_streamable_http.nim | Given a server that answers with an event stream, when a request is sent, then the notification and the response both arrive in order
+MCP-HTTP-9 | tests/test_streamable_http.nim | Given an event stream that ends without the response, when a request is sent, then a local stream-closed error stands in for it
+MCP-HTTP-9 | tests/test_streamable_http.nim | Given an HTTP error with a JSON-RPC error body, when a request is sent, then the error arrives as the response
+MCP-HTTP-9 | tests/test_streamable_http.nim | Given an HTTP error whose JSON-RPC error names a placeholder id, when a request is sent, then the error arrives under the request's own id
+MCP-HTTP-9 | tests/test_streamable_http.nim | Given an HTTP error whose body is not a JSON-RPC error, when a request is sent, then McpTransportError names the status
+MCP-TOOLS-1 | tests/test_stdio.nim | Given a server started as a child, when the client connects and calls a tool, then the call succeeds in the build's default version
+MCP-TOOLS-1 | tests/test_streamable_http.nim | Given an HTTP server, when the client connects and calls a tool, then the call succeeds in the newest common version
+MCP-TOOLS-1 | tests/test_era_matrix.nim | Given no initialize, when a 2026-07-28 tools/list arrives, then it is served and the server keeps no handshake state
+MCP-TOOLS-1 | tests/test_era_matrix.nim | Given a 2026-07-28 tools/call, when it is answered, then the result is complete and carries no cache fields
+MCP-TOOLS-2 | tests/test_era_matrix.nim | Given an initialized legacy client, when it lists tools, then the result carries no 2026-07-28 fields
