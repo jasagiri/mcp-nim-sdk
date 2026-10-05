@@ -53,6 +53,10 @@ type
     principal*: Option[string]
       ## Who the transport's authorization says sent the request (the subject
       ## of the access token); none without authorization.
+    idNode*: JsonNode
+      ## The id as the client wrote it (a string or a number); nil for a
+      ## request built without one. What a stream of the request repeats as
+      ## its subscription id.
     version*: McpProtocolVersion
       ## The version this request is served in.
     progressToken: JsonNode
@@ -560,6 +564,7 @@ proc newContext(server: McpServer, request: JsonRpcRequest): McpRequestContext =
     session: request.session,
     requestId: request.id,
     principal: request.principal,
+    idNode: request.idNode,
     version: requested.get(server.legacyVersionOf(request.session)),
     cancellable: request.`method` != "initialize",
     cancelSignal: newFuture[void]("McpRequestContext.cancelSignal"))
