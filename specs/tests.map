@@ -312,3 +312,31 @@ MCP-HTTPBATCH-2 | tests/test_http_streams.nim | Given a batch holding something 
 MCP-HTTPBATCH-3 | tests/test_http_streams.nim | Given a session of 2025-06-18, when a batch is posted, then the answer is 400
 MCP-HTTPCLIENT-1 | tests/test_http_client_streams.nim | Given a request, when the client posts it, then Accept lists both application/json and text/event-stream
 MCP-HTTPCLIENT-1 | tests/test_http_client_streams.nim | Given a client opening the GET stream, when it asks, then Accept lists text/event-stream
+MCP-HTTPSSE-1 | tests/test_http_sse_legacy.nim | Given a GET on the SSE path, when answered, then it is an event stream whose first event names the endpoint
+MCP-HTTPSSE-1 | tests/test_http_sse_legacy.nim | Given two connections, when each is answered, then the endpoints differ
+MCP-HTTPSSE-2 | tests/test_http_sse_legacy.nim | Given a request posted to the endpoint, when the server answers, then the POST gets 202 and the answer arrives on the stream
+MCP-HTTPSSE-2 | tests/test_http_sse_legacy.nim | Given a request during which the server sent a notification, when posted, then both arrive on the stream in order
+MCP-HTTPSSE-2 | tests/test_http_sse_legacy.nim | Given two clients using the same request id, when both are answered, then each answer reaches the right stream
+MCP-HTTPSSE-3 | tests/test_http_sse_legacy.nim | Given a notification the server sends to every client, when two connections are open, then each hears it
+MCP-HTTPSSE-3 | tests/test_http_sse_legacy.nim | Given a request the server sends, when the client answers by POST, then the server receives the answer
+MCP-HTTPSSE-4 | tests/test_http_sse_legacy.nim | Given a POST naming no session or an unknown one, when posted, then the answer is 400 or 404
+MCP-HTTPSSE-4 | tests/test_http_sse_legacy.nim | Given a POST that is not a JSON object, when posted, then the answer is 400
+MCP-HTTPSSE-4 | tests/test_http_sse_legacy.nim | Given a POST whose body is not JSON, when posted, then the answer is 400
+MCP-HTTPSSE-5 | tests/test_http_sse_legacy.nim | Given a client that closes its stream, when the server notices, then the session ends and its endpoint is gone
+MCP-HTTPSSE-5 | tests/test_http_sse_legacy.nim | Given the session limit, when another client connects, then the answer is 503
+MCP-HTTPSSE-6 | tests/test_http_sse_legacy.nim | Given a foreign Origin, when it connects or posts, then the answer is 403
+MCP-HTTPSSE-6 | tests/test_http_sse_legacy.nim | Given a stream, when its head is read, then it carries the security headers
+MCP-HTTPSSE-7 | tests/test_http_sse_legacy.nim | Given this SDK's server, when the client sends a request, then the answer and the related notification arrive through receiveMessage
+MCP-HTTPSSE-7 | tests/test_http_sse_legacy.nim | Given a connected client, when the server sends a request and the client answers, then the server receives the answer
+MCP-HTTPSSE-7 | tests/test_http_sse_legacy.nim | Given a client that sends a notification first, when it connects, then the notification reaches the server
+MCP-HTTPSSE-7 | tests/test_http_sse_legacy.nim | Given headers set on the transport, when it connects and posts, then both requests carry them
+MCP-HTTPSSE-8 | tests/test_http_sse_legacy.nim | Given an endpoint event naming another host, when the client connects, then it refuses to post there
+MCP-HTTPSSE-8 | tests/test_http_sse_legacy.nim | Given a server that never sends an endpoint, when the client connects, then it gives up with McpTransportError
+MCP-HTTPSSE-8 | tests/test_http_sse_legacy.nim | Given a server that answers the stream request with 404, when the client connects, then McpTransportError carries the status
+MCP-HTTPSSE-9 | tests/test_http_sse_legacy.nim | Given a stream that ends, when the client waits for a message, then McpTransportClosedError is raised
+MCP-HTTPSSE-9 | tests/test_http_sse_legacy.nim | Given a closed client, when it sends, then McpTransportError is raised
+MCP-HTTPSSE-10 | tests/test_http_sse_legacy.nim | Given a server of the old transport, when a client given its SSE URL connects, then it falls back and works
+MCP-HTTPSSE-10 | tests/test_http_sse_legacy.nim | Given a Streamable HTTP server, when a client connects, then it uses Streamable HTTP
+MCP-HTTPSSE-10 | tests/test_http_sse_legacy.nim | Given headers set on the wrapper, when it falls back, then the old transport carries them too
+MCP-HTTPSSE-10 | tests/test_http_sse_legacy.nim | Given a server that is down, when a client connects, then the connection error is raised and no fallback is tried
+MCP-HTTPSSE-10 | tests/test_http_sse_legacy.nim | Given a full client and server, when the client connects through the wrapper to the old transport, then initialize and tools/list work
