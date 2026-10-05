@@ -66,6 +66,10 @@ type
     clientCapabilities*: JsonNode
       ## 2026-07-28: what the request declared in its `_meta`; nil in
       ## earlier versions.
+    meta*: JsonNode
+      ## The request's `_meta` object as it arrived, in every version; nil
+      ## when the request had none. For extensions that select behaviour by
+      ## an `_meta` key of their own; treat it as untrusted input.
     inputResponses*: JsonNode
       ## 2026-07-28, on a retry of a request that was answered with
       ## `input_required`: the client's responses, key -> result object.
@@ -104,6 +108,21 @@ type
     ## Looks at a request before the server's own handling of it. Some answer
     ## ends the matter; none lets the server carry on. Raise
     ## `McpRequestError` for a JSON-RPC error.
+
+  ResponseFilter* = proc(ctx: McpRequestContext, request: JsonRpcRequest,
+                         response: JsonRpcResponse): Future[JsonRpcResponse] {.async.}
+    ## Looks at the answer to a request of the standard methods, after the
+    ## server's own handling and before the answer is completed for the wire.
+    ## Returns the answer to give instead (the same one to leave it). Only
+    ## results pass through; an error answer is not filtered. Raise
+    ## `McpRequestError` for a JSON-RPC error.
+
+  ListScope* = proc(ctx: McpRequestContext, methodName: string): ListHandler
+    ## Chooses the list handler that serves one request of `tools/list`,
+    ## `resources/list`, `resources/templates/list` or `prompts/list`; nil
+    ## leaves the request to the handler registered with `onToolsList` and
+    ## its siblings. The choice also decides what the input of a `tools/call`
+    ## is validated against.
 
   ToolCallHandler* = proc(ctx: McpRequestContext, name: string,
                           arguments: JsonNode): Future[JsonNode] {.async.}
@@ -184,6 +203,8 @@ type
     interceptors: seq[RequestInterceptor]
     toolListTransforms: seq[ToolListTransform]
     listenFilterHooks: seq[ListenFilterHook]
+    responseFilters: seq[ResponseFilter]
+    listScope: ListScope
     requestHandlers*: Table[string, proc(request: JsonRpcRequest): Future[JsonRpcResponse] {.async.}]
     notificationHandlers*: Table[string, proc(notification: JsonRpcNotification): Future[void] {.async.}]
     inFlight: Table[string, McpRequestContext]
@@ -351,6 +372,15 @@ proc addRequestInterceptor*(server: McpServer, interceptor: RequestInterceptor) 
   ## Interceptors see every request of the standard methods, in the order
   ## they were added, before the server's own handling.
   server.interceptors.add interceptor
+
+proc addResponseFilter*(server: McpServer, filter: ResponseFilter) =
+  ## Filters see the result of every request of the standard methods, in the
+  ## order they were added, once the server has handled it.
+  server.responseFilters.add filter
+
+proc onListScope*(server: McpServer, scope: ListScope) =
+  ## Replaces the scope; there is one per server.
+  server.listScope = scope
 
 # Handlers of the standard methods
 
@@ -598,6 +628,7 @@ proc newContext(server: McpServer, request: JsonRpcRequest): McpRequestContext =
     cancellable: request.`method` != "initialize",
     cancelSignal: newFuture[void]("McpRequestContext.cancelSignal"))
   if not meta.isNil and meta.kind == JObject:
+    result.meta = meta
     let token = meta{"progressToken"}
     if not token.isNil and token.kind in {JString, JInt}:
       result.progressToken = token
@@ -942,15 +973,25 @@ proc requireObjectResult(request: JsonRpcRequest, node: JsonNode): Option[JsonRp
 const MaxToolListPages = 1000
   ## A handler that never stops issuing cursors must not hold a request.
 
-proc toolDefinition(server: McpServer, name: string): Future[Option[JsonNode]] {.async.} =
+proc scoped(server: McpServer, ctx: McpRequestContext, methodName: string,
+            registered: ListHandler): ListHandler =
+  ## The handler that serves `methodName` for this request.
+  if server.listScope.isNil:
+    return registered
+  let chosen = server.listScope(ctx, methodName)
+  if chosen.isNil: registered else: chosen
+
+proc toolDefinition(server: McpServer, ctx: McpRequestContext,
+                    name: string): Future[Option[JsonNode]] {.async.} =
   ## The entry the tool list publishes for `name`: what the server says about
   ## a tool is stated once, there. The list is read afresh: tools may change
   ## between calls.
-  if server.toolsList.isNil:
+  let toolsList = server.scoped(ctx, "tools/list", server.toolsList)
+  if toolsList.isNil:
     return none(JsonNode)
   var cursor = none(string)
   for _ in 1 .. MaxToolListPages:
-    let page = await server.toolsList(cursor)
+    let page = await toolsList(cursor)
     for tool in page.items:
       if tool{"name"}.getStr() == name:
         return some(tool)
@@ -1088,15 +1129,17 @@ proc dispatchStandard(server: McpServer, request: JsonRpcRequest,
   of "resources/list":
     if caps.resources.isNone or server.resourcesList.isNil:
       return notSupported(request)
-    return await listPage(request, server.resourcesList, "resources", ctx.version, resourceFor)
+    return await listPage(request, server.scoped(ctx, "resources/list", server.resourcesList),
+                           "resources", ctx.version, resourceFor)
 
   of "resources/templates/list":
     if caps.resources.isNone:
       return notSupported(request)
     if server.resourceTemplatesList.isNil:
       return newJsonRpcResponse(request.id, %*{"resourceTemplates": []})
-    return await listPage(request, server.resourceTemplatesList, "resourceTemplates",
-                           ctx.version, resourceFor)
+    return await listPage(request,
+      server.scoped(ctx, "resources/templates/list", server.resourceTemplatesList),
+      "resourceTemplates", ctx.version, resourceFor)
 
   of "resources/read":
     if caps.resources.isNone or server.resourceRead.isNil:
@@ -1137,7 +1180,8 @@ proc dispatchStandard(server: McpServer, request: JsonRpcRequest,
     if caps.tools.isNone or server.toolsList.isNil:
       return notSupported(request)
     let transforms = server.toolListTransforms
-    let page = await listPage(request, server.toolsList, "tools", ctx.version,
+    let page = await listPage(request, server.scoped(ctx, "tools/list", server.toolsList),
+      "tools", ctx.version,
       proc(version: McpProtocolVersion, item: JsonNode): JsonNode =
         var tool = item
         for transform in transforms:
@@ -1157,7 +1201,7 @@ proc dispatchStandard(server: McpServer, request: JsonRpcRequest,
     if not arguments.isNil and arguments.kind != JObject:
       return newJsonRpcErrorResponse(request.id, ErrInvalidParams,
         "tools/call arguments must be an object")
-    let definition = await server.toolDefinition(name.get)
+    let definition = await server.toolDefinition(ctx, name.get)
     let inputSchema = definition.schemaOf("inputSchema")
     if request.paramHeaders.isSome and ctx.version.has(ftParameterHeaders):
       let mismatch = paramHeaderMismatch(inputSchema, arguments, request.paramHeaders.get)
@@ -1194,7 +1238,8 @@ proc dispatchStandard(server: McpServer, request: JsonRpcRequest,
   of "prompts/list":
     if caps.prompts.isNone or server.promptsList.isNil:
       return notSupported(request)
-    return await listPage(request, server.promptsList, "prompts", ctx.version, promptFor)
+    return await listPage(request, server.scoped(ctx, "prompts/list", server.promptsList),
+                           "prompts", ctx.version, promptFor)
 
   of "prompts/get":
     if caps.prompts.isNone or server.promptGet.isNil:
@@ -1280,7 +1325,13 @@ proc handleStandardRequest(server: McpServer, request: JsonRpcRequest,
     return await server.requestHandlers[request.`method`](request)
 
   try:
-    return await server.dispatchStandard(request, ctx)
+    var response = await server.dispatchStandard(request, ctx)
+    if response.result.isSome:
+      for filter in server.responseFilters:
+        response = await filter(ctx, request, response)
+        if response.result.isNone:
+          break
+    return response
   except McpInputRequired as e:
     return inputRequiredResponse(request, ctx, e)
   except McpRequestError as e:
