@@ -74,6 +74,7 @@ func implementationOf*(feature: McpFeature): Implementation {.raises: [].} =
      ftSamplingTools, ftClientIdMetadataDocuments, ftSubscriptionsListen,
      ftParameterHeaders, ftExtensions, ftCompletionsCapability,
      ftDynamicClientRegistration, ftAuthorizationServerMetadata,
+     ftAuthDefaultEndpoints,
      ftResourceIndicators, ftOidcDiscovery, ftIncrementalScopeConsent,
      ftEnumSchemas, ftElicitationDefaults, ftSsePolling,
      ftImplementationDescription, ftJsonSchema2020, ftTraceContext,

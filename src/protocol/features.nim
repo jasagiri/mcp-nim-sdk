@@ -87,6 +87,8 @@ type
     ftTraceContext           ## traceparent / tracestate / baggage in _meta
     ftIssuerParameter        ## RFC 9207 `iss`
     ftResourceNotFoundInvalidParams ## -32602 instead of -32002
+    # Authorization (docs/quality/auth-requirements.md)
+    ftAuthDefaultEndpoints   ## 2025-03-26 discovery: root metadata, /authorize /token /register
 
   McpProtocolVersionOrNone* = object
     present*: bool
@@ -145,6 +147,8 @@ func span*(feature: McpFeature): FeatureSpan {.raises: [].} =
     FeatureSpan(since: mpv20251125, until: before(mpv20260728))
   of ftTraceContext, ftIssuerParameter, ftResourceNotFoundInvalidParams:
     FeatureSpan(since: mpv20260728, until: forever())
+  of ftAuthDefaultEndpoints:
+    FeatureSpan(since: mpv20250326, until: before(mpv20250618))
 
 func has*(version: McpProtocolVersion, feature: McpFeature): bool {.raises: [].} =
   ## Whether `version` of the protocol has `feature`.
@@ -211,6 +215,7 @@ func displayName*(feature: McpFeature): string {.raises: [].} =
   of ftCompletionsCapability: "completions capability"
   of ftDynamicClientRegistration: "dynamic client registration"
   of ftAuthorizationServerMetadata: "authorization server metadata"
+  of ftAuthDefaultEndpoints: "default authorization endpoints"
   of ftResourceIndicators: "resource indicators"
   of ftOidcDiscovery: "OpenID Connect discovery"
   of ftIncrementalScopeConsent: "incremental scope consent"
@@ -261,7 +266,8 @@ func specPage*(feature: McpFeature, version: McpProtocolVersion): string {.raise
      ftParameterHeaders:
     if modern: "basic/transports/streamable-http" else: "basic/transports"
   of ftAuthorization, ftProtectedResourceMetadata, ftResourceIndicators,
-     ftIncrementalScopeConsent, ftAuthorizationServerMetadata:
+     ftIncrementalScopeConsent, ftAuthorizationServerMetadata,
+     ftAuthDefaultEndpoints:
     if modern: "basic/authorization/index" else: "basic/authorization"
   of ftOidcDiscovery:
     if modern: "basic/authorization/authorization-server-discovery"
