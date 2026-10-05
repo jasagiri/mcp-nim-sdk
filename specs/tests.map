@@ -714,3 +714,21 @@ MCP-SAMPLING-TOOLS-6 | tests/test_sampling_tools_payload.nim | Given a result wi
 MCP-SAMPLING-TOOLS-6 | tests/test_server_sampling_tools.nim | Given an answer that stops for tool use without a tool_use block, when it arrives, then McpPayloadError is raised
 MCP-SAMPLING-TOOLS-6 | tests/test_server_sampling_tools.nim | Given tool choice none, when the answer holds a tool_use, then McpPayloadError is raised
 MCP-SAMPLING-TOOLS-7 | tests/test_client_sampling_tools.nim | Given a handler that answers toolUse without a tool_use block, when the server asks, then the server gets an internal error and not the answer
+MCP-TRACE-1 | tests/test_trace_context.nim | Given the specification's traceparent, when validated, then it is accepted
+MCP-TRACE-1 | tests/test_trace_context.nim | Given a traceparent of a later version with extra fields, when validated, then it is accepted
+MCP-TRACE-1 | tests/test_trace_context.nim | Given malformed traceparents, when validated, then each is rejected
+MCP-TRACE-1 | tests/test_trace_context.nim | Given the specification's tracestate, when validated, then it is accepted
+MCP-TRACE-1 | tests/test_trace_context.nim | Given malformed tracestates, when validated, then each is rejected
+MCP-TRACE-1 | tests/test_trace_context.nim | Given a baggage header value, when validated, then well-formed members are accepted and malformed ones rejected
+MCP-TRACE-1 | tests/test_trace_context.nim | Given params whose _meta carries trace context, when read, then each key is returned
+MCP-TRACE-1 | tests/test_trace_context.nim | Given params without trace context, when read, then it is empty
+MCP-TRACE-1 | tests/test_trace_context.nim | Given a malformed or non-string value, when params are checked, then the rejection names the key as invalid params
+MCP-TRACE-1 | tests/test_trace_context.nim | Given a trace context, when added to params, then the other _meta keys stay and the original is untouched
+MCP-TRACE-2 | tests/test_trace_context.nim | Given a modern server and a trace context in the options, when a request is sent, then its _meta carries it
+MCP-TRACE-2 | tests/test_trace_context.nim | Given a malformed trace context in the options, when a request is sent, then it raises and nothing is sent
+MCP-TRACE-3 | tests/test_trace_context.nim | Given a request with trace context, when the handler runs, then ctx.traceContext holds what the client sent
+MCP-TRACE-3 | tests/test_trace_context.nim | Given a request without trace context, when the handler runs, then ctx.traceContext is empty
+MCP-TRACE-3 | tests/test_trace_context.nim | Given a request with trace context, when the handler reports progress and logs, then those notifications carry it
+MCP-TRACE-4 | tests/test_trace_context.nim | Given a malformed traceparent, when the request arrives, then it is rejected as invalid params and no handler runs
+MCP-TRACE-5 | tests/test_trace_context.nim | Given a version without trace context, when a request carries the keys, then the handler sees none and notifications carry none
+MCP-TRACE-5 | tests/test_trace_context.nim | Given a legacy version, when a request has a trace context in the options, then the keys are not sent

@@ -9,12 +9,13 @@ import ../protocol/features
 import ../protocol/content
 import ../protocol/log_level
 import ../protocol/sampling_tools
+import ../protocol/trace_context
 import ../transport/transport
 import ./errors
 import ./pagination
 import ./completion
 
-export errors, pagination, completion, log_level, sampling_tools
+export errors, pagination, completion, log_level, sampling_tools, trace_context
 
 const
   DefaultRequestTimeoutMs* = 60_000
@@ -49,6 +50,10 @@ type
       ## nil when the client did not ask for progress.
     logLevel*: Option[McpLogLevel]
       ## 2026-07-28: the level the request asked for in its `_meta`.
+    traceContext*: TraceContext
+      ## 2026-07-28: the trace context the request carried in its `_meta`;
+      ## empty when it carried none. What the server sends for this request
+      ## carries it too.
     lastProgress: float
     progressSent: bool
     cancellable: bool
@@ -488,6 +493,7 @@ proc newContext(server: McpServer, request: JsonRpcRequest): McpRequestContext =
       let level = meta{MetaLogLevel}
       if not level.isNil and level.kind == JString:
         result.logLevel = parseLogLevel(level.getStr())
+      result.traceContext = traceContextOf(request.params)
 
 proc metaRejection(request: JsonRpcRequest, version: McpProtocolVersion): Option[JsonRpcError] =
   ## Why the request's own `_meta` entries cannot be served.
@@ -503,6 +509,7 @@ proc metaRejection(request: JsonRpcRequest, version: McpProtocolVersion): Option
     if not level.isNil and (level.kind != JString or parseLogLevel(level.getStr()).isNone):
       return some(JsonRpcError(code: ErrInvalidParams,
         message: "_meta[\"" & MetaLogLevel & "\"] is not a log level"))
+    return rejectInvalidTraceContext(request.params)
   none(JsonRpcError)
 
 proc checkCancelled*(ctx: McpRequestContext) {.raises: [McpCancelled].} =
@@ -528,7 +535,8 @@ proc wantsProgress*(ctx: McpRequestContext): bool =
 
 proc relatedNotification(ctx: McpRequestContext, methodName: string, params: JsonNode): JsonRpcNotification =
   ## A notification that belongs to the request of `ctx`.
-  result = newJsonRpcNotification(methodName, params)
+  result = newJsonRpcNotification(
+    methodName, withTraceContext(params, ctx.traceContext))
   result.session = ctx.session
   result.relatedRequestId = ctx.requestId
 

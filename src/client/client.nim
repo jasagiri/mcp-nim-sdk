@@ -6,6 +6,7 @@ import ../protocol/lifecycle
 import ../protocol/modern
 import ../protocol/features
 import ../protocol/content as wire
+import ../protocol/trace_context
 import ../transport/transport
 import ../mcp/types as mcpTypes
 
@@ -57,6 +58,10 @@ type
       ## When set, the request carries a progressToken and every matching
       ## notifications/progress is passed here.
     cancel*: McpCancelToken
+    traceContext*: TraceContext
+      ## 2026-07-28: sent in the request's `_meta`. A malformed value raises
+      ## ValueError before anything is sent; a connection in an earlier
+      ## version does not carry trace context, so it is left out.
 
   McpLogMessage* = object
     ## A notifications/message from the server.
@@ -346,6 +351,11 @@ proc sendRequest*(client: McpClient, methodName: string, params: JsonNode,
     raise newException(McpCancelledError, methodName & ": cancelled before it was sent")
   let modern = client.usesModernProtocol
   var wireParams = params
+  if modern and not options.traceContext.isEmpty:
+    let problem = options.traceContext.validate
+    if problem.isSome:
+      raise newException(ValueError, methodName & ": " & problem.get)
+    wireParams = withTraceContext(wireParams, options.traceContext)
   var progressKey = ""
   if not options.onProgress.isNil:
     inc client.nextProgressToken
