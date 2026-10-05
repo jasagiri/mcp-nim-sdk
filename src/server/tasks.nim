@@ -17,12 +17,6 @@ import ../protocol/task_methods
 export tasks, task_methods
 
 type
-  TaskSupport* = enum
-    ## `execution.taskSupport` of a tool.
-    tsForbidden = "forbidden"
-    tsOptional = "optional"
-    tsRequired = "required"
-
   TaskConfig* = object
     list*: bool = true
       ## Declare and serve `tasks/list`. Only with an owner for every task:
@@ -37,12 +31,6 @@ type
       ## `io.modelcontextprotocol/model-immediate-response`.
 
 const MethodNotFound = -32601
-
-func taskSupportOf(tool: JsonNode): TaskSupport =
-  case tool{"execution", "taskSupport"}.getStr("forbidden")
-  of "optional": tsOptional
-  of "required": tsRequired
-  else: tsForbidden
 
 proc findTool(server: McpServer, request: JsonRpcRequest,
               name: string): Future[Option[JsonNode]] {.async.} =
@@ -113,7 +101,7 @@ proc enableTasks*(server: McpServer, config = TaskConfig(),
     let tool = await server.findTool(request, name.getStr())
     if tool.isNone:
       return none(JsonRpcResponse)
-    let support = tool.get.taskSupportOf
+    let support = tool.get.taskSupportOf()
     if asked.isNone:
       if support == tsRequired:
         return some(newJsonRpcErrorResponse(request.id, MethodNotFound,

@@ -27,6 +27,13 @@ type
     tsFailed = "failed"
     tsCancelled = "cancelled"
 
+  TaskSupport* = enum
+    ## `execution.taskSupport` of a tool: whether a call may, must or must
+    ## not be made as a task.
+    tsForbidden = "forbidden"
+    tsOptional = "optional"
+    tsRequired = "required"
+
   McpTask* = object
     taskId*: string
     status*: TaskStatus
@@ -79,6 +86,14 @@ const
   InternalErrorCode = -32603
   InvalidRequestCode = -32600
 
+func taskSupportOf*(tool: JsonNode): TaskSupport =
+  ## What a tool of `tools/list` says about tasks; no `execution`, or no
+  ## `taskSupport` in it, is forbidden.
+  case tool{"execution", "taskSupport"}.getStr("forbidden")
+  of "optional": tsOptional
+  of "required": tsRequired
+  else: tsForbidden
+
 func isTerminal*(status: TaskStatus): bool {.raises: [].} =
   status in {tsCompleted, tsFailed, tsCancelled}
 
@@ -104,6 +119,61 @@ proc isoTimestamp*(ms: int64): string {.raises: [].} =
     pad(moment.monthday, 2) & "T" & pad(moment.hour, 2) & ":" &
     pad(moment.minute, 2) & ":" & pad(moment.second, 2) & "." &
     pad(int(ms mod 1000), 3) & "Z"
+
+proc parseIsoTimestamp*(text: string): Option[int64] =
+  ## The instant of an ISO 8601 / RFC 3339 time, with or without fractional
+  ## seconds, in UTC (`Z`) or with an offset; none for anything else.
+  var base = text
+  var millis = 0'i64
+  let dot = base.find('.')
+  if dot >= 0:
+    var stop = dot + 1
+    while stop < base.len and base[stop] in Digits:
+      inc stop
+    let fraction = base[dot + 1 ..< stop]
+    if fraction.len == 0:
+      return none(int64)
+    millis = parseInt((fraction & "00")[0 ..< 3]).int64
+    base = base[0 ..< dot] & base[stop .. ^1]
+  if base.endsWith("Z"):
+    base = base[0 ..< base.len - 1] & "+00:00"
+  try:
+    let moment = parse(base, "yyyy-MM-dd'T'HH:mm:sszzz")
+    some(moment.toTime.toUnix * 1000 + millis)
+  except TimeParseError, ValueError:
+    none(int64)
+
+proc taskFromJson*(node: JsonNode): Option[McpTask] =
+  ## The `Task` of a peer's answer; none when a required field is missing or
+  ## not what the schema says.
+  if node.isNil or node.kind != JObject:
+    return none(McpTask)
+  let id = node{"taskId"}
+  let status = node{"status"}
+  let ttl = node{"ttl"}
+  if id.isNil or id.kind != JString or status.isNil or status.kind != JString or
+     ttl.isNil or ttl.kind notin {JNull, JInt}:
+    return none(McpTask)
+  var parsedStatus = none(TaskStatus)
+  for candidate in TaskStatus:
+    if $candidate == status.getStr():
+      parsedStatus = some(candidate)
+  func textAt(key: string): string =
+    let value = node{key}
+    if value.isNil or value.kind != JString: "" else: value.getStr()
+  let created = parseIsoTimestamp(textAt("createdAt"))
+  let updated = parseIsoTimestamp(textAt("lastUpdatedAt"))
+  if parsedStatus.isNone or created.isNone or updated.isNone:
+    return none(McpTask)
+  result = some(McpTask(
+    taskId: id.getStr(), status: parsedStatus.get, createdAtMs: created.get,
+    lastUpdatedAtMs: updated.get,
+    ttlMs: if ttl.kind == JInt: some(ttl.getBiggestInt().int64) else: none(int64)))
+  if textAt("statusMessage").len > 0:
+    result.get.statusMessage = some(textAt("statusMessage"))
+  let poll = node{"pollInterval"}
+  if not poll.isNil and poll.kind == JInt:
+    result.get.pollIntervalMs = some(poll.getInt())
 
 proc toJson*(task: McpTask): JsonNode =
   ## The `Task` of the schema.

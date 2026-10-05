@@ -331,3 +331,46 @@ suite "tasks: related-task metadata":
     let tagged = withRelatedTask(original, "t-1")
     check tagged["_meta"]["io.modelcontextprotocol/related-task"]["taskId"].getStr() == "t-1"
     check not original.hasKey("_meta")
+
+suite "tasks: reading a task from the wire":
+  test "Given a rendered task, when read back, then every field survives":
+    let store = storeAt(FakeTime(nowMs: 1_764_067_800_123))
+    let task = store.create("a", some(5_000'i64))
+    discard store.transition(task.taskId, tsInputRequired, some("needs a name"))
+    let read = taskFromJson(store.get("a", task.taskId).toJson())
+    check read.isSome
+    check read.get == store.get("a", task.taskId)
+
+  test "Given the example of the specification, when read, then times without milliseconds and a missing pollInterval are accepted":
+    let read = taskFromJson(%*{
+      "taskId": "abc123-def456-ghi789", "status": "completed",
+      "createdAt": "2025-11-25T09:15:00Z", "lastUpdatedAt": "2025-11-25T10:40:00Z",
+      "ttl": 60000})
+    check read.isSome
+    check read.get.createdAtMs == 1_764_062_100_000
+    check read.get.pollIntervalMs.isNone
+
+  test "Given a time with an offset, when read, then it is the same instant in UTC":
+    let read = taskFromJson(%*{
+      "taskId": "t", "status": "working", "createdAt": "2025-11-25T18:15:00+09:00",
+      "lastUpdatedAt": "2025-11-25T09:15:00.500Z", "ttl": nil})
+    check read.get.createdAtMs == 1_764_062_100_000
+    check read.get.lastUpdatedAtMs == 1_764_062_100_500
+    check read.get.ttlMs.isNone
+
+  test "Given something that is not a task, when read, then none is returned":
+    let good = %*{"taskId": "t", "status": "working", "createdAt": "2025-11-25T09:15:00Z",
+                  "lastUpdatedAt": "2025-11-25T09:15:00Z", "ttl": 1}
+    check taskFromJson(good).isSome
+    for key in ["taskId", "status", "createdAt", "lastUpdatedAt", "ttl"]:
+      var broken = good.copy()
+      broken.delete(key)
+      check taskFromJson(broken).isNone
+    var unknownStatus = good.copy()
+    unknownStatus["status"] = %"paused"
+    check taskFromJson(unknownStatus).isNone
+    var badTime = good.copy()
+    badTime["createdAt"] = %"yesterday"
+    check taskFromJson(badTime).isNone
+    check taskFromJson(%*[1, 2]).isNone
+    check taskFromJson(nil).isNone

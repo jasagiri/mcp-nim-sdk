@@ -505,7 +505,8 @@ proc sendOnce(client: McpClient, methodName: string, params: JsonNode,
     wireParams = withRequestMeta(params, %*{"progressToken": progressKey})
   if modern:
     wireParams = withRequestMeta(wireParams, requestMeta(
-      client.negotiatedVersion.get, client.clientInfo, client.capabilities.toJson()))
+      client.negotiatedVersion.get, client.clientInfo,
+      client.capabilities.forVersion(client.negotiatedVersion.get).toJson()))
   # Registered before sending: a progress notification may be the first
   # thing to come back.
   if progressKey.len > 0:
@@ -677,6 +678,8 @@ proc extractServerCapabilities(json: JsonNode): McpServerCapabilities =
   if not declared("completions").isNil:
     result.completions = some(McpCompletionsCapability())
 
+  result.tasks = tasksCapabilityFromJson(json{"tasks"})
+
   let experimentalJson = declared("experimental")
   if not experimentalJson.isNil:
     result.experimental = some(experimentalJson)
@@ -789,7 +792,8 @@ proc discover(client: McpClient, timeoutMs: int): Future[ProbeVerdict] {.async.}
   ## shares no version.
   var version = client.protocolVersion
   for attempt in 0 .. 1:
-    let meta = requestMeta(version, client.clientInfo, client.capabilities.toJson())
+    let meta = requestMeta(version, client.clientInfo,
+                           client.capabilities.forVersion(version).toJson())
     let started = client.beginRequest(DiscoverMethod, withRequestMeta(nil, meta))
     var answered = false
     try:

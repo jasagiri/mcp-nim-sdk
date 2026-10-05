@@ -43,6 +43,9 @@ type
     inputSchema*: JsonNode
     outputSchema*: Option[JsonNode]
     annotations*: Option[JsonNode]
+    execution*: Option[JsonNode]
+      ## 2025-11-25: `{"taskSupport": ...}`, as received; see `taskSupport`
+      ## in client/tasks.
 
 proc annotationsOf*(tool: McpTool): McpToolAnnotations =
   ## The typed hints of `tool`; all unset when the server sent none. They are
@@ -76,7 +79,8 @@ proc parseTool(item: JsonNode): McpTool =
     icons: iconsOf(item, "tools/list"),
     inputSchema: item{"inputSchema"},
     outputSchema: (if item.hasKey("outputSchema"): some(item["outputSchema"]) else: none(JsonNode)),
-    annotations: (if item.hasKey("annotations"): some(item["annotations"]) else: none(JsonNode)))
+    annotations: (if item.hasKey("annotations"): some(item["annotations"]) else: none(JsonNode)),
+    execution: (if item.hasKey("execution"): some(item["execution"]) else: none(JsonNode)))
 
 proc listTools*(client: McpClient, cursor: Option[string] = none(string),
                 options: McpRequestOptions = McpRequestOptions()
@@ -101,6 +105,15 @@ proc listAllTools*(client: McpClient,
     let page = await client.listTools(cursor, options)
     return (items: page.tools, next: page.nextCursor))
 
+proc toolContentOf*(reply: JsonNode): McpToolContent =
+  ## The CallToolResult of a tools/call answer, or of the result of a task
+  ## that wraps one.
+  result.isError = reply{"isError"}.getBool(false)
+  for item in requiredArray(reply, "content", "tools/call"):
+    result.contentItems.add parseContentItem(item, "tools/call")
+  if reply.hasKey("structuredContent"):
+    result.structuredContent = some(reply["structuredContent"])
+
 proc callTool*(client: McpClient, name: string, arguments: JsonNode = newJObject(),
                options: McpRequestOptions = McpRequestOptions(),
                validateOutput = true): Future[McpToolContent] {.async.} =
@@ -111,11 +124,6 @@ proc callTool*(client: McpClient, name: string, arguments: JsonNode = newJObject
   client.requireTools("tools/call")
   let reply = await client.callMethod("tools/call",
     %*{"name": name, "arguments": arguments}, options)
-  result.isError = reply{"isError"}.getBool(false)
-  for item in requiredArray(reply, "content", "tools/call"):
-    result.contentItems.add parseContentItem(item, "tools/call")
-  if reply.hasKey("structuredContent"):
-    result.structuredContent = some(reply["structuredContent"])
   if validateOutput and name in client.toolOutputSchemas and client.negotiatedVersion.isSome:
     var problems: seq[string]
     try:
@@ -128,3 +136,4 @@ proc callTool*(client: McpClient, name: string, arguments: JsonNode = newJObject
       raise newException(McpProtocolError,
         "tools/call: the result of tool '" & name & "' does not conform to its outputSchema: " &
         problems.join("; "))
+  return toolContentOf(reply)
