@@ -1,0 +1,59 @@
+# Transports
+
+## stdio
+
+Status: {{status:ftStdio}}.
+
+A server reads one JSON-RPC message per line from stdin and writes one per line to stdout. Anything meant for people goes to stderr, because stdout is the protocol.
+
+```nim
+server.transport = newStdioTransport()
+waitFor server.processMessages()
+```
+
+A client starts the server as a child process and talks to it over the child's pipes. Closing the client ends the child.
+
+```nim
+let client = newMcpClient(McpClientInfo(name: "my-client", version: "0.1.0"))
+await client.connect(newProcessTransport("path/to/server", ["--option"]))
+```
+
+Full programs: [examples/stdio_server.nim](../examples/stdio_server.nim), [examples/stdio_client.nim](../examples/stdio_client.nim). `newStdioTransport(input, output)` takes any pair of streams, which is how the tests drive a server without a process.
+
+{{#if ftStreamableHttp}}
+## Streamable HTTP
+
+Status: {{status:ftStreamableHttp}}.
+
+A server listens on one endpoint, `http://HOST:PORT/mcp`, and answers each POSTed JSON-RPC message with a JSON body or an event stream.
+
+```nim
+let transport = newHttpServerTransport(port = 0)  # 0: the system picks a free port
+transport.listen()
+waitFor server.attachTransport(transport)
+waitFor transport.serve()
+```
+
+The server binds to 127.0.0.1, refuses requests whose `Origin` is neither loopback nor allowed by the operator (403), and limits the size of a body (413). A client connects with:
+
+```nim
+await client.connect(newStreamableHttpTransport("http://127.0.0.1:8080/mcp"))
+```
+
+{{#if ftHttpSessions}}
+For versions before `2026-07-28` the server hands out a session id (`Mcp-Session-Id`) in the answer to `initialize`, and every later request must carry it; `DELETE` on the endpoint ends the session.
+
+{{/if}}
+{{#if ftMirroredHeaders}}
+For `2026-07-28` the client mirrors `Mcp-Method` and, where the method has one, `Mcp-Name` from the body into headers, and the server answers 400 when a header and the body disagree.
+
+{{/if}}
+Full programs: [examples/http_server.nim](../examples/http_server.nim), [examples/http_client.nim](../examples/http_client.nim).
+
+{{/if}}
+{{#if ftHttpSse}}
+## HTTP+SSE
+
+Status: {{status:ftHttpSse}}.
+
+{{/if}}

@@ -9,6 +9,8 @@
 |---|---|---|
 | `src/protocol/version.nim` | `tests/test_version.nim` | 2026-10-05 |
 | `src/protocol/features.nim` | `tests/test_features.nim` | 2026-10-06 |
+| `src/protocol/implementation_status.nim` | `tests/test_docs_version.nim` | 2026-10-06 |
+| `tools/gen_docs.nim` | `tests/test_docs_version.nim` | 2026-10-06 |
 | `src/protocol/modern.nim` | `tests/test_modern_protocol.nim` | 2026-10-05 |
 | `src/protocol/lifecycle.nim` | `tests/test_legacy_handshake.nim` | 2026-10-05 |
 | `src/server/server.nim` | `tests/test_legacy_handshake.nim`, `tests/test_era_matrix.nim` | 2026-10-05 |

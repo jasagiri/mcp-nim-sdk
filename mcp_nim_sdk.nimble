@@ -47,16 +47,27 @@ proc compileOnly(dir: string, extraFlags: string) =
     echo "Compiling: " & file
     exec "nim c " & extraFlags & " --path:src -o:build/bin/" & file.splitFile.name & " " & file
 
+proc generateDocs(extraFlags: string) =
+  ## README.md and docs/*.md for the protocol version the flags select.
+  exec "nim r --hints:off --nimcache:build/nc_gen --path:src " & extraFlags & " tools/gen_docs.nim"
+
 task test, "Run tests":
   runTests("")
   compileOnly("tests/interop", "")
+  compileOnly("examples", "")
 
 task testAllVersions, "Run tests once per released protocol version as the build default":
   for version in releasedProtocolVersions:
     echo "=== default protocol version " & version & " ==="
     let flag = "-d:mcpDefaultProtocolVersion=" & version
+    generateDocs(flag)  # tests/test_docs_version.nim compares the files with the build's version
     runTests(flag)
     compileOnly("tests/interop", flag)
+    compileOnly("examples", flag)
+  generateDocs("")  # leave the documents of the build's own default
+
+task genDocs, "Regenerate README.md and docs/ from templates/":
+  generateDocs("")
 
 task docs, "Generate API documentation":
   exec "mkdir -p build/doc"
