@@ -248,3 +248,9 @@ Feature: Security findings of the 2026-10-06 review
     Given a receiver that keeps state of its own for the tasks it made
     When a task expires without reaching a terminal status
     Then the store's expiry hook is called once for it, a hook that raises does not stop the others, and the server and the Tasks extension release their state of the task
+
+  @spec:MCP-SEC-SWEEP-3
+  Scenario: A field of the wrong type in a sampling request is the server's defect
+    Given a sampling/createMessage request whose temperature or a priority is not a number
+    When the client parses it
+    Then it is a protocol error, answered as invalid params, and not read as 0.0

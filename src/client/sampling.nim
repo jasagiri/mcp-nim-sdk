@@ -59,6 +59,18 @@ proc toolUseContent*(id, name: string, input: JsonNode): McpContentItem =
   ## A tool_use block for `McpSamplingResult.blocks`.
   McpContentItem(kind: mckUnknown, raw: toolUseBlock(id, name, input))
 
+proc numberField(node: JsonNode, key, context: string): Option[float] =
+  ## The number `key` holds, none when it is absent. A value of another type
+  ## is the peer's defect: `getFloat` would read it as 0.0, which for a
+  ## temperature or a priority is a request nobody made.
+  let value = node{key}
+  if value.isNil or value.kind == JNull:
+    return none(float)
+  if value.kind notin {JInt, JFloat}:
+    raise newException(McpProtocolError,
+      context & ": '" & key & "' must be a number, not " & $value.kind)
+  some(value.getFloat())
+
 proc parseSamplingRequest*(params: JsonNode): McpSamplingRequest =
   if params.isNil or params.kind != JObject:
     raise newException(McpProtocolError, "sampling/createMessage: params is not an object")
@@ -84,15 +96,14 @@ proc parseSamplingRequest*(params: JsonNode): McpSamplingRequest =
       for hint in hints:
         parsed.hints.add McpModelHint(name: hint{"name"}.getStr())
     proc priority(key: string): Option[float] =
-      if prefs.hasKey(key): some(prefs[key].getFloat()) else: none(float)
+      numberField(prefs, key, "sampling/createMessage modelPreferences")
     parsed.costPriority = priority("costPriority")
     parsed.speedPriority = priority("speedPriority")
     parsed.intelligencePriority = priority("intelligencePriority")
     result.modelPreferences = some(parsed)
   result.systemPrompt = optionalString(params, "systemPrompt", "sampling/createMessage")
   result.includeContext = optionalString(params, "includeContext", "sampling/createMessage")
-  if params.hasKey("temperature"):
-    result.temperature = some(params["temperature"].getFloat())
+  result.temperature = numberField(params, "temperature", "sampling/createMessage")
   let stops = params{"stopSequences"}
   if not stops.isNil and stops.kind == JArray:
     for stop in stops: result.stopSequences.add stop.getStr()

@@ -1164,3 +1164,6 @@ MCP-SEC-SWEEP-1 | tests/test_security_poll.nim | Given a task that suggests a re
 MCP-SEC-SWEEP-1 | tests/test_security_poll.nim | Given a task that suggests none, when polled, then the caller's default is used as given
 MCP-SEC-SWEEP-2 | tests/test_security_expiry.nim | Given a task that expires while it works, when the store is used, then the expiry hook sees it once
 MCP-SEC-SWEEP-2 | tests/test_security_expiry.nim | Given an expiry hook that raises, when a task expires, then the others are still removed and heard
+MCP-SEC-SWEEP-3 | tests/test_security_sampling.nim | Given a temperature that is a string, when parsed, then it is a protocol error and not 0.0
+MCP-SEC-SWEEP-3 | tests/test_security_sampling.nim | Given a priority that is a string, when parsed, then it is a protocol error and not 0.0
+MCP-SEC-SWEEP-3 | tests/test_security_sampling.nim | Given numbers and nulls, when parsed, then they are read as sent, a null as absent
