@@ -3,7 +3,17 @@
 ## decision, so both go through a `Store` it can replace; the default keeps
 ## them in memory only.
 
-import std/[options, tables, times]
+import std/[json, math, options, strutils, tables, times]
+import ./errors
+
+const
+  MaxTokenLifetimeSeconds* = 10 * 365 * 24 * 60 * 60
+    ## The longest `expires_in` the client takes at its word: ten years. RFC
+    ## 6749 5.1 sets no bound and servers that mean "does not expire" send
+    ## values from 2^31 - 1 down to a decade, so a larger one is not refused;
+    ## it is read as "no expiry given", which the client already handles (the
+    ## server's 401 corrects it). The bound exists so that no number in a
+    ## response, however large, reaches the arithmetic on `Time`.
 
 type
   TokenSet* = object
@@ -50,3 +60,55 @@ func isExpired*(tokens: TokenSet, now: Time, skew = initDuration(seconds = 30)):
   ## Whether the access token should not be sent any more. A token without
   ## an expiry is assumed valid; the server's 401 corrects that.
   tokens.expiresAt.isSome and tokens.expiresAt.get - skew <= now
+
+proc tokenExpiry*(body: JsonNode, field: string, now: Time): Option[Time]
+                 {.raises: [OAuthError].} =
+  ## When a token lasts until, from the lifetime in seconds at `field`
+  ## (`expires_in`, RFC 6749 5.1; RFC 8693 2.2.1). RFC 6749 calls the value a
+  ## number, and servers send it as an integer, as a float (`3599.9`: rounded
+  ## down, the token is not kept past its life) and as a string of digits.
+  ##  - missing or null: none, the lifetime is unknown;
+  ##  - more than `MaxTokenLifetimeSeconds`, or too large for an integer: none;
+  ##  - negative, not a number, or any other JSON type: OAuthError, because
+  ##    the response cannot be read, and a token read as "never expires" for
+  ##    that reason would be kept long after the server dropped it.
+  if body.isNil or body.kind != JObject:
+    return none(Time)
+  let value = body{field}
+  if value.isNil or value.kind == JNull:
+    return none(Time)
+  var seconds: BiggestInt
+  case value.kind
+  of JInt:
+    if value.getBiggestInt() < 0:
+      raise newException(OAuthError, field & " is negative: " & $value.getBiggestInt())
+    seconds = value.getBiggestInt()
+  of JFloat:
+    let f = value.getFloat()
+    if f != f:
+      raise newException(OAuthError, field & " is not a number")
+    if f < 0.0:
+      raise newException(OAuthError, field & " is negative: " & $f)
+    if f > float(MaxTokenLifetimeSeconds):
+      return none(Time)
+    seconds = BiggestInt(floor(f))
+  of JString:
+    # A digit string longer than any lifetime (the JSON parser hands an
+    # integer too large for 64 bits over as a string as well) is beyond the
+    # bound without being converted.
+    let text = value.getStr()
+    if text.len > 0 and text[0] == '-' and text.len > 1 and text[1 .. ^1].allCharsInSet(Digits):
+      raise newException(OAuthError, field & " is negative")
+    if text.len == 0 or not text.allCharsInSet(Digits):
+      raise newException(OAuthError, field & " is not a number of seconds")
+    if text.len > 18:
+      return none(Time)
+    try:
+      seconds = parseBiggestInt(text)
+    except ValueError:
+      raise newException(OAuthError, field & " is not a number of seconds")
+  else:
+    raise newException(OAuthError, field & " is neither a number nor a string of digits")
+  if seconds > MaxTokenLifetimeSeconds:
+    return none(Time)
+  some(now + initDuration(seconds = seconds))

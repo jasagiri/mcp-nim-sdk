@@ -1135,3 +1135,11 @@ MCP-SEC-AUTH-1 | tests/test_security_auth.nim | Given a client secret without an
 MCP-SEC-AUTH-1 | tests/test_security_auth.nim | Given a client secret for one issuer and version <version>, when the resource names another, then nothing but metadata reaches it and the error names both
 MCP-SEC-AUTH-1 | tests/test_security_auth.nim | Given a public pre-registered client for one issuer and version <version>, when the resource names another, then the user is not sent there
 MCP-SEC-AUTH-2 | tests/test_security_auth.nim | Given tokens of one issuer and a later challenge that met another and failed, when the tokens have expired, then the refresh token is not sent to the other server (version <version>)
+MCP-SEC-AUTH-5 | tests/test_security_auth_tokens.nim | Given expires_in as an integer, when the response is parsed, then the token expires that many seconds from now
+MCP-SEC-AUTH-5 | tests/test_security_auth_tokens.nim | Given no expires_in or null, when the response is parsed, then the expiry is unknown
+MCP-SEC-AUTH-5 | tests/test_security_auth_tokens.nim | Given expires_in as a decimal string, which some servers send, when the response is parsed, then it counts
+MCP-SEC-AUTH-5 | tests/test_security_auth_tokens.nim | Given expires_in as a float, when the response is parsed, then it is rounded down to whole seconds
+MCP-SEC-AUTH-5 | tests/test_security_auth_tokens.nim | Given an expires_in beyond the largest lifetime the client believes, when the response is parsed, then the expiry is unknown and nothing overflows
+MCP-SEC-AUTH-5 | tests/test_security_auth_tokens.nim | Given expires_in at the largest lifetime, when the response is parsed, then it still counts
+MCP-SEC-AUTH-5 | tests/test_security_auth_tokens.nim | Given a negative or non-numeric expires_in, when the response is parsed, then the response is refused
+MCP-SEC-AUTH-5 | tests/test_security_auth_tokens.nim | Given a refused expires_in, when the error is read, then it does not contain the token

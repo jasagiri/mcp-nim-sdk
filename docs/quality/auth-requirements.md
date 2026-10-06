@@ -104,6 +104,15 @@ SDK implements the two roles an MCP implementation plays.
   Credentials are checked against the issuer before any request other than
   metadata goes to it. Refresh tokens and the credentials they were issued
   with return only to the issuer that issued them (MCP-SEC-AUTH-2).
+- `expires_in` (RFC 6749 5.1 says "number" and sets no bound) is read as an
+  integer, as a float rounded down, or as a string of digits, which some
+  servers send. Absent or null, or more than ten years
+  (`MaxTokenLifetimeSeconds`), means no expiry was given; the server's 401
+  corrects that, as it does for an absent one. Negative, not a number, or
+  another JSON type is an `OAuthError`: a value the client cannot read must
+  not turn into a token it keeps forever (MCP-SEC-AUTH-5). The bound is not a
+  setting: above it the client behaves as for "unlimited" whatever the bound
+  is, so raising it changes nothing.
 
 - The protocol version of an authorization exchange is the one the client is
   configured to speak (`AuthConfig.version`, default `DefaultProtocolVersion`);

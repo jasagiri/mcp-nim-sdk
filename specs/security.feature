@@ -191,3 +191,9 @@ Feature: Security properties
     Given tokens of one authorization server and a later challenge that met another and failed
     When the tokens have expired
     Then the refresh token and the client's credentials are not sent to the other server
+
+  @spec:MCP-SEC-AUTH-5
+  Scenario: A number in a token response cannot overflow the clock or make a token immortal
+    Given a token response whose expires_in is an integer, a float, a string of digits, absent, larger than ten years, or negative or not a number
+    When the client parses it
+    Then it counts the lifetime from now for the first three, treats the next three as "no expiry given", and refuses the last without reading a token into the store

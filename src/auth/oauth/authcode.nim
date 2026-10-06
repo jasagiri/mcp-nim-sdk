@@ -155,9 +155,7 @@ proc parseTokenResponse*(reply: HttpReply, issuer: string, requestedScopes: seq[
   result.refreshToken = body.strField("refresh_token")
   if result.refreshToken.isNone:
     result.refreshToken = previousRefreshToken
-  let expiresIn = body.intField("expires_in")
-  if expiresIn.isSome:
-    result.expiresAt = some(now + initDuration(seconds = expiresIn.get))
+  result.expiresAt = tokenExpiry(body, "expires_in", now)
   let granted = body.strField("scope")
   result.scopes = if granted.isSome: granted.get.splitWhitespace() else: requestedScopes
 
