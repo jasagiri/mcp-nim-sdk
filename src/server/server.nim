@@ -1544,6 +1544,8 @@ proc attachTransport*(server: McpServer, transport: McpTransport): Future[void] 
     server.endSession(session)
   transport.onRequestCancelled = proc(session, requestId: string) {.closure, gcsafe.} =
     discard server.cancelRequest(session, requestId, "the client closed the connection")
+  transport.servesExtensionMethod = proc(methodName: string): bool {.closure, gcsafe.} =
+    methodName in server.extensionMethods
 
   # Start message processing
   asyncCheck server.processMessages()

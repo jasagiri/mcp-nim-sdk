@@ -21,6 +21,10 @@ type
       ## it (which is how a 2026-07-28 client cancels). `requestId` is the id
       ## the transport handed to `receive`. The server should stop working on
       ## the request; a response sent for it afterwards is dropped.
+    servesExtensionMethod*: proc(methodName: string): bool {.closure, gcsafe.}
+      ## Whether the server behind this transport serves `methodName` for an
+      ## extension; nil when nobody said. A transport that applies rules per
+      ## method (the `Mcp-Name` header of Streamable HTTP) asks it.
 
   MessageRoute* = object
     ## Where a message the server initiates belongs. A transport with one

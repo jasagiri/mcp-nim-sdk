@@ -678,7 +678,9 @@ proc handlePost(t: HttpServerTransport, req: Request,
       return
     let mismatch = checkRequestHeaders(
       req.header(HeaderProtocolVersion), req.header(HeaderMethod),
-      req.header(HeaderName), methodName, params)
+      req.header(HeaderName), methodName, params,
+      extensionMethodServed = not t.servesExtensionMethod.isNil and
+                              t.servesExtensionMethod(methodName))
     if mismatch.isSome:
       await req.respondError(Http400, rpc{"id"}, mismatch.get)
       return

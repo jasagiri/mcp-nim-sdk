@@ -340,6 +340,17 @@ if SpeaksModern:
       check reply.code == Http400
       check parseJson(reply.body)["error"]["code"].getInt() == -32600
 
+    test "Given a server without the extension that defines it, when tasks/get is posted without Mcp-Name, then the answer is method not found and not a header mismatch":
+      # Mcp-Name mirrors taskId for the methods of the Tasks extension; a server
+      # that does not serve them has no such rule to apply.
+      let (_, url, _) = startServer()
+      let body = %*{"jsonrpc": "2.0", "id": 9, "method": "tasks/get",
+                  "params": {"_meta": modernMeta(), "taskId": "t-1"}}
+      let reply = send(url, HttpPost, $body, {
+        "Content-Type": "application/json", "MCP-Protocol-Version": "2026-07-28",
+        "Mcp-Method": "tasks/get"})
+      check parseJson(reply.body)["error"]["code"].getInt() == -32601
+
     test "Given a version header that differs from a complete body, when posted, then the answer is 400 header mismatch, not invalid params":
       let (_, url, _) = startServer()
       let reply = send(url, HttpPost,

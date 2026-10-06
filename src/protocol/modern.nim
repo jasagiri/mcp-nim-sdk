@@ -249,9 +249,17 @@ func headerNameSource*(methodName: string, params: JsonNode): Option[string] {.r
   let node = params{key}
   if node.isNil or node.kind != JString: none(string) else: some(node.getStr())
 
-func requiresNameHeader*(methodName: string): bool {.raises: [].} =
-  methodName in ["tools/call", "prompts/get", "resources/read",
-                 "tasks/get", "tasks/update", "tasks/cancel"]
+const ExtensionNamedMethods* = ["tasks/get", "tasks/update", "tasks/cancel"]
+  ## Methods an extension defines whose requests carry `Mcp-Name` (the
+  ## Tasks extension mirrors `taskId`). The rule exists only where the
+  ## method is served.
+
+func requiresNameHeader*(methodName: string,
+                         extensionMethodServed = false): bool {.raises: [].} =
+  ## Whether a request of `methodName` must carry `Mcp-Name`. A method of
+  ## `ExtensionNamedMethods` needs it only on a server that serves it.
+  methodName in ["tools/call", "prompts/get", "resources/read"] or
+    (extensionMethodServed and methodName in ExtensionNamedMethods)
 
 func modernRequestHeaders*(methodName: string,
                            params: JsonNode): seq[(string, string)] {.raises: [].} =
@@ -270,10 +278,11 @@ func headerMismatch(message: string): Option[JsonRpcError] {.raises: [].} =
   some(rpcError(ErrHeaderMismatch, "Header mismatch: " & message))
 
 func checkRequestHeaders*(protocolVersion, mcpMethod, mcpName: Option[string],
-                          methodName: string,
-                          params: JsonNode): Option[JsonRpcError] {.raises: [].} =
+                          methodName: string, params: JsonNode,
+                          extensionMethodServed = false): Option[JsonRpcError] {.raises: [].} =
   ## Why the headers of a modern Streamable HTTP request disagree with its
-  ## body, or none when they agree.
+  ## body, or none when they agree. `extensionMethodServed`: the server
+  ## serves `methodName` for an extension (see `requiresNameHeader`).
   if protocolVersion.isNone:
     return headerMismatch(HeaderProtocolVersion & " header is missing")
   let meta = metaOf(params)
@@ -289,7 +298,7 @@ func checkRequestHeaders*(protocolVersion, mcpMethod, mcpName: Option[string],
     return headerMismatch(HeaderMethod & " header value '" & mcpMethod.get &
       "' does not match body value '" & methodName & "'")
 
-  if requiresNameHeader(methodName):
+  if requiresNameHeader(methodName, extensionMethodServed):
     if mcpName.isNone:
       return headerMismatch(HeaderName & " header is missing")
     let decoded = decodeHeaderValue(mcpName.get)
