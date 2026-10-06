@@ -37,16 +37,52 @@ const sslTests = ["test_security_wire_tls"]
   ## `runSslTests` runs them with the flag. The other tests do not use TLS,
   ## and `-d:ssl` would make them depend on the system's OpenSSL for nothing.
 
-proc runTests(extraFlags: string) =
+const
+  TestCache = "build/nimcache"
+    ## Where tests/config.nims puts the compiler's cache of every test.
+  ProgramCache = "build/nimcache/bin"
+    ## The same for the examples and the interop programs.
+  readNonNimFiles = ["test_spec_coverage", "test_docs_version"]
+    ## Tests that read specs/, templates/ and the generated documents when
+    ## they run. The compiler's record of sources does not show that, so
+    ## they are never left out.
+
+type Selection = object
+  ## Which programs a run covers: all of them, or those that a change since
+  ## the commit `base` can affect.
+  base: string
+
+proc everything(): Selection = Selection()
+
+proc covered(selection: Selection, files: seq[string], cache: string): seq[string] =
+  ## The programs among `files` that are built and run. Without a base, all.
+  ## With one, those `tools/affected.nim` names, and the tests that read
+  ## files the compiler knows nothing of.
+  if selection.base.len == 0:
+    return files
+  let (output, code) = gorgeEx("nim r --hints:off --nimcache:build/nc_affected tools/affected.nim " &
+                               quoteShell(selection.base) & " " & cache & " " & files.join(" "))
+  if code != 0:
+    raise newException(OSError, "cannot tell what changed since '" & selection.base & "': " & output)
+  let named = output.splitLines()
+  for file in files:
+    if file in named or file.splitFile.name in readNonNimFiles:
+      result.add file
+
+proc runTests(extraFlags: string, selection = everything()) =
   exec "mkdir -p build/tests"
   let files = nimFilesIn("tests", "test_*.nim")
   if files.len == 0:
     raise newException(OSError, "No test files found in tests/")
-  for file in files:
+  let chosen = selection.covered(files, TestCache)
+  for file in chosen:
     if file.splitFile.name in sslTests:
       continue
     echo "Running test: " & file
     exec "nim c -r " & extraFlags & " -o:build/tests/" & file.splitFile.name & " " & file
+  if chosen.len < files.len:
+    echo "Left out " & $(files.len - chosen.len) & " of " & $files.len &
+         " tests: nothing they are built from differs from " & selection.base
 
 proc runSslTests(extraFlags: string) =
   ## Needs the `openssl` command, which the tests use to make certificates.
@@ -55,12 +91,13 @@ proc runSslTests(extraFlags: string) =
     echo "Running test (-d:ssl): " & name
     exec "nim c -r -d:ssl " & extraFlags & " -o:build/tests/" & name & " tests/" & name & ".nim"
 
-proc compileOnly(dir: string, extraFlags: string) =
+proc compileOnly(dir: string, extraFlags: string, selection = everything()) =
   ## Programs that are not tests but must keep compiling.
   exec "mkdir -p build/bin"
-  for file in nimFilesIn(dir, "*.nim"):
+  for file in selection.covered(nimFilesIn(dir, "*.nim"), ProgramCache):
     echo "Compiling: " & file
-    exec "nim c " & extraFlags & " --path:src -o:build/bin/" & file.splitFile.name & " " & file
+    exec "nim c " & extraFlags & " --path:src --nimcache:" & ProgramCache &
+         " -o:build/bin/" & file.splitFile.name & " " & file
 
 proc generateDocs(extraFlags: string) =
   ## README.md and docs/*.md for the protocol version the flags select.
@@ -99,15 +136,38 @@ task test, "Run tests":
   compileOnly("examples", "")
 
 task testAllVersions, "Run tests once per released protocol version as the build default":
+  ## With MCP_TEST_BASE=<commit> in the environment, the other versions run
+  ## only what a change since that commit can affect: a branch that adds to
+  ## another (the extensions to a dated version, the drafts to the
+  ## extensions) need not repeat, version by version, what was run on the
+  ## branch below it. The build's own default version always runs in full,
+  ## and it runs first: its compilations are the record the choice is read
+  ## from. A source that only an older version compiles in is therefore not
+  ## seen; run without MCP_TEST_BASE where that matters.
+  let own = buildDefaultVersion()
+  let base = getEnv("MCP_TEST_BASE")
+  var versions = @[own]
   for version in releasedProtocolVersions:
+    if version != own:
+      versions.add version
+  for version in versions:
     echo "=== default protocol version " & version & " ==="
     let flag = "-d:mcpDefaultProtocolVersion=" & version
+    let selection = if base.len > 0 and version != own: Selection(base: base) else: everything()
     generateDocs(flag)  # tests/test_docs_version.nim compares the files with the build's version
-    runTests(flag)
-    compileOnly("tests/interop", flag)
-    compileOnly("examples", flag)
+    runTests(flag, selection)
+    compileOnly("tests/interop", flag, selection)
+    compileOnly("examples", flag, selection)
   generateDocs("")  # leave the documents of the build's own default
   runModernOnlyTests()
+
+task affectedTests, "List the tests that testAllVersions runs for the other versions with MCP_TEST_BASE=<commit>":
+  let base = getEnv("MCP_TEST_BASE")
+  if base.len == 0:
+    raise newException(ValueError, "set MCP_TEST_BASE to the commit to compare with")
+  for file in Selection(base: base).covered(nimFilesIn("tests", "test_*.nim"), TestCache):
+    if file.splitFile.name notin sslTests:
+      echo file
 
 task genDocs, "Regenerate README.md and docs/ from templates/":
   generateDocs("")
