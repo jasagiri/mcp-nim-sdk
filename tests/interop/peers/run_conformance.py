@@ -11,7 +11,9 @@ and writes one JSON object per scenario (conformance.jsonl) and a Markdown table
 (conformance.md) into --out. Exit code 1 if any scenario fails: the failures are the
 list of what the SDK still lacks, so a non-zero exit is the normal state until it is done.
 
-A scenario's status is the worst of its checks: fail > warn > info/skipped > pass.
+A scenario's status is the worst of its checks: fail > warn > skipped > pass. INFO checks are
+the suite's log of the traffic and do not count; a scenario that has nothing but INFO checks
+is "info".
 "unsupported" is a client scenario the Nim client program declines to act out
 (exit code 2 and "scenario not supported" on stderr), because the SDK has no such client feature.
 
@@ -70,9 +72,10 @@ def summarize(version: str, spec: str, role: str, resdir: Path) -> list[dict]:
         checks = json.loads(checks_file.read_text())
         stderr = (d / "stderr.txt").read_text() if (d / "stderr.txt").exists() else ""
         status = "pass"
-        order = ["pass", "info", "skipped", "warn", "fail"]
+        order = ["pass", "skipped", "warn", "fail"]
         bad = []
-        for c in checks:
+        judged = [c for c in checks if c["status"] != "INFO"]
+        for c in judged:
             s = {"SUCCESS": "pass", "FAILURE": "fail", "WARNING": "warn", "INFO": "info", "SKIPPED": "skipped"}.get(
                 c["status"], "fail")
             if order.index(s) > order.index(status):
@@ -81,6 +84,8 @@ def summarize(version: str, spec: str, role: str, resdir: Path) -> list[dict]:
                 msg = c.get("errorMessage") or c.get("description") or ""
                 msg = re.split(r"\s*Async traceback", msg)[0]
                 bad.append({"check": c["id"], "status": s, "message": msg[:300].replace("\n", " ")})
+        if not judged:
+            status = "info"
         if role == "client" and "scenario not supported by this client" in stderr:
             status = "unsupported"
         rows.append({"build": version, "spec": spec, "role": role, "scenario": scenario, "status": status,
@@ -96,9 +101,9 @@ def markdown(results: list[dict], elapsed: float) -> str:
             sub = [r for r in results if r["role"] == role and r["build"] == v and r["spec"] == spec]
             if not sub:
                 continue
-            tally = {s: sum(1 for r in sub if r["status"] == s) for s in ("pass", "warn", "fail", "unsupported", "skipped")}
+            tally = {s: sum(1 for r in sub if r["status"] == s) for s in ("pass", "warn", "fail", "unsupported", "skipped", "info")}
             out += [f"## {role} / Nim のビルド {v} / 仕様の版 {spec}", "",
-                    "合格 {pass} / 警告 {warn} / 不合格 {fail} / クライアントが未対応 {unsupported} / 実行されず {skipped}".format(**tally),
+                    "合格 {pass} / 警告 {warn} / 不合格 {fail} / クライアントが未対応 {unsupported} / 実行されず {skipped} / 記録のみ {info}".format(**tally),
                     "", "| シナリオ | 結果 | 成功 | 失敗 | 内容 |", "|---|---|---|---|---|"]
             for r in sub:
                 detail = "; ".join(f"{p['check']}: {p['message']}" for p in r["problems"][:2]).replace("|", "\\|")
@@ -153,7 +158,7 @@ def main() -> int:
                 results += rows
                 print(f"{role:6} build {v} spec {spec}: " + ", ".join(
                     f"{s} {sum(1 for r in rows if r['status'] == s)}"
-                    for s in ("pass", "warn", "fail", "unsupported", "skipped")), flush=True)
+                    for s in ("pass", "warn", "fail", "unsupported", "skipped", "info")), flush=True)
     elapsed = time.monotonic() - started
     (out / "conformance.jsonl").write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in results))
     (out / "conformance.md").write_text(markdown(results, elapsed))
