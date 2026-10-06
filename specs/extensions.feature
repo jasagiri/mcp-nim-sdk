@@ -80,3 +80,11 @@ Feature: Extensions (2026-07-28)
     Given a server with an extension registered with onLegacyHandshake and another without
     When a client of a version before 2026-07-28 initializes
     Then the result announces the first and not the second
+
+  @spec:MCP-EXT-14 @feature:ftExtensions
+  Scenario: An extension the server alone declares is served to any client
+    Given a method registered for an extension that asks no declaration of the client
+    When a client that declared nothing calls it
+    Then the server serves it, and the client sends it without having declared the extension
+    And the client still sends nothing to a server that did not declare the extension
+

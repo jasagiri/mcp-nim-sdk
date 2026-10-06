@@ -69,15 +69,18 @@ proc serverCapability*(client: McpClient, name: string): Option[JsonNode] =
 
 proc callExtension*(client: McpClient, extensionId, methodName: string,
                     params: JsonNode = nil,
-                    options: McpRequestOptions = McpRequestOptions()): Future[JsonNode] {.async.} =
+                    options: McpRequestOptions = McpRequestOptions(),
+                    clientDeclares = true): Future[JsonNode] {.async.} =
   ## Call `methodName`, a method of extension `extensionId`, and return the
   ## result object, which may carry a `resultType` the extension defines.
   ## Raises McpUnsupportedError, sending nothing, when the connection is not
   ## 2026-07-28, this client did not declare the extension, or the server did
-  ## not; the server's errors raise McpRequestError.
+  ## not; the server's errors raise McpRequestError. `clientDeclares = false`
+  ## is for an extension the server alone declares: the client's own
+  ## declaration is then not asked for.
   client.requireFeature(ftExtensions, methodName)
-  if client.capabilities.extensions.isNone or
-     not client.capabilities.extensions.get.hasKey(extensionId):
+  if clientDeclares and (client.capabilities.extensions.isNone or
+     not client.capabilities.extensions.get.hasKey(extensionId)):
     raise newException(McpUnsupportedError,
       methodName & ": this client did not declare the extension " & extensionId)
   if client.serverExtension(extensionId).isNone:

@@ -252,7 +252,7 @@ import mcp
 import ext/tasks        # one import per extension the program uses
 ```
 
-Extensions of the `extensions` capability are agreed in protocol version `2026-07-28`; turning one on in a build that does not speak that version raises `ValueError` rather than doing nothing. A peer that did not declare an extension is answered `-32021` when it calls one of its methods. MCP Apps is the exception its specification makes: a host declares it in the `initialize` handshake of earlier versions as well.
+Extensions of the `extensions` capability are agreed in protocol version `2026-07-28`; turning one on in a build that does not speak that version raises `ValueError` rather than doing nothing. Where an extension has both sides declare it, a peer that did not is answered `-32021` when it calls one of its methods; Skills is declared by the server alone. MCP Apps is the exception its specification makes: a host declares it in the `initialize` handshake of earlier versions as well.
 
 #### Official extensions
 
@@ -260,7 +260,7 @@ Extensions of the `extensions` capability are agreed in protocol version `2026-0
 |---|---|---|---|
 | Tasks (`io.modelcontextprotocol/tasks`) | `ext/tasks` | `server.enableTasksExtension(config)`; `config.decide` says which calls become tasks | `client.enableTasksExtension()`, then `startToolCall`, `getTask`, `awaitTask`, `cancelTask` |
 | MCP Apps (`io.modelcontextprotocol/ui`) | `ext/apps` | `newAppsRegistry()` for the `ui://` resources, `appToolInfo` for tools that show one, `degradeForPlainHosts` | `client.declareApps()` before `connect`, then `listAppTools`, `fetchUiResource` |
-| Skills (`io.modelcontextprotocol/skills`) | `ext/skills` | `newSkillCatalog()`, `server.registerSkills(catalog)` | `client.declareSkills()`, then `listAllSkills`, `getSkill`, `openSkill` |
+| Skills (`io.modelcontextprotocol/skills`) | `ext/skills` | `newSkillCatalog()`, `server.registerSkills(catalog)` | nothing to declare: `listAllSkills`, `getSkill`, `openSkill` |
 | Enterprise-managed authorization | `ext/auth_enterprise_managed` | nothing: it is between the client and the authorization servers | `client.enableEnterpriseManaged(transport, config)` |
 | OAuth client credentials (upstream text is a draft) | `ext/auth_client_credentials` | nothing | `client.enableClientCredentials(transport, config)` |
 

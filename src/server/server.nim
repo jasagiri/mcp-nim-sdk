@@ -162,6 +162,9 @@ type
   ExtensionMethod* = object
     extensionId*: string
     handler*: ExtensionMethodHandler
+    servedUndeclared*: bool
+      ## The extension asks no declaration of the client, so the method is
+      ## served to any client.
 
   SubscriptionHandler* = proc(ctx: McpRequestContext, uri: string): Future[void] {.async.}
     ## Called when a client subscribes to, or unsubscribes from, `uri`; the
@@ -1102,12 +1105,13 @@ proc clientDeclaresExtension(ctx: McpRequestContext, id: string): bool =
 
 proc dispatchExtension(server: McpServer, request: JsonRpcRequest,
                        ctx: McpRequestContext): Future[JsonRpcResponse] {.async.} =
-  ## A method an extension defines; the client must have declared the
-  ## extension, otherwise the request needs a capability it did not offer.
+  ## A method an extension defines. Where the extension has the client
+  ## declare it, a client that did not is told the capability it lacks.
   let registered = server.extensionMethods[request.`method`]
   # An empty extension id is a method of a specification that asks nothing
   # of the client's declaration (see `registerOpenMethod`).
-  if registered.extensionId.len > 0 and not ctx.clientDeclaresExtension(registered.extensionId):
+  if registered.extensionId.len > 0 and not registered.servedUndeclared and
+     not ctx.clientDeclaresExtension(registered.extensionId):
     let error = missingCapabilityError(
       "Method " & request.`method` & " needs the extension " & registered.extensionId,
       requiredExtension(registered.extensionId))

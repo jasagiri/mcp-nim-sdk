@@ -50,10 +50,13 @@ proc registerExtension*(server: McpServer, id: string, settings: JsonNode = nil,
     server.extensionResultTypes[resultType] = id
 
 proc registerExtensionMethod*(server: McpServer, extensionId, methodName: string,
-                              handler: ExtensionMethodHandler) =
+                              handler: ExtensionMethodHandler,
+                              clientDeclares = true) =
   ## Serve `methodName` for extension `extensionId` (declared with
   ## `registerExtension`). Only a client that declared the extension may call
-  ## it. Raises ValueError for an undeclared extension, a method of the core
+  ## it, unless `clientDeclares` is false: some extensions are declared by the
+  ## server alone, and a client calls them after seeing that declaration.
+  ## Raises ValueError for an undeclared extension, a method of the core
   ## protocol (but for the ones an official extension takes over, see
   ## `takesOver`), or a method already registered.
   if server.capabilities.extensions.isNone or
@@ -64,7 +67,7 @@ proc registerExtensionMethod*(server: McpServer, extensionId, methodName: string
      (isCoreMethod(methodName) and not takesOver(extensionId, methodName)):
     raise newException(ValueError, "method " & methodName & " is already defined")
   server.extensionMethods[methodName] = ExtensionMethod(
-    extensionId: extensionId, handler: handler)
+    extensionId: extensionId, handler: handler, servedUndeclared: not clientDeclares)
 
 proc registerTopLevelCapability*(server: McpServer, name: string, settings: JsonNode = nil) =
   ## Declare a top-level capability the core does not define, for a

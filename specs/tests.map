@@ -1018,4 +1018,5 @@ MCP-EXT-10 | tests/test_extensions.nim | Given extensions registered without onL
 MCP-EXT-11 | tests/test_extensions.nim | Given an extension declared with onLegacyHandshake, when a legacy client initializes, then the request carries it and only it
 MCP-EXT-12 | tests/test_extensions.nim | Given a legacy client that declared an extension in initialize, when a handler asks, then it sees the settings; without the declaration it does not
 MCP-EXT-13 | tests/test_extensions.nim | Given an extension registered with onLegacyHandshake, when a legacy client initializes, then the result announces it and only it
+MCP-EXT-14 | tests/test_extensions.nim | Given an extension the server alone declares, when a client that declared nothing calls its method, then the server serves it and the client sends it
 MCP-HTTP-6 | tests/test_streamable_http.nim | Given a server without the extension that defines it, when tasks/get is posted without Mcp-Name, then the answer is method not found and not a header mismatch

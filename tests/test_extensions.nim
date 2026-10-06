@@ -185,6 +185,32 @@ suite "extensions on the client":
         discard waitFor client.callExtension(Ext, "widgets/make", %*{"kind": "gear"})
       check peer.requestsFor("widgets/make").len == 0
 
+  test "Given an extension the server alone declares, when a client that declared nothing calls its method, then the server serves it and the client sends it":
+    for v in versionsWith(ftExtensions):
+      let server = newServer(McpServerCapabilities(tools: some(McpToolsCapability())))
+      server.registerExtension(Ext)
+      server.registerExtensionMethod(Ext, "widgets/count",
+        proc(ctx: McpRequestContext, params: JsonNode): Future[JsonNode] {.async.} =
+          return %*{"count": 3},
+        clientDeclares = false)
+      let asked = server.connect(server.attach(), v).ask("widgets/count", newJObject())
+      check asked["result"]["count"].getInt() == 3
+
+      let peer = startPeer(proc(peer: client_peer.Peer, message: JsonNode) =
+        if message{"method"}.getStr() == "widgets/count":
+          peer.reply(message["id"], %*{"resultType": "complete", "count": 3}),
+        modern = true, capabilities = %*{"extensions": {Ext: {}}})
+      let client = peer.connectedClient(v)
+      let reply = waitFor client.callExtension(Ext, "widgets/count", newJObject(),
+                                               clientDeclares = false)
+      check reply["count"].getInt() == 3
+      # Still not sent to a server that did not declare the extension.
+      let bare = startPeer(nil, modern = true, capabilities = newJObject())
+      expect McpUnsupportedError:
+        discard waitFor bare.connectedClient(v).callExtension(Ext, "widgets/count",
+          newJObject(), clientDeclares = false)
+      check bare.requestsFor("widgets/count").len == 0
+
   test "Given a client that did not declare the extension, when it calls an extension method, then it raises McpUnsupportedError":
     for v in versionsWith(ftExtensions):
       let peer = startPeer(nil, modern = true,
