@@ -141,21 +141,32 @@ proc pageParams*(cursor: Option[string]): JsonNode =
   if cursor.isSome:
     result["cursor"] = %cursor.get
 
+const MaxListPages* = 1_000
+  ## How many pages `allPages` reads before it gives up: at 100 items a page
+  ## that is a list of 100 000, far beyond what a server lists. A server that
+  ## makes up a new cursor for every page would otherwise be followed for ever.
+
 proc allPages*[T](what: string,
-    fetch: proc(cursor: Option[string]): Future[tuple[items: seq[T], next: Option[string]]]
-    ): Future[seq[T]] {.async.} =
+    fetch: proc(cursor: Option[string]): Future[tuple[items: seq[T], next: Option[string]]],
+    maxPages = MaxListPages): Future[seq[T]] {.async.} =
   ## Follow nextCursor to the last page. A server that repeats a cursor
-  ## would loop forever, so that is a protocol error.
+  ## would loop forever, so that is a protocol error; so is one that has
+  ## more than `maxPages` pages.
   var cursor = none(string)
   var seen = initHashSet[string]()
+  var pages = 0
   while true:
     let page = await fetch(cursor)
+    inc pages
     result.add page.items
     if page.next.isNone:
       return
     if page.next.get in seen:
       raise newException(McpProtocolError,
         what & ": the server repeated cursor '" & page.next.get & "'")
+    if pages >= maxPages:
+      raise newException(McpProtocolError,
+        what & ": the server listed more than " & $maxPages & " pages")
     seen.incl page.next.get
     cursor = page.next
 

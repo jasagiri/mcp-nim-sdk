@@ -254,3 +254,9 @@ Feature: Security findings of the 2026-10-06 review
     Given a sampling/createMessage request whose temperature or a priority is not a number
     When the client parses it
     Then it is a protocol error, answered as invalid params, and not read as 0.0
+
+  @spec:MCP-SEC-SWEEP-5
+  Scenario: A client does not follow a server's cursors without end
+    Given a server that makes up a new cursor for every page of a list
+    When the client reads all pages
+    Then it stops with a protocol error after the page limit, which a list of that many pages still fits

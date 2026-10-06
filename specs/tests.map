@@ -1167,3 +1167,6 @@ MCP-SEC-SWEEP-2 | tests/test_security_expiry.nim | Given an expiry hook that rai
 MCP-SEC-SWEEP-3 | tests/test_security_sampling.nim | Given a temperature that is a string, when parsed, then it is a protocol error and not 0.0
 MCP-SEC-SWEEP-3 | tests/test_security_sampling.nim | Given a priority that is a string, when parsed, then it is a protocol error and not 0.0
 MCP-SEC-SWEEP-3 | tests/test_security_sampling.nim | Given numbers and nulls, when parsed, then they are read as sent, a null as absent
+MCP-SEC-SWEEP-5 | tests/test_security_pages.nim | Given a server that makes up a new cursor for every page, when all pages are read, then it is a protocol error after the limit
+MCP-SEC-SWEEP-5 | tests/test_security_pages.nim | Given a server whose last page is the limit, when all pages are read, then every item is returned
+MCP-SEC-SWEEP-5 | tests/test_security_pages.nim | Given the default limit, when a server has 1000 pages, then they are read
