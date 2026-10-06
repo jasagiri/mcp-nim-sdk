@@ -45,3 +45,9 @@ Feature: The JSON Schema validator against hostile input and hostile schemas
     Given an array of 100000 distinct objects, and arrays of values that are or only look equal such as 1 and 1.0, objects with keys in another order, [1, 2] and [2, 1], or 9007199254740993 and 9007199254740992
     When uniqueItems is checked
     Then the answer is immediate, equal values are reported with the index of the first copy, and values that differ are not
+
+  @spec:MCP-SEC-SCHEMA-8
+  Scenario: A malformed keyword is reported, never skipped, and no schema makes the validator raise something else
+    Given dependentRequired or draft-07 dependencies that do not hold lists of names, a $ref index that overflows or is out of range, or a multipleOf whose quotient a double cannot hold
+    When an instance is validated
+    Then InvalidSchemaError (or SchemaLimitError for the quotient) is raised, and the instance is not reported as conforming

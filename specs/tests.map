@@ -1054,3 +1054,8 @@ MCP-SEC-SCHEMA-7 | tests/test_security_schema.nim | Given items that are equal a
 MCP-SEC-SCHEMA-7 | tests/test_security_schema.nim | Given items that only look alike, when uniqueItems is checked, then they are distinct
 MCP-SEC-SCHEMA-7 | tests/test_security_schema.nim | Given three equal items, when uniqueItems is checked, then each later copy names the first
 MCP-SEC-SCHEMA-7 | tests/test_security_schema.nim | Given enum and const with 1 and 1.0, when large integers are compared, then they are told apart
+MCP-SEC-SCHEMA-8 | tests/test_security_schema.nim | Given a $ref with an array index that overflows, when validated, then the schema is invalid
+MCP-SEC-SCHEMA-8 | tests/test_security_schema.nim | Given a $ref with an index that is out of range, when validated, then the schema is invalid
+MCP-SEC-SCHEMA-8 | tests/test_security_schema.nim | Given dependentRequired in a form that is not a list of names, when an object is validated, then the schema is invalid
+MCP-SEC-SCHEMA-8 | tests/test_security_schema.nim | Given draft-07 dependencies in a form that is neither a list of names nor a schema, when validated, then the schema is invalid
+MCP-SEC-SCHEMA-8 | tests/test_security_schema.nim | Given multipleOf whose quotient is beyond a double, when validated, then it is reported, not passed

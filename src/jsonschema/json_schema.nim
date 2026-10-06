@@ -248,8 +248,8 @@ proc resolveRef(v: Validator, reference: string): JsonNode =
     let part = rawPart.replace("%25", "%").replace("~1", "/").replace("~0", "~")
     if result.kind == JObject and result.hasKey(part):
       result = result[part]
-    elif result.kind == JArray and part.len > 0 and part.allCharsInSet(Digits) and
-         parseInt(part) < result.len:
+    elif result.kind == JArray and part.len > 0 and part.len <= 9 and
+         part.allCharsInSet(Digits) and parseInt(part) < result.len:
       result = result[parseInt(part)]
     else:
       invalid("$ref '" & reference & "' points at nothing")
@@ -319,6 +319,8 @@ proc checkNumber(v: var Validator, schema, instance: JsonNode, path: seq[string]
     let step = divisor.getFloat()
     if step <= 0: invalid("'multipleOf' must be above zero")
     let quotient = value / step
+    if quotient.classify notin {fcNormal, fcZero, fcSubnormal}:
+      overLimit($instance & " divided by " & $divisor & " is beyond what a double holds")
     if abs(quotient - round(quotient)) > 1e-9 * max(1.0, abs(quotient)):
       v.add(path, $instance & " is not a multiple of " & $divisor)
 
@@ -433,22 +435,26 @@ proc checkObject(v: var Validator, schema, instance: JsonNode, path: seq[string]
   let dependent = schema.keyword("dependentRequired", {JObject})
   if not dependent.isNil:
     for name, needed in dependent.pairs:
-      if instance.hasKey(name) and needed.kind == JArray:
-        for other in needed:
-          if other.kind == JString and not instance.hasKey(other.getStr()):
-            v.add(path, "'" & name & "' requires property '" & other.getStr() & "'")
+      if needed.kind != JArray:
+        invalid("'dependentRequired' must map names to lists of names")
+      for other in needed:
+        if other.kind != JString:
+          invalid("'dependentRequired' must map names to lists of names")
+        if instance.hasKey(name) and not instance.hasKey(other.getStr()):
+          v.add(path, "'" & name & "' requires property '" & other.getStr() & "'")
   var dependentSchemas = schema.keyword("dependentSchemas", {JObject})
   if dependentSchemas.isNil and v.dialect == sdDraft07:
     # Draft-07 `dependencies` holds both forms.
     let old = schema.keyword("dependencies", {JObject})
     if not old.isNil:
       for name, dependency in old.pairs:
-        if not instance.hasKey(name): continue
         if dependency.kind == JArray:
           for other in dependency:
-            if other.kind == JString and not instance.hasKey(other.getStr()):
+            if other.kind != JString:
+              invalid("'dependencies' must hold lists of names or schemas")
+            if instance.hasKey(name) and not instance.hasKey(other.getStr()):
               v.add(path, "'" & name & "' requires property '" & other.getStr() & "'")
-        else:
+        elif instance.hasKey(name):
           v.check(dependency, instance, path)
   if not dependentSchemas.isNil:
     for name, sub in dependentSchemas.pairs:

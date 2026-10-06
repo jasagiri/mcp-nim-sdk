@@ -241,3 +241,31 @@ suite "uniqueItems":
   test "Given enum and const with 1 and 1.0, when large integers are compared, then they are told apart":
     check validate(parseJson("""{"const": 9007199254740993}"""), parseJson("9007199254740992")).len == 1
     check validate(parseJson("""{"const": 1}"""), parseJson("1.0")).len == 0
+
+suite "malformed keywords that were skipped or crashed":
+
+  test "Given a $ref with an array index that overflows, when validated, then the schema is invalid":
+    expect InvalidSchemaError:
+      discard validate(parseJson("""{"$defs": {"a": [true]}, "$ref": "#/$defs/a/99999999999999999999"}"""), %1)
+
+  test "Given a $ref with an index that is out of range, when validated, then the schema is invalid":
+    expect InvalidSchemaError:
+      discard validate(parseJson("""{"$defs": {"a": [true]}, "$ref": "#/$defs/a/1"}"""), %1)
+
+  test "Given dependentRequired in a form that is not a list of names, when an object is validated, then the schema is invalid":
+    for bad in ["\"b\"", "5", "[1]", "[\"b\", null]", "{}"]:
+      expect InvalidSchemaError:
+        discard validate(parseJson("{\"dependentRequired\": {\"a\": " & bad & "}}"),
+                         parseJson("""{"a": 1, "b": 2}"""))
+
+  test "Given draft-07 dependencies in a form that is neither a list of names nor a schema, when validated, then the schema is invalid":
+    for bad in ["\"b\"", "5", "[1]", "null"]:
+      expect InvalidSchemaError:
+        discard validate(parseJson("{\"$schema\": \"http://json-schema.org/draft-07/schema#\", \"dependencies\": {\"a\": " & bad & "}}"),
+                         parseJson("""{"a": 1, "b": 2}"""))
+
+  test "Given multipleOf whose quotient is beyond a double, when validated, then it is reported, not passed":
+    expect SchemaLimitError:
+      discard validate(parseJson("""{"multipleOf": 1e-308}"""), parseJson("1e308"))
+    check validate(parseJson("""{"multipleOf": 0.5}"""), parseJson("2.5")).len == 0
+    check validate(parseJson("""{"multipleOf": 0.5}"""), parseJson("2.6")).len == 1
