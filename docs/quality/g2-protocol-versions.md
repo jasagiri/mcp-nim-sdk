@@ -74,6 +74,21 @@
 | `src/jsonschema/json_schema_regex.nim` (Thompson NFA、上限) | `tests/test_security_schema.nim`、`tests/test_json_schema.nim` | 2026-10-06 |
 | `src/jsonschema/json_schema.nim` (`SchemaLimits`、`$ref` の循環検出) | `tests/test_security_schema.nim`、`tests/test_json_schema.nim` | 2026-10-06 |
 
+## 未測定 (セキュリティ修正: 外向きの HTTP、認可クライアント、Tasks、クライアントの上限)
+
+| モジュール | 対応する外部仕様テスト | 追加・変更した日 |
+|---|---|---|
+| `src/transport/http_wire.nim` (TLS のホスト名照合、要求・応答ヘッダの検査、接続・ヘッダ待ちのタイムアウト) | `tests/test_security_wire_tls.nim` (`-d:ssl`)、`tests/test_security_wire_headers.nim`、`tests/test_security_wire_limits.nim` | 2026-10-06 |
+| `src/transport/event_stream.nim` (行・イベントの上限)、`src/transport/{http,sse_legacy}.nim` (上限とタイムアウトの受け渡し) | `tests/test_security_wire_limits.nim` | 2026-10-06 |
+| `src/transport/address_policy.nim`、`src/transport/guarded_wire.nim`、`src/auth/oauth/{urls,fetch}.nim`、`src/auth/client.nim` (`narrowedTo`) | `tests/test_security_address.nim` | 2026-10-06 |
+| `src/client/icons.nim` (タイムアウト時の接続、アドレス判定) | `tests/test_security_icons.nim` | 2026-10-06 |
+| `src/auth/client.nim` (secret と issuer の結び付け)、`src/auth/oauth/{tokens,authcode}.nim` (`tokenExpiry`) | `tests/test_security_auth.nim`、`tests/test_security_auth_tokens.nim` | 2026-10-06 |
+| `src/protocol/tasks.nim` (ttl の上限・期限の飽和・件数の上限・`onExpire`) | `tests/test_security_tasks.nim`、`tests/test_security_expiry.nim` | 2026-10-06 |
+| `src/protocol/task_methods.nim` (`pollPauseMs`) | `tests/test_security_poll.nim` | 2026-10-06 |
+| `src/server/tasks.nim` (期限切れでの解放) | `tests/test_security_expiry.nim` | 2026-10-06 |
+| `src/client/sampling.nim` (`numberField`) | `tests/test_security_sampling.nim` | 2026-10-06 |
+| `src/client/content.nim` (`allPages` の上限) | `tests/test_security_pages.nim` | 2026-10-06 |
+
 ## 未測定 (HTTP サーバーのセキュリティ修正。本線向け)
 
 | モジュール | 対応する外部仕様テスト | 追加・変更した日 |
