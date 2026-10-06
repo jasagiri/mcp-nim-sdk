@@ -206,7 +206,7 @@ Feature: Security properties
     When the client parses it
     Then it counts the lifetime from now for the first three, treats the next three as "no expiry given", and refuses the last without reading a token into the store
 
-  Rule: Security findings of the 2026-10-06 review
+  Rule: A receiver of tasks and a client keep within bounds a peer cannot move
     As an operator of a receiver of tasks
     I want one peer's choices to be unable to stop or exhaust the receiver
     So that the tasks of every other owner keep working
