@@ -23,7 +23,7 @@ Nim 2.2.2 or newer. In your `.nimble` file:
 requires "{{repository}}#mcp-{{version}}"
 ```
 
-Then `import mcp`.
+Then `import mcp`. A program file of your own cannot be called `mcp.nim`: the import would find that file instead of the SDK.
 
 ## A server
 
@@ -234,7 +234,7 @@ The HTTP server accepts requests from loopback origins only; add others to `tran
 {{#if spoken:ftAuthorization}}
 #### Authorization
 
-Authorization is off until it is attached to an HTTP transport. A server sets `transport.auth = newResourceServerAuth(config, mcpPath)` with a token verifier of its own; a client sets `transport.auth` to an OAuth client made with `newOAuthClient`; a client secret is configured together with the issuer of the authorization server it belongs to, and is sent to no other. Both live in `auth/` and are imported separately (`import auth/resource_server`, `import auth/client`). Build with `-d:ssl`: authorization servers are reached over `https://`.
+Authorization is off until it is attached to an HTTP transport. A server sets `transport.auth = newResourceServerAuth(config)` with a token verifier of its own, and every MCP endpoint the transport serves then needs a token; a client sets `transport.auth` to an OAuth client made with `newOAuthClient`; a client secret is configured together with the issuer of the authorization server it belongs to, and is sent to no other. Both live in `auth/` and are imported separately (`import auth/resource_server`, `import auth/client`). Build with `-d:ssl`: authorization servers are reached over `https://`.
 
 {{/if}}
 {{#if spoken:ftExtensions}}
@@ -313,6 +313,43 @@ nim c -r -d:mcpDefaultProtocolVersion=2025-06-18 tests/test_legacy_handshake.nim
 ```
 
 `DefaultProtocolVersion`, `OldestProtocolVersion` and `SupportedProtocolVersions` (in `protocol/version`, exported by `mcp`) tell a program what it was built to speak.
+
+## Running a server on a network
+
+A server on the HTTP transport refuses, by default, what one caller could use against the others. The limits are fields of the transport; set them after `newHttpServerTransport`.
+
+| What | Default | Field |
+|---|---|---|
+| The `Host` header names this server | bound to loopback: loopback names only; bound elsewhere: not checked until names are listed | `allowedHosts` |
+| The `Origin` header, when a browser sends one | loopback origins only | `allowedOrigins` |
+| Size of a request body | 4 MiB | `maxBodySize` (argument of `newHttpServerTransport`) |
+| Sessions, in all and per client address | limited; a full transport gives up a session that was never used before it refuses | `maxSessions`, `maxSessionsPerPeer` |
+| Requests in progress and messages waiting | limited; more are refused with 503 and `Retry-After` | `maxPendingRequests`, `maxQueuedMessages` |
+
+Behind a reverse proxy that passes the public name on, list that name: `transport.allowedHosts = @["mcp.example.com"]`. A header such as `X-Forwarded-For` is not trusted; the client address is the peer of the TCP connection, which behind a proxy is the proxy.
+
+**Put a reverse proxy with request timeouts in front of a server that untrusted clients can reach.** The HTTP server of Nim's standard library, which this SDK uses, does not limit how long a client may take to send a request, so a client that sends nothing keeps its connection. A change that adds such a limit is proposed to Nim ([nim-lang/Nim#26352](https://github.com/nim-lang/Nim/pull/26352)); the SDK cannot set one until a released Nim has it.
+
+A client is guarded the other way round: what it fetches because a server said so (authorization metadata, icons) is refused when the address is loopback, link-local or reserved, and when it is private unless `allowPrivateNetworks` is set; a response is limited in size (`maxResponseSize`) and a connection in time (`connectTimeoutMs`).
+
+## Changes that break code written for earlier commits
+
+These came with the security review of 2026-10-06. Each refuses something that used to be accepted.
+
+| Was | Is now |
+|---|---|
+| A transport bound to a loopback address answered any `Host` | It answers loopback names and those in `allowedHosts`; others get 403 |
+| A JSON Schema of any depth and a `pattern` of any cost were checked | Checking stops with `SchemaLimitError` or `RegexLimitError` beyond the limits (`SchemaLimits`, `RegexLimits`); patterns are matched without backtracking, so a hostile one costs time in proportion to the text |
+{{#if spoken:ftAuthorization}}
+| `newResourceServerAuth(config, mcpPath)` protected one path | `newResourceServerAuth(config)`: the transport protects every MCP endpoint it serves |
+| A pre-registered client's secret went to whichever authorization server the MCP server named | `PreRegisteredClient` with a `clientSecret` needs `issuer`; the secret is sent to that authorization server only |
+{{/if}}
+{{#if spoken:ftTasks}}
+| `newTaskStore()` kept any number of tasks for any time | A `ttl` above 24 hours is lowered to it; one owner has 16 active and 256 kept tasks, the store 4096. Pass `maxTtlMs = none(int64)` and 0 for a count to lift a limit |
+{{/if}}
+{{#if ext:auth_client_credentials}}
+| `newClientCredentialsConfig(url, clientId)` and `newEnterpriseManagedConfig(url, idpIssuer, ...)` | Both take the issuer of the authorization server the credentials belong to: `newClientCredentialsConfig(url, clientId, issuer)`, `newEnterpriseManagedConfig(url, idpIssuer, resourceIssuer, ...)` |
+{{/if}}
 
 ## Other versions
 
