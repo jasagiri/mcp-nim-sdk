@@ -33,7 +33,9 @@ suite "tasks: creation":
     check task.taskId.len > 0
 
   test "Given many tasks, when created, then every id differs and none can be guessed from a counter":
-    let store = storeAt(FakeTime())
+    let time = FakeTime()
+    let store = newTaskStore(clock = proc(): int64 = time.nowMs, maxActivePerOwner = 0,
+                             maxTasksPerOwner = 0)
     var ids = initHashSet[string]()
     for _ in 1 .. 200:
       ids.incl store.create("alice", none(int64)).taskId

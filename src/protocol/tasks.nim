@@ -7,7 +7,7 @@
 ## terminal, the outcome of the request it stands for. Time comes from a
 ## clock the caller can replace, so expiry is testable without sleeping.
 
-import std/[asyncdispatch, json, options, strutils, sysrand, tables, times]
+import std/[asyncdispatch, json, math, options, strutils, sysrand, tables, times]
 import ./types
 
 const
@@ -18,6 +18,20 @@ const
     ## as the tool result while the task runs.
   TaskIdBytes = 16
     ## 128 bits from the system's random source.
+  # The specification asks a receiver to limit concurrent tasks per requestor
+  # and the ttl it grants, and to document both (basic/utilities/tasks,
+  # "Resource Management"). A task holds its result until its ttl is over, so
+  # these three numbers bound what one peer can make the receiver keep.
+  DefaultMaxTtlMs* = 86_400_000'i64
+    ## 24 hours: a result is worth fetching within a working day; a longer
+    ## request is granted this much, and the answer says so.
+  DefaultMaxActivePerOwner* = 16
+    ## Tasks that are not over, per owner. Each one is running work.
+  DefaultMaxTasksPerOwner* = 256
+    ## Tasks per owner, over or not: results waiting to be fetched count.
+  DefaultMaxTasks* = 4096
+    ## Tasks in the whole store. The backstop for owners that cost nothing to
+    ## make up (an unauthenticated peer is as many owners as it has sessions).
 
 type
   TaskStatus* = enum
@@ -80,10 +94,17 @@ type
       ## The ttl of a task whose request named none.
     maxTtlMs*: Option[int64]
       ## The longest ttl the receiver grants; a longer request is overridden.
+      ## none grants any ttl, `null` (unlimited) included, and is for a
+      ## receiver that bounds what it keeps another way.
     pollIntervalMs*: Option[int]
       ## Suggested to requestors in every task.
     maxActivePerOwner*: int
-      ## How many tasks that are not terminal one owner may have; 0 is no limit.
+      ## How many tasks that are not terminal one owner may have; 0 is no
+      ## limit, for a receiver that admits requests before they get here.
+    maxTasksPerOwner*: int
+      ## How many tasks, over or not, one owner may have; 0 is no limit.
+    maxTasks*: int
+      ## How many tasks the store holds; 0 is no limit.
     onStatusChange*: proc(owner: string, task: McpTask) {.closure.}
       ## Called after every change of a task, with the whole task.
     onResultStream*: proc(owner, taskId, requestId: string) {.closure.}
@@ -225,18 +246,36 @@ func parseTaskParam*(params: JsonNode): Option[Option[int64]] {.raises: [McpTask
   let ttl = task{"ttl"}
   if ttl.isNil or ttl.kind == JNull:
     return some(none(int64))
-  if ttl.kind notin {JInt, JFloat} or ttl.getFloat() < 0:
-    raise newTaskError(InvalidParamsCode, "task.ttl must be a non-negative number of milliseconds")
-  some(some(ttl.getInt().int64))
+  const notValid = "task.ttl must be a non-negative whole number of milliseconds"
+  case ttl.kind
+  of JInt:
+    if ttl.getBiggestInt() < 0:
+      raise newTaskError(InvalidParamsCode, notValid)
+    some(some(ttl.getBiggestInt().int64))
+  of JFloat:
+    # `1.5e6` is a whole number in JSON; `1.5` is not a number of
+    # milliseconds anyone can mean, and `1e30` is a request for more than
+    # any receiver grants: it is read as the largest, which the store caps.
+    let value = ttl.getFloat()
+    if value != value or value < 0 or value == Inf or value != value.floor:
+      raise newTaskError(InvalidParamsCode, notValid)
+    if value >= 9.223372036854775807e18:
+      return some(some(int64.high))
+    some(some(value.int64))
+  else:
+    raise newTaskError(InvalidParamsCode, notValid)
 
 proc newTaskStore*(clock: TaskClock = systemClock,
                    defaultTtlMs = some(3_600_000'i64),
-                   maxTtlMs = none(int64),
+                   maxTtlMs = some(DefaultMaxTtlMs),
                    pollIntervalMs = some(1_000),
-                   maxActivePerOwner = 0): TaskStore =
+                   maxActivePerOwner = DefaultMaxActivePerOwner,
+                   maxTasksPerOwner = DefaultMaxTasksPerOwner,
+                   maxTasks = DefaultMaxTasks): TaskStore =
   TaskStore(clock: clock, entries: initOrderedTable[string, TaskEntry](),
             defaultTtlMs: defaultTtlMs, maxTtlMs: maxTtlMs,
-            pollIntervalMs: pollIntervalMs, maxActivePerOwner: maxActivePerOwner)
+            pollIntervalMs: pollIntervalMs, maxActivePerOwner: maxActivePerOwner,
+            maxTasksPerOwner: maxTasksPerOwner, maxTasks: maxTasks)
 
 proc newTaskId(): string =
   ## Unpredictable: an id is the only thing that keeps a requestor without
@@ -259,7 +298,13 @@ proc notifyChange(store: TaskStore, entry: TaskEntry) =
 
 proc expiresAtMs(entry: TaskEntry): Option[int64] =
   if entry.task.ttlMs.isSome:
-    some(entry.task.createdAtMs + entry.task.ttlMs.get)
+    # Saturates: a ttl that reaches past the last instant is no expiry, and
+    # the sum must not raise where every operation of the store passes.
+    let ttl = entry.task.ttlMs.get
+    if ttl > 0 and entry.task.createdAtMs > int64.high - ttl:
+      some(int64.high)
+    else:
+      some(entry.task.createdAtMs + ttl)
   else:
     none(int64)
 
@@ -274,8 +319,14 @@ proc sweep*(store: TaskStore): seq[string] =
   for id in result:
     let entry = store.entries[id]
     store.entries.del(id)
-    if not entry.task.status.isTerminal and not entry.cancelWork.isNil:
-      entry.cancelWork("the task expired")
+    # One task's cleanup failing must not leave the others' undone: sweep runs
+    # in every operation of every owner.
+    try:
+      if not entry.task.status.isTerminal and not entry.cancelWork.isNil:
+        entry.cancelWork("the task expired")
+    except CatchableError as e:
+      stderr.writeLine("[mcp-tasks] stopping the work of expired task " & id &
+                       " raised " & e.msg)
     entry.wake()
 
 proc notFound(): ref McpTaskError =
@@ -294,12 +345,25 @@ proc activeCount(store: TaskStore, owner: string): int =
     if entry.owner == owner and not entry.task.status.isTerminal:
       inc result
 
+proc ownedCount(store: TaskStore, owner: string): int =
+  for entry in store.entries.values:
+    if entry.owner == owner:
+      inc result
+
 proc create*(store: TaskStore, owner: string, requestedTtlMs: Option[int64]): McpTask =
-  ## A new task in `working`, bound to `owner`. Raises McpTaskError when the
-  ## owner has too many tasks that are not over.
+  ## A new task in `working`, bound to `owner`. The ttl is the one asked for,
+  ## or the store's default, and never more than `maxTtlMs`. Raises
+  ## McpTaskError for a negative ttl, and when the owner has too many tasks
+  ## (not over, or over but kept) or the store holds too many.
+  if requestedTtlMs.isSome and requestedTtlMs.get < 0:
+    raise newTaskError(InvalidParamsCode, "task.ttl must not be negative")
   discard store.sweep()
   if store.maxActivePerOwner > 0 and store.activeCount(owner) >= store.maxActivePerOwner:
     raise newTaskError(InternalErrorCode, "Too many active tasks")
+  if store.maxTasksPerOwner > 0 and store.ownedCount(owner) >= store.maxTasksPerOwner:
+    raise newTaskError(InternalErrorCode, "Too many tasks")
+  if store.maxTasks > 0 and store.entries.len >= store.maxTasks:
+    raise newTaskError(InternalErrorCode, "Too many tasks")
   var ttl = if requestedTtlMs.isSome: requestedTtlMs else: store.defaultTtlMs
   if store.maxTtlMs.isSome and (ttl.isNone or ttl.get > store.maxTtlMs.get):
     ttl = store.maxTtlMs

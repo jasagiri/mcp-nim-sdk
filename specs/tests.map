@@ -1143,3 +1143,17 @@ MCP-SEC-AUTH-5 | tests/test_security_auth_tokens.nim | Given an expires_in beyon
 MCP-SEC-AUTH-5 | tests/test_security_auth_tokens.nim | Given expires_in at the largest lifetime, when the response is parsed, then it still counts
 MCP-SEC-AUTH-5 | tests/test_security_auth_tokens.nim | Given a negative or non-numeric expires_in, when the response is parsed, then the response is refused
 MCP-SEC-AUTH-5 | tests/test_security_auth_tokens.nim | Given a refused expires_in, when the error is read, then it does not contain the token
+MCP-SEC-TASKS-1 | tests/test_security_tasks.nim | Given a task asked for with the largest ttl, when another owner uses the store, then every operation still works
+MCP-SEC-TASKS-1 | tests/test_security_tasks.nim | Given a store that grants any ttl, when the largest is asked for, then the task never expires and the others are untouched
+MCP-SEC-TASKS-1 | tests/test_security_tasks.nim | Given a client that asks for the largest ttl, when another client lists its tasks, then it is answered
+MCP-SEC-TASKS-2 | tests/test_security_tasks.nim | Given the default store, when a ttl beyond the maximum is asked for, then the task gets the maximum
+MCP-SEC-TASKS-3 | tests/test_security_tasks.nim | Given a whole number written as a float, when parsed, then it is that many milliseconds
+MCP-SEC-TASKS-3 | tests/test_security_tasks.nim | Given a float beyond what a ttl can be, when parsed, then it is the largest and the store grants its maximum
+MCP-SEC-TASKS-3 | tests/test_security_tasks.nim | Given a fraction, a negative number, a string or a boolean, when parsed, then it is invalid params
+MCP-SEC-TASKS-3 | tests/test_security_tasks.nim | Given a negative ttl, when a task is created, then it is invalid params and nothing is stored
+MCP-SEC-TASKS-3 | tests/test_security_tasks.nim | Given a ttl that is a fraction, when a task is asked for, then the call is invalid params
+MCP-SEC-TASKS-4 | tests/test_security_tasks.nim | Given the default store, when an owner has the default number of active tasks, then the next is refused and another owner is not
+MCP-SEC-TASKS-4 | tests/test_security_tasks.nim | Given an owner whose tasks are over, when the kept ones reach the limit, then no more are made until they expire
+MCP-SEC-TASKS-4 | tests/test_security_tasks.nim | Given a store with a total limit, when many owners fill it, then a new task is refused until some expire
+MCP-SEC-TASKS-4 | tests/test_security_tasks.nim | Given limits of 0, when many tasks are made, then none is refused
+MCP-SEC-TASKS-5 | tests/test_security_tasks.nim | Given a task whose work cannot be stopped, when it expires, then the other expired tasks are still removed

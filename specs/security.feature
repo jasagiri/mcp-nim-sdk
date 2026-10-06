@@ -197,3 +197,42 @@ Feature: Security properties
     Given a token response whose expires_in is an integer, a float, a string of digits, absent, larger than ten years, or negative or not a number
     When the client parses it
     Then it counts the lifetime from now for the first three, treats the next three as "no expiry given", and refuses the last without reading a token into the store
+Feature: Security findings of the 2026-10-06 review
+  As an operator of a receiver of tasks
+  I want one peer's choices to be unable to stop or exhaust the receiver
+  So that the tasks of every other owner keep working
+
+  Resource limits are the receiver's to set (basic/utilities/tasks, "Resource
+  Management": enforce limits on concurrent tasks per requestor, enforce
+  maximum ttl durations, document both). They are defaults a user may change,
+  and an excess is an explicit error or, for a ttl, an override the answer says.
+
+  @spec:MCP-SEC-TASKS-1
+  Scenario: A ttl no receiver could honor does not reach other owners
+    Given a requestor that asks for the largest ttl a number can hold
+    When another owner uses the store
+    Then every operation of that owner works, because the expiry saturates and the ttl is capped
+
+  @spec:MCP-SEC-TASKS-2
+  Scenario: The receiver grants at most its maximum ttl and says so
+    Given a store with the default maximum ttl of 24 hours
+    When a task asks for more, or for the largest ttl
+    Then the task is created with the maximum, the answer carries it, and the Tasks extension's store has the same bound
+
+  @spec:MCP-SEC-TASKS-3
+  Scenario: A ttl is a non-negative whole number of milliseconds
+    Given a task parameter with a ttl
+    When it is a float with a whole value it is read as that number, a larger one as the largest
+    Then a fraction, a negative number, a string or anything else is invalid params
+
+  @spec:MCP-SEC-TASKS-4
+  Scenario: One owner cannot make the store keep without limit
+    Given the default limits on active tasks and kept tasks per owner and on the whole store
+    When an owner or many owners reach them
+    Then the next task is refused with an error until tasks end or expire, other owners are served, and 0 turns a limit off
+
+  @spec:MCP-SEC-TASKS-5
+  Scenario: One task's failing cleanup does not leave the others uncleaned
+    Given two expired tasks, the work of one of which cannot be stopped
+    When any owner uses the store
+    Then both are removed and the failure is reported on stderr
