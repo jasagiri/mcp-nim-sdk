@@ -84,8 +84,24 @@ type
   TaskWork* = tuple[response: Future[JsonRpcResponse],
                     cancel: proc(reason: string) {.closure.}]
 
-const DefaultPollIntervalMs* = 1_000
-  ## Used when a task suggests no `pollInterval`.
+const
+  DefaultPollIntervalMs* = 1_000
+    ## Used when a task suggests no `pollInterval`.
+  MinPollIntervalMs* = 10
+    ## The shortest wait between polls a peer's suggestion can make: a peer
+    ## that suggests 0 (or a negative number) must not turn the poll into a
+    ## busy loop of requests to itself.
+  MaxPollIntervalMs* = 300_000
+    ## The longest: a peer that suggests more must not park the requestor for
+    ## days. Five minutes is already slower than any task a requestor waits on.
+
+func pollPauseMs*(suggested: Option[int], defaultMs: int): int =
+  ## How long to wait before polling again: the peer's suggestion, kept
+  ## between `MinPollIntervalMs` and `MaxPollIntervalMs`, or `defaultMs` (the
+  ## caller's own choice, used as given) when it suggests none.
+  if suggested.isNone:
+    return defaultMs
+  max(MinPollIntervalMs, min(suggested.get, MaxPollIntervalMs))
 
 proc pollTask*(fetch: proc(): Future[McpTask] {.closure.}, onStatus: TaskStatusCallback,
                sleep: SleepProc, defaultPollMs: int): Future[McpTask] {.async.} =
@@ -101,7 +117,7 @@ proc pollTask*(fetch: proc(): Future[McpTask] {.closure.}, onStatus: TaskStatusC
         onStatus(task)
     if task.status != tsWorking:
       return task
-    let pause = task.pollIntervalMs.get(defaultPollMs)
+    let pause = pollPauseMs(task.pollIntervalMs, defaultPollMs)
     if sleep.isNil:
       await sleepAsync(pause)
     else:

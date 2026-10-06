@@ -236,3 +236,9 @@ Feature: Security findings of the 2026-10-06 review
     Given two expired tasks, the work of one of which cannot be stopped
     When any owner uses the store
     Then both are removed and the failure is reported on stderr
+
+  @spec:MCP-SEC-SWEEP-1
+  Scenario: A poll interval a peer suggests is kept within bounds
+    Given a task of a peer that suggests a poll interval of 0, a negative number, or days
+    When a requestor of the core or of the Tasks extension polls it
+    Then it waits at least the minimum and at most the maximum, and the caller's default as given when the peer suggests none

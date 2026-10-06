@@ -1157,3 +1157,8 @@ MCP-SEC-TASKS-4 | tests/test_security_tasks.nim | Given an owner whose tasks are
 MCP-SEC-TASKS-4 | tests/test_security_tasks.nim | Given a store with a total limit, when many owners fill it, then a new task is refused until some expire
 MCP-SEC-TASKS-4 | tests/test_security_tasks.nim | Given limits of 0, when many tasks are made, then none is refused
 MCP-SEC-TASKS-5 | tests/test_security_tasks.nim | Given a task whose work cannot be stopped, when it expires, then the other expired tasks are still removed
+MCP-SEC-SWEEP-1 | tests/test_security_poll.nim | Given a task that suggests a poll interval of 0, when polled, then the wait is the minimum
+MCP-SEC-SWEEP-1 | tests/test_security_poll.nim | Given a task that suggests a negative poll interval, when polled, then the wait is the minimum
+MCP-SEC-SWEEP-1 | tests/test_security_poll.nim | Given a task that suggests days, when polled, then the wait is the maximum
+MCP-SEC-SWEEP-1 | tests/test_security_poll.nim | Given a task that suggests a reasonable interval, when polled, then it is respected
+MCP-SEC-SWEEP-1 | tests/test_security_poll.nim | Given a task that suggests none, when polled, then the caller's default is used as given
