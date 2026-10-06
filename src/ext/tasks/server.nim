@@ -24,6 +24,7 @@ import ../../server/server
 import ../../server/errors
 import ../../server/extensions
 import ../../protocol/types
+import ../../protocol/diagnostic
 import ../../protocol/features
 import ../../protocol/version
 import ../../protocol/modern
@@ -224,7 +225,7 @@ proc announce(ext: TasksExtension, owner: string, task: McpTask) {.async.} =
     await ext.server.notifySubscribers(TaskStatusNotificationMethod, state.toWire())
   except CatchableError as e:
     stderr.writeLine("[mcp-tasks] could not announce the status of task " &
-                     task.taskId & ": " & e.msg)
+                     task.taskId & ": " & peerText(e.msg))
 
 proc statusChanged(ext: TasksExtension, owner: string, task: McpTask) =
   asyncCheck ext.announce(owner, task)

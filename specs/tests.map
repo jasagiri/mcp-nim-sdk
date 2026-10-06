@@ -1929,6 +1929,7 @@ MCP-SEC-HTTP-7 | tests/external/test_security_diagnostic_client.nim | Given a se
 MCP-SEC-HTTP-7 | tests/external/test_security_diagnostic_client.nim | Given a server message that is no JSON-RPC message and very long, when the client logs it, then the log line is short
 MCP-SEC-HTTP-7 | tests/external/test_security_diagnostic_client.nim | Given a request whose method name is hostile and whose handler fails with a hostile message, when the client logs it, then both are shown as escapes
 MCP-SEC-HTTP-7 | tests/internal/test_security_diagnostic_auth.nim | Given an endpoint with a very long URL that never answers, when the request is abandoned and ends, then the log line is short
+MCP-SEC-HTTP-7 | tests/test_security_diagnostic_tasks.nim | Given a status notification whose input request key is hostile, when the client logs that it ignored it, then the log holds one line of escapes
 MCP-SEC-WIRE-1 | tests/internal/test_security_wire_tls.nim | Given a certificate for the host named in the URL, when the request is sent, then it is answered
 MCP-SEC-WIRE-1 | tests/internal/test_security_wire_tls.nim | Given a certificate for another host than the URL names, when the request is sent, then it is refused
 MCP-SEC-WIRE-1 | tests/internal/test_security_wire_tls.nim | Given a certificate for the IP address in the URL, when the request is sent, then it is answered

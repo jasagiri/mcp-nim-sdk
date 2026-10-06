@@ -20,6 +20,7 @@ import ../../client/client
 import ../../client/extensions
 import ../../client/subscriptions
 import ../../protocol/types
+import ../../protocol/diagnostic
 import ../../protocol/features
 import ../../protocol/version
 import ../../protocol/lifecycle
@@ -139,7 +140,7 @@ proc watchTasks*(client: McpClient, taskIds: seq[string],
     let parsed = parseDetailedTask(task)
     if parsed.problem.isSome:
       stderr.writeLine("[mcp-tasks] ignored a malformed " & TaskStatusMethod & ": " &
-                       parsed.problem.get)
+                       peerText(parsed.problem.get))
       return
     onTask(parsed.detailed)
   for id in subscription.acknowledged.get.taskIds:
