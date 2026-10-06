@@ -2,11 +2,12 @@
 ## (MCP-SEC-HTTP-7): control characters cannot forge a line or move the
 ## cursor, and one message cannot fill the log.
 
-import std/[unittest, asyncdispatch, json, os, strutils]
+import std/[unittest, asyncdispatch, json, options, os, strutils]
 import loopback_transport
 import server/server
 import protocol/diagnostic
 import protocol/types
+import protocol/version
 
 proc loggedWhile(body: proc()): string =
   ## Everything the code under test wrote to stderr.
@@ -71,3 +72,24 @@ suite "peer text in diagnostics (MCP-SEC-HTTP-7)":
     check "\e" notin logged
     check logged.count('\n') == 1
     check "a\\n[mcp-server] forged \\x1b[2J" in logged
+
+  if isSupported(mpv20260728):
+    test "Given a tool whose result names a resultType no extension defines, when the server logs it, then the name is made fit":
+      # A tool may pass on what another party gave it.
+      let (_, serverSide) = newLoopbackPair()
+      let server = newMcpServer(McpServerInfo(name: "s", version: "1"),
+        capabilities = McpServerCapabilities(tools: some(McpToolsCapability())))
+      server.onToolCall(proc(ctx: McpRequestContext, name: string,
+                             arguments: JsonNode): Future[JsonNode] {.async.} =
+        return %*{"content": [], "resultType": "x\n[mcp-server] forged \e[2J"})
+      waitFor server.attachTransport(serverSide)
+      let logged = loggedWhile(proc() =
+        serverSide.inject(%*{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {
+          "name": "t", "arguments": {},
+          "_meta": {"io.modelcontextprotocol/protocolVersion": "2026-07-28",
+                    "io.modelcontextprotocol/clientInfo": {"name": "c", "version": "1"},
+                    "io.modelcontextprotocol/clientCapabilities": {}}}})
+        waitFor sleepAsync(50))
+      check "\e" notin logged
+      check logged.count('\n') == 1
+      check "x\\n[mcp-server] forged \\x1b[2J" in logged

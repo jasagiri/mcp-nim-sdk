@@ -1366,7 +1366,7 @@ proc unusableResultType(server: McpServer, request: JsonRpcRequest,
   let owner = server.extensionResultTypes.getOrDefault(resultType)
   if owner.len == 0:
     stderr.writeLine("[mcp-server] " & peerText(request.`method`) & " returned resultType '" &
-                     resultType & "', which no extension defines")
+                     peerText(resultType) & "', which no extension defines")
     return some(newJsonRpcErrorResponse(request.id, ErrInternal, "Internal error"))
   if not ctx.clientDeclaresExtension(owner):
     let error = missingCapabilityError(
