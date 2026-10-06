@@ -3,7 +3,7 @@
 
 Usage: run_nim.py [--env DIR] [--out DIR] [--builds V,..] [--versions V,..]
                   [--transports stdio,http,sse] [--directions to-nim,from-nim]
-                  [--jobs N] [--no-build] [--try-unimplemented] [--list]
+                  [--jobs N] [--no-build] [--list]
 
 Nim is built five times, once per protocol version as the build default
 (-d:mcpDefaultProtocolVersion=V). For every build and transport:
@@ -18,9 +18,9 @@ Each row also states what it expects:
   reject             must not succeed (the client may not reach a version the build lacks)
   reject-or-downgrade  must not succeed at a version newer than the build's; failing, or
                      settling on the build's own version, are both correct (peer-specific)
-HTTP+SSE (2024-11-05) has no Nim implementation yet: those rows show "unimplemented" and
-are not run unless --try-unimplemented is given. Streamable HTTP rows start at 2025-03-26
-(2024-11-05 predates it).
+HTTP+SSE (2024-11-05) rows are run in both directions: the Nim server serves it on /sse next to
+/mcp, and nim_client takes `sse URL`. Streamable HTTP rows start at 2025-03-26 (2024-11-05
+predates it).
 
 --env DIR     environment made by peers/setup.sh (read only); default build/interop
 --out DIR     where binaries, logs and results go; default build/interop-nim
@@ -44,7 +44,6 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
 VERSIONS = rv.VERSIONS
 MODERN = rv.MODERN
-UNIMPLEMENTED = {"sse"}  # transports the Nim side does not have yet
 # Ports come from the OS, not a fixed range: other jobs on the machine use 18xxx too, and a
 # collision makes the logging proxy forward to somebody else's server.
 _port_lock = threading.Lock()
@@ -273,10 +272,8 @@ def judge(row: dict, r: dict) -> tuple[bool, str]:
             f"succeeded at {r['client'].get('protocolVersion')}, the build speaks up to {D}")
 
 
-def execute(row: dict, bindir: Path, logs: Path, try_unimplemented: bool) -> dict:
+def execute(row: dict, bindir: Path, logs: Path) -> dict:
     out = {k: v for k, v in row.items() if k not in ("peer_cmd", "peer_args", "want")}
-    if row["transport"] in UNIMPLEMENTED and not try_unimplemented:
-        return {**out, "status": "unimplemented", "note": "Nim 側未実装 (HTTP+SSE)"}
     try:
         r = run_row(row, bindir, logs)
     except Exception as e:  # the row records the failure
@@ -293,8 +290,8 @@ def execute(row: dict, bindir: Path, logs: Path, try_unimplemented: bool) -> dic
 def markdown(results: list[dict], elapsed: float) -> str:
     out = ["# Nim ⇔ 公式 SDK の版ごとの相互接続", "",
            f"所要時間 {elapsed:.0f} 秒、{len(results)} 行。", ""]
-    counts = {s: sum(1 for r in results if r["status"] == s) for s in ("pass", "fail", "unimplemented")}
-    out += [f"合格 {counts['pass']} / 不合格 {counts['fail']} / 未実装 {counts['unimplemented']}", ""]
+    counts = {s: sum(1 for r in results if r["status"] == s) for s in ("pass", "fail")}
+    out += [f"合格 {counts['pass']} / 不合格 {counts['fail']}", ""]
     for t in sorted({r["transport"] for r in results}):
         for D in VERSIONS:
             sub = [r for r in results if r["transport"] == t and r["build"] == D]
@@ -304,7 +301,7 @@ def markdown(results: list[dict], elapsed: float) -> str:
                     "| 結果 | 向き | 相手 | 固定した版 | 期待 | 実際 | 備考 |", "|---|---|---|---|---|---|---|"]
             for r in sub:
                 direction = "公式 → Nim" if r["direction"] == "to-nim" else "Nim → 公式"
-                mark = {"pass": "合格", "fail": "**不合格**", "unimplemented": "未実装"}[r["status"]]
+                mark = {"pass": "合格", "fail": "**不合格**"}[r["status"]]
                 out.append(f"| {mark} | {direction} | {r['peer']} | {r['pin']} | {r['expect']} | "
                            f"{r.get('got', '-')} | {r.get('note', '')} |")
             out.append("")
@@ -321,7 +318,6 @@ def main() -> int:
     ap.add_argument("--directions", default="to-nim,from-nim")
     ap.add_argument("--jobs", type=int, default=3)
     ap.add_argument("--no-build", action="store_true")
-    ap.add_argument("--try-unimplemented", action="store_true")
     ap.add_argument("--list", action="store_true", help="print the rows and exit")
     a = ap.parse_args()
 
@@ -348,7 +344,7 @@ def main() -> int:
             build(b, out)
     results = []
     with ThreadPoolExecutor(max_workers=a.jobs) as pool:
-        for res in pool.map(lambda r: execute(r, out, logs, a.try_unimplemented), rows):
+        for res in pool.map(lambda r: execute(r, out, logs), rows):
             results.append(res)
             print(f"{res['status'].upper():13} | {res['transport']:5} | build {res['build']} | {res['direction']:8} | "
                   f"{res['peer']:22} | pin {res['pin']} | expect {res['expect']} | got {res.get('got', '-')} "

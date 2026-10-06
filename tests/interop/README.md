@@ -16,8 +16,8 @@ Claude Code とつないで確かめるための道具。
 | `peers/run_versions.py` | Python ⇔ TypeScript を版ごとに総当たりする |
 | `peers/run_nim.py` | Nim を 5 つの版でビルドし、公式 SDK との総当たりを判定付きで流す (下の「版ごとの総当たり」) |
 | `peers/run_conformance.py` | 公式の適合性テストを Nim のサーバー・クライアントに対して流す |
-| `nim_conformance_server.nim` | 適合性テストの対象のサーバー (HTTP のみ)。決まった名前のツール・リソース・プロンプトを持つ |
-| `nim_conformance_client.nim` | 適合性テストが起動するクライアント。対応しないシナリオは終了コード 2 で断る |
+| `nim_conformance_server.nim` | 適合性テストの対象のサーバー (HTTP のみ)。決まった名前のツール・リソース・プロンプトを持ち、コア仕様のサーバー機能 (ログ、進捗、補完、購読、sampling、elicitation、複数ラウンドの要求、`x-mcp-header`) を登録している |
+| `nim_conformance_client.nim` | 適合性テストが起動するクライアント。roots・sampling・elicitation・OAuth を有効にして接続し、サーバーのツールを呼ぶ。SDK に対応する機能が無いシナリオは理由を添えて終了コード 2 で断る |
 | `peers/setup.sh` | 相手役の実行環境を作る |
 
 Nim 側の 3 本は、ビルドのデフォルト版とそれ以前の版を話す。話す版の上限はビルドごとに決まる
@@ -106,15 +106,15 @@ Nim のビルドを 5 つ (`-d:mcpDefaultProtocolVersion=V`、`build/interop-nim
 制限と例外:
 
 - Streamable HTTP の行は 2025-03-26 以降だけ (2024-11-05 の HTTP は HTTP+SSE)。2024-11-05 だけを話すビルドには HTTP の行が無い。
-- HTTP+SSE (`sse`) の行は用意してあるが、Nim 側に実装が無いので「未実装」と表示して流さない。実装後は `--try-unimplemented` で流す
-  (その際 `nim_http_server` が `sse` を受け付けるようにする必要がある。今は何もしない)。
+- HTTP+SSE (`sse`) の行 (25 行) は両方向で流す。Nim のサーバーは `/mcp` と並べて `/sse` で HTTP+SSE を話し (`nim_http_server` は
+  transport 名を読み捨てるので `sse` でもそのまま使える)、`nim_client` は `sse URL` で接続する。
 - 公式の Python 1.8.1 のサーバーは未知のリクエストで終了するため、2026-07-28 の探り (`server/discover`) で死ぬ。
   その行だけ Nim のクライアントの上限を 2024-11-05 に固定して流す (行の `fixed_by` に書いてある)。
 - ポートは OS が空きを選ぶ。固定の範囲にすると他の作業と衝突し、中継が他人のサーバーに転送してしまう。
 
 出力は `build/interop-nim/` の `nim_versions.md` (Markdown の表) と `nim_versions.jsonl` (1 行 1 JSON)、`logs/` (行ごとの通信記録)。
 不合格の行があれば終了コードは 1。所要時間は 2026-10-06 に、同じマシンで他のビルドが走る中、`--jobs 3` で
-5 回のビルドを含め **312 行 (うち 25 行が未実装) で約 13 分 (764 秒)**。
+5 回のビルドを含め 312 行で約 13 分 (764 秒)。ビルド済みの再実行は 312 行 (HTTP+SSE の 25 行を含む) で 64 秒。
 
 ## 公式の適合性テスト (`peers/run_conformance.py`)
 
@@ -127,7 +127,7 @@ python3 tests/interop/peers/run_conformance.py --builds 2026-07-28 --roles serve
 サーバー検査は `nim_conformance_server` を HTTP で、クライアント検査は `nim_conformance_client` を
 `conformance client --command ...` で起動させる。ビルドの版ごとに、その版の仕様のシナリオだけを選ぶ
 (2026-07-28 のビルドは 2025-11-25 の組も流す)。結果は `build/interop-nim/conformance.md` と `conformance.jsonl`。
-**不合格は SDK にまだ無い機能の一覧なので、終了コード 1 が通常の状態**。内訳と原因は `docs/quality/conformance-2026-10-06.md`。
+不合格のシナリオがあれば終了コードは 1。2026-10-06 の時点で 0 件 (内訳は `docs/quality/conformance-2026-10-06.md`)。
 
 ## Claude Code での確認
 
@@ -137,6 +137,5 @@ python3 tests/interop/peers/run_conformance.py --builds 2026-07-28 --roles serve
 
 ## まだ無いもの
 
-- TODO: 2024-11-05 の HTTP+SSE での確認 (この SDK に HTTP+SSE の実装がまだ無い。行は `run_nim.py` に用意済み)。
-- TODO: 適合性テストのクライアント検査のうち、認可・HTTP ヘッダ・request state などは、SDK のクライアントに機能が無いので
-  `nim_conformance_client` が断っている。機能が入ったら対応するシナリオを足す。
+- 適合性テストの拡張のシナリオ (`auth/client-credentials-*`、`auth/dpop*`、`sep-2640-*` など、`list` が `extension` と表示するもの) は
+  `--suite all` に入らず、流していない。この SDK のコアの外。
