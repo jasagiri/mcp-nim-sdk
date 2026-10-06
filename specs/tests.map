@@ -1034,3 +1034,15 @@ MCP-SEC-SCHEMA-3 | tests/test_security_schema.nim | Given repetitions nested ins
 MCP-SEC-SCHEMA-3 | tests/test_security_schema.nim | Given a pattern longer than the limit, when compiled, then the limit is reported
 MCP-SEC-SCHEMA-3 | tests/test_security_schema.nim | Given groups nested too deep, when compiled, then the limit is reported
 MCP-SEC-SCHEMA-3 | tests/test_security_schema.nim | Given a limit raised by the caller, when compiled, then the larger pattern is accepted
+MCP-SEC-SCHEMA-4 | tests/test_security_schema.nim | Given a $ref to the root, when an instance is validated, then the schema is reported invalid
+MCP-SEC-SCHEMA-4 | tests/test_security_schema.nim | Given $refs that point at each other, when an instance is validated, then the cycle is reported
+MCP-SEC-SCHEMA-4 | tests/test_security_schema.nim | Given a $ref cycle through allOf, when an instance is validated, then the cycle is reported
+MCP-SEC-SCHEMA-4 | tests/test_security_schema.nim | Given a recursive schema that reads deeper into the instance, when it is validated, then it conforms
+MCP-SEC-SCHEMA-4 | tests/test_security_schema.nim | Given contains that refers to its own schema, when nested arrays are validated, then there is no false cycle
+MCP-SEC-SCHEMA-5 | tests/test_security_schema.nim | Given an instance nested deeper than the limit, when a recursive schema reads it, then the limit is reported
+MCP-SEC-SCHEMA-5 | tests/test_security_schema.nim | Given a schema nested deeper than the limit, when validated, then the limit is reported
+MCP-SEC-SCHEMA-5 | tests/test_security_schema.nim | Given a depth limit raised by the caller, when a deeper instance is validated, then it is accepted
+MCP-SEC-SCHEMA-5 | tests/test_security_schema.nim | Given $refs that double at every level, when validated, then the work limit stops it
+MCP-SEC-SCHEMA-5 | tests/test_security_schema.nim | Given a pattern the engine refuses by size, when validated, then the schema is reported invalid with the limit
+MCP-SEC-SCHEMA-5 | tests/test_security_schema.nim | Given many matches that add up above the regex budget, when validated, then the limit is reported
+MCP-SEC-SCHEMA-5 | tests/test_security_schema.nim | Given a 4 MiB string and a pattern, when validated, then the answer is given

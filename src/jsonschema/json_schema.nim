@@ -21,6 +21,14 @@
 ## outcome but are not implemented (`unevaluatedProperties`,
 ## `unevaluatedItems`, `$dynamicRef`, `$recursiveRef`, `contentSchema`, a
 ## `$ref` that leaves the document) raise `UnsupportedKeywordError`.
+##
+## Neither side of a validation is trusted: the instance can be a tool's
+## arguments, the schema an `outputSchema` from a server. `SchemaLimits` bounds
+## the nesting, the total work and the regular expression work of one
+## `validate`; a validation that reaches a bound raises `SchemaLimitError`
+## and never reports the instance as conforming. A `$ref` that comes back to
+## itself without moving into the instance can never finish and is reported
+## as an invalid schema.
 
 import std/[json, math, strutils, tables, unicode]
 import ./json_schema_regex
@@ -40,10 +48,32 @@ type
     ## The schema is not a schema (wrong keyword type, dangling `$ref`).
   UnsupportedDialectError* = object of InvalidSchemaError
   UnsupportedKeywordError* = object of InvalidSchemaError
+  SchemaLimitError* = object of InvalidSchemaError
+    ## The schema or the instance is above a limit of `SchemaLimits`, so
+    ## whether the instance conforms is not known.
+
+  SchemaLimits* = object
+    maxDepth*: int
+      ## Schemas inside schemas, along one path. Every level of the instance
+      ## and every `$ref` hop is one, so this bounds the stack.
+    maxChecks*: int
+      ## Schema applications in one `validate`. Bounds `allOf`/`$ref` fan-out
+      ## that multiplies at every level, and large instances with large schemas.
+    maxRegexSteps*: int
+      ## State visits of all `pattern` and `patternProperties` matches in one
+      ## `validate`, plus the size of every pattern compiled.
+    regex*: RegexLimits
+      ## Size limits of each pattern.
 
 const
   DefaultDialect* = sdDraft202012
     ## What a schema without `$schema` is (2025-11-25, basic/index).
+
+  DefaultSchemaLimits* = SchemaLimits(
+    maxDepth: 256,           # real schemas nest a dozen levels; a frame is a few hundred bytes
+    maxChecks: 10_000_000,   # an array of a million small objects is about 3 million
+    maxRegexSteps: DefaultMaxRegexSteps,
+    regex: DefaultRegexLimits)
 
   UnsupportedKeywords = ["unevaluatedProperties", "unevaluatedItems",
                          "$dynamicRef", "$recursiveRef", "contentSchema"]
@@ -71,6 +101,12 @@ type
     dialect: SchemaDialect
     violations: seq[SchemaViolation]
     regexes: Table[string, Regex]
+    limits: SchemaLimits
+    depth: int
+    checks: int
+    regexBudget: int
+    refs: seq[tuple[reference: string, depth: int]]
+      ## The `$ref`s being followed and how deep in the instance each one was.
 
 func pointer(path: seq[string]): string =
   for part in path:
@@ -79,6 +115,9 @@ func pointer(path: seq[string]): string =
 
 proc invalid(message: string) {.noreturn.} =
   raise newException(InvalidSchemaError, message)
+
+proc overLimit(message: string) {.noreturn.} =
+  raise newException(SchemaLimitError, message)
 
 proc keyword(schema: JsonNode, name: string, kinds: set[JsonNodeKind]): JsonNode =
   ## The value of keyword `name`, or nil; raises when it has the wrong type.
@@ -164,9 +203,19 @@ proc add(v: var Validator, path: seq[string], message: string) =
 proc regexFor(v: var Validator, pattern: string): Regex =
   if pattern notin v.regexes:
     v.regexes[pattern] =
-      try: compileRegex(pattern)
+      try: compileRegex(pattern, v.limits.regex)
+      except RegexLimitError as e: overLimit("pattern '" & pattern & "': " & e.msg)
       except RegexError as e: invalid("pattern '" & pattern & "': " & e.msg)
+    v.regexBudget -= v.regexes[pattern].size
+    if v.regexBudget < 0:
+      overLimit("the patterns of the schema are too large to compile within the limit")
   v.regexes[pattern]
+
+proc matches(v: var Validator, pattern, text: string): bool =
+  ## Whether `pattern` matches anywhere in `text`.
+  let re = v.regexFor(pattern)
+  try: re.isMatch(text, v.regexBudget)
+  except RegexLimitError as e: overLimit("pattern '" & pattern & "': " & e.msg)
 
 proc checkType(v: var Validator, schema, instance: JsonNode, path: seq[string]) =
   let declared = schema.keyword("type", {JString, JArray})
@@ -219,7 +268,7 @@ proc checkString(v: var Validator, schema, instance: JsonNode, path: seq[string]
     if not longest.isNil and length > longest.getInt():
       v.add(path, "longer than " & $longest & " characters")
   let pattern = schema.keyword("pattern", {JString})
-  if not pattern.isNil and not v.regexFor(pattern.getStr()).isMatch(text):
+  if not pattern.isNil and not v.matches(pattern.getStr(), text):
     v.add(path, "does not match the pattern '" & pattern.getStr() & "'")
 
 proc checkArray(v: var Validator, schema, instance: JsonNode, path: seq[string]) =
@@ -264,8 +313,8 @@ proc checkArray(v: var Validator, schema, instance: JsonNode, path: seq[string])
   let contains = schema{"contains"}
   if not contains.isNil:
     var matching = 0
-    for item in items:
-      if v.passes(contains, item, path):
+    for index, item in items:
+      if v.passes(contains, item, path & $index):
         inc matching
     let minContains = schema.keyword("minContains", numbers)
     let maxContains = schema.keyword("maxContains", numbers)
@@ -300,7 +349,7 @@ proc checkObject(v: var Validator, schema, instance: JsonNode, path: seq[string]
       v.check(properties[name], value, path & name)
     if not patterns.isNil:
       for pattern, sub in patterns.pairs:
-        if v.regexFor(pattern).isMatch(name):
+        if v.matches(pattern, name):
           covered = true
           v.check(sub, value, path & name)
     if not covered and not additional.isNil:
@@ -370,7 +419,7 @@ proc checkCombinators(v: var Validator, schema, instance: JsonNode, path: seq[st
     elif schema.hasKey("else"):
       v.check(schema["else"], instance, path)
 
-proc check(v: var Validator, schema, instance: JsonNode, path: seq[string]) =
+proc checkBody(v: var Validator, schema, instance: JsonNode, path: seq[string]) =
   if schema.kind == JBool:
     if not schema.getBool():
       v.add(path, "no value satisfies the schema 'false'")
@@ -384,7 +433,14 @@ proc check(v: var Validator, schema, instance: JsonNode, path: seq[string]) =
 
   let reference = schema.keyword("$ref", {JString})
   if not reference.isNil:
-    v.check(v.resolveRef(reference.getStr()), instance, path)
+    let target = v.resolveRef(reference.getStr())
+    for followed in v.refs:
+      if followed.reference == reference.getStr() and followed.depth == path.len:
+        invalid("$ref '" & reference.getStr() & "' leads back to itself without " &
+                "reading further into the instance")
+    v.refs.add (reference.getStr(), path.len)
+    v.check(target, instance, path)
+    discard v.refs.pop
     if v.dialect == sdDraft07:
       return  # draft-07: siblings of $ref are ignored
 
@@ -409,11 +465,24 @@ proc check(v: var Validator, schema, instance: JsonNode, path: seq[string]) =
   else: discard
   v.checkCombinators(schema, instance, path)
 
-proc validate*(schema, instance: JsonNode): seq[SchemaViolation] =
+proc check(v: var Validator, schema, instance: JsonNode, path: seq[string]) =
+  inc v.depth
+  inc v.checks
+  if v.depth > v.limits.maxDepth:
+    overLimit("schemas and instances nest deeper than " & $v.limits.maxDepth & " levels")
+  if v.checks > v.limits.maxChecks:
+    overLimit("the validation needs more than " & $v.limits.maxChecks & " schema applications")
+  v.checkBody(schema, instance, path)
+  dec v.depth
+
+proc validate*(schema, instance: JsonNode,
+               limits = DefaultSchemaLimits): seq[SchemaViolation] =
   ## What is wrong with `instance` under `schema`; empty when it conforms.
   ## Raises InvalidSchemaError (or a subclass) when the schema cannot be
   ## checked; that includes a `pattern` the regular expression engine rejects.
-  var v = Validator(root: schema, dialect: dialectOf(schema))
+  ## Raises SchemaLimitError when `limits` are reached.
+  var v = Validator(root: schema, dialect: dialectOf(schema), limits: limits,
+                    regexBudget: limits.maxRegexSteps)
   v.check(schema, instance, @[])
   v.violations
 

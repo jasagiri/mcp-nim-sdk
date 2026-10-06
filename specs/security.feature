@@ -21,3 +21,15 @@ Feature: The JSON Schema validator against hostile input and hostile schemas
     Given a pattern with a huge repetition count, nested repetitions, too many characters or too many nested groups
     When it is compiled
     Then a limit error is raised, and a caller can raise the limit
+
+  @spec:MCP-SEC-SCHEMA-4
+  Scenario: A $ref that leads back to itself without reading further into the instance is an invalid schema
+    Given schemas such as {"$ref": "#"}, two $refs that point at each other, or a $ref cycle through allOf
+    When an instance is validated
+    Then InvalidSchemaError is raised, while a recursive schema that reads deeper into the instance (a tree) is still validated
+
+  @spec:MCP-SEC-SCHEMA-5
+  Scenario: Validation stops at its depth, work and regular expression limits instead of exhausting the process
+    Given an instance or a schema nested beyond the depth limit, $refs that double at every level, or matches that add up above the regex budget
+    When an instance is validated
+    Then SchemaLimitError (an InvalidSchemaError) is raised, never a verdict, and the caller can change the limits
