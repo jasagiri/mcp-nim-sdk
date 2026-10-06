@@ -72,6 +72,8 @@ type
     abandoned: bool
       ## The client cancelled; whatever the server still sends is dropped.
     opensSession: bool
+    principal: Option[string]
+      ## Who sent the POST; the owner of the session it opens.
     isBatch: bool
     modern: bool
     settled: Future[void]
@@ -96,6 +98,10 @@ type
       ## Streams of POSTs that a client may resume.
     listen: SseStream
       ## The GET stream: what the server says outside any request.
+    owner: Option[string]
+      ## The principal that made the session (the authorization hook names
+      ## it). Another principal that uses the id finds no such session. None
+      ## where the endpoint is open, or the hook names nobody.
     legacy: bool
       ## A session of the HTTP+SSE transport: `listen` is its only stream,
       ## and it lasts as long as the connection.
@@ -518,23 +524,32 @@ proc versionHeaderError(t: HttpServerTransport, req: Request,
                                named.get.substr(0, 40)))
   none(JsonRpcError)
 
-proc sessionFor(t: HttpServerTransport, req: Request, id: JsonNode): Future[Session] {.async.} =
+func belongsTo(session: Session, principal: Option[string]): bool =
+  ## A session made by a principal is that principal's alone; to anyone else
+  ## it does not exist (404, not 403: the id is not confirmed).
+  session.owner.isNone or session.owner == principal
+
+proc sessionFor(t: HttpServerTransport, req: Request, id: JsonNode,
+                principal: Option[string]): Future[Session] {.async.} =
   ## The session the request names, or nil after having answered it with
   ## the error that says why there is none.
   let named = req.header(SessionHeader)
   if named.isNone:
     await req.respondError(Http400, id, invalidRequest(SessionHeader & " header is required"))
     return nil
-  if not t.sessions.hasKey(named.get) or t.sessions[named.get].legacy:
+  if not t.sessions.hasKey(named.get) or t.sessions[named.get].legacy or
+     not t.sessions[named.get].belongsTo(principal):
     await req.respondError(Http404, id, invalidRequest("Session not found"))
     return nil
   result = t.sessions[named.get]
 
-proc handleDelete(t: HttpServerTransport, req: Request) {.async.} =
+proc handleDelete(t: HttpServerTransport, req: Request,
+                  principal: Option[string]) {.async.} =
   let session = req.header(SessionHeader)
   if session.isNone:
     await req.respondError(Http400, nil, invalidRequest(SessionHeader & " header is required"))
-  elif session.get notin t.sessions or t.sessions[session.get].legacy:
+  elif session.get notin t.sessions or t.sessions[session.get].legacy or
+       not t.sessions[session.get].belongsTo(principal):
     await req.respondError(Http404, nil, invalidRequest("Session not found"))
   else:
     t.endSession(session.get)
@@ -562,10 +577,11 @@ func allowedMethods(t: HttpServerTransport, req: Request): seq[HttpMethod] =
   # posts here instead of using HTTP+SSE.
   if t.speaksLegacy: result.add HttpDelete
 
-proc handleGet(t: HttpServerTransport, req: Request) {.async.} =
+proc handleGet(t: HttpServerTransport, req: Request,
+               principal: Option[string]) {.async.} =
   ## The stream of messages that belong to no request, or the rest of an
   ## earlier stream after a lost connection.
-  let session = await t.sessionFor(req, nil)
+  let session = await t.sessionFor(req, nil, principal)
   if session.isNil:
     return
   if not session.version.has(ftHttpGetStream):
@@ -611,11 +627,12 @@ proc handleGet(t: HttpServerTransport, req: Request) {.async.} =
     dec session.busy
     session.touch()
 
-proc openSession(t: HttpServerTransport, id: string, response: JsonRpcResponse) =
+proc openSession(t: HttpServerTransport, id: string, response: JsonRpcResponse,
+                 owner: Option[string]) =
   ## The server accepted an initialize: the client now has a session, at the
   ## version the server's answer names.
   let named = parseProtocolVersion(response.result.get(newJObject()){"protocolVersion"}.getStr())
-  let session = Session(version: named.get(t.legacyCeiling),
+  let session = Session(version: named.get(t.legacyCeiling), owner: owner,
                         streams: initOrderedTable[string, SseStream]())
   session.touch()
   t.sessions[id] = session
@@ -624,7 +641,7 @@ proc answerWithJson(t: HttpServerTransport, req: Request, group: Group,
                     modern: bool) {.async.} =
   var extra = @[("Connection", "close")]
   if group.opensSession and group.responses[0].error.isNone:
-    t.openSession(group.session, group.responses[0])
+    t.openSession(group.session, group.responses[0], group.principal)
     extra.add (SessionHeader, group.session)
   if group.isBatch:
     await req.respondJson(Http200, %group.responses.mapIt(it.toJson()), extra)
@@ -705,7 +722,7 @@ proc handlePost(t: HttpServerTransport, req: Request,
         "JSON-RPC batches are not supported by protocol version " & $t.protocolVersion))
       return
   else:
-    session = await t.sessionFor(req, rpc{"id"})
+    session = await t.sessionFor(req, rpc{"id"}, principal)
     if session.isNil:
       return
     sessionId = req.header(SessionHeader).get
@@ -734,6 +751,7 @@ proc handlePost(t: HttpServerTransport, req: Request,
   let group = Group(
     stream: newSseStream(newStreamId(), t.maxStreamEvents),
     session: sessionId, pending: requests.len, opensSession: opensSession,
+    principal: principal,
     isBatch: isBatch, modern: modern, settled: newFuture[void]("HttpServerTransport.group"))
   if not session.isNil and session.version.has(ftSsePolling):
     discard group.stream.push("")
@@ -771,7 +789,8 @@ proc handlePost(t: HttpServerTransport, req: Request,
   if ended == seClientGone and modern and group.pending > 0:
     t.cancel(group)
 
-proc handleLegacySse(t: HttpServerTransport, req: Request) {.async.} =
+proc handleLegacySse(t: HttpServerTransport, req: Request,
+                     principal: Option[string]) {.async.} =
   ## HTTP+SSE: the connection is the session. Its first event names where
   ## to POST.
   if t.sessions.len >= t.maxSessions:
@@ -780,7 +799,7 @@ proc handleLegacySse(t: HttpServerTransport, req: Request) {.async.} =
     await req.respondEmpty(Http503)
     return
   let id = newSessionId()
-  let session = Session(version: mpv20241105, legacy: true,
+  let session = Session(version: mpv20241105, legacy: true, owner: principal,
                         streams: initOrderedTable[string, SseStream](),
                         listen: newSseStream(newStreamId(), t.maxStreamEvents,
                                              emitIds = false))
@@ -802,7 +821,8 @@ proc handleLegacyPost(t: HttpServerTransport, req: Request,
   if id.len == 0:
     await req.respondError(Http400, nil, invalidRequest("sessionId is required"))
     return
-  if not t.sessions.hasKey(id) or not t.sessions[id].legacy:
+  if not t.sessions.hasKey(id) or not t.sessions[id].legacy or
+     not t.sessions[id].belongsTo(principal):
     await req.respondError(Http404, nil, invalidRequest("Session not found"))
     return
   var message: JsonNode
@@ -912,7 +932,7 @@ proc dispatch(t: HttpServerTransport, req: Request) {.async.} =
   case endpoint
   of epLegacySse:
     if req.reqMethod == HttpGet:
-      await t.handleLegacySse(req)
+      await t.handleLegacySse(req, principal)
     else:
       await req.respondEmpty(Http405, {"Allow": "GET"})
   of epLegacyMessages:
@@ -927,9 +947,9 @@ proc dispatch(t: HttpServerTransport, req: Request) {.async.} =
     elif req.reqMethod == HttpPost:
       await t.handlePost(req, principal)
     elif req.reqMethod == HttpDelete:
-      await t.handleDelete(req)
+      await t.handleDelete(req, principal)
     else:
-      await t.handleGet(req)
+      await t.handleGet(req, principal)
 
 proc handle(t: HttpServerTransport, req: Request) {.async.} =
   try:

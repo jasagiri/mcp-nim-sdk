@@ -69,3 +69,10 @@ Feature: Security of the HTTP server transport
     Then each is answered 401 and nothing reaches the MCP server
     And a request with a good token reaches the server as that principal
     And a fixed document and the authorization metadata are still served without a token
+
+  @spec:MCP-SEC-HTTP-2
+  Scenario: A session belongs to the principal that made it
+    Given a transport with a token verifier and a session that alice made
+    When bob, with a good token of his own, uses its Mcp-Session-Id to post, open the GET stream or DELETE, or posts to alice's HTTP+SSE endpoint
+    Then the answer is 404 and alice's session is untouched
+    And alice herself is served as before

@@ -1064,3 +1064,8 @@ MCP-SEC-HTTP-1 | tests/test_security_http.nim | Given an authorized transport, w
 MCP-SEC-HTTP-1 | tests/test_security_http.nim | Given a token, when a client opens /sse and posts, then the request reaches the server as that principal
 MCP-SEC-HTTP-1 | tests/test_security_http.nim | Given an invalid token, when GET /sse comes, then the answer is 401
 MCP-SEC-HTTP-1 | tests/test_security_http.nim | Given an authorized transport with documents, when a document and the metadata are read without a token, then both are served
+MCP-SEC-HTTP-2 | tests/test_security_http.nim | Given alice's session, when bob posts with its id, then the answer is 404 and the server sees nothing
+MCP-SEC-HTTP-2 | tests/test_security_http.nim | Given alice's session, when alice posts with its id, then it is served
+MCP-SEC-HTTP-2 | tests/test_security_http.nim | Given alice's session, when bob opens its GET stream, then the answer is 404
+MCP-SEC-HTTP-2 | tests/test_security_http.nim | Given alice's session, when bob sends DELETE with its id, then the answer is 404 and the session stays
+MCP-SEC-HTTP-2 | tests/test_security_http.nim | Given alice's HTTP+SSE session, when bob posts to its endpoint, then the answer is 404
