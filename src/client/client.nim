@@ -2,6 +2,7 @@
 
 import asyncdispatch, json, options, tables, strutils, sequtils, uuids
 import ../protocol/types
+import ../protocol/diagnostic
 import ../protocol/lifecycle
 import ../protocol/modern
 import ../protocol/features
@@ -242,7 +243,7 @@ proc requestAllowed(client: McpClient, methodName: string): bool =
 
 proc logHandlerFailure(what: string) =
   stderr.writeLine("[mcp-client] " & what & " raised " &
-                   $getCurrentException().name & ": " & getCurrentExceptionMsg())
+                   $getCurrentException().name & ": " & peerText(getCurrentExceptionMsg()))
 
 proc processRequest(client: McpClient, request: JsonRpcRequest): Future[void] {.async.} =
   var response: JsonRpcResponse
@@ -259,7 +260,7 @@ proc processRequest(client: McpClient, request: JsonRpcRequest): Future[void] {.
     except McpRequestError as e:
       response = newJsonRpcErrorResponse(request.id, e.code, e.msg, e.data)
     except CatchableError as e:
-      logHandlerFailure("handler for " & request.`method`)
+      logHandlerFailure("handler for " & peerText(request.`method`))
       response = newJsonRpcErrorResponse(request.id, -32603, e.msg)
   response.idNode = request.idNode
   await client.transport.sendResponse(response)
@@ -365,7 +366,7 @@ proc processNotification(client: McpClient, notification: JsonRpcNotification): 
     try:
       await handler(notification)
     except CatchableError:
-      logHandlerFailure("handler for " & notification.`method`)
+      logHandlerFailure("handler for " & peerText(notification.`method`))
 
 proc processResponse(client: McpClient, response: JsonRpcResponse): Future[void] {.async.} =
   # A response nobody waits for belongs to a request that timed out or
@@ -394,7 +395,7 @@ proc processMessages*(client: McpClient): Future[void] {.async.} =
         let notification = decodeNotification(json)
         asyncCheck client.processNotification(notification)
       else:
-        stderr.writeLine("[mcp-client] invalid message received: " & $json)
+        stderr.writeLine("[mcp-client] invalid message received: " & peerText($json))
   except McpTransportClosedError:
     client.state = mlsShutdown
     client.failPending("the transport was closed")
@@ -405,7 +406,7 @@ proc processMessages*(client: McpClient): Future[void] {.async.} =
       return
     client.lastTransportError = e
     stderr.writeLine("[mcp-client] transport loop ended with " &
-                      $e.name & ": " & e.msg)
+                      $e.name & ": " & peerText(e.msg))
     client.failPending("the transport failed: " & e.msg)
 
 proc ensureOpen(client: McpClient) =
@@ -435,7 +436,7 @@ proc beginRequest(client: McpClient, methodName: string, params: JsonNode,
     else:
       # Nobody waits for this request any more (it timed out or was cancelled).
       stderr.writeLine("[mcp-client] sending " & methodName & " failed after the request " &
-                       "was given up: " & error.msg))
+                       "was given up: " & peerText(error.msg)))
   (id: id, response: promise, sent: sent)
 
 proc startRequest*(client: McpClient, methodName: string, params: JsonNode,
@@ -480,12 +481,12 @@ proc abandon*(client: McpClient, id, methodName, reason: string,
     cancelling = client.sendNotification("notifications/cancelled",
       %*{"requestId": id, "reason": reason})
   except CatchableError as e:
-    stderr.writeLine("[mcp-client] could not cancel request " & id & ": " & e.msg)
+    stderr.writeLine("[mcp-client] could not cancel request " & id & ": " & peerText(e.msg))
     return
   cancelling.addCallback(proc() =
     if cancelling.failed:
       stderr.writeLine("[mcp-client] could not cancel request " & id & ": " &
-                       cancelling.readError().msg))
+                       peerText(cancelling.readError().msg)))
 
 proc sendOnce(client: McpClient, methodName: string, params: JsonNode,
               options: McpRequestOptions): Future[JsonRpcResponse] {.async.} =
@@ -596,7 +597,7 @@ proc listToolsAgainFor(client: McpClient, toolName: string,
       McpRequestOptions(timeoutMs: options.timeoutMs, cancel: options.cancel))
     if page.error.isSome:
       stderr.writeLine("[mcp-client] tools/list after a header mismatch failed: " &
-                       page.error.get.message)
+                       peerText(page.error.get.message))
       return false
     let listed = page.result.get(newJObject())
     for tool in listed{"tools"}.getElems():

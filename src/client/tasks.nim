@@ -16,6 +16,7 @@ import ./client
 import ./content
 import ./tools
 import ../protocol/types
+import ../protocol/diagnostic
 import ../protocol/features
 import ../protocol/tasks
 import ../protocol/task_methods
@@ -182,7 +183,7 @@ proc announceStatus(client: McpClient, task: McpTask) {.async.} =
     await client.sendNotification("notifications/tasks/status", task.toJson())
   except CatchableError as e:
     stderr.writeLine("[mcp-client] could not send the status of task " & task.taskId &
-                     ": " & e.msg)
+                     ": " & peerText(e.msg))
 
 proc augmentWithTasks*(client: McpClient, store: TaskStore, methodName: string) =
   ## Let the server augment `methodName` with a task: the handler that is set

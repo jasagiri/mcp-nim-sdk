@@ -7,6 +7,7 @@
 
 import std/[asyncdispatch, httpcore, json, options, strutils]
 import ./errors
+import ../../protocol/diagnostic
 import ./urls
 import ../../transport/guarded_wire
 import ../../transport/http_wire as wire
@@ -59,8 +60,8 @@ proc httpExchange*(httpMethod: HttpMethod, url: string, policy: FetchPolicy, wha
       # learns about the timeout; the diagnostic below says what became of it.
       pending.addCallback(proc() {.gcsafe.} =
         if pending.failed:
-          stderr.writeLine("[oauth] abandoned request to " & url & " ended: " &
-                           pending.readError().msg))
+          stderr.writeLine("[oauth] abandoned request to " & peerText(url) & " ended: " &
+                           peerText(pending.readError().msg)))
       raise newException(OAuthError, what & " " & url & " timed out after " &
                                      $policy.timeoutMs & " ms")
     result = pending.read()

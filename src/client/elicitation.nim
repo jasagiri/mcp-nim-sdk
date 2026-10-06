@@ -7,6 +7,7 @@
 import std/[asyncdispatch, json, options, sets]
 import ./client
 import ../protocol/types
+import ../protocol/diagnostic
 import ../protocol/elicitation
 
 export elicitation
@@ -69,7 +70,7 @@ proc setElicitationHandler*(client: McpClient, handler: McpElicitationHandler,
       let answer = elicitationResultJson(await handler(parsed))
       let faults = elicitationResultProblems(answer, request.params)
       if faults.len > 0:
-        stderr.writeLine("[mcp-client] the elicitation handler's answer was not sent: " & faults[0])
+        stderr.writeLine("[mcp-client] the elicitation handler's answer was not sent: " & peerText(faults[0]))
         return newJsonRpcErrorResponse(request.id, -32603,
           "the elicitation handler answered with something that does not match the request")
       if parsed.mode == emUrl and answer{"action"}.getStr() == "accept":

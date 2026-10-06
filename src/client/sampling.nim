@@ -6,6 +6,7 @@ import asyncdispatch, json, options
 import ./client
 import ./content
 import ../protocol/types
+import ../protocol/diagnostic
 import ../protocol/sampling_tools
 import ../protocol/content as wire
 
@@ -178,7 +179,7 @@ proc setSamplingHandler*(client: McpClient, handler: McpSamplingHandler,
       if request.params.usesTools:
         let faults = createMessageResultProblems(answer, request.params, version)
         if faults.len > 0:
-          stderr.writeLine("[mcp-client] the sampling handler's answer was not sent: " & faults[0])
+          stderr.writeLine("[mcp-client] the sampling handler's answer was not sent: " & peerText(faults[0]))
           return newJsonRpcErrorResponse(request.id, -32603,
             "the sampling handler answered with something that does not match the request")
       return newJsonRpcResponse(request.id, answer))
