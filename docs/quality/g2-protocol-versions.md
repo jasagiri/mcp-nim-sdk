@@ -89,14 +89,6 @@
 | `src/client/sampling.nim` (`numberField`) | `tests/test_security_sampling.nim` | 2026-10-06 |
 | `src/client/content.nim` (`allPages` の上限) | `tests/test_security_pages.nim` | 2026-10-06 |
 
-## 未測定 (HTTP サーバーのセキュリティ修正。本線向け)
-
-| モジュール | 対応する外部仕様テスト | 追加・変更した日 |
-|---|---|---|
-| `src/transport/http_server.nim` (認可の対象パス、セッションの所有者、cancelled の書き換え、資源上限、Host 検証) | `tests/test_security_http.nim` | 2026-10-06 |
-| `src/transport/auth_hook.nim`、`src/auth/resource_server.nim` (`ownPaths`、`mcpPath` の廃止) | `tests/test_security_http.nim`、`tests/test_auth_resource_server.nim` | 2026-10-06 |
-| `src/protocol/diagnostic.nim` (`peerText`) と、それを使う `src/server/server.nim`、`src/transport/{http,http_server,sse_legacy,stdio}.nim` の診断 | `tests/test_security_diagnostic.nim` | 2026-10-06 |
-
 ## 未測定 (適合性テストで見つけた修正)
 
 | モジュール | 対応する外部仕様テスト | 追加・変更した日 |
@@ -105,3 +97,11 @@
 | `src/protocol/modern.nim` (`decodeHeaderValue`: パディングの無い Base64 を拒否する) | `tests/test_modern_protocol.nim`, `tests/test_param_headers_http.nim` | 2026-10-06 |
 | `src/auth/oauth/discovery.nim`、`src/auth/oauth/metadata.nim` (ルートの well-known URI から得た PRM は、オリジンを `resource` に名乗ってよい) | `tests/test_auth_client_flow.nim` | 2026-10-06 |
 | `src/auth/client.nim` (`indicator`: `resource` は PRM が公表した識別子をそのまま送る) | `tests/test_auth_client_flow.nim` | 2026-10-06 |
+
+## 未測定 (HTTP サーバーのセキュリティ修正。本線向け)
+
+| モジュール | 対応する外部仕様テスト | 追加・変更した日 |
+|---|---|---|
+| `src/transport/http_server.nim` (認可の対象パス、セッションの所有者、cancelled の書き換え、資源上限、Host 検証) | `tests/test_security_http.nim` | 2026-10-06 |
+| `src/transport/auth_hook.nim`、`src/auth/resource_server.nim` (`ownPaths`、`mcpPath` の廃止) | `tests/test_security_http.nim`、`tests/test_auth_resource_server.nim` | 2026-10-06 |
+| `src/protocol/diagnostic.nim` (`peerText`) と、それを使う `src/server/server.nim`、`src/transport/{http,http_server,sse_legacy,stdio}.nim` の診断 | `tests/test_security_diagnostic.nim` | 2026-10-06 |
