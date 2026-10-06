@@ -92,3 +92,11 @@ Feature: Security of the HTTP server transport
     Then the oldest session that was never used again is dropped for a new client, and a session in use is not
     And an address at its limit loses only its own unused sessions or is refused with 503
     And a batch over the limit is answered 400, and work over the limit 503 with Retry-After
+
+  @spec:MCP-SEC-HTTP-5
+  Scenario: A request must be addressed to this server
+    Given a transport bound to a loopback address
+    When a request names a host that is not a loopback name nor in allowedHosts, as a rebound DNS name does, on any endpoint including a GET without Origin
+    Then the answer is 403 and nothing is created or delivered
+    And loopback names, with or without a port, and the listed hosts are served
+    And a transport bound elsewhere checks Host only when hosts are listed

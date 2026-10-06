@@ -86,12 +86,15 @@ if isSupported(TaskVersion):
       let taskId = created.body["result"]["task"]["taskId"].getStr()
       check rig.post("token-alice", session, rpc(3, "tasks/get", %*{"taskId": taskId})
                     ).body["result"]["taskId"].getStr() == taskId
+      # The transport binds the session to alice (MCP-SEC-HTTP-2): bob does
+      # not get as far as the task store, which binds tasks to a principal
+      # as well; this test no longer reaches that layer.
       let bob = rig.post("token-bob", session, rpc(4, "tasks/get", %*{"taskId": taskId}))
-      check bob.body["error"]["code"].getInt() == -32602
+      check bob.body["error"]["code"].getInt() == -32600
       check rig.post("token-bob", session, rpc(5, "tasks/cancel", %*{"taskId": taskId})
                     ).body.hasKey("error")
       check rig.post("token-bob", session, rpc(6, "tasks/list", newJObject())
-                    ).body["result"]["tasks"].len == 0
+                    ).body.hasKey("error")
       check rig.post("token-alice", session, rpc(7, "tasks/list", newJObject())
                     ).body["result"]["tasks"].len == 1
 

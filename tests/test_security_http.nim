@@ -459,3 +459,53 @@ suite "The transport does not let one caller use up its resources (MCP-SEC-HTTP-
     check send(base, HttpPost, body, headers).code == Http503
     for http in held:
       http.close()
+
+proc sendAs(host, url: string, httpMethod: HttpMethod, body = ""): HttpCode =
+  ## Sends with a Host header of its own, as a rebound DNS name does.
+  let http = newAsyncHttpClient()
+  defer: http.close()
+  let headers = newHttpHeaders({"Host": host, "Content-Type": "application/json",
+                                "Accept": "application/json, text/event-stream"})
+  (waitFor http.request(url, httpMethod, body, headers)).code
+
+suite "The Host header names this server (MCP-SEC-HTTP-5)":
+  test "Given a transport bound to loopback, when a request names another host, then the answer is 403 on every endpoint":
+    let env = startOpen()
+    env.transport.documents["/.well-known/server-card.json"] = HttpDocument(
+      contentType: "application/json", body: "{}")
+    check sendAs("evil.example", env.base & "/mcp", HttpPost, rpc(1, "ping")) == Http403
+    check sendAs("evil.example:80", env.base & "/mcp", HttpGet) == Http403
+    check sendAs("evil.example", env.base & "/sse", HttpGet) == Http403
+    check sendAs("evil.example", env.base & "/messages?sessionId=x", HttpPost, rpc(1, "ping")) == Http403
+    check sendAs("evil.example", env.base & "/.well-known/server-card.json", HttpGet) == Http403
+    check env.transport.sessionCount == 0
+    check env.script.received.len == 0
+
+  test "Given a transport bound to loopback, when a request names a loopback host with a port, then it is served":
+    let env = startOpen()
+    let port = $env.transport.port
+    for host in ["localhost", "localhost:" & port, "127.0.0.1:" & port, "[::1]:" & port, "LOCALHOST"]:
+      check sendAs(host, env.base & "/mcp", HttpPost, rpc(1, "ping")) != Http403
+
+  test "Given allowed hosts, when a request names one of them or another, then the first is served and the second is 403":
+    let env = startOpen()
+    env.transport.allowedHosts = @["mcp.example.com"]
+    check sendAs("mcp.example.com", env.base & "/mcp", HttpPost, rpc(1, "ping")) != Http403
+    check sendAs("MCP.example.com:8443", env.base & "/mcp", HttpPost, rpc(1, "ping")) != Http403
+    check sendAs("evil.example", env.base & "/mcp", HttpPost, rpc(1, "ping")) == Http403
+
+  test "Given a transport that listens on every interface and names no hosts, when a request names any host, then it is served":
+    let transport = newHttpServerTransport(host = "0.0.0.0", port = 0)
+    transport.listen()
+    asyncCheck transport.serve()
+    asyncCheck runScript(transport, Script())
+    check sendAs("public.example", "http://127.0.0.1:" & $transport.port & "/mcp", HttpPost,
+                 rpc(1, "ping")) != Http403
+
+  test "Given a transport that listens on every interface and names hosts, when a request names another host, then the answer is 403":
+    let transport = newHttpServerTransport(host = "0.0.0.0", port = 0)
+    transport.allowedHosts = @["public.example"]
+    transport.listen()
+    asyncCheck transport.serve()
+    let base = "http://127.0.0.1:" & $transport.port & "/mcp"
+    check sendAs("evil.example", base, HttpPost, rpc(1, "ping")) == Http403

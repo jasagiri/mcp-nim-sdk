@@ -1083,3 +1083,8 @@ MCP-SEC-HTTP-3 | tests/test_security_http.nim | Given a client address at its li
 MCP-SEC-HTTP-3 | tests/test_security_http.nim | Given a batch longer than the limit, when posted, then the answer is 400, and a batch within it is answered
 MCP-SEC-HTTP-3 | tests/test_security_http.nim | Given requests in progress up to the limit, when another arrives, then the answer is 503 with Retry-After
 MCP-SEC-HTTP-3 | tests/test_security_http.nim | Given messages waiting for the server up to the limit, when another arrives, then the answer is 503
+MCP-SEC-HTTP-5 | tests/test_security_http.nim | Given a transport bound to loopback, when a request names another host, then the answer is 403 on every endpoint
+MCP-SEC-HTTP-5 | tests/test_security_http.nim | Given a transport bound to loopback, when a request names a loopback host with a port, then it is served
+MCP-SEC-HTTP-5 | tests/test_security_http.nim | Given allowed hosts, when a request names one of them or another, then the first is served and the second is 403
+MCP-SEC-HTTP-5 | tests/test_security_http.nim | Given a transport that listens on every interface and names no hosts, when a request names any host, then it is served
+MCP-SEC-HTTP-5 | tests/test_security_http.nim | Given a transport that listens on every interface and names hosts, when a request names another host, then the answer is 403

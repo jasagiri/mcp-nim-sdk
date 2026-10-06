@@ -471,7 +471,7 @@ if SpeaksModern:
         "io.modelcontextprotocol/clientInfo": {"name": "c", "version": "0"},
         "io.modelcontextprotocol/clientCapabilities": {}}}})
       let socket = waitFor asyncnet.dial("127.0.0.1", Port(parseInt(parseUri(url).port)))
-      waitFor socket.send("POST /mcp HTTP/1.1\c\LHost: x\c\L" &
+      waitFor socket.send("POST /mcp HTTP/1.1\c\LHost: localhost\c\L" &
         "Content-Type: application/json\c\LMCP-Protocol-Version: 2026-07-28\c\L" &
         "Mcp-Method: silent\c\LContent-Length: " & $body.len & "\c\L\c\L" & body)
       waitFor sleepAsync(50)

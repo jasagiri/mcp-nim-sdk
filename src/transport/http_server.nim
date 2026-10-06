@@ -167,6 +167,16 @@ type
       ## endpoint is open.
     allowedOrigins*:  seq[string]
       ## Origins accepted besides loopback ones, e.g. "https://app.example".
+    allowedHosts*:    seq[string]
+      ## Host names a request may carry in its `Host` header (without a port,
+      ## or with the one the request names), besides the loopback ones, e.g.
+      ## "mcp.example.com". A transport bound to a loopback address accepts
+      ## loopback names only, so a web page cannot reach it under a DNS name
+      ## that it has made point at 127.0.0.1 (DNS rebinding): the request
+      ## then carries no Origin when it is a GET, and Host is all that tells
+      ## it from a local client. Behind a reverse proxy that passes the
+      ## public name on, list that name. A transport bound elsewhere checks
+      ## Host only when this list is not empty.
     maxSessions*:     int
       ## While this many sessions are open, a new client takes the place of
       ## the oldest session that was never used after it was made (a flood
@@ -225,6 +235,7 @@ proc newHttpServerTransport*(host: string = "127.0.0.1",
     protocolVersion:  protocolVersion,
     maxBodySize:      maxBodySize,
     allowedOrigins:   @[],
+    allowedHosts:     @[],
     maxSessions:      DefaultMaxSessions,
     maxSessionsPerPeer: DefaultMaxSessionsPerPeer,
     maxBatchItems:    DefaultMaxBatchItems,
@@ -482,6 +493,29 @@ proc respondError(req: Request, code: HttpCode, id: JsonNode,
 func isLoopbackOrigin(origin: string): bool =
   let host = parseUri(origin).hostname
   host in ["localhost", "127.0.0.1", "::1", "[::1]"]
+
+func hostName(hostHeader: string): string =
+  ## The name in a Host header value: lower case, without port or brackets.
+  let value = hostHeader.strip().toLowerAscii()
+  if value.startsWith("["):
+    let close = value.find(']')
+    return if close < 0: value else: value[1 ..< close]
+  let colon = value.rfind(':')
+  if colon >= 0 and value.count(':') == 1: value[0 ..< colon] else: value
+
+func bindsLoopback(t: HttpServerTransport): bool =
+  t.host.hostName in ["localhost", "127.0.0.1", "::1"]
+
+func hostAllowed(t: HttpServerTransport, hostHeader: Option[string]): bool =
+  ## Whether the request is addressed to this server (see `allowedHosts`).
+  if not t.bindsLoopback and t.allowedHosts.len == 0:
+    return true
+  if hostHeader.isNone:
+    return false
+  let name = hostHeader.get.hostName
+  let full = hostHeader.get.strip().toLowerAscii()
+  name in ["localhost", "127.0.0.1", "::1"] or
+    t.allowedHosts.anyIt(it.toLowerAscii() == name or it.toLowerAscii() == full)
 
 func originAllowed(t: HttpServerTransport, origin: string): bool =
   ## A browser sends Origin; rejecting unknown ones stops a web page from
@@ -1050,6 +1084,9 @@ proc dispatch(t: HttpServerTransport, req: Request) {.async.} =
   # The hook is asked about every MCP endpoint (so that none is left open by
   # a hook that does not know the path) and about the documents it serves
   # itself; fixed documents and unknown paths are public.
+  if not t.hostAllowed(req.header("Host")):
+    await req.respondEmpty(Http403)
+    return
   let endpoint = t.endpointOf(req.url.path)
   var principal = none(string)
   if not t.auth.isNil and (endpoint != epNone or req.url.path in t.auth.ownPaths):
