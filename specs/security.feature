@@ -159,3 +159,15 @@ Feature: Security of the outgoing HTTP client
     When the metadata of a server that is not on loopback names a loopback URL
     Then the client refuses it
     And when the user's own server is on loopback, loopback URLs stay allowed (local development)
+
+  @spec:MCP-SEC-WIRE-7
+  Scenario: An icon fetch that gives up leaves no connection behind
+    Given an icon request that has timed out
+    When the server answers after the timeout
+    Then the client closes that connection
+
+  @spec:MCP-SEC-WIRE-8
+  Scenario: An icon is fetched only from an address its server's spelling allows
+    Given an icon of a server the user addressed by a name
+    When the name resolves to a loopback, private, link-local or reserved address
+    Then the fetch is refused unless the user allowed private networks, and link-local and reserved addresses are always refused

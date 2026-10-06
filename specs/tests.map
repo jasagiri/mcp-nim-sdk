@@ -1127,3 +1127,7 @@ MCP-SEC-WIRE-5 | tests/test_security_address.nim | Given a name that does not re
 MCP-SEC-WIRE-5 | tests/test_security_address.nim | Given a name that resolves to an allowed address, when a request is made, then the connection goes to that address
 MCP-SEC-WIRE-6 | tests/test_security_address.nim | Given a policy and a server URL, when narrowed, then loopback stays allowed only for a loopback server
 MCP-SEC-WIRE-6 | tests/test_security_address.nim | Given a remote server that names a loopback metadata URL, when the client answers its 401, then OAuthSecurityError is raised and nothing is requested
+MCP-SEC-WIRE-7 | tests/test_security_icons.nim | Given an answer that comes after the timeout, when the fetch has failed, then the connection is closed
+MCP-SEC-WIRE-8 | tests/test_security_icons.nim | Given a server whose name resolves to a loopback address, when its icon is fetched, then the fetch is refused
+MCP-SEC-WIRE-8 | tests/test_security_icons.nim | Given a server whose name resolves to a metadata service address, when its icon is fetched, then the fetch is refused
+MCP-SEC-WIRE-8 | tests/test_security_icons.nim | Given a server whose name resolves to a private address, when its icon is fetched, then it is refused unless private networks are allowed

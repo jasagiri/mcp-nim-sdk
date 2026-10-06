@@ -14,11 +14,13 @@
 ## SVG is off by default is this module's choice: the specification only
 ## says consumers MAY disallow file types.
 
-import std/[asyncdispatch, base64, httpcore, options, strutils]
+import std/[asyncdispatch, base64, httpcore, options, strutils, uri]
 import ./client
 import ./content
 import ../transport/transport
 import ../transport/http_wire as wire
+import ../transport/address_policy
+import ../transport/guarded_wire
 
 type
   IconType* = enum
@@ -45,6 +47,14 @@ type
     timeoutMs*: int = 10_000
     allowed*: set[IconType] = {itPng, itJpeg, itWebp}
     get*: IconGet
+    allowPrivateNetworks*: bool
+      ## Fetch from a private network address when the server's name
+      ## resolves to one. A server the user addressed by a private IP literal,
+      ## or by a loopback address, may always have its icons fetched from
+      ## there; a server addressed by a name that resolves to such an address
+      ## has to be allowed here. Link-local and reserved addresses never are.
+    resolver*: HostResolver
+      ## How the server's name is resolved; nil: the system resolver.
 
 func sniffIcon*(bytes: string): Option[IconType] =
   ## The image type the first bytes say, none for anything else.
@@ -101,8 +111,21 @@ proc iconFromDataUri(src: string, options: IconFetchOptions): McpFetchedIcon =
     raise newException(McpIconError, "the icon exceeds " & $options.maxBytes & " bytes")
   accepted(bytes, parts[0].split(';')[0], options)
 
-proc defaultGet(url: string, headers: HttpHeaders): Future[WireResponse] =
-  wire.request(url, HttpGet, headers)
+proc guardedGet(serverOrigin: string, options: IconFetchOptions): IconGet =
+  ## The GET of `wire.request` to an address that `address_policy` allows. The
+  ## server was chosen by the user, so what the user's own spelling of it
+  ## says (loopback, private) stays allowed; what its name merely resolves to
+  ## has to be public. The connection closes when it takes longer than the
+  ## fetch is allowed to.
+  let hostClass = classifyHost(parseUri(serverOrigin).hostname)
+  let policy = DestinationPolicy(
+    allowLoopback: hostClass == some(acLoopback),
+    allowPrivateNetworks: options.allowPrivateNetworks or hostClass == some(acPrivate))
+  let timeoutMs = options.timeoutMs
+  let resolver = options.resolver
+  result = proc(url: string, headers: HttpHeaders): Future[WireResponse] {.closure, gcsafe.} =
+    guardedRequest(url, HttpGet, policy, resolver, headers, followRedirects = true,
+                   connectTimeoutMs = timeoutMs, headerTimeoutMs = timeoutMs)
 
 proc fetchIcon*(icon: McpIcon, serverOrigin: string,
                 options: IconFetchOptions = IconFetchOptions()): Future[McpFetchedIcon] {.async.} =
@@ -125,14 +148,24 @@ proc fetchIcon*(icon: McpIcon, serverOrigin: string,
   let headers = newHttpHeaders({"Accept": "image/png, image/jpeg, image/webp"})
   var fetcher: IconGet = options.get
   if fetcher.isNil:
-    fetcher = defaultGet
+    fetcher = guardedGet(serverOrigin, options)
   var response: WireResponse
   try:
     let asked = fetcher(src, headers)
     if not await asked.withTimeout(options.timeoutMs):
+      # The request is still going on. Whatever it ends in, nobody will use
+      # it: an answer that comes later is closed, a failure is already
+      # reported here as the timeout.
+      asked.addCallback(proc() =
+        if asked.failed:
+          discard asked.readError()
+        else:
+          asked.read().close())
       raise newException(McpIconError, "no answer within " & $options.timeoutMs & " ms")
     response = asked.read()
   except McpTransportError as e:
+    raise newException(McpIconError, "the icon could not be fetched: " & e.msg)
+  except AddressNotAllowed as e:
     raise newException(McpIconError, "the icon could not be fetched: " & e.msg)
   defer: response.close()
   if response.code != Http200:
