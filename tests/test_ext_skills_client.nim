@@ -147,18 +147,21 @@ if SpeaksModern:
         expect McpProtocolError:
           discard waitFor client.getSkill(uri)
 
-    test "Given a server without the extension or a client that did not declare it, when skills are listed, then McpUnsupportedError is raised and nothing is sent":
+    test "Given a server without the extension, when skills are listed, then McpUnsupportedError is raised and nothing is sent; a client that declared nothing lists a server that has it":
       let withoutServer = startPeer(nil, modern = true, capabilities = %*{"resources": {}})
       let a = withoutServer.connectedSkillsClient()
       check not a.skillsOffered()
       expect McpUnsupportedError:
         discard waitFor a.listAllSkills()
       check withoutServer.requestsFor("skills/list").len == 0
-      let undeclared = skillsPeer(serving([]))
+      let undeclared = skillsPeer(serving([]),
+        extra = proc(peer: client_peer.Peer, message: JsonNode) =
+          if message{"method"}.getStr() == "skills/list":
+            peer.reply(message["id"], %*{"resultType": "complete", "skills": []}))
       let b = undeclared.connectedClient()
-      expect McpUnsupportedError:
-        discard waitFor b.listAllSkills()
-      check undeclared.requestsFor("skills/list").len == 0
+      check b.skillsOffered()
+      discard waitFor b.listAllSkills()
+      check undeclared.requestsFor("skills/list").len == 1
 
   suite "verifying what arrives":
 

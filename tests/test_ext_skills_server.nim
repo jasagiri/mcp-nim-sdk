@@ -189,15 +189,14 @@ suite "skills/list and skills/get":
         checkpoint $params
         check peer.ask("skills/get", params, meta = skillsDeclared()).errorCode == -32602
 
-  test "Given a client that did not declare the extension, when it asks for skills, then the answer is the missing-capability error":
+  test "Given a client that declared nothing, when it asks for skills, then it is served: the specification asks no declaration of the client":
     for v in versionsWith(ftExtensions):
       let server = skillsServer(directoryRead = true)
       let peer = server.connect(server.attach(), v)
-      for methodName in ["skills/list", "skills/get", "resources/directory/read"]:
-        checkpoint methodName
-        let answer = peer.ask(methodName, %*{"uri": "skill://pdf-processing/SKILL.md"})
-        check answer.errorCode == -32021
-        check answer["error"]["data"]["requiredCapabilities"]["extensions"][Ext] == newJObject()
+      check peer.ask("skills/list", newJObject())["result"]["skills"].len > 0
+      check peer.ask("skills/get", %*{"uri": "skill://pdf-processing/SKILL.md"})["result"].kind == JObject
+      check peer.ask("resources/directory/read",
+                     %*{"uri": "skill://pdf-processing"})["result"].kind == JObject
 
 suite "skill files as resources":
 

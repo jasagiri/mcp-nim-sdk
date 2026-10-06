@@ -6,7 +6,7 @@ Feature: Skills over MCP (extension io.modelcontextprotocol/skills)
   Source: modelcontextprotocol/ext-skills at 167da6c0d42c247a8f8470228a10ca711e3f6c45,
   specification/stable/skills.mdx (SEP-2640, Final), base protocol 2026-07-28 or later.
   The extension is not part of the core of any dated version: it is active only
-  where a server called registerSkills (or a client declareSkills), and only in
+  where a server called registerSkills, and only in
   a build that speaks 2026-07-28.
 
   @spec:MCP-EXT-SKILLS-1
@@ -82,10 +82,11 @@ Feature: Skills over MCP (extension io.modelcontextprotocol/skills)
     Then text comes back as text, binary as base64 blob, and the other URI goes to the server's own handler
 
   @spec:MCP-EXT-SKILLS-13
-  Scenario: The skills methods need the client to have declared the extension
+  Scenario: The skills methods are served to a client that declared nothing
     Given a registered server
-    When a client that did not declare the extension asks skills/list
-    Then the answer is -32021 naming the extension
+    When a client that did not declare the extension asks skills/list, skills/get or resources/directory/read
+    Then it is served: the specification has the server declare the extension and asks nothing of the client
+    And a client lists skills only of a server that declared the extension
 
   @spec:MCP-EXT-SKILLS-14
   Scenario: resources/directory/read lists direct children when directoryRead is declared

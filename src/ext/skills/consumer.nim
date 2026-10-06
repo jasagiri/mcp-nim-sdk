@@ -1,7 +1,6 @@
 ## The client side of the skills extension: discover the skills a server
 ## serves, fetch one, and verify what arrives.
 ##
-##   client.declareSkills()                    # before connect()
 ##   await client.connect(transport)
 ##   let listing = await client.listAllSkills()
 ##   let skill = client.openSkill(listing.entries[0])
@@ -61,8 +60,10 @@ type
     retrieved: int64
 
 proc declareSkills*(client: McpClient) =
-  ## Declare support for the extension. Call before connect(). Only a
-  ## 2026-07-28 connection carries it.
+  ## Say in this client's capabilities that it understands the extension.
+  ## The specification does not ask it: servers declare the extension and a
+  ## client calls `skills/list` after seeing that, declared or not. Call
+  ## before connect(). Only a 2026-07-28 connection carries it.
   client.declareExtension(SkillsExtensionId)
 
 proc skillsOffered*(client: McpClient): bool =
@@ -79,7 +80,8 @@ proc listSkills*(client: McpClient, cursor: Option[string] = none(string),
   ## One page of `skills/list`. An entry that breaks the rules goes to
   ## `rejected` with the reason; the others are validated and usable.
   let reply = await client.callExtension(SkillsExtensionId, SkillsListMethod,
-                                         pageParams(cursor), options)
+                                         pageParams(cursor), options,
+                                         clientDeclares = false)
   for item in requiredArray(reply, "skills", SkillsListMethod):
     try:
       result.listing.entries.add parseSkillEntry(item, SkillsListMethod)
@@ -107,7 +109,8 @@ proc getSkill*(client: McpClient, uri: string,
   ## Raises McpRequestError (-32602) when the server serves no such skill and
   ## McpProtocolError for an entry that breaks the rules or names another URI.
   let reply = await client.callExtension(SkillsExtensionId, SkillsGetMethod,
-                                         %*{"uri": uri}, options)
+                                         %*{"uri": uri}, options,
+                                         clientDeclares = false)
   let node = reply{"skill"}
   if node.isNil:
     raise newException(McpProtocolError, SkillsGetMethod & ": the result has no `skill`")
@@ -231,7 +234,8 @@ proc listDirectory*(client: McpClient, uri: string,
       var params = pageParams(cursor)
       params["uri"] = %uri
       let reply = await client.callExtension(SkillsExtensionId, DirectoryReadMethod,
-                                             params, options)
+                                             params, options,
+                                             clientDeclares = false)
       var children: seq[DirectoryChild]
       for item in requiredArray(reply, "resources", DirectoryReadMethod):
         let childUri = requiredString(item, "uri", DirectoryReadMethod)

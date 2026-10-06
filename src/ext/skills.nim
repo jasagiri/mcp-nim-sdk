@@ -1,8 +1,9 @@
 ## Skills over MCP (`io.modelcontextprotocol/skills`): publish and discover
 ## Agent Skills with the Resources primitive plus `skills/list` and
-## `skills/get`. Not exported by `import mcp`; import it, and register it with
-## `registerSkills` (server) or `declareSkills` (client), which is the only way
-## it becomes active.
+## `skills/get`. Not exported by `import mcp`; import it. A server serves
+## skills only after `registerSkills`, which declares the extension; a client
+## declares nothing (the specification asks only the server to) and uses the
+## procs of this module against a server that declared it.
 ##
 ## Source: modelcontextprotocol/ext-skills @ 167da6c0d42c247a8f8470228a10ca711e3f6c45,
 ## specification/stable/skills.mdx (SEP-2640, status Final). Base protocol

@@ -62,7 +62,7 @@ if isSupported(mpv20260728):
       expect McpUnsupportedError:
         discard waitFor client.listDirectory("skill://pdf-processing/templates")
 
-    test "Given a client that did not declare the extension, when it lists skills, then it raises before sending":
+    test "Given a client that declared nothing, when it lists skills of a server that has them, then it is served":
       let client = skillsServer(directoryRead = false).connected(declare = false)
-      expect McpUnsupportedError:
-        discard waitFor client.listAllSkills()
+      check client.skillsOffered()
+      check (waitFor client.listAllSkills()).entries.len > 0

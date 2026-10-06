@@ -2549,7 +2549,7 @@ MCP-EXT-SKILLS-10 | tests/test_ext_skills_server.nim | Given a catalog of three 
 MCP-EXT-SKILLS-10 | tests/test_ext_skills_server.nim | Given a cursor the server did not issue or one that is not a string, when a client lists skills, then it is invalid params
 MCP-EXT-SKILLS-11 | tests/test_ext_skills_server.nim | Given a served skill, when skills/get names its SKILL.md, then the entry is returned with cache fields
 MCP-EXT-SKILLS-11 | tests/test_ext_skills_server.nim | Given a file of a skill, an unknown URI or no string, when skills/get is called, then each is invalid params
-MCP-EXT-SKILLS-13 | tests/test_ext_skills_server.nim | Given a client that did not declare the extension, when it asks for skills, then the answer is the missing-capability error
+MCP-EXT-SKILLS-13 | tests/test_ext_skills_server.nim | Given a client that declared nothing, when it asks for skills, then it is served: the specification asks no declaration of the client
 MCP-EXT-SKILLS-12 | tests/test_ext_skills_server.nim | Given a skill with text and binary files, when any client reads them, then text is text and binary is a base64 blob
 MCP-EXT-SKILLS-12 | tests/test_ext_skills_server.nim | Given a URI that is not a served skill file, when a client reads it, then the server's own handler answers
 MCP-EXT-SKILLS-12 | tests/test_ext_skills_server.nim | Given a catalog with another scheme, when its files are read, then that scheme is served and skill:// is not
@@ -2572,7 +2572,7 @@ MCP-EXT-SKILLS-19 | tests/test_ext_skills_client.nim | Given a listing over two 
 MCP-EXT-SKILLS-19 | tests/test_ext_skills_client.nim | Given a server that repeats a cursor, when the client lists all, then it raises instead of looping
 MCP-EXT-SKILLS-19 | tests/test_ext_skills_client.nim | Given a skill the listing does not show, when the client gets it by URI, then it receives the entry
 MCP-EXT-SKILLS-19 | tests/test_ext_skills_client.nim | Given a skills/get answer for another URI or with a broken entry, when the client gets a skill, then McpProtocolError is raised
-MCP-EXT-SKILLS-19 | tests/test_ext_skills_client.nim | Given a server without the extension or a client that did not declare it, when skills are listed, then McpUnsupportedError is raised and nothing is sent
+MCP-EXT-SKILLS-19 | tests/test_ext_skills_client.nim | Given a server without the extension, when skills are listed, then McpUnsupportedError is raised and nothing is sent; a client that declared nothing lists a server that has it
 MCP-EXT-SKILLS-20 | tests/test_ext_skills_client.nim | Given a file the entry lists, when it is read, then the verified bytes are returned
 MCP-EXT-SKILLS-20 | tests/test_ext_skills_client.nim | Given a SKILL.md that matches its entry, when the instructions are loaded, then they come with the verified frontmatter
 MCP-EXT-SKILLS-20 | tests/test_ext_skills_client.nim | Given a file whose bytes differ from the digest, when it is read, then SkillVerificationError is raised
@@ -2595,4 +2595,4 @@ MCP-EXT-SKILLS-23 | tests/test_ext_skills_client.nim | Given a dynamic entry, wh
 MCP-EXT-SKILLS-24 | tests/test_ext_skills_end_to_end.nim | Given a server that registered skills, when a client lists, gets and loads a skill, then the served instructions arrive verified
 MCP-EXT-SKILLS-24 | tests/test_ext_skills_end_to_end.nim | Given a server with directoryRead, when a client lists a directory, then the manifest and the directory agree
 MCP-EXT-SKILLS-24 | tests/test_ext_skills_end_to_end.nim | Given a server without directoryRead, when a client lists a directory, then it refuses before sending
-MCP-EXT-SKILLS-24 | tests/test_ext_skills_end_to_end.nim | Given a client that did not declare the extension, when it lists skills, then it raises before sending
+MCP-EXT-SKILLS-24 | tests/test_ext_skills_end_to_end.nim | Given a client that declared nothing, when it lists skills of a server that has them, then it is served

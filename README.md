@@ -431,7 +431,85 @@ Authorization is off until it is attached to an HTTP transport. A server sets `t
 
 Extensions are optional additions to MCP that the two sides agree on by name. Each is a module of its own under `src/ext/`, and none of them is part of `import mcp`. An extension is on only in a program that imports its module **and** calls what turns it on; there is no define for any of them, and a module that is not imported is not compiled in.
 
-This checkout carries the mechanism (`registerExtension`, `registerExtensionMethod`, `declareExtension`, in the tables above) and no extension of its own. The official extensions are on the branch `mcp-2026-07-28-ext`, and the draft ones on `mcp-draft`.
+```nim
+import mcp
+import ext/tasks        # one import per extension the program uses
+```
+
+Extensions of the `extensions` capability are agreed in protocol version `2026-07-28`; turning one on in a build that does not speak that version raises `ValueError` rather than doing nothing. Where an extension has both sides declare it, a peer that did not is answered `-32021` when it calls one of its methods; Skills is declared by the server alone. MCP Apps is the exception its specification makes: a host declares it in the `initialize` handshake of earlier versions as well.
+
+#### Official extensions
+
+| Extension | Module | Server | Client |
+|---|---|---|---|
+| Tasks (`io.modelcontextprotocol/tasks`) | `ext/tasks` | `server.enableTasksExtension(config)`; `config.decide` says which calls become tasks | `client.enableTasksExtension()`, then `startToolCall`, `getTask`, `awaitTask`, `cancelTask` |
+| MCP Apps (`io.modelcontextprotocol/ui`) | `ext/apps` | `newAppsRegistry()` for the `ui://` resources, `appToolInfo` for tools that show one, `degradeForPlainHosts` | `client.declareApps()` before `connect`, then `listAppTools`, `fetchUiResource` |
+| Skills (`io.modelcontextprotocol/skills`) | `ext/skills` | `newSkillCatalog()`, `server.registerSkills(catalog)` | nothing to declare: `listAllSkills`, `getSkill`, `openSkill` |
+| Enterprise-managed authorization | `ext/auth_enterprise_managed` | nothing: it is between the client and the authorization servers | `client.enableEnterpriseManaged(transport, config)` |
+| OAuth client credentials (upstream text is a draft) | `ext/auth_client_credentials` | nothing | `client.enableClientCredentials(transport, config)` |
+
+The Tasks extension is not the tasks of `2025-11-25`. A server may have both, on one store: `server.enableTasks()` serves clients of `2025-11-25`, `server.enableTasksExtension(...)` those of `2026-07-28`, and neither sees the other's tasks.
+
+The authorization extensions sign with a key the application holds: it passes the signing function, and the SDK does no asymmetric cryptography of its own. Build with `-d:ssl`.
+
+A server with the Tasks extension ([examples/ext_tasks_server.nim](examples/ext_tasks_server.nim)):
+
+```nim
+## An MCP server on stdin/stdout whose slow tool, `report`, runs as a task
+## for clients that support the Tasks extension (io.modelcontextprotocol/tasks).
+##
+##   nim c -r examples/ext_tasks_server.nim
+##
+## The extension is an explicit opt-in: `import ext/tasks` is not part of
+## `import mcp`, and only `enableTasksExtension` declares it. It needs a
+## build that speaks 2026-07-28 (the default); a client that does not declare
+## the extension calls `report` as an ordinary tool and waits for the result.
+## Stdout carries the protocol, so anything for people goes to stderr.
+##
+## Who owns a task: a request knows no authenticated user, so give
+## `TasksExtensionConfig.ownerOf` the user your transport authenticated;
+## without it every client is the same owner and only the unguessable task id
+## keeps a task private.
+
+import std/[asyncdispatch, json, options]
+import mcp
+import ext/tasks
+
+proc main() =
+  let server = newMcpServer(
+    McpServerInfo(name: "report-server", version: "0.1.0"),
+    capabilities = McpServerCapabilities(tools: some(McpToolsCapability())))
+
+  discard server.enableTasksExtension(TasksExtensionConfig(
+    decide: toolsNamed(["report"])))
+
+  server.onToolsList(proc(cursor: Option[string]): Future[McpPage] {.async.} =
+    return McpPage(items: @[
+      %*{"name": "report", "description": "A report that takes a while",
+         "inputSchema": {"type": "object", "properties": {"topic": {"type": "string"}}}},
+      %*{"name": "echo", "description": "Returns the text it is given",
+         "inputSchema": {"type": "object", "properties": {"text": {"type": "string"}}}}]))
+
+  server.onToolCall(proc(ctx: McpRequestContext, name: string,
+                         arguments: JsonNode): Future[JsonNode] {.async.} =
+    case name
+    of "report":
+      # A task is cancelled with tasks/cancel: stop when the context says so.
+      let cancelled = ctx.whenCancelled()
+      await (sleepAsync(3000) or cancelled)
+      ctx.checkCancelled()
+      return %*{"content": [{"type": "text",
+                             "text": "Report on " & arguments{"topic"}.getStr("everything")}]}
+    else:
+      return %*{"content": [{"type": "text", "text": arguments{"text"}.getStr()}]})
+
+  server.transport = newStdioTransport()
+  waitFor server.processMessages()
+
+main()
+```
+
+A server with MCP Apps is in [examples/ext_apps_server.nim](examples/ext_apps_server.nim).
 
 ### Checking a build
 

@@ -368,14 +368,17 @@ proc registerSkills*(server: McpServer, catalog: SkillCatalog, directoryRead = f
     server.capabilities.resources = some(McpResourcesCapability())
   server.registerExtensionMethod(SkillsExtensionId, SkillsListMethod,
     proc(ctx: McpRequestContext, params: JsonNode): Future[JsonNode] {.async.} =
-      return catalog.skillsList(params))
+      return catalog.skillsList(params),
+    clientDeclares = false)
   server.registerExtensionMethod(SkillsExtensionId, SkillsGetMethod,
     proc(ctx: McpRequestContext, params: JsonNode): Future[JsonNode] {.async.} =
-      return catalog.skillsGet(params))
+      return catalog.skillsGet(params),
+    clientDeclares = false)
   if directoryRead:
     server.registerExtensionMethod(SkillsExtensionId, DirectoryReadMethod,
       proc(ctx: McpRequestContext, params: JsonNode): Future[JsonNode] {.async.} =
-        return await catalog.directoryRead(params))
+        return await catalog.directoryRead(params),
+      clientDeclares = false)
   # A file of a skill is an ordinary resource: `resources/read` answers it
   # here and leaves every other URI to the server's own handler.
   server.addRequestInterceptor(
