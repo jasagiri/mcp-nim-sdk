@@ -2,6 +2,7 @@
 
 import std/[asyncdispatch, json, options, sequtils, sets, strutils, tables]
 import ../protocol/types
+import ../protocol/diagnostic
 import ../protocol/lifecycle
 import ../protocol/modern
 import ../protocol/param_headers
@@ -559,8 +560,9 @@ proc handleCancelled(server: McpServer, notification: JsonRpcNotification): Futu
   let reasonNode = notification.params{"reason"}
   let reason = if reasonNode.isNil or reasonNode.kind != JString: "" else: reasonNode.getStr()
   if server.cancelRequest(notification.session, requestId.get, reason):
-    stderr.writeLine("[mcp-server] request " & requestId.get & " cancelled by the client" &
-                     (if reason.len > 0: ": " & reason else: ""))
+    stderr.writeLine("[mcp-server] request " & peerText(requestId.get) &
+                     " cancelled by the client" &
+                     (if reason.len > 0: ": " & peerText(reason) else: ""))
 
 proc extractClientCapabilities(json: JsonNode): McpClientCapabilities =
   result = McpClientCapabilities()
@@ -790,7 +792,7 @@ proc request*(server: McpServer, session: string, methodName: string,
       await server.transport.sendNotification(cancelled)
     except CatchableError as e:
       stderr.writeLine("[mcp-server] could not cancel timed out " & methodName &
-                       ": " & e.msg)
+                       ": " & peerText(e.msg))
     raise newException(McpRequestTimeout,
       "the client did not answer " & methodName & " within " & $timeoutMs & " ms")
   return await answer
@@ -908,7 +910,7 @@ proc createMessage*(ctx: McpRequestContext, params: JsonNode): Future[JsonNode] 
 proc resolveResponse(server: McpServer, session: string, response: JsonRpcResponse) =
   let key = inFlightKey(session, response.id)
   if key notin server.pending:
-    stderr.writeLine("[mcp-server] response to unknown request id '" & response.id & "' ignored")
+    stderr.writeLine("[mcp-server] response to unknown request id '" & peerText(response.id) & "' ignored")
     return
   let waiting = server.pending[key]
   server.pending.del(key)
@@ -1297,7 +1299,7 @@ proc inputRequiredResponse(request: JsonRpcRequest, ctx: McpRequestContext,
   ## is a defect of the server; a request for something the client did not
   ## declare is the missing-capability error.
   proc defect(why: string): JsonRpcResponse =
-    stderr.writeLine("[mcp-server] " & request.`method` & ": " & why)
+    stderr.writeLine("[mcp-server] " & peerText(request.`method`) & ": " & why)
     newJsonRpcErrorResponse(request.id, ErrInternal, "Internal error")
   if not ctx.version.has(ftMultiRoundTripRequests):
     return defect("input_required is not part of protocol version " & $ctx.version)
@@ -1363,7 +1365,7 @@ proc unusableResultType(server: McpServer, request: JsonRpcRequest,
     return none(JsonRpcResponse)
   let owner = server.extensionResultTypes.getOrDefault(resultType)
   if owner.len == 0:
-    stderr.writeLine("[mcp-server] " & request.`method` & " returned resultType '" &
+    stderr.writeLine("[mcp-server] " & peerText(request.`method`) & " returned resultType '" &
                      resultType & "', which no extension defines")
     return some(newJsonRpcErrorResponse(request.id, ErrInternal, "Internal error"))
   if not ctx.clientDeclaresExtension(owner):
@@ -1473,16 +1475,16 @@ proc processRequest(server: McpServer, request: JsonRpcRequest): Future[void] {.
       # afterwards must still be seen.
       handling.addCallback(proc() =
         if handling.failed:
-          stderr.writeLine("[mcp-server] cancelled " & request.`method` &
-                           " ended with " & handling.error.msg))
-      stderr.writeLine("[mcp-server] " & request.`method` & " " & request.id &
-                       " cancelled; no response sent")
+          stderr.writeLine("[mcp-server] cancelled " & peerText(request.`method`) &
+                           " ended with " & peerText(handling.error.msg)))
+      stderr.writeLine("[mcp-server] " & peerText(request.`method`) & " " &
+                       peerText(request.id) & " cancelled; no response sent")
     else:
       response = handling.read()
   except CatchableError as e:
     # The cause stays on this side; a peer gets no internal detail.
-    stderr.writeLine("[mcp-server] " & request.`method` & " failed with " &
-                      $e.name & ": " & e.msg)
+    stderr.writeLine("[mcp-server] " & peerText(request.`method`) & " failed with " &
+                      $e.name & ": " & peerText(e.msg))
     response = newJsonRpcErrorResponse(request.id, ErrInternal, "Internal error")
     response.idNode = request.idNode
   finally:
@@ -1523,7 +1525,7 @@ proc processMessages*(server: McpServer): Future[void] {.async.} =
       elif isResponse(json):
         server.resolveResponse(incoming.session, decodeResponse(json))
       else:
-        stderr.writeLine("[mcp-server] invalid message received: " & $json)
+        stderr.writeLine("[mcp-server] invalid message received: " & peerText($json))
   except McpTransportClosedError as e:
     server.sessions[""] = McpSession(state: mlsShutdown)
     for session in server.sessions.keys.toSeq:
@@ -1533,7 +1535,7 @@ proc processMessages*(server: McpServer): Future[void] {.async.} =
     server.lastTransportError = e
     server.failPending(none(string), e)
     stderr.writeLine("[mcp-server] transport loop ended with " &
-                      $e.name & ": " & e.msg)
+                      $e.name & ": " & peerText(e.msg))
 
 proc sendNotification*(server: McpServer, methodName: string, params: JsonNode,
                        session = ""): Future[void] {.async.} =
@@ -1571,7 +1573,7 @@ proc deliverEach(server: McpServer, sessions: seq[string], methodName: string,
       await server.sendNotification(methodName, params, id)
     except CatchableError as e:
       stderr.writeLine("[mcp-server] could not send " & methodName &
-                       " to session '" & id & "': " & e.msg)
+                       " to session '" & peerText(id) & "': " & peerText(e.msg))
       if firstFailure.isNil:
         firstFailure = e
   if not firstFailure.isNil:
@@ -1591,7 +1593,7 @@ proc deliverToSubscribers(server: McpServer, methodName: string,
       await server.transport.sendNotification(notification)
     except CatchableError as e:
       stderr.writeLine("[mcp-server] could not send " & methodName &
-                       " to subscription '" & subscription.requestId & "': " & e.msg)
+                       " to subscription '" & peerText(subscription.requestId) & "': " & peerText(e.msg))
       if firstFailure.isNil:
         firstFailure = e
   if not firstFailure.isNil:
@@ -1701,7 +1703,7 @@ proc endSubscriptions*(server: McpServer): Future[void] {.async.} =
         await server.transport.sendNotification(cancelled)
       except CatchableError as e:
         stderr.writeLine("[mcp-server] could not cancel subscription '" &
-                         subscription.requestId & "': " & e.msg)
+                         peerText(subscription.requestId) & "': " & peerText(e.msg))
     subscription.closed.complete()
 
 proc log*(server: McpServer, level: McpLogLevel, data: JsonNode,

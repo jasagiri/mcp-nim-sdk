@@ -73,3 +73,11 @@
 - `src/protocol/sampling_tools.nim` (sampling の messages の audio の版判定)。
 | `src/jsonschema/json_schema_regex.nim` (Thompson NFA、上限) | `tests/test_security_schema.nim`、`tests/test_json_schema.nim` | 2026-10-06 |
 | `src/jsonschema/json_schema.nim` (`SchemaLimits`、`$ref` の循環検出) | `tests/test_security_schema.nim`、`tests/test_json_schema.nim` | 2026-10-06 |
+
+## 未測定 (HTTP サーバーのセキュリティ修正。本線向け)
+
+| モジュール | 対応する外部仕様テスト | 追加・変更した日 |
+|---|---|---|
+| `src/transport/http_server.nim` (認可の対象パス、セッションの所有者、cancelled の書き換え、資源上限、Host 検証) | `tests/test_security_http.nim` | 2026-10-06 |
+| `src/transport/auth_hook.nim`、`src/auth/resource_server.nim` (`ownPaths`、`mcpPath` の廃止) | `tests/test_security_http.nim`、`tests/test_auth_resource_server.nim` | 2026-10-06 |
+| `src/protocol/diagnostic.nim` (`peerText`) と、それを使う `src/server/server.nim`、`src/transport/{http,http_server,sse_legacy,stdio}.nim` の診断 | `tests/test_security_diagnostic.nim` | 2026-10-06 |

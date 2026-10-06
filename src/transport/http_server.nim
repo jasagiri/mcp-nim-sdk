@@ -54,6 +54,7 @@ import ./transport
 import ./sse_stream
 import ./auth_hook
 import ../protocol/types
+import ../protocol/diagnostic
 import ../protocol/modern
 import ../protocol/param_headers
 import ../protocol/version
@@ -1134,7 +1135,7 @@ proc handle(t: HttpServerTransport, req: Request) {.async.} =
     req.client.close()
   except CatchableError as e:
     # What went wrong is for the log; the peer learns only that it did.
-    stderr.writeLine("[mcp-http-server] " & $e.name & ": " & e.msg)
+    stderr.writeLine("[mcp-http-server] " & $e.name & ": " & peerText(e.msg))
     try:
       await req.respondEmpty(Http500)
     except OSError, IOError:

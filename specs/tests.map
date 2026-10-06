@@ -1088,3 +1088,10 @@ MCP-SEC-HTTP-5 | tests/test_security_http.nim | Given a transport bound to loopb
 MCP-SEC-HTTP-5 | tests/test_security_http.nim | Given allowed hosts, when a request names one of them or another, then the first is served and the second is 403
 MCP-SEC-HTTP-5 | tests/test_security_http.nim | Given a transport that listens on every interface and names no hosts, when a request names any host, then it is served
 MCP-SEC-HTTP-5 | tests/test_security_http.nim | Given a transport that listens on every interface and names hosts, when a request names another host, then the answer is 403
+MCP-SEC-HTTP-7 | tests/test_security_diagnostic.nim | Given text with line breaks and escape characters, when made fit for a log, then none survives
+MCP-SEC-HTTP-7 | tests/test_security_diagnostic.nim | Given plain text including non-ASCII letters, when made fit for a log, then it is unchanged
+MCP-SEC-HTTP-7 | tests/test_security_diagnostic.nim | Given bytes that are not UTF-8, when made fit for a log, then each is shown as an escape
+MCP-SEC-HTTP-7 | tests/test_security_diagnostic.nim | Given text longer than the limit, when made fit for a log, then it is cut at a character and the rest is counted
+MCP-SEC-HTTP-7 | tests/test_security_diagnostic.nim | Given a message that is no JSON-RPC message, when the server logs it, then the log holds one line without the control characters
+MCP-SEC-HTTP-7 | tests/test_security_diagnostic.nim | Given a message that is no JSON-RPC message and very long, when the server logs it, then the log line is short
+MCP-SEC-HTTP-7 | tests/test_security_diagnostic.nim | Given a response to no request, when the server logs its id, then the id is made fit

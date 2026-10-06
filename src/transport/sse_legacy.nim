@@ -12,6 +12,7 @@ import ./transport
 import ./event_stream
 import ./http_wire as wire
 import ../protocol/types
+import ../protocol/diagnostic
 
 const
   DefaultMaxResponseSize* = 16 * 1024 * 1024
@@ -105,7 +106,7 @@ proc readLoop(t: SseLegacyTransport, response: WireResponse,
     # close() ends the stream on purpose; that is not a failure.
     if not t.closed:
       stderr.writeLine("[mcp-sse] event stream from " & t.sseUrl &
-                        " failed with " & $e.name & ": " & e.msg)
+                        " failed with " & $e.name & ": " & peerText(e.msg))
   finally:
     response.close()
     if not ready.finished:

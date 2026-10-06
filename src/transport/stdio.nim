@@ -8,6 +8,7 @@
 import std/[asyncdispatch, asyncfile, json, options, osproc, posix, streams, strutils]
 import ./transport
 import ../protocol/types
+import ../protocol/diagnostic
 
 const
   DefaultMaxLineSize* = 16 * 1024 * 1024
@@ -177,7 +178,7 @@ method receiveMessage*(t: StdioTransport): Future[JsonNode] {.async.} =
     try:
       return parseJson(line.get)
     except JsonParsingError as e:
-      stderr.writeLine("[mcp-stdio] ignoring a line that is not JSON: " & e.msg)
+      stderr.writeLine("[mcp-stdio] ignoring a line that is not JSON: " & peerText(e.msg))
       if t.answersParseErrors:
         await t.writeLine(ParseErrorReply)
 

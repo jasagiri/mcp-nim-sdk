@@ -31,6 +31,7 @@ import ./event_stream
 import ./http_wire as wire
 import ./auth_hook
 import ../protocol/types
+import ../protocol/diagnostic
 import ../protocol/modern
 import ../protocol/param_headers
 import ../protocol/version
@@ -123,7 +124,7 @@ proc learnToolHeaders(t: StreamableHttpTransport, result: JsonNode) =
     let name = tool{"name"}.getStr()
     let declared = declaredParamHeaders(tool{"inputSchema"})
     if declared.invalid.isSome:
-      stderr.writeLine("[mcp-http] ignoring tool '" & name & "' of " & t.baseUrl &
+      stderr.writeLine("[mcp-http] ignoring tool '" & peerText(name) & "' of " & t.baseUrl &
                        ": " & declared.invalid.get)
       t.paramBindings.del name
       continue
@@ -240,7 +241,7 @@ proc consume(t: StreamableHttpTransport, response: WireResponse,
     # failure.
     if not t.closed and (requestId.isNil or idKey(requestId) notin t.abandoned):
       stderr.writeLine("[mcp-http] event stream from " & t.baseUrl &
-                        " failed with " & $e.name & ": " & e.msg)
+                        " failed with " & $e.name & ": " & peerText(e.msg))
   finally:
     t.untrack(response)
   result.retryMs = parser.retryMs
@@ -260,7 +261,7 @@ proc openStream(t: StreamableHttpTransport, lastEventId: string): Future[Option[
   try:
     response = await wire.request(t.baseUrl, HttpGet, headers)
   except McpTransportError as e:
-    stderr.writeLine("[mcp-http] GET " & t.baseUrl & " failed: " & e.msg)
+    stderr.writeLine("[mcp-http] GET " & t.baseUrl & " failed: " & peerText(e.msg))
     return none(WireResponse)
   if response.code.is2xx and response.isEventStream:
     t.track response
@@ -535,7 +536,7 @@ proc endSession(t: StreamableHttpTransport) {.async.} =
     if not response.code.is2xx and response.code != Http405:
       stderr.writeLine("[mcp-http] DELETE " & t.baseUrl & " answered HTTP " & $response.code)
   except McpTransportError as e:
-    stderr.writeLine("[mcp-http] DELETE " & t.baseUrl & " failed: " & e.msg)
+    stderr.writeLine("[mcp-http] DELETE " & t.baseUrl & " failed: " & peerText(e.msg))
 
 method close*(t: StreamableHttpTransport): Future[void] {.async.} =
   if t.closed:

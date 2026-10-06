@@ -100,3 +100,11 @@ Feature: Security of the HTTP server transport
     Then the answer is 403 and nothing is created or delivered
     And loopback names, with or without a port, and the listed hosts are served
     And a transport bound elsewhere checks Host only when hosts are listed
+
+  @spec:MCP-SEC-HTTP-7
+  Scenario: What a peer chose is made harmless before it is written to a diagnostic
+    Given text a peer chose: a request id, a method name, a reason, an error message, a whole message
+    When the server or a transport writes it to stderr
+    Then line breaks, escape and other control characters, line separators and bidirectional overrides are shown as escapes
+    And invalid UTF-8 bytes are shown as escapes
+    And one message is cut to a bounded length, with the number of bytes left out
