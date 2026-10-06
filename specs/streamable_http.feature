@@ -109,7 +109,7 @@ Feature: Streamable HTTP transport
   Scenario: GET and DELETE exist only where a spoken version has them
     Given a server's endpoint
     When a GET or DELETE names no version and no session
-    Then it is 400 where a spoken version has the stream or sessions, since the session id is what is missing
+    Then GET is 400 where a spoken version has the stream, and DELETE is 400 where a spoken version has the initialize handshake, since the session id is what is missing
     And it is 405 where none has, and Allow names the methods the spoken versions use
     And a GET or DELETE that names 2026-07-28 is 405 with Allow: POST, whatever else the server speaks
 

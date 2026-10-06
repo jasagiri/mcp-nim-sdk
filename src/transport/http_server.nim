@@ -557,7 +557,10 @@ func allowedMethods(t: HttpServerTransport, req: Request): seq[HttpMethod] =
   if req.namesModernVersion:
     return
   if t.speaks(ftHttpGetStream): result.add HttpGet
-  if t.speaks(ftHttpSessions): result.add HttpDelete
+  # DELETE ends a session, and this transport gives one to every client of a
+  # version with the initialize handshake, also to one of 2024-11-05 that
+  # posts here instead of using HTTP+SSE.
+  if t.speaksLegacy: result.add HttpDelete
 
 proc handleGet(t: HttpServerTransport, req: Request) {.async.} =
   ## The stream of messages that belong to no request, or the rest of an

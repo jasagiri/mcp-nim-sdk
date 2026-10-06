@@ -16,7 +16,8 @@ const
   SpeaksModern = isModern(DefaultProtocolVersion)
   SpeaksLegacy = SupportedProtocolVersions.anyIt(not isModern(it))
   GetStreamSpoken = SupportedProtocolVersions.anyIt(it.has(ftHttpGetStream))
-  SessionsSpoken = SupportedProtocolVersions.anyIt(it.has(ftHttpSessions))
+  SessionsSpoken = SpeaksLegacy
+    ## The transport keeps a session for every client that initializes.
 
 proc plainServer(): McpServer =
   newMcpServer(McpServerInfo(name: "ExampleServer", version: "1.0.0"),

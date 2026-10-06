@@ -227,7 +227,7 @@ suite "Authorization flow, every version of the build":
       check env.authServer.log.requestsTo("/token").len == 0
 
 suite "Authorization flow, 2025-03-26 discovery":
-  when mpv20250326 in authVersions:
+  if mpv20250326 in authVersions:
     test "Given metadata at the root of the origin, when the client discovers, then it sends MCP-Protocol-Version and asks no resource metadata":
       var env = start(mpv20250326)
       defer: env.stop()
@@ -258,7 +258,7 @@ suite "Authorization flow, 2025-03-26 discovery":
       check env.authServer.log.requestsTo("/register").len == 0
 
 suite "Authorization flow, discovery through resource metadata":
-  when mpv20250618 in authVersions:
+  if mpv20250618 in authVersions:
     test "Given a challenge without resource_metadata and version 2025-06-18, when the client discovers, then it fails: the version defines no other way":
       var env = start(mpv20250618)
       defer: env.stop()
@@ -309,7 +309,7 @@ suite "Authorization flow, discovery through resource metadata":
       expect McpTransportError:
         discard transport.ping()
 
-  when mpv20251125 in authVersions:
+  if mpv20251125 in authVersions:
     test "Given a challenge without resource_metadata and version 2025-11-25, when the client discovers, then it probes the path-specific URI first":
       var env = start(mpv20251125)
       defer: env.stop()
@@ -354,7 +354,7 @@ suite "Authorization flow, discovery through resource metadata":
       check env.consents[].len == 0
       check env.authServer.log.requestsTo("/register").len == 0
 
-  when mpv20250618 in authVersions:
+  if mpv20250618 in authVersions:
     test "Given an authorization server that advertises only the plain method, when any version discovers, then the client refuses":
       var env = start(mpv20250618)
       defer: env.stop()
@@ -381,7 +381,7 @@ suite "Authorization flow, discovery through resource metadata":
       check env.consents[].len == 0
 
 suite "Authorization flow, scopes":
-  when mpv20251125 in authVersions:
+  if mpv20251125 in authVersions:
     test "Given a scope in the challenge, when the client authorizes, then it asks for exactly that scope":
       var env = start(mpv20251125)
       defer: env.stop()
@@ -424,7 +424,7 @@ suite "Authorization flow, scopes":
       # 2025-11-25: the challenge is authoritative; 2026-07-28 keeps earlier scopes
       check env.consents[][1].scopeOf == "files:write"
 
-  when mpv20250618 in authVersions:
+  if mpv20250618 in authVersions:
     test "Given a 403 and a version before 2025-11-25, when the client receives it, then it reports the error without a new authorization":
       var env = start(mpv20250618)
       defer: env.stop()
@@ -435,7 +435,7 @@ suite "Authorization flow, scopes":
         discard transport.ping()
       check env.consents[].len == 1
 
-  when mpv20251125 in authVersions:
+  if mpv20251125 in authVersions:
     test "Given an authorization server that never grants the scope, when the server keeps challenging, then the client stops after its attempt limit":
       var env = start(mpv20251125)
       defer: env.stop()
@@ -450,7 +450,7 @@ suite "Authorization flow, scopes":
         check "permanent" in e.msg
       check env.consents[].len <= 1 + 2 + 1
 
-  when mpv20260728 in authVersions:
+  if mpv20260728 in authVersions:
     test "Given a 403 and version 2026-07-28, when the client steps up, then it asks for the union of earlier and challenged scopes":
       var env = start(mpv20260728)
       defer: env.stop()
@@ -463,7 +463,7 @@ suite "Authorization flow, scopes":
       check env.consents[][1].scopeOf == "files:read files:write"
 
 suite "Authorization flow, client registration":
-  when mpv20251125 in authVersions:
+  if mpv20251125 in authVersions:
     test "Given an authorization server that supports Client ID Metadata Documents, when the client has such a URL, then it uses it and does not register":
       var env = start(mpv20251125)
       defer: env.stop()
@@ -534,7 +534,7 @@ suite "Authorization flow, client registration":
       check env.consents[].len == 2
       check env.authServer.log.requestsTo("/register").len == 1
 
-  when mpv20260728 in authVersions:
+  if mpv20260728 in authVersions:
     test "Given pre-registered credentials of another issuer and version 2026-07-28, when the client authorizes, then it refuses to reuse them":
       var env = start(mpv20260728)
       defer: env.stop()
@@ -577,7 +577,7 @@ suite "Authorization flow, client registration":
       check second.log.requestsTo("/register").len == 1
 
 suite "Authorization flow, issuer validation (2026-07-28)":
-  when mpv20260728 in authVersions:
+  if mpv20260728 in authVersions:
     test "Given metadata advertising iss and a response with another iss, when the client receives it, then the code is never sent":
       var env = start(mpv20260728)
       defer: env.stop()
@@ -645,7 +645,7 @@ suite "Authorization flow, issuer validation (2026-07-28)":
         check "phish.example" notin e.msg
         check "access_denied" notin e.msg
 
-  when mpv20251125 in authVersions:
+  if mpv20251125 in authVersions:
     test "Given version 2025-11-25 and a wrong iss, when the client receives the response, then iss is not part of that version and the flow completes":
       var env = start(mpv20251125)
       defer: env.stop()
