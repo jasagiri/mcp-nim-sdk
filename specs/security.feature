@@ -454,6 +454,11 @@ Feature: Security properties
     And the log holds one line naming the failure
     And the server goes on answering
 
+  Rule: Credentials of the authorization extensions
+    As a client that uses OAuth client credentials or enterprise-managed authorization
+    I want its secret, signing key and identity assertion bound to the issuer they are for
+    So that an MCP server cannot have them presented to an authorization server of its choosing
+
   @spec:MCP-SEC-AUTH-3
   Scenario: Client credentials of the extension go to the authorization server they were issued by
     Given a client secret or a signing key configured for one issuer, and an MCP server whose metadata names another
