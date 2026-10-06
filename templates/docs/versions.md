@@ -50,3 +50,14 @@ After connecting, `client.negotiatedVersion` is the version in use.
 ## What changes between versions
 
 The feature table of each version is in the [README](../README.md). Behaviour that depends on the version is decided by asking the table (`version.has(ftXxx)` in `src/protocol/features.nim`), not by comparing dates.
+
+## Where the tags and branches used to point
+
+Until 2026-10 the tag `mcp-<version>` marked the commit that first mentioned a version and the branch of the same name held the code of all versions with another default; neither gave an SDK that spoke just that version. Both now name the same commit: the common code plus the one line that sets the default, and the documents generated for it. Anything pinned to the earlier commits can still reach them by id:
+
+| Name | Tag was | Branch was |
+|---|---|---|
+| `mcp-2024-11-05` | `e5d015a272d004f2622872a9c03d9ba2b126f8a1` | `dc1bad0c1d5ded98045157e1500ea2d8e2a89c88` |
+| `mcp-2025-03-26` | `e5d015a272d004f2622872a9c03d9ba2b126f8a1` | `584e25df1917fbe82434b7a5916b180c0ba14299` |
+| `mcp-2025-06-18` | `89006de90e1bd37b8c90ce91ca8ad62194af047d` | `5b8c20e3650642e2f2b5988d8203c56049aa02a1` |
+| `mcp-2025-11-25` | `b513423a4c772f65603220bb2f045fc894de2639` | `e81d24c1e7d9458658001eed892c61aadab69288` |
