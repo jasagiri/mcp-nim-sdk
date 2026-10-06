@@ -12,6 +12,7 @@ import protocol/types
 import protocol/version
 import protocol/features
 import auth/resource_server
+import server/server
 
 const
   Spoken = SupportedProtocolVersions
@@ -94,7 +95,7 @@ proc openSession(env: Env, token: string): string =
   ## Initializes as `token` and returns the session id.
   let reply = send(env.base & "/mcp", HttpPost, initializeBody(), bearer(token))
   doAssert reply.code == Http200, "initialize answered " & $reply.code
-  reply.headers["Mcp-Session-Id"]
+  $reply.headers["Mcp-Session-Id"]
 
 suite "Authorization covers every endpoint the transport serves (MCP-SEC-HTTP-1)":
   if ServesLegacySse:
@@ -188,3 +189,122 @@ suite "A session belongs to the principal that made it (MCP-SEC-HTTP-2)":
       check send(env.base & endpoint, HttpPost, rpc(1, "tools/list"), bearer("bob")).code == Http404
       check send(env.base & endpoint, HttpPost, rpc(1, "tools/list"), bearer("alice")).code == Http202
       stream.close()
+
+type Serving = object
+  transport: HttpServerTransport
+  base: string
+
+proc startServing(): Serving =
+  ## A real McpServer whose tool `hang` never answers, so that what the
+  ## transport and the server do with a cancellation can be seen.
+  let transport = newHttpServerTransport(port = 0)
+  transport.listen()
+  asyncCheck transport.serve()
+  let server = newMcpServer(McpServerInfo(name: "S", version: "1"),
+    capabilities = McpServerCapabilities(tools: some(McpToolsCapability())))
+  let callTool: typeof(McpToolHandlers().callHandler.get) =
+    proc(name: string, arguments: JsonNode): Future[JsonNode] {.async.} =
+      await newFuture[void]("never")
+      return %*{"content": [], "isError": false}
+  server.setToolHandlers(McpToolHandlers(callHandler: some(callTool)))
+  waitFor server.attachTransport(transport)
+  Serving(transport: transport, base: "http://127.0.0.1:" & $transport.port)
+
+proc modernMeta(): JsonNode =
+  %*{"io.modelcontextprotocol/protocolVersion": "2026-07-28",
+     "io.modelcontextprotocol/clientInfo": {"name": "C", "version": "1"},
+     "io.modelcontextprotocol/clientCapabilities": {}}
+
+proc hangCall(id: JsonNode, modern: bool): string =
+  var params = %*{"name": "hang", "arguments": {}}
+  if modern:
+    params["_meta"] = modernMeta()
+  $(%*{"jsonrpc": "2.0", "id": id, "method": "tools/call", "params": params})
+
+proc cancelled(requestId: JsonNode): string =
+  $(%*{"jsonrpc": "2.0", "method": "notifications/cancelled",
+       "params": {"requestId": requestId}})
+
+proc startHanging(base: string, id: JsonNode, modern: bool,
+                  headers: openArray[(string, string)]): AsyncHttpClient =
+  ## Posts the call without waiting for its answer; closing the result is
+  ## the client leaving.
+  let http = newAsyncHttpClient()
+  let all = newHttpHeaders({"Content-Type": "application/json",
+                            "Accept": "application/json, text/event-stream"})
+  for (name, value) in headers:
+    all[name] = value
+  if modern:
+    all["MCP-Protocol-Version"] = "2026-07-28"
+    all["Mcp-Method"] = "tools/call"
+    all["Mcp-Name"] = "hang"
+  discard http.request(base & "/mcp", HttpPost, hangCall(id, modern), all)
+  waitFor sleepAsync(100)
+  http
+
+proc legacySessionOf(base: string): string =
+  let reply = send(base & "/mcp", HttpPost, initializeBody())
+  doAssert reply.code == Http200
+  let session = $reply.headers["Mcp-Session-Id"]
+  discard send(base & "/mcp", HttpPost,
+    $(%*{"jsonrpc": "2.0", "method": "notifications/initialized"}),
+    @[("Mcp-Session-Id", session)])
+  session
+
+suite "A cancellation cancels only the sender's own request (MCP-SEC-HTTP-6)":
+  if DefaultProtocolVersion.isModern:
+    test "Given a 2026-07-28 request in progress, when another client posts notifications/cancelled naming the transport's exchange id or the same id, then the request is still in progress":
+      let env = startServing()
+      let victim = startHanging(env.base, %1, true, [])
+      check env.transport.pendingExchangeCount == 1
+      for named in [%"http-1", %1, %"1"]:
+        discard send(env.base & "/mcp", HttpPost, cancelled(named),
+                     {"MCP-Protocol-Version": "2026-07-28"})
+      waitFor sleepAsync(100)
+      check env.transport.pendingExchangeCount == 1
+      victim.close()
+
+    test "Given a 2026-07-28 request in progress, when its client closes the connection, then the request is cancelled":
+      let env = startServing()
+      let victim = startHanging(env.base, %1, true, [])
+      check env.transport.pendingExchangeCount == 1
+      victim.close()
+      waitFor sleepAsync(200)
+      check env.transport.pendingExchangeCount == 0
+
+  if ServesSessions:
+    test "Given a session with a request in progress, when it cancels the request by the id it chose, then the request is cancelled":
+      let env = startServing()
+      let session = legacySessionOf(env.base)
+      let hanging = startHanging(env.base, %5, false, @[("Mcp-Session-Id", session)])
+      check env.transport.pendingExchangeCount == 1
+      check send(env.base & "/mcp", HttpPost, cancelled(%5),
+                 @[("Mcp-Session-Id", session)]).code == Http202
+      waitFor sleepAsync(100)
+      check env.transport.pendingExchangeCount == 0
+      hanging.close()
+
+    test "Given two sessions that chose the same request id, when one cancels it, then only its own request is cancelled":
+      let env = startServing()
+      let a = legacySessionOf(env.base)
+      let b = legacySessionOf(env.base)
+      let hangA = startHanging(env.base, %5, false, @[("Mcp-Session-Id", a)])
+      let hangB = startHanging(env.base, %5, false, @[("Mcp-Session-Id", b)])
+      check env.transport.pendingExchangeCount == 2
+      discard send(env.base & "/mcp", HttpPost, cancelled(%5), @[("Mcp-Session-Id", a)])
+      waitFor sleepAsync(100)
+      check env.transport.pendingExchangeCount == 1
+      hangA.close()
+      hangB.close()
+
+    test "Given a request of another session, when a session cancels the exchange id the transport made for it, then that request is still in progress":
+      let env = startServing()
+      let a = legacySessionOf(env.base)
+      let b = legacySessionOf(env.base)
+      let hangA = startHanging(env.base, %5, false, @[("Mcp-Session-Id", a)])
+      check env.transport.pendingExchangeCount == 1
+      for named in [%"http-1", %5]:
+        discard send(env.base & "/mcp", HttpPost, cancelled(named), @[("Mcp-Session-Id", b)])
+      waitFor sleepAsync(100)
+      check env.transport.pendingExchangeCount == 1
+      hangA.close()

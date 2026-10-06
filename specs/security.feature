@@ -76,3 +76,11 @@ Feature: Security of the HTTP server transport
     When bob, with a good token of his own, uses its Mcp-Session-Id to post, open the GET stream or DELETE, or posts to alice's HTTP+SSE endpoint
     Then the answer is 404 and alice's session is untouched
     And alice herself is served as before
+
+  @spec:MCP-SEC-HTTP-6
+  Scenario: A cancellation cancels only the sender's own request
+    Given clients with requests in progress on a transport, some of them 2026-07-28 and some in sessions
+    When a client posts notifications/cancelled naming the id it chose, the id of another client's request, or the id the transport made for one
+    Then a session's request named by the session's own id is cancelled
+    And no other client's request is cancelled, whatever id is named
+    And a 2026-07-28 request is cancelled by its client closing the connection, which the notification cannot do

@@ -1069,3 +1069,8 @@ MCP-SEC-HTTP-2 | tests/test_security_http.nim | Given alice's session, when alic
 MCP-SEC-HTTP-2 | tests/test_security_http.nim | Given alice's session, when bob opens its GET stream, then the answer is 404
 MCP-SEC-HTTP-2 | tests/test_security_http.nim | Given alice's session, when bob sends DELETE with its id, then the answer is 404 and the session stays
 MCP-SEC-HTTP-2 | tests/test_security_http.nim | Given alice's HTTP+SSE session, when bob posts to its endpoint, then the answer is 404
+MCP-SEC-HTTP-6 | tests/test_security_http.nim | Given a 2026-07-28 request in progress, when another client posts notifications/cancelled naming the transport's exchange id or the same id, then the request is still in progress
+MCP-SEC-HTTP-6 | tests/test_security_http.nim | Given a 2026-07-28 request in progress, when its client closes the connection, then the request is cancelled
+MCP-SEC-HTTP-6 | tests/test_security_http.nim | Given a session with a request in progress, when it cancels the request by the id it chose, then the request is cancelled
+MCP-SEC-HTTP-6 | tests/test_security_http.nim | Given two sessions that chose the same request id, when one cancels it, then only its own request is cancelled
+MCP-SEC-HTTP-6 | tests/test_security_http.nim | Given a request of another session, when a session cancels the exchange id the transport made for it, then that request is still in progress

@@ -479,6 +479,41 @@ proc enqueue(t: HttpServerTransport, message: JsonNode, session: string,
   else:
     t.requestQueue.addLast(incoming)
 
+proc exchangeOf(t: HttpServerTransport, session: string, clientId: JsonNode): Option[string] =
+  ## The id this transport gave to the request `session` sent with the id
+  ## `clientId`; ids are the client's to choose, so only the session says
+  ## whose request is meant.
+  for key, exchange in t.exchanges:
+    let owner = if exchange.group.isNil: exchange.legacySession else: exchange.group.session
+    if owner == session and exchange.idNode == clientId:
+      return some(key)
+  none(string)
+
+proc enqueueFromClient(t: HttpServerTransport, message: JsonNode, session: string,
+                       principal: Option[string]) =
+  ## A notification or response the client posted. The server knows requests
+  ## by the ids this transport made, not by the ones clients chose, so a
+  ## `notifications/cancelled` is rewritten to name the sender's own request
+  ## by that id, and is dropped when the sender has no such request in
+  ## progress (the specification lets a server ignore a cancellation of an
+  ## unknown request). Without a session there is no telling clients apart:
+  ## 2026-07-28 cancels an HTTP request by closing its connection
+  ## (basic/patterns/cancellation, "Transport-Specific Cancellation"), so
+  ## the notification is dropped there; letting it through would let any
+  ## client cancel any request by guessing an exchange id.
+  if message{"method"}.getStr() == "notifications/cancelled":
+    let named = message{"params"}{"requestId"}
+    if session.len == 0 or named.isNil:
+      return
+    let exchangeId = t.exchangeOf(session, named)
+    if exchangeId.isNone:
+      return
+    let rewritten = message.copy()
+    rewritten["params"]["requestId"] = %exchangeId.get
+    t.enqueue(rewritten, session, principal)
+    return
+  t.enqueue(message, session, principal)
+
 proc invalidRequest(message: string): JsonRpcError =
   JsonRpcError(code: ErrInvalidRequest, message: message)
 
@@ -744,7 +779,7 @@ proc handlePost(t: HttpServerTransport, req: Request,
   if requests.len == 0:
     # Notifications and responses: nothing to answer on this exchange.
     for item in items:
-      t.enqueue(item, sessionId, principal)
+      t.enqueueFromClient(item, sessionId, principal)
     await req.respondEmpty(Http202)
     return
 
@@ -757,7 +792,7 @@ proc handlePost(t: HttpServerTransport, req: Request,
     discard group.stream.push("")
   for item in items:
     if not isRequest(item):
-      t.enqueue(item, sessionId, principal)
+      t.enqueueFromClient(item, sessionId, principal)
       continue
     inc t.exchangeCount
     let exchangeId = "http-" & $t.exchangeCount
@@ -842,7 +877,7 @@ proc handleLegacyPost(t: HttpServerTransport, req: Request,
     forwarded["id"] = %exchangeId
     t.enqueue(forwarded, id, principal)
   else:
-    t.enqueue(message, id, principal)
+    t.enqueueFromClient(message, id, principal)
   await req.respondEmpty(Http202)
 
 proc authenticate(t: HttpServerTransport, req: Request
