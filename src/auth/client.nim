@@ -99,6 +99,10 @@ proc newOAuthClient*(config: OAuthClientConfig): OAuthClient
   ## localhost, a server URL that is not absolute).
   result = OAuthClient(config: config, policy: authPolicy(config.version),
                        attempts: initTable[string, (int, Time)]())
+  # Loopback is reachable only if the user pointed the client at a loopback
+  # server: metadata a remote server names must not lead the client to the
+  # user's own localhost.
+  result.config.fetchPolicy = config.fetchPolicy.narrowedTo(config.serverUrl)
   result.resource = canonicalResource(config.serverUrl)
   checkRedirectUri(config.redirectUri)
   if config.authorize.isNil:

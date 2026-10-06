@@ -1,10 +1,15 @@
 ## The HTTP requests an OAuth client makes to metadata, registration and
-## token endpoints: bounded in time and size, never redirected, and only to
-## URLs that pass `checkFetchUrl`.
+## token endpoints: bounded in time and size, never redirected, only to URLs
+## that pass `checkFetchUrl`, and only to an address the policy allows (the
+## host is resolved and the connection goes to the address that was judged).
+## They go over `transport/http_wire`, so the TLS certificate has to be valid
+## for the host of the URL.
 
-import std/[asyncdispatch, httpclient, json, options, strutils]
+import std/[asyncdispatch, httpcore, json, options, strutils]
 import ./errors
 import ./urls
+import ../../transport/guarded_wire
+import ../../transport/http_wire as wire
 
 type
   HttpReply* = object
@@ -17,33 +22,40 @@ type
     document*: Option[JsonNode]
       ## Present when the body of a success response is a JSON object.
 
-proc exchange(client: AsyncHttpClient, httpMethod: HttpMethod, url, body: string,
-              headers: HttpHeaders, maxBodySize: int): Future[HttpReply] {.async.} =
-  let response = await client.request(url, httpMethod, body, headers)
+type Connection = ref object
+  response: WireResponse
+    ## The request in flight, so that a timeout can close its connection.
+
+proc exchange(httpMethod: HttpMethod, url, what: string, policy: FetchPolicy, body: string,
+              headers: HttpHeaders, open: Connection): Future[HttpReply] {.async.} =
+  let response = await guardedRequest(
+    url, httpMethod, policy.destinationPolicy, policy.resolver, headers, body,
+    connected = proc(connection: WireResponse) {.closure, gcsafe.} =
+      open.response = connection,
+    followRedirects = false, connectTimeoutMs = policy.timeoutMs)
+  defer: response.close()
   result.code = response.code.int
   result.headers = response.headers
-  while true:
-    let (hasData, chunk) = await response.bodyStream.read()
-    if not hasData:
-      break
-    if result.body.len + chunk.len > maxBodySize:
-      raise newException(OAuthError, "response from " & url & " exceeds " &
-                                     $maxBodySize & " bytes")
-    result.body.add chunk
+  result.body = await response.readAll(policy.maxBodySize)
 
 proc httpExchange*(httpMethod: HttpMethod, url: string, policy: FetchPolicy, what: string,
                    body = "", headers: seq[(string, string)] = @[]): Future[HttpReply] {.async.} =
   ## One request. Redirects are not followed: an endpoint that moves is
-  ## reported, not chased to a host nobody vetted.
+  ## reported, not chased to a host nobody vetted. The host is resolved here
+  ## and the connection goes to an address the policy allows, whatever the
+  ## URL's text looks like; a host the policy refuses is an OAuthSecurityError.
   checkFetchUrl(url, policy, what)
-  let client = newAsyncHttpClient(userAgent = "mcp-nim-sdk", maxRedirects = 0)
-  let pending = exchange(client, httpMethod, url, body, newHttpHeaders(headers),
-                         policy.maxBodySize)
+  let sent = newHttpHeaders(headers)
+  if not sent.hasKey("User-Agent"):
+    sent["User-Agent"] = "mcp-nim-sdk"
+  let open = Connection()
+  let pending = exchange(httpMethod, url, what, policy, body, sent, open)
   try:
     let finished = await withTimeout(pending, policy.timeoutMs)
     if not finished:
-      client.close()
-      # The abandoned request fails when its socket closes. The caller
+      if not open.response.isNil:
+        open.response.close()
+      # The abandoned request fails when its connection closes. The caller
       # learns about the timeout; the diagnostic below says what became of it.
       pending.addCallback(proc() {.gcsafe.} =
         if pending.failed:
@@ -54,10 +66,10 @@ proc httpExchange*(httpMethod: HttpMethod, url: string, policy: FetchPolicy, wha
     result = pending.read()
   except OAuthError:
     raise
+  except AddressNotAllowed as e:
+    raise newException(OAuthSecurityError, what & " " & e.msg)
   except CatchableError as e:
     raise newException(OAuthError, what & " " & url & " failed: " & e.msg)
-  finally:
-    client.close()
   # 304 answers a conditional request; it moves nothing.
   if result.code in 300 .. 399 and result.code != 304:
     raise newException(OAuthError, what & " " & url & " redirected (HTTP " &

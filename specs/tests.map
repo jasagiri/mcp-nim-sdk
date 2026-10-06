@@ -1113,3 +1113,17 @@ MCP-SEC-WIRE-3 | tests/test_security_wire_limits.nim | Given an event stream who
 MCP-SEC-WIRE-3 | tests/test_security_wire_limits.nim | Given a server that never answers, when a header timeout is given, then the request fails after it
 MCP-SEC-WIRE-3 | tests/test_security_wire_limits.nim | Given no header timeout, when a server answers after a while, then the response is waited for
 MCP-SEC-WIRE-3 | tests/test_security_wire_tls.nim | Given a server that accepts the connection and never speaks TLS, when the connect timeout passes, then the request fails
+MCP-SEC-WIRE-4 | tests/test_security_address.nim | Given a loopback address in any notation, when classified, then it is loopback
+MCP-SEC-WIRE-4 | tests/test_security_address.nim | Given an unspecified or reserved address, when classified, then it is reserved
+MCP-SEC-WIRE-4 | tests/test_security_address.nim | Given private and link-local addresses in any notation, when classified, then they are:
+MCP-SEC-WIRE-4 | tests/test_security_address.nim | Given public addresses and names, when classified, then they are public or a name
+MCP-SEC-WIRE-4 | tests/test_security_address.nim | Given a loopback address in another notation, when the policy refuses loopback, then the URL is refused
+MCP-SEC-WIRE-4 | tests/test_security_address.nim | Given a link-local or reserved address in another notation, when the policy allows loopback and private networks, then the URL is still refused
+MCP-SEC-WIRE-4 | tests/test_security_address.nim | Given plain http to a loopback address in another notation, when loopback is allowed, then the URL passes, and to a public one it does not
+MCP-SEC-WIRE-5 | tests/test_security_address.nim | Given a name that resolves to a loopback address, when the policy refuses loopback, then the request is refused before any connection
+MCP-SEC-WIRE-5 | tests/test_security_address.nim | Given a name that resolves to a metadata service address, when the policy allows loopback and private networks, then the request is still refused
+MCP-SEC-WIRE-5 | tests/test_security_address.nim | Given a name that resolves to a public and a private address, when the policy refuses private networks, then the request is refused
+MCP-SEC-WIRE-5 | tests/test_security_address.nim | Given a name that does not resolve, when a request is made, then the request is refused
+MCP-SEC-WIRE-5 | tests/test_security_address.nim | Given a name that resolves to an allowed address, when a request is made, then the connection goes to that address
+MCP-SEC-WIRE-6 | tests/test_security_address.nim | Given a policy and a server URL, when narrowed, then loopback stays allowed only for a loopback server
+MCP-SEC-WIRE-6 | tests/test_security_address.nim | Given a remote server that names a loopback metadata URL, when the client answers its 401, then OAuthSecurityError is raised and nothing is requested

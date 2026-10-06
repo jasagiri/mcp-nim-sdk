@@ -138,3 +138,24 @@ Feature: Security of the outgoing HTTP client
     Then the stream is ended with an error before the line or event is complete
     And a request on a connection that gets no TLS handshake or no response head within its timeout fails
     And with no header timeout the answer to a request is waited for as long as its caller waits
+
+  @spec:MCP-SEC-WIRE-4
+  Scenario: A URL is judged by the address its host stands for, in any notation
+    Given a URL that came from the network
+    When its host is `2130706433`, `0x7f.1`, `::ffff:7f00:1`, `0:0:0:0:0:0:0:1`, `::` or `0.0.0.0`
+    Then it is classified as loopback or reserved, like `127.0.0.1`
+    And a link-local address (a cloud metadata service) or a reserved one is refused in every notation, whatever the policy allows
+
+  @spec:MCP-SEC-WIRE-5
+  Scenario: A host name is judged by what it resolves to, and the connection goes to that address
+    Given an OAuth metadata, registration or token request, a Server Card or AI Catalog fetch
+    When the host name resolves to an address the policy does not allow, or to several of which one is not allowed, or does not resolve
+    Then the request is refused before anything is connected
+    And a request that is allowed connects to the address that was judged, not to the name again
+
+  @spec:MCP-SEC-WIRE-6
+  Scenario: Loopback is reachable only for a server the user chose
+    Given a client the user pointed at an MCP server
+    When the metadata of a server that is not on loopback names a loopback URL
+    Then the client refuses it
+    And when the user's own server is on loopback, loopback URLs stay allowed (local development)

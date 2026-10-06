@@ -216,19 +216,19 @@ proc connectWithin(target: Uri, url, connectTo, caFile: string,
                    timeoutMs: int): Future[AsyncSocket] {.async.} =
   ## `connect`, ended after `timeoutMs` (none when it is not positive).
   let attempt = connect(target, connectTo, caFile)
-  if timeoutMs > 0:
-    let timer = sleepAsync(timeoutMs)
-    await (attempt or timer)
-    if not attempt.finished:
-      # The connection is still being made: whoever finishes it closes it,
-      # and a failure of an attempt nobody waits for is not news.
-      attempt.addCallback(proc() =
-        if attempt.failed:
-          discard attempt.readError()
-        else:
-          attempt.read().close())
-      raise httpFailure("no connection to " & url & " within " & $timeoutMs & " ms")
   try:
+    if timeoutMs > 0:
+      let timer = sleepAsync(timeoutMs)
+      await (attempt or timer)
+      if not attempt.finished:
+        # The connection is still being made: whoever finishes it closes it,
+        # and a failure of an attempt nobody waits for is not news.
+        attempt.addCallback(proc() =
+          if attempt.failed:
+            discard attempt.readError()
+          else:
+            attempt.read().close())
+        raise httpFailure("no connection to " & url & " within " & $timeoutMs & " ms")
     return await attempt
   except McpTransportError:
     raise
