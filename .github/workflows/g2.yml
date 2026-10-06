@@ -91,6 +91,38 @@ jobs:
           ../nim-muter/bin/nim-muter run --config tests/mutation/event_stream.json || status=$?
           cp .nim-muter/event_stream/report.json "$KURATSUGI_RESULT_DIR/event_stream.report.json" || exit 1
           exit $status
+  ext_apps:
+    steps:
+      - name: nim-muter ext_apps
+        run: |
+          status=0
+          ../nim-muter/bin/nim-muter run --config tests/mutation/ext_apps.json || status=$?
+          cp .nim-muter/ext_apps/report.json "$KURATSUGI_RESULT_DIR/ext_apps.report.json" || exit 1
+          exit $status
+  ext_auth:
+    steps:
+      - name: nim-muter ext_auth
+        run: |
+          status=0
+          ../nim-muter/bin/nim-muter run --config tests/mutation/ext_auth.json || status=$?
+          cp .nim-muter/ext_auth/report.json "$KURATSUGI_RESULT_DIR/ext_auth.report.json" || exit 1
+          exit $status
+  ext_skills:
+    steps:
+      - name: nim-muter ext_skills
+        run: |
+          status=0
+          ../nim-muter/bin/nim-muter run --config tests/mutation/ext_skills.json || status=$?
+          cp .nim-muter/ext_skills/report.json "$KURATSUGI_RESULT_DIR/ext_skills.report.json" || exit 1
+          exit $status
+  ext_tasks:
+    steps:
+      - name: nim-muter ext_tasks
+        run: |
+          status=0
+          ../nim-muter/bin/nim-muter run --config tests/mutation/ext_tasks.json || status=$?
+          cp .nim-muter/ext_tasks/report.json "$KURATSUGI_RESULT_DIR/ext_tasks.report.json" || exit 1
+          exit $status
   extensions:
     steps:
       - name: nim-muter extensions

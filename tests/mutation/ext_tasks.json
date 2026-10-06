@@ -1,0 +1,26 @@
+{
+  "sources": [
+    "src/ext/tasks/client.nim",
+    "src/ext/tasks/server.nim",
+    "src/ext/tasks/wire.nim",
+    "src/ext/tasks.nim"
+  ],
+  "testCommand": "nim c -r --hints:off tests/test_ext_tasks.nim && nim c -r --hints:off tests/test_ext_tasks_client.nim && nim c -r --hints:off tests/test_ext_tasks_dual.nim && nim c -r --hints:off tests/test_ext_tasks_http.nim && nim c -r --hints:off tests/test_security_ext_tasks.nim && nim c -r --hints:off tests/test_security_tasks_shared_store.nim && nim c -r --hints:off tests/test_security_diagnostic_tasks.nim",
+  "mutators": [
+    "AOR",
+    "ROR",
+    "LOR",
+    "BLR",
+    "SDL",
+    "RVR"
+  ],
+  "parallelism": 0,
+  "timeoutMs": 0,
+  "minScore": 0.0,
+  "reports": [
+    "console",
+    "json"
+  ],
+  "outputDir": ".nim-muter/ext_tasks",
+  "incremental": false
+}

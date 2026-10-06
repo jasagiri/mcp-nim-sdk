@@ -1,0 +1,27 @@
+{
+  "sources": [
+    "src/ext/apps/host.nim",
+    "src/ext/apps/messages.nim",
+    "src/ext/apps/model.nim",
+    "src/ext/apps/provider.nim",
+    "src/ext/apps.nim"
+  ],
+  "testCommand": "nim c -r --hints:off tests/test_ext_apps_end_to_end.nim && nim c -r --hints:off tests/test_ext_apps_host.nim && nim c -r --hints:off tests/test_ext_apps_messages.nim && nim c -r --hints:off tests/test_ext_apps_model.nim && nim c -r --hints:off tests/test_ext_apps_server.nim",
+  "mutators": [
+    "AOR",
+    "ROR",
+    "LOR",
+    "BLR",
+    "SDL",
+    "RVR"
+  ],
+  "parallelism": 0,
+  "timeoutMs": 0,
+  "minScore": 0.0,
+  "reports": [
+    "console",
+    "json"
+  ],
+  "outputDir": ".nim-muter/ext_apps",
+  "incremental": false
+}

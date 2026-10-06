@@ -1,0 +1,27 @@
+{
+  "sources": [
+    "src/ext/auth_client_credentials.nim",
+    "src/ext/auth_enterprise_managed.nim",
+    "src/ext/auth_shared.nim",
+    "src/auth/oauth/grants.nim",
+    "src/auth/oauth/jwt.nim"
+  ],
+  "testCommand": "nim c -r --hints:off tests/test_ext_auth_client_credentials.nim && nim c -r --hints:off tests/test_ext_auth_enterprise_managed.nim && nim c -r --hints:off tests/test_ext_auth_grants.nim && nim c -r --hints:off tests/test_security_ext_auth.nim",
+  "mutators": [
+    "AOR",
+    "ROR",
+    "LOR",
+    "BLR",
+    "SDL",
+    "RVR"
+  ],
+  "parallelism": 0,
+  "timeoutMs": 0,
+  "minScore": 0.0,
+  "reports": [
+    "console",
+    "json"
+  ],
+  "outputDir": ".nim-muter/ext_auth",
+  "incremental": false
+}
