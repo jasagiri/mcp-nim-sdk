@@ -26,6 +26,7 @@ MCP-LIFECYCLE-3 | tests/test_legacy_handshake.nim | Given a client limited to a 
 MCP-LIFECYCLE-3 | tests/test_legacy_handshake.nim | Given a client that declares only roots, when it connects, then initialize carries no other capability key
 MCP-LIFECYCLE-3 | tests/test_legacy_handshake.nim | Given a legacy client, when the handshake completes, then it sends notifications/initialized
 MCP-LIFECYCLE-4 | tests/test_era_matrix.nim | Given a legacy client, when it pings, then it gets an empty result
+MCP-LIFECYCLE-4 | tests/test_legacy_handshake.nim | Given a legacy client, when it pings with a string id or an integer id, then the answer is an empty result of JSON-RPC 2.0 under the same id
 MCP-LIFECYCLE-5 | tests/test_era_matrix.nim | Given the specification's discover request, when it is answered, then the result describes the server
 MCP-LIFECYCLE-5 | tests/test_modern_protocol.nim | Given a server's versions and capabilities, when the discover result is built, then it matches the specification's example
 MCP-LIFECYCLE-5 | tests/test_modern_protocol.nim | Given a server that also speaks legacy versions, when the discover result is built, then versions are listed newest first
@@ -662,6 +663,7 @@ MCP-ELICIT-URL-1 | tests/test_server_elicitation.nim | Given a URL mode answer w
 MCP-ELICIT-URL-1 | tests/test_client_elicitation.nim | Given a URL request, when the handler accepts, then it sees the id and URL and the answer has no content
 MCP-ELICIT-URL-1 | tests/test_client_elicitation.nim | Given a handler that returns content for a URL request, when the server asks, then the server gets an internal error
 MCP-ELICIT-URL-2 | tests/test_elicitation_payload.nim | Given the capability forms, when read, then an empty object is the form mode alone
+MCP-ELICIT-URL-2 | tests/test_elicitation_payload.nim | Given the wire forms of capabilities.elicitation, when parsed, then each declared mode is supported and an empty object is the form mode alone
 MCP-ELICIT-URL-2 | tests/test_server_elicitation.nim | Given a client that declared only the form mode, when the server asks in url mode, then it raises and sends nothing
 MCP-ELICIT-URL-2 | tests/test_server_elicitation.nim | Given a client that declared only the url mode, when the server asks for a form, then it raises
 MCP-ELICIT-URL-2 | tests/test_server_elicitation.nim | Given a connection of 2025-06-18, when the server asks in url mode, then it raises and sends nothing

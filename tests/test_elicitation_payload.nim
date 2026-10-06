@@ -11,6 +11,7 @@ import protocol/version
 import protocol/features
 import protocol/types
 import protocol/elicitation
+import protocol/lifecycle
 
 const
   FormVersions = [mpv20250618, mpv20251125, mpv20260728]
@@ -349,6 +350,15 @@ suite "elicitation: URL mode (2025-11-25)":
     check modeSupported(McpElicitationCapability(form: true), emForm)
     check not modeSupported(McpElicitationCapability(form: true), emUrl)
     check modeSupported(McpElicitationCapability(url: true), emUrl)
+
+  test "Given the wire forms of capabilities.elicitation, when parsed, then each declared mode is supported and an empty object is the form mode alone":
+    proc modes(wire: JsonNode): tuple[form, url: bool] =
+      let capability = wire.fromJson(McpElicitationCapability)
+      (modeSupported(capability, emForm), modeSupported(capability, emUrl))
+    check modes(%*{}) == (true, false)
+    check modes(%*{"form": {}}) == (true, false)
+    check modes(%*{"url": {}}) == (false, true)
+    check modes(%*{"form": {}, "url": {}}) == (true, true)
 
   test "Given an elicitation id, when a completion is built, then the params carry it":
     check elicitationCompleteParams(id, mpv20251125) == %*{"elicitationId": id}

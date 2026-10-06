@@ -97,6 +97,17 @@ suite "legacy handshake: server":
     check server.clientCapabilities.get.roots.isNone
     check server.clientCapabilities.get.sampling.isNone
 
+  test "Given a legacy client, when it pings with a string id or an integer id, then the answer is an empty result of JSON-RPC 2.0 under the same id":
+    let pair = newLoopbackPair()
+    let server = newMcpServer(info())
+    waitFor server.attachTransport(pair.server)
+    discard replyTo(pair, initializeRequest(%($LegacyDefault)))
+    for id in [%"ping-1", %7]:
+      let reply = replyTo(pair, %*{"jsonrpc": "2.0", "id": id, "method": "ping"})
+      check reply["jsonrpc"].getStr() == "2.0"
+      check reply["id"] == id
+      check reply["result"] == newJObject()
+
   test "Given a version above the build default, when a server is created with it, then ValueError is raised":
     for v in McpProtocolVersion:
       if v > DefaultProtocolVersion:
