@@ -10,7 +10,6 @@ import ../protocol/trace_context
 import ../protocol/mrtr
 import ../protocol/subscriptions
 import ../transport/transport
-import ../mcp/types as mcpTypes
 
 type
   McpError* = object of CatchableError
@@ -943,42 +942,3 @@ proc close*(client: McpClient): Future[void] {.async.} =
   client.failPending("the client was closed")
   if not client.transport.isNil:
     await client.transport.close()
-
-# High-level Client interface for easier usage
-type
-  Client* = ref object
-    ## High-level client object for MCP operations
-    name*: string
-    version*: string
-    capabilities*: mcpTypes.ClientCapabilities
-    transport*: McpTransport
-    serverInfo*: Option[mcpTypes.ServerMetadata]
-    isInitialized*: bool
-    mcpClient*: McpClient
-
-proc newClient*(name: string, version: string, capabilities: mcpTypes.ClientCapabilities,
-                protocolVersion: McpProtocolVersion = DefaultProtocolVersion): Client =
-  ## Creates a new high-level MCP client that speaks `protocolVersion` and
-  ## every earlier version
-  let clientInfo = McpClientInfo(
-    name: name,
-    version: version
-  )
-  # Convert mcpTypes.ClientCapabilities to McpClientCapabilities
-  var mcpCaps = McpClientCapabilities()
-  if capabilities.roots.isSome and capabilities.roots.get:
-    mcpCaps.roots = some(McpRootsCapability(listChanged: false))
-  if capabilities.sampling.isSome and capabilities.sampling.get:
-    mcpCaps.sampling = some(McpSamplingCapability())
-  if capabilities.experimental.isSome:
-    mcpCaps.experimental = capabilities.experimental
-
-  result = Client(
-    name: name,
-    version: version,
-    capabilities: capabilities,
-    transport: nil,
-    serverInfo: none(mcpTypes.ServerMetadata),
-    isInitialized: false,
-    mcpClient: newMcpClient(clientInfo, protocolVersion, mcpCaps)
-  )
