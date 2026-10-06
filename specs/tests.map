@@ -1095,3 +1095,7 @@ MCP-SEC-HTTP-7 | tests/test_security_diagnostic.nim | Given text longer than the
 MCP-SEC-HTTP-7 | tests/test_security_diagnostic.nim | Given a message that is no JSON-RPC message, when the server logs it, then the log holds one line without the control characters
 MCP-SEC-HTTP-7 | tests/test_security_diagnostic.nim | Given a message that is no JSON-RPC message and very long, when the server logs it, then the log line is short
 MCP-SEC-HTTP-7 | tests/test_security_diagnostic.nim | Given a response to no request, when the server logs its id, then the id is made fit
+MCP-SEC-WIRE-1 | tests/test_security_wire_tls.nim | Given a certificate for the host named in the URL, when the request is sent, then it is answered
+MCP-SEC-WIRE-1 | tests/test_security_wire_tls.nim | Given a certificate for another host than the URL names, when the request is sent, then it is refused
+MCP-SEC-WIRE-1 | tests/test_security_wire_tls.nim | Given a certificate for the IP address in the URL, when the request is sent, then it is answered
+MCP-SEC-WIRE-1 | tests/test_security_wire_tls.nim | Given a certificate for a name only, when the URL names an IP address, then it is refused

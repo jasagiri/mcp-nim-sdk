@@ -108,3 +108,18 @@ Feature: Security of the HTTP server transport
     Then line breaks, escape and other control characters, line separators and bidirectional overrides are shown as escapes
     And invalid UTF-8 bytes are shown as escapes
     And one message is cut to a bounded length, with the number of bytes left out
+Feature: Security of the outgoing HTTP client
+  As someone who connects an MCP client to servers across a network
+  I want the client to talk only to the server it was pointed at
+  So that a stranger on the path or a server's own redirection cannot take the connection over
+
+  Not a rule of the MCP specification: these follow the security guidance of
+  basic/authorization and basic/transports (HTTPS, no credentials to other
+  hosts) and RFC 6125 (the certificate names the host that was asked for).
+
+  @spec:MCP-SEC-WIRE-1
+  Scenario: A TLS server whose certificate names another host is refused
+    Given a TLS server with a certificate signed by a trusted CA
+    When the client requests a URL whose host is not in that certificate
+    Then the request fails before any HTTP is sent
+    And the same certificate is accepted for a URL whose host it names, as a DNS name or an IP address

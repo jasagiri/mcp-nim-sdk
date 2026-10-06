@@ -14,6 +14,14 @@ import std/[asyncdispatch, asyncnet, httpcore, strutils, uri]
 import std/net except dial
 import ./transport
 
+when defined(ssl):
+  import std/openssl
+
+  proc X509_check_ip_asc(cert: PX509, address: cstring, flags: cuint): cint
+    {.cdecl, dynlib: DLLUtilName, importc.}
+    ## `std/openssl` wraps `X509_check_host` but not its sibling for IP
+    ## addresses; it is imported from the library `std/openssl` loads.
+
 const
   MaxHeadSize = 64 * 1024
   ReadSize = 16 * 1024
@@ -42,7 +50,31 @@ type
 proc httpFailure(message: string): ref McpTransportError =
   newException(McpTransportError, message)
 
-proc connect(url: Uri, connectTo: string): Future[AsyncSocket] {.async.} =
+when defined(ssl):
+  proc verifyPeerName(socket: AsyncSocket, host: string) {.async.} =
+    ## Raises unless the certificate the server presented is valid for `host`.
+    ## `asyncnet.wrapConnectedSocket` sets the SNI name but never compares the
+    ## certificate with it (Nim 2.2.8 lib/pure/asyncnet.nim:785-806; the
+    ## comparison `checkCertName` exists only for the blocking sockets, in
+    ## lib/pure/net.nim:833-854), so a certificate that chains to a trusted CA
+    ## is accepted for any name. Called before anything is sent.
+    # A write of no bytes completes the handshake and sends nothing.
+    await socket.send(nil, 0)
+    # The chain was verified by the handshake (CVerifyPeer); what is left is
+    # whether it names `host`. `getPeerCertificates` is not used: it needs
+    # SSL_get0_verified_chain, which the libraries this resolves to on some
+    # systems (macOS ships LibreSSL 2.x as libssl.43) do not have.
+    let certificate = SSL_get_peer_certificate(socket.sslHandle)
+    if certificate.isNil:
+      raise httpFailure("the server presented no certificate for " & host)
+    let matched =
+      if isIpAddress(host): X509_check_ip_asc(certificate, host.cstring, 0)
+      else: X509_check_host(certificate, host.cstring, host.len.cint, 0, nil)
+    X509_free(certificate)
+    if matched != 1:
+      raise httpFailure("the certificate of the server is not valid for " & host)
+
+proc connect(url: Uri, connectTo, caFile: string): Future[AsyncSocket] {.async.} =
   let secure = url.scheme == "https"
   if url.scheme notin ["http", "https"]:
     raise httpFailure("unsupported URL scheme: " & url.scheme)
@@ -53,8 +85,13 @@ proc connect(url: Uri, connectTo: string): Future[AsyncSocket] {.async.} =
                           buffered = false)
   if secure:
     when defined(ssl):
-      let context = newContext(verifyMode = CVerifyPeer)
+      let context = newContext(verifyMode = CVerifyPeer, caFile = caFile)
       context.wrapConnectedSocket(socket, handshakeAsClient, url.hostname)
+      try:
+        await socket.verifyPeerName(url.hostname)
+      except CatchableError:
+        socket.close()
+        raise
     else:
       socket.close()
       raise httpFailure("https needs a build with -d:ssl")
@@ -139,11 +176,11 @@ type Connected* = proc(response: WireResponse) {.closure, gcsafe.}
 
 proc requestOnce(url: string, httpMethod: HttpMethod, headers: HttpHeaders,
                  body: string, connected: Connected,
-                 connectTo: string): Future[WireResponse] {.async.} =
+                 connectTo, caFile: string): Future[WireResponse] {.async.} =
   let target = parseUri(url)
   let response = WireResponse(leftOpen: newFuture[void]("WireResponse.leftOpen"))
   try:
-    response.socket = await connect(target, connectTo)
+    response.socket = await connect(target, connectTo, caFile)
   except McpTransportError:
     raise
   except CatchableError as e:
@@ -191,7 +228,7 @@ func sameOrigin(a, b: Uri): bool =
 
 proc request*(url: string, httpMethod: HttpMethod, headers: HttpHeaders = nil,
               body = "", connected: Connected = nil, followRedirects = true,
-              connectTo = ""): Future[WireResponse] {.async.} =
+              connectTo = "", caFile = ""): Future[WireResponse] {.async.} =
   ## Send the request and read the response head. The body is read with
   ## `readSome` / `readAll`. Redirects to the same server are followed (up
   ## to `MaxRedirects`); one to another server is an error, so that
@@ -204,7 +241,7 @@ proc request*(url: string, httpMethod: HttpMethod, headers: HttpHeaders = nil,
   ## cannot be reached or does not answer in HTTP.
   var current = url
   for hop in 0 .. MaxRedirects:
-    let response = await requestOnce(current, httpMethod, headers, body, connected, connectTo)
+    let response = await requestOnce(current, httpMethod, headers, body, connected, connectTo, caFile)
     let location = response.headers.getOrDefault("Location")
     if not followRedirects or not isRedirect(response.code, httpMethod) or location.len == 0:
       return response

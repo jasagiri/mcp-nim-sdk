@@ -31,14 +31,29 @@ proc nimFilesIn(dir, pattern: string): seq[string] =
       if file.len > 0:
         result.add(file)
 
+const sslTests = ["test_security_wire_tls"]
+  ## Tests that need `-d:ssl` (a TLS server and the https client). Built
+  ## without it they fail on purpose, so the generic loop leaves them out and
+  ## `runSslTests` runs them with the flag. The other tests do not use TLS,
+  ## and `-d:ssl` would make them depend on the system's OpenSSL for nothing.
+
 proc runTests(extraFlags: string) =
   exec "mkdir -p build/tests"
   let files = nimFilesIn("tests", "test_*.nim")
   if files.len == 0:
     raise newException(OSError, "No test files found in tests/")
   for file in files:
+    if file.splitFile.name in sslTests:
+      continue
     echo "Running test: " & file
     exec "nim c -r " & extraFlags & " -o:build/tests/" & file.splitFile.name & " " & file
+
+proc runSslTests(extraFlags: string) =
+  ## Needs the `openssl` command, which the tests use to make certificates.
+  exec "mkdir -p build/tests"
+  for name in sslTests:
+    echo "Running test (-d:ssl): " & name
+    exec "nim c -r -d:ssl " & extraFlags & " -o:build/tests/" & name & " tests/" & name & ".nim"
 
 proc compileOnly(dir: string, extraFlags: string) =
   ## Programs that are not tests but must keep compiling.
@@ -72,8 +87,12 @@ proc runModernOnlyTests() =
     exec "nim c -r -d:mcpDefaultProtocolVersion=2026-07-28 -d:mcpOldestProtocolVersion=2026-07-28" &
          " --nimcache:build/nc_modern_only -o:build/tests/modern_only_" & name & " tests/" & name & ".nim"
 
+task testSsl, "Run the tests that need -d:ssl":
+  runSslTests("")
+
 task test, "Run tests":
   runTests("")
+  runSslTests("")
   if buildDefaultVersion() == "2026-07-28":
     runModernOnlyTests()
   compileOnly("tests/interop", "")
