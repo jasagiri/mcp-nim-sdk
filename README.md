@@ -419,7 +419,7 @@ The HTTP server accepts requests from loopback origins only; add others to `tran
 
 #### Authorization
 
-Authorization is off until it is attached to an HTTP transport. A server sets `transport.auth = newResourceServerAuth(config)` with a token verifier of its own, and every MCP endpoint the transport serves then needs a token; a client sets `transport.auth` to an OAuth client made with `newOAuthClient`; a client secret is configured together with the issuer of the authorization server it belongs to, and is sent to no other. Both live in `auth/` and are imported separately (`import auth/resource_server`, `import auth/client`). Build with `-d:ssl`: authorization servers are reached over `https://`.
+Authorization is off until it is attached to an HTTP transport. A server sets `transport.auth = newResourceServerAuth(config)` with a token verifier of its own, and every MCP endpoint the transport serves then needs a token; a client sets `transport.auth` to an OAuth client made with `newOAuthClient`; a client secret is configured together with the issuer of the authorization server it belongs to, and is sent to no other. Both live in `auth/` and are imported separately (`import auth/resource_server`, `import auth/client`). Build with `-d:ssl`: authorization servers are reached over `https://`. When a server keeps answering 401 or 403 and nothing more can be done about it, the request fails with `McpAuthorizationError`, a `McpTransportError` that carries the HTTP `status`; `connect` fails with it too, without trying the handshake of another protocol version.
 
 ### 3. Extensions
 

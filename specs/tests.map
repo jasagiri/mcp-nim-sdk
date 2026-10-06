@@ -457,6 +457,11 @@ MCP-AUTH-30 | tests/test_auth_oauth_basics.nim | Given loopback disallowed, when
 MCP-AUTH-30 | tests/test_auth_oauth_basics.nim | Given the cloud metadata address, when checked, then it is always refused
 MCP-AUTH-30 | tests/test_auth_oauth_basics.nim | Given private ranges, when checked, then they are refused unless allowed
 MCP-AUTH-30 | tests/test_auth_oauth_basics.nim | Given other schemes, fragments or credentials, when checked, then they are refused
+MCP-AUTH-31 | tests/test_auth_failure.nim | Given a hook that can do nothing about a 403, when a request is sent, then McpAuthorizationError carries the status
+MCP-AUTH-31 | tests/test_auth_failure.nim | Given a hook that fails, when a request is sent, then McpAuthorizationError says why and keeps the hook's error
+MCP-AUTH-31 | tests/test_auth_failure.nim | Given a hook that always says it improved things, when the server keeps refusing, then McpAuthorizationError ends the attempts
+MCP-AUTH-31 | tests/test_auth_failure.nim | Given a transport without authorization, when the server answers 403, then McpAuthorizationError carries the status
+MCP-AUTH-31 | tests/test_auth_failure.nim | Given a server that refuses the authorization for good, when a client connects, then it fails with McpAuthorizationError
 MCP-HTTP-10 | tests/test_param_headers_http.nim | Given a tool with x-mcp-header, when a call carries the matching header, then the answer is 200
 MCP-HTTP-10 | tests/test_param_headers_http.nim | Given a tool with x-mcp-header, when the header differs from the body, then the answer is 400 header mismatch
 MCP-HTTP-10 | tests/test_param_headers_http.nim | Given a tool with x-mcp-header, when the call omits the header though the body has the value, then the answer is 400 header mismatch

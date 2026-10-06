@@ -238,3 +238,10 @@ Feature: Authorization
     When it is https to a public name, plain http to loopback, plain http to a remote host, or in a private range
     Then https and loopback pass, and plain http to a remote host and private ranges are refused unless allowed, loopback too when disallowed
     And the cloud metadata address is always refused, as are other schemes, fragments and credentials
+
+  @spec:MCP-AUTH-31
+  Scenario: A refusal that authorization cannot overcome is reported as an authorization failure
+    Given a server that answers 401 or 403, and a transport whose authorization can do nothing, fails, keeps being refused, or is absent
+    When a request is sent, or a client connects
+    Then it fails with McpAuthorizationError carrying the HTTP status and, when the authorization failed, its error
+    And a client that probes for the server's protocol version does not go on to the handshake of another version

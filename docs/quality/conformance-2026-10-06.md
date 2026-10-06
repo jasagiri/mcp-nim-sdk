@@ -115,7 +115,7 @@ OAuth、`Mcp-Param-*` と `x-mcp-header` の検査、複数ラウンドの再試
    切り替わり、利用者に見えるエラーは `initialize` の失敗になる。`auth/scope-retry-limit` (2026-07-28) で測定: 試行の上限を超えた探りのあと
    クライアントは `initialize` を送り (検査側は `MCP-Protocol-Version` が無いと 400)、最後のエラーは `ValueError: Initialization failed: Missing
    MCP-Protocol-Version header` で、本当の原因 (認可を繰り返しても 403 `insufficient_scope`) は出ない。検査自体は合格 (上限を超えて認可を
-   試みない)。他の拒否のシナリオ (`resource-mismatch`、`iss-*`、`metadata-issuer-mismatch`) では、最後のエラーは本当の原因 (メタデータの不一致、`iss` の不一致など) を指していた (切り替えのあとの `initialize` も同じ理由で失敗するため、と推測するが、確認していない)。直すなら認可の失敗に専用の `McpTransportError` の派生型を与え、`discover` が再送出する。
+   試みない)。他の拒否のシナリオ (`resource-mismatch`、`iss-*`、`metadata-issuer-mismatch`) では、最後のエラーは本当の原因 (メタデータの不一致、`iss` の不一致など) を指していた (切り替えのあとの `initialize` も同じ理由で失敗するため、と推測するが、確認していない)。**修正済み**: 認可で解消できない 401 / 403 は `McpAuthorizationError` (`McpTransportError` の派生型、HTTP の `status` を持つ) になり、`discover` は `initialize` に切り替えずにそれを伝える (`tests/test_auth_failure.nim`)。
    再現: `nim_conformance_client` を `MCP_CONFORMANCE_SCENARIO=auth/scope-retry-limit` で公式の検査に起動させる
    (`peers/run_conformance.py --builds 2026-07-28 --roles client`)。
 

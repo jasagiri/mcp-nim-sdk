@@ -54,6 +54,15 @@ type
   McpTransportError* = object of CatchableError
     code*: int
 
+  McpAuthorizationError* = object of McpTransportError
+    ## The server refused a request for want of authorization (HTTP 401 or
+    ## 403) and the transport's authorization could not change that: there is
+    ## none, it gave up, or it failed (its error is then `parent`). Trying
+    ## again in another way does not help, so a client does not take this for
+    ## a server that speaks another version.
+    status*: int
+      ## The HTTP status of the refusal.
+
   McpTransportClosedError* = object of McpTransportError
     ## The peer closed the connection. For a stdio server this is how a
     ## session normally ends.

@@ -349,6 +349,11 @@ proc startListening(t: StreamableHttpTransport) =
   t.listening = true
   asyncCheck t.listen()
 
+func notAuthorized(status: int, message: string,
+                   cause: ref Exception = nil): ref McpAuthorizationError =
+  result = newException(McpAuthorizationError, message, cause)
+  result.status = status
+
 type AuthChallenged = object of CatchableError
   ## The server answered 401 or 403; `post` hands this to `t.auth`.
   status: int
@@ -430,6 +435,9 @@ proc postOnce(t: StreamableHttpTransport, body: string,
         errorBody["id"] = requestId
       t.deliver(errorBody)
       return
+  if response.code.int in [401, 403]:
+    # Reached without `t.auth`: nothing here can answer the refusal.
+    raise notAuthorized(response.code.int, httpError(response, t.baseUrl, text).msg)
   raise httpError(response, t.baseUrl, text)
 
 method cancelRequest*(t: StreamableHttpTransport, requestId: string) =
@@ -454,17 +462,17 @@ proc post(t: StreamableHttpTransport, body: string,
       return
     except AuthChallenged as challenged:
       if retries >= MaxAuthRetries:
-        raise newException(McpTransportError,
+        raise notAuthorized(challenged.status,
           "HTTP " & $challenged.status & " from " & t.baseUrl &
           " after " & $retries & " authorization attempts")
       var retry = false
       try:
         retry = await t.auth.onChallenge(challenged.status, challenged.wwwAuthenticate)
       except CatchableError as e:
-        raise newException(McpTransportError,
-          "authorization for " & t.baseUrl & " failed: " & e.msg)
+        raise notAuthorized(challenged.status,
+          "authorization for " & t.baseUrl & " failed: " & e.msg, e)
       if not retry:
-        raise newException(McpTransportError,
+        raise notAuthorized(challenged.status,
           "HTTP " & $challenged.status & " from " & t.baseUrl & ": not authorized")
       inc retries
 

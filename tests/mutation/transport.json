@@ -2,7 +2,7 @@
   "sources": [
     "src/transport/transport.nim"
   ],
-  "testCommand": "nim c -r --hints:off tests/test_era_matrix.nim && nim c -r --hints:off tests/test_legacy_handshake.nim && nim c -r --hints:off tests/test_stdio.nim",
+  "testCommand": "nim c -r --hints:off tests/test_era_matrix.nim && nim c -r --hints:off tests/test_legacy_handshake.nim && nim c -r --hints:off tests/test_stdio.nim && nim c -r --hints:off tests/test_auth_failure.nim",
   "mutators": [
     "AOR",
     "ROR",

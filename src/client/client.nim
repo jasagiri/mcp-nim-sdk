@@ -864,6 +864,10 @@ proc discover(client: McpClient, timeoutMs: int): Future[ProbeVerdict] {.async.}
     var answered = false
     try:
       answered = await withTimeout(started.response, timeoutMs)
+    except McpAuthorizationError as e:
+      # Not an answer about versions: the handshake of another era would be
+      # refused the same way, and its failure would hide this one.
+      raise e
     except McpTransportError:
       # A legacy HTTP server rejects the probe without a JSON-RPC body.
       return pvLegacy

@@ -98,6 +98,12 @@
 | `src/auth/oauth/discovery.nim`、`src/auth/oauth/metadata.nim` (ルートの well-known URI から得た PRM は、オリジンを `resource` に名乗ってよい) | `tests/test_auth_client_flow.nim` | 2026-10-06 |
 | `src/auth/client.nim` (`indicator`: `resource` は PRM が公表した識別子をそのまま送る) | `tests/test_auth_client_flow.nim` | 2026-10-06 |
 
+## 未測定 (認可の失敗の型)
+
+| モジュール | 対応する外部仕様テスト | 追加・変更した日 |
+|---|---|---|
+| `src/transport/transport.nim` (`McpAuthorizationError`)、`src/transport/http.nim` (401 / 403 を解消できないときに送出)、`src/client/client.nim` (`discover` が旧版への切り替えをしない) | `tests/test_auth_failure.nim` | 2026-10-06 |
+
 ## 未測定 (HTTP サーバーのセキュリティ修正。本線向け)
 
 | モジュール | 対応する外部仕様テスト | 追加・変更した日 |
