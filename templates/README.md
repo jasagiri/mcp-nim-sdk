@@ -136,7 +136,7 @@ nim c -r examples/features_client.nim examples/features_server
 | Tools | `tools: some(McpToolsCapability(listChanged: ...))` | `onToolsList`, `onToolCall`; `notifyToolListChanged` |
 | Tool input validation | nothing: always on | the `inputSchema` of each tool in the list |
 {{#if spoken:ftStructuredToolOutput}}
-| Structured tool output | nothing | `outputSchema` in the tool, `structuredContent` in the result; wrap the call handler with `outputChecked` to have results checked |
+| Structured tool output | nothing: a result is always checked | `outputSchema` in the tool, `structuredContent` in the result |
 {{/if}}
 | Resources | `resources: some(McpResourcesCapability(subscribe: ..., listChanged: ...))` | `onResourcesList`, `onResourceTemplatesList`, `onResourceRead`; `notifyResourceListChanged` |
 {{#if spoken:ftResourceSubscribe}}
