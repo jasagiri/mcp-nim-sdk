@@ -423,7 +423,9 @@ Authorization is off until it is attached to an HTTP transport. A server sets `t
 
 ### 3. Extensions
 
-Extensions are optional additions to MCP that the two sides agree on by name. They are off unless a program registers them, as in the tables above; this checkout carries the registration mechanism and no extension of its own.
+Extensions are optional additions to MCP that the two sides agree on by name. Each is a module of its own under `src/ext/`, and none of them is part of `import mcp`. An extension is on only in a program that imports its module **and** calls what turns it on; there is no define for any of them, and a module that is not imported is not compiled in.
+
+This checkout carries the mechanism (`registerExtension`, `registerExtensionMethod`, `declareExtension`, in the tables above) and no extension of its own. The official extensions are on the branch `mcp-2026-07-28-ext`, and the draft ones on `mcp-draft`.
 
 ### Checking a build
 

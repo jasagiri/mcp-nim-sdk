@@ -240,8 +240,67 @@ Authorization is off until it is attached to an HTTP transport. A server sets `t
 {{#if spoken:ftExtensions}}
 ### 3. Extensions
 
-Extensions are optional additions to MCP that the two sides agree on by name. They are off unless a program registers them, as in the tables above; this checkout carries the registration mechanism and no extension of its own.
+Extensions are optional additions to MCP that the two sides agree on by name. Each is a module of its own under `src/ext/`, and none of them is part of `import mcp`. An extension is on only in a program that imports its module **and** calls what turns it on; there is no define for any of them, and a module that is not imported is not compiled in.
 
+{{#if !ext:tasks}}
+This checkout carries the mechanism (`registerExtension`, `registerExtensionMethod`, `declareExtension`, in the tables above) and no extension of its own. The official extensions are on the branch `mcp-2026-07-28-ext`, and the draft ones on `mcp-draft`.
+
+{{/if}}
+{{#if ext:tasks}}
+```nim
+import mcp
+import ext/tasks        # one import per extension the program uses
+```
+
+Extensions of the `extensions` capability are agreed in protocol version `2026-07-28`; turning one on in a build that does not speak that version raises `ValueError` rather than doing nothing. A peer that did not declare an extension is answered `-32021` when it calls one of its methods. MCP Apps is the exception its specification makes: a host declares it in the `initialize` handshake of earlier versions as well.
+
+#### Official extensions
+
+| Extension | Module | Server | Client |
+|---|---|---|---|
+| Tasks (`io.modelcontextprotocol/tasks`) | `ext/tasks` | `server.enableTasksExtension(config)`; `config.decide` says which calls become tasks | `client.enableTasksExtension()`, then `startToolCall`, `getTask`, `awaitTask`, `cancelTask` |
+| MCP Apps (`io.modelcontextprotocol/ui`) | `ext/apps` | `newAppsRegistry()` for the `ui://` resources, `appToolInfo` for tools that show one, `degradeForPlainHosts` | `client.declareApps()` before `connect`, then `listAppTools`, `fetchUiResource` |
+| Skills (`io.modelcontextprotocol/skills`) | `ext/skills` | `newSkillCatalog()`, `server.registerSkills(catalog)` | `client.declareSkills()`, then `listAllSkills`, `getSkill`, `openSkill` |
+| Enterprise-managed authorization | `ext/auth_enterprise_managed` | nothing: it is between the client and the authorization servers | `client.enableEnterpriseManaged(transport, config)` |
+| OAuth client credentials (upstream text is a draft) | `ext/auth_client_credentials` | nothing | `client.enableClientCredentials(transport, config)` |
+
+The Tasks extension is not the tasks of `2025-11-25`. A server may have both, on one store: `server.enableTasks()` serves clients of `2025-11-25`, `server.enableTasksExtension(...)` those of `2026-07-28`, and neither sees the other's tasks.
+
+The authorization extensions sign with a key the application holds: it passes the signing function, and the SDK does no asymmetric cryptography of its own. Build with `-d:ssl`.
+
+A server with the Tasks extension ([examples/ext_tasks_server.nim](examples/ext_tasks_server.nim)):
+
+```nim
+{{include examples/ext_tasks_server.nim}}
+```
+
+A server with MCP Apps is in [examples/ext_apps_server.nim](examples/ext_apps_server.nim).
+
+{{/if}}
+{{#if ext:events}}
+#### Drafts
+
+These follow texts that are not accepted specifications and that change upstream. Each module names, in its first lines, the repository and commit it follows and what that text leaves open. Expect them to change with it.
+
+| Draft | Module | Server | Client |
+|---|---|---|---|
+| MCP Events | `ext/events` | `server.enableEvents(config)`, `registerEventType`, `emitEvent` | nothing to declare: `listEvents`, `pollEvents`, `openEventStream`, `subscribeWebhook` |
+| Interceptors (SEP-2624) | `ext/interceptors` | `newInterceptorHost()`, `host.install(server)` | `client.declareInterceptors()` |
+| Server variants (SEP-2053) | `ext/variants` | `newVariantSet()`, `variants.install(server)` | `client.declareVariants()` |
+| Trust annotations, action metadata | `ext/tool_annotations` | `server.installTrustAnnotations()`, `server.installActionMetadata()` | `client.declareTrustAnnotations()`, `client.declareActionMetadata()` |
+| Server Card | `ext/server_card` | `publishServerCard(transport, card)` | fetch and check it with the procs of `ext/server_card` |
+
+MCP Events declares itself the way its design sketch says, as `capabilities.events`, and asks no declaration of the client. It delivers three ways: the client polls with a cursor, holds a stream open, or names a webhook the server posts to. Webhooks need an authenticated principal (the transport's authorization, or `principalOf` in the config) and are sent to `https://` addresses outside private networks only.
+
+A server that emits events ([examples/draft_events_server.nim](examples/draft_events_server.nim)):
+
+```nim
+{{include examples/draft_events_server.nim}}
+```
+
+and a client that polls and listens: [examples/draft_events_client.nim](examples/draft_events_client.nim).
+
+{{/if}}
 {{/if}}
 ### Checking a build
 

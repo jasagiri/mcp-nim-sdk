@@ -16,6 +16,8 @@
 ##   {{#if cond}} ... {{/if}} the lines in between, when `cond` holds
 ##
 ## `cond` is a feature (`ftTools`), `spoken:` and a feature, `modern`,
+## `ext:` and the name of an extension module (`ext:tasks` holds when the
+## checkout has src/ext/tasks.nim),
 ## `legacy` or `all`, optionally prefixed with `!`. A feature holds when the
 ## version has it; `spoken:ftTasks` holds when the version or an earlier one
 ## has it, which is what a build that speaks them all can do. `modern` holds
@@ -97,9 +99,16 @@ func variablesFor*(version: McpProtocolVersion): Table[string, string] =
    "implemented_summary": implementedSummary(version)}:
     result[name] = value
 
-func holds(cond: string, version: McpProtocolVersion): bool =
+proc holds(cond, root: string, version: McpProtocolVersion): bool =
   if cond.startsWith("!"):
-    return not holds(cond[1 .. ^1], version)
+    return not holds(cond[1 .. ^1], root, version)
+  if cond.startsWith("ext:"):
+    # `ext:tasks`: the checkout has the extension module src/ext/tasks.nim.
+    # Extensions live on their own branches, so a page says only what is there.
+    let name = cond["ext:".len .. ^1]
+    if name.len == 0 or not name.allCharsInSet({'a' .. 'z', '0' .. '9', '_'}):
+      raise newException(ValueError, "not an extension module name: " & cond)
+    return fileExists(root / "src" / "ext" / (name & ".nim"))
   case cond
   of "all": true
   of "modern": version.isModern
@@ -129,7 +138,7 @@ proc render*(templateText, root: string, version: McpProtocolVersion): string =
   for rawLine in templateText.splitLines:
     let line = rawLine.strip
     if line.startsWith("{{#if ") and line.endsWith("}}"):
-      active.add holds(line[6 .. ^3].strip, version)
+      active.add holds(line[6 .. ^3].strip, root, version)
     elif line == "{{/if}}":
       if active.len == 0:
         raise newException(ValueError, "{{/if}} without {{#if}}")

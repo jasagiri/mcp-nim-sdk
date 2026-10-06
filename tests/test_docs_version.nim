@@ -128,6 +128,12 @@ suite "generated documentation":
     check render(text, ".", mpv20250618) == ""
     check render("{{#if !spoken:ftTasks}}\nnone\n{{/if}}\n", ".", mpv20250618) == "none\n"
 
+  test "Given an ext condition, when rendered, then its lines show only where the checkout has that extension module":
+    let text = "{{#if ext:tasks}}\nT\n{{/if}}\n{{#if !ext:tasks}}\nnone\n{{/if}}\n{{#if ext:no_such_extension}}\nX\n{{/if}}\n"
+    let expected = if fileExists(Root / "src" / "ext" / "tasks.nim"): "T\n" else: "none\n"
+    check render(text, Root, mpv20260728) == expected
+    expect ValueError: discard render("{{#if ext:../protocol/version}}\nX\n{{/if}}\n", Root, mpv20260728)
+
   test "Given conditions, when rendered, then a feature the version lacks hides its lines":
     let text = "{{#if ftDiscover}}\nA\n{{/if}}\n{{#if !ftDiscover}}\nB\n{{/if}}"
     check render(text, Root, mpv20260728) == "A"
