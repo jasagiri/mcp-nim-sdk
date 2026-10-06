@@ -201,7 +201,7 @@ proc awaitTask*(client: McpClient, taskId: string,
         answered.incl key
       if responses.len > 0:
         await client.updateTask(taskId, responses)
-    let pause = current.task.pollIntervalMs.get(defaultPollMs)
+    let pause = pollPauseMs(current.task.pollIntervalMs, defaultPollMs)
     if sleep.isNil:
       await sleepAsync(pause)
     else:

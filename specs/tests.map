@@ -2094,6 +2094,7 @@ MCP-SEC-TASKS-1 | tests/external/test_security_tasks.nim | Given a task asked fo
 MCP-SEC-TASKS-1 | tests/external/test_security_tasks.nim | Given a store that grants any ttl, when the largest is asked for, then the task never expires and the others are untouched
 MCP-SEC-TASKS-1 | tests/external/test_security_tasks.nim | Given a client that asks for the largest ttl, when another client lists its tasks, then it is answered
 MCP-SEC-TASKS-2 | tests/external/test_security_tasks.nim | Given the default store, when a ttl beyond the maximum is asked for, then the task gets the maximum
+MCP-SEC-TASKS-2 | tests/test_security_tasks_shared_store.nim | Given a core client that asked for the largest ttl, when an extension client uses the store, then it is answered
 MCP-SEC-TASKS-3 | tests/external/test_security_tasks.nim | Given a whole number written as a float, when parsed, then it is that many milliseconds
 MCP-SEC-TASKS-3 | tests/external/test_security_tasks.nim | Given a float beyond what a ttl can be, when parsed, then it is the largest and the store grants its maximum
 MCP-SEC-TASKS-3 | tests/external/test_security_tasks.nim | Given a fraction, a negative number, a string or a boolean, when parsed, then it is invalid params
@@ -2109,8 +2110,11 @@ MCP-SEC-SWEEP-1 | tests/external/test_security_poll.nim | Given a task that sugg
 MCP-SEC-SWEEP-1 | tests/external/test_security_poll.nim | Given a task that suggests days, when polled, then the wait is the maximum
 MCP-SEC-SWEEP-1 | tests/external/test_security_poll.nim | Given a task that suggests a reasonable interval, when polled, then it is respected
 MCP-SEC-SWEEP-1 | tests/external/test_security_poll.nim | Given a task that suggests none, when polled, then the caller's default is used as given
+MCP-SEC-SWEEP-1 | tests/test_security_ext_tasks.nim | Given a server that suggests a poll interval of 0, when the client waits for a task, then it waits the minimum
+MCP-SEC-SWEEP-1 | tests/test_security_ext_tasks.nim | Given a server that suggests days, when the client waits for a task, then it waits the maximum
 MCP-SEC-SWEEP-2 | tests/external/test_security_expiry.nim | Given a task that expires while it works, when the store is used, then the expiry hook sees it once
 MCP-SEC-SWEEP-2 | tests/external/test_security_expiry.nim | Given an expiry hook that raises, when a task expires, then the others are still removed and heard
+MCP-SEC-SWEEP-2 | tests/test_security_ext_tasks.nim | Given a task that expires while its tool runs, when the tool asks for input afterwards, then the task is unknown to the extension
 MCP-SEC-SWEEP-3 | tests/external/test_security_sampling.nim | Given a temperature that is a string, when parsed, then it is a protocol error and not 0.0
 MCP-SEC-SWEEP-3 | tests/external/test_security_sampling.nim | Given a priority that is a string, when parsed, then it is a protocol error and not 0.0
 MCP-SEC-SWEEP-3 | tests/external/test_security_sampling.nim | Given numbers and nulls, when parsed, then they are read as sent, a null as absent

@@ -335,6 +335,14 @@ proc enableTasksExtension*(server: McpServer, config = TasksExtensionConfig(),
       ext.statusChanged(owner, task)
     elif not previous.isNil:
       previous(owner, task)
+  let previousExpire = ext.store.onExpire
+  ext.store.onExpire = proc(owner: string, task: McpTask) =
+    # An expiry is no status change: the input bookkeeping of a task that
+    # expires while it waits would otherwise stay as long as the server runs.
+    if owner.startsWith(ExtOwnerPrefix):
+      ext.inputs.del(task.taskId)
+    elif not previousExpire.isNil:
+      previousExpire(owner, task)
   server.addListenFilterHook(proc(ctx: McpRequestContext, requested: SubscriptionFilter,
                                   honored: var SubscriptionFilter) =
     ext.agreeToListen(ctx, requested, honored))
