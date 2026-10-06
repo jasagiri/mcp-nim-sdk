@@ -84,3 +84,11 @@ Feature: Security of the HTTP server transport
     Then a session's request named by the session's own id is cancelled
     And no other client's request is cancelled, whatever id is named
     And a 2026-07-28 request is cancelled by its client closing the connection, which the notification cannot do
+
+  @spec:MCP-SEC-HTTP-3
+  Scenario: One caller cannot use up the transport's resources
+    Given a transport with small limits
+    When initialize requests fill the session limit, one address holds its share of sessions, a batch is too long, or requests or messages pile up
+    Then the oldest session that was never used again is dropped for a new client, and a session in use is not
+    And an address at its limit loses only its own unused sessions or is refused with 503
+    And a batch over the limit is answered 400, and work over the limit 503 with Retry-After

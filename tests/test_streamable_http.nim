@@ -230,10 +230,15 @@ suite "HTTP sessions (versions 2025-03-26 to 2025-11-25)":
     check send(url, HttpDelete).code == Http400
     check send(url, HttpDelete, headers = {"Mcp-Session-Id": "made-up"}).code == Http404
 
-  test "Given the session limit is reached, when another client initializes, then the answer is 503":
+  test "Given the session limit is reached by a session in use, when another client initializes, then the answer is 503":
     let (transport, url, _) = startServer()
     transport.maxSessions = 1
-    check send(url, HttpPost, legacyInitialize()).code == Http200
+    let first = send(url, HttpPost, legacyInitialize())
+    check first.code == Http200
+    # A session never used again would be dropped to make room
+    # (MCP-SEC-HTTP-3); this one is in use.
+    check send(url, HttpPost, """{"jsonrpc": "2.0", "id": 2, "method": "ping"}""",
+               headers = {"Mcp-Session-Id": $first.headers["Mcp-Session-Id"]}).code == Http200
     check send(url, HttpPost, legacyInitialize()).code == Http503
 
   test "Given an initialize the server rejects, when answered, then no session is opened":

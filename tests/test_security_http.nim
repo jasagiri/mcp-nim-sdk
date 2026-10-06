@@ -30,7 +30,7 @@ type
     script: Script
 
 proc runScript(t: HttpServerTransport, s: Script) {.async.} =
-  ## `initialize` answers with the newest legacy version; `hang` is never
+  ## `initialize` answers with the version asked for; `hang` is never
   ## answered; anything else answers at once.
   while true:
     let incoming = await t.receive()
@@ -42,7 +42,8 @@ proc runScript(t: HttpServerTransport, s: Script) {.async.} =
     case message["method"].getStr()
     of "initialize":
       await t.sendResponse(newJsonRpcResponse(id, %*{
-        "protocolVersion": $latestLegacyVersion(Spoken).get(DefaultProtocolVersion),
+        "protocolVersion": message{"params"}{"protocolVersion"}.getStr(
+          $latestLegacyVersion(Spoken).get(DefaultProtocolVersion)),
         "capabilities": {}, "serverInfo": {"name": "script", "version": "0"}}))
     of "hang":
       discard
@@ -308,3 +309,153 @@ suite "A cancellation cancels only the sender's own request (MCP-SEC-HTTP-6)":
       waitFor sleepAsync(100)
       check env.transport.pendingExchangeCount == 1
       hangA.close()
+
+proc startOpen(version = DefaultProtocolVersion): Env =
+  ## A transport without authorization, answered by the script.
+  let transport = newHttpServerTransport(port = 0, protocolVersion = version)
+  transport.listen()
+  asyncCheck transport.serve()
+  let script = Script()
+  asyncCheck runScript(transport, script)
+  Env(transport: transport, base: "http://127.0.0.1:" & $transport.port, script: script)
+
+proc initializeAs(version: string): string =
+  rpc(1, "initialize", %*{"protocolVersion": version, "capabilities": {},
+                          "clientInfo": {"name": "t", "version": "0"}})
+
+proc touch(env: Env, session: string): HttpCode =
+  ## Names the session in a request: the session counts as used.
+  send(env.base & "/mcp", HttpPost, rpc(9, "ping"), @[("Mcp-Session-Id", session)]).code
+
+proc initialize(env: Env): tuple[code: HttpCode, session: string] =
+  let reply = send(env.base & "/mcp", HttpPost, initializeBody())
+  (reply.code, if reply.headers.hasKey("Mcp-Session-Id"): $reply.headers["Mcp-Session-Id"] else: "")
+
+suite "The transport does not let one caller use up its resources (MCP-SEC-HTTP-3)":
+  if ServesSessions:
+    test "Given a session limit reached by sessions never used again, when another client initializes, then it gets a session and the oldest unused one is dropped":
+      let env = startOpen()
+      env.transport.maxSessions = 3
+      let first = env.initialize()
+      let second = env.initialize()
+      discard env.initialize()
+      let fourth = env.initialize()
+      check fourth.code == Http200
+      check env.transport.sessionCount == 3
+      check env.touch(first.session) == Http404
+      check env.touch(second.session) == Http200
+
+    test "Given a session limit reached by sessions in use, when another client initializes, then the answer is 503 and the sessions are kept":
+      let env = startOpen()
+      env.transport.maxSessions = 2
+      let a = env.initialize()
+      let b = env.initialize()
+      check env.touch(a.session) == Http200
+      check env.touch(b.session) == Http200
+      check env.initialize().code == Http503
+      check env.transport.sessionCount == 2
+
+    test "Given a session in use among a flood of initialize requests, when the flood fills the limit, then the session in use survives":
+      let env = startOpen()
+      env.transport.maxSessions = 3
+      let kept = env.initialize()
+      check env.touch(kept.session) == Http200
+      for _ in 1 .. 10:
+        check env.initialize().code == Http200
+      check env.transport.sessionCount == 3
+      check env.touch(kept.session) == Http200
+
+    test "Given a client address at its session limit with sessions in use, when it initializes again, then the answer is 503":
+      let env = startOpen()
+      env.transport.maxSessionsPerPeer = 2
+      check env.touch(env.initialize().session) == Http200
+      check env.touch(env.initialize().session) == Http200
+      check env.initialize().code == Http503
+
+    test "Given a client address at its session limit with unused sessions, when it initializes again, then its own oldest unused session is dropped":
+      let env = startOpen()
+      env.transport.maxSessionsPerPeer = 2
+      discard env.initialize()
+      discard env.initialize()
+      check env.initialize().code == Http200
+      check env.transport.sessionCount == 2
+
+  if ServesLegacySse:
+    test "Given a client address at its limit, when it opens another HTTP+SSE stream, then the answer is 503":
+      let env = startOpen()
+      env.transport.maxSessionsPerPeer = 2
+      let a = open(env.base & "/sse", HttpGet, "", @[("Accept", "text/event-stream")])
+      let b = open(env.base & "/sse", HttpGet, "", @[("Accept", "text/event-stream")])
+      discard a.next()
+      discard b.next()
+      let c = open(env.base & "/sse", HttpGet, "", @[("Accept", "text/event-stream")])
+      check c.code == Http503
+      a.close()
+      b.close()
+      c.close()
+
+  if mpv20250326 in Spoken:
+    test "Given a batch longer than the limit, when posted, then the answer is 400, and a batch within it is answered":
+      let env = startOpen(mpv20250326)
+      env.transport.maxBatchItems = 2
+      let reply = send(env.base & "/mcp", HttpPost, initializeAs("2025-03-26"))
+      let session = $reply.headers["Mcp-Session-Id"]
+      let headers = @[("Mcp-Session-Id", session)]
+      let ping = %*{"jsonrpc": "2.0", "id": 5, "method": "ping"}
+      let ping2 = %*{"jsonrpc": "2.0", "id": 6, "method": "ping"}
+      let ping3 = %*{"jsonrpc": "2.0", "id": 7, "method": "ping"}
+      check send(env.base & "/mcp", HttpPost, $(%[ping, ping2, ping3]), headers).code == Http400
+      check send(env.base & "/mcp", HttpPost, $(%[ping, ping2]), headers).code == Http200
+
+  proc firstRequest(): tuple[body: string, headers: seq[(string, string)]] =
+    ## A request that the transport accepts at any default version.
+    if DefaultProtocolVersion.isModern:
+      (hangCall(%1, true), @[("MCP-Protocol-Version", "2026-07-28"),
+                             ("Mcp-Method", "tools/call"), ("Mcp-Name", "hang")])
+    else:
+      (initializeBody(), @[])
+
+  test "Given requests in progress up to the limit, when another arrives, then the answer is 503 with Retry-After":
+    let transport = newHttpServerTransport(port = 0)
+    transport.listen()
+    asyncCheck transport.serve()
+    transport.maxPendingRequests = 2
+    let base = "http://127.0.0.1:" & $transport.port & "/mcp"
+    let (body, headers) = firstRequest()
+    var held: seq[AsyncHttpClient]
+    for _ in 1 .. 2:
+      let http = newAsyncHttpClient()
+      let all = newHttpHeaders({"Content-Type": "application/json",
+                                "Accept": "application/json, text/event-stream"})
+      for (name, value) in headers:
+        all[name] = value
+      discard http.request(base, HttpPost, body, all)
+      held.add http
+    waitFor sleepAsync(100)
+    check transport.pendingExchangeCount == 2
+    let reply = send(base, HttpPost, body, headers)
+    check reply.code == Http503
+    check reply.headers.hasKey("Retry-After")
+    for http in held:
+      http.close()
+
+  test "Given messages waiting for the server up to the limit, when another arrives, then the answer is 503":
+    let transport = newHttpServerTransport(port = 0)
+    transport.listen()
+    asyncCheck transport.serve()
+    transport.maxQueuedMessages = 2
+    let base = "http://127.0.0.1:" & $transport.port & "/mcp"
+    let (body, headers) = firstRequest()
+    var held: seq[AsyncHttpClient]
+    for _ in 1 .. 2:
+      let http = newAsyncHttpClient()
+      let all = newHttpHeaders({"Content-Type": "application/json",
+                                "Accept": "application/json, text/event-stream"})
+      for (name, value) in headers:
+        all[name] = value
+      discard http.request(base, HttpPost, body, all)
+      held.add http
+    waitFor sleepAsync(100)
+    check send(base, HttpPost, body, headers).code == Http503
+    for http in held:
+      http.close()

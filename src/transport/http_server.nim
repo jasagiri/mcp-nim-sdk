@@ -26,7 +26,17 @@
 ## versions treat a lost connection as a network failure and keep the
 ## request running, its stream resumable.
 ##
-## Sessions that stay idle for `sessionIdleTimeoutMs` are dropped.
+## Sessions that stay idle for `sessionIdleTimeoutMs` are dropped. What one
+## caller can take from the others is limited: sessions (`maxSessions`,
+## `maxSessionsPerPeer`), batch length, requests in progress, messages
+## waiting for the server.
+##
+## Not limited here: how long a client may take to send its request line,
+## headers and body. `asynchttpserver` reads them before it calls the
+## handler and has no timeout, and its connection loop cannot be reached from
+## outside; a client that sends a byte a minute holds a connection (and a
+## file descriptor) until it stops. Put a reverse proxy with read timeouts in
+## front of a server that faces untrusted networks.
 ##
 ## The HTTP+SSE transport of 2024-11-05 is served alongside, for clients that
 ## only speak it: a GET on `legacySsePath` opens an event stream whose first
@@ -52,6 +62,22 @@ import ../protocol/features
 const
   DefaultMaxBodySize* = 4 * 1024 * 1024
   DefaultMaxSessions* = 1024
+  DefaultMaxSessionsPerPeer* = 64
+    ## One address holding 64 sessions is a busy gateway or a program that
+    ## leaks them; 16 addresses are needed to take 1024 slots. Behind a
+    ## reverse proxy every client has the proxy's address: raise it, or set
+    ## 0 and limit at the proxy.
+  DefaultMaxBatchItems* = 100
+    ## A batch (2025-03-26 only) is answered as a whole, each item is a task
+    ## for the server; 100 is far above what a client batches by hand.
+  DefaultMaxPendingRequests* = 4096
+    ## Requests handed to the server and not yet answered, 2026-07-28
+    ## subscription streams included (each holds one for its whole life).
+    ## About four times the default session count: ordinary clients have a
+    ## few in progress each.
+  DefaultMaxQueuedMessages* = 4096
+    ## Messages received and not yet taken by the server (a server busy or
+    ## stuck is what makes this grow); each is at most `maxBodySize`.
   DefaultMaxStoredStreams* = 64
   DefaultSessionIdleTimeoutMs* = 30 * 60 * 1000
   SweepIntervalMs = 250
@@ -74,6 +100,8 @@ type
     opensSession: bool
     principal: Option[string]
       ## Who sent the POST; the owner of the session it opens.
+    peer: string
+      ## The address it came from.
     isBatch: bool
     modern: bool
     settled: Future[void]
@@ -102,6 +130,11 @@ type
       ## The principal that made the session (the authorization hook names
       ## it). Another principal that uses the id finds no such session. None
       ## where the endpoint is open, or the hook names nobody.
+    peer: string
+      ## The address that made the session (see `maxSessionsPerPeer`).
+    used: bool
+      ## Some request named the session after the one that made it.
+    created: float
     legacy: bool
       ## A session of the HTTP+SSE transport: `listen` is its only stream,
       ## and it lasts as long as the connection.
@@ -135,7 +168,23 @@ type
     allowedOrigins*:  seq[string]
       ## Origins accepted besides loopback ones, e.g. "https://app.example".
     maxSessions*:     int
-      ## New clients are refused (503) while this many sessions are open.
+      ## While this many sessions are open, a new client takes the place of
+      ## the oldest session that was never used after it was made (a flood
+      ## of initialize requests thus costs only its own sessions); when
+      ## there is none, it is refused (503).
+    maxSessionsPerPeer*: int
+      ## Sessions (and HTTP+SSE connections) one client address may hold; a
+      ## client at its limit loses its own oldest session that was never
+      ## used again, else is refused (503). 0: no limit. The address is the
+      ## peer of the TCP connection; a header such as X-Forwarded-For is not
+      ## trusted, as anyone can write it.
+    maxBatchItems*: int
+      ## Messages in one batch; a longer one is refused (400).
+    maxPendingRequests*: int
+      ## Requests in progress; another is refused (503, Retry-After).
+    maxQueuedMessages*: int
+      ## Messages waiting for the server to receive them; more are refused
+      ## (503, Retry-After).
     maxStreamEvents*: int
       ## Events each stream remembers for resumption; a client that falls
       ## further behind cannot resume.
@@ -177,6 +226,10 @@ proc newHttpServerTransport*(host: string = "127.0.0.1",
     maxBodySize:      maxBodySize,
     allowedOrigins:   @[],
     maxSessions:      DefaultMaxSessions,
+    maxSessionsPerPeer: DefaultMaxSessionsPerPeer,
+    maxBatchItems:    DefaultMaxBatchItems,
+    maxPendingRequests: DefaultMaxPendingRequests,
+    maxQueuedMessages: DefaultMaxQueuedMessages,
     maxStreamEvents:  DefaultMaxStreamEvents,
     maxStoredStreams: DefaultMaxStoredStreams,
     sessionIdleTimeoutMs: DefaultSessionIdleTimeoutMs,
@@ -520,6 +573,45 @@ proc invalidRequest(message: string): JsonRpcError =
 proc touch(session: Session) =
   session.lastActive = epochTime()
 
+proc evictUnused(t: HttpServerTransport, peer = ""): bool =
+  ## Drop the oldest session of the Streamable HTTP kind that no request
+  ## named after the one that made it (of `peer`, when given). A session of
+  ## HTTP+SSE lasts as long as its connection and is the client's to close.
+  var oldest = ""
+  var oldestAt = 0.0
+  for id, session in t.sessions:
+    if not session.legacy and not session.used and session.busy == 0 and
+       (peer.len == 0 or session.peer == peer) and
+       (oldest.len == 0 or session.created < oldestAt):
+      oldest = id
+      oldestAt = session.created
+  if oldest.len == 0:
+    return false
+  t.endSession(oldest)
+  true
+
+proc claimSessionSlot(t: HttpServerTransport, peer: string): bool =
+  ## Whether a session may be made for `peer` now, after making room where
+  ## the policy allows (see `maxSessions`, `maxSessionsPerPeer`).
+  if t.maxSessionsPerPeer > 0:
+    while t.sessions.values.toSeq.countIt(it.peer == peer) >= t.maxSessionsPerPeer:
+      if not t.evictUnused(peer):
+        return false
+  if t.sessions.len >= t.maxSessions:
+    t.expireIdleSessions()
+  while t.sessions.len >= t.maxSessions:
+    if not t.evictUnused():
+      return false
+  true
+
+proc overloaded(t: HttpServerTransport, adding: int): bool =
+  ## Whether `adding` more messages would exceed the limits on work waiting.
+  t.requestQueue.len + adding > t.maxQueuedMessages or
+    t.exchanges.len + adding > t.maxPendingRequests
+
+proc refuseOverload(req: Request): Future[void] =
+  req.respondEmpty(Http503, {"Retry-After": "1"})
+
 proc legacyCeiling(t: HttpServerTransport): McpProtocolVersion =
   ## The newest version spoken with an initialize handshake.
   latestLegacyVersion(spokenVersionsUpTo(t.protocolVersion)).get(mpv20241105)
@@ -577,6 +669,7 @@ proc sessionFor(t: HttpServerTransport, req: Request, id: JsonNode,
     await req.respondError(Http404, id, invalidRequest("Session not found"))
     return nil
   result = t.sessions[named.get]
+  result.used = true
 
 proc handleDelete(t: HttpServerTransport, req: Request,
                   principal: Option[string]) {.async.} =
@@ -663,12 +756,13 @@ proc handleGet(t: HttpServerTransport, req: Request,
     session.touch()
 
 proc openSession(t: HttpServerTransport, id: string, response: JsonRpcResponse,
-                 owner: Option[string]) =
+                 owner: Option[string], peer: string) =
   ## The server accepted an initialize: the client now has a session, at the
   ## version the server's answer names.
   let named = parseProtocolVersion(response.result.get(newJObject()){"protocolVersion"}.getStr())
   let session = Session(version: named.get(t.legacyCeiling), owner: owner,
-                        streams: initOrderedTable[string, SseStream]())
+                        peer: peer, streams: initOrderedTable[string, SseStream]())
+  session.created = epochTime()
   session.touch()
   t.sessions[id] = session
 
@@ -676,7 +770,7 @@ proc answerWithJson(t: HttpServerTransport, req: Request, group: Group,
                     modern: bool) {.async.} =
   var extra = @[("Connection", "close")]
   if group.opensSession and group.responses[0].error.isNone:
-    t.openSession(group.session, group.responses[0], group.principal)
+    t.openSession(group.session, group.responses[0], group.principal, group.peer)
     extra.add (SessionHeader, group.session)
   if group.isBatch:
     await req.respondJson(Http200, %group.responses.mapIt(it.toJson()), extra)
@@ -701,6 +795,14 @@ proc handlePost(t: HttpServerTransport, req: Request,
   if items.len == 0 or items.anyIt(it.kind != JObject):
     await req.respondError(Http400, nil,
       invalidRequest("A batch must be a non-empty array of JSON-RPC messages"))
+    return
+
+  if items.len > t.maxBatchItems:
+    await req.respondError(Http400, nil, invalidRequest(
+      "A batch of " & $items.len & " messages exceeds the limit of " & $t.maxBatchItems))
+    return
+  if t.overloaded(items.len):
+    await req.refuseOverload()
     return
 
   let rpc = items[0]
@@ -743,10 +845,8 @@ proc handlePost(t: HttpServerTransport, req: Request,
       await req.respondError(Http400, rpc{"id"}, rejection.get)
       return
   elif opensSession:
-    if t.sessions.len >= t.maxSessions:
-      t.expireIdleSessions()
-    if t.sessions.len >= t.maxSessions:
-      await req.respondEmpty(Http503)
+    if not t.claimSessionSlot(req.hostname):
+      await req.respondEmpty(Http503, {"Retry-After": "1"})
       return
     sessionId = newSessionId()
   elif sessionless:
@@ -786,7 +886,7 @@ proc handlePost(t: HttpServerTransport, req: Request,
   let group = Group(
     stream: newSseStream(newStreamId(), t.maxStreamEvents),
     session: sessionId, pending: requests.len, opensSession: opensSession,
-    principal: principal,
+    principal: principal, peer: req.hostname,
     isBatch: isBatch, modern: modern, settled: newFuture[void]("HttpServerTransport.group"))
   if not session.isNil and session.version.has(ftSsePolling):
     discard group.stream.push("")
@@ -828,13 +928,12 @@ proc handleLegacySse(t: HttpServerTransport, req: Request,
                      principal: Option[string]) {.async.} =
   ## HTTP+SSE: the connection is the session. Its first event names where
   ## to POST.
-  if t.sessions.len >= t.maxSessions:
-    t.expireIdleSessions()
-  if t.sessions.len >= t.maxSessions:
-    await req.respondEmpty(Http503)
+  if not t.claimSessionSlot(req.hostname):
+    await req.respondEmpty(Http503, {"Retry-After": "1"})
     return
   let id = newSessionId()
   let session = Session(version: mpv20241105, legacy: true, owner: principal,
+                        peer: req.hostname, created: epochTime(),
                         streams: initOrderedTable[string, SseStream](),
                         listen: newSseStream(newStreamId(), t.maxStreamEvents,
                                              emitIds = false))
@@ -869,6 +968,10 @@ proc handleLegacyPost(t: HttpServerTransport, req: Request,
   if message.kind != JObject:
     await req.respondError(Http400, nil, invalidRequest("Request must be a JSON object"))
     return
+  if t.overloaded(1):
+    await req.refuseOverload()
+    return
+  t.sessions[id].used = true
   if isRequest(message):
     inc t.exchangeCount
     let exchangeId = "http-" & $t.exchangeCount

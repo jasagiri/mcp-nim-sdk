@@ -79,7 +79,7 @@ MCP-HTTP-4 | tests/test_streamable_http.nim | Given a session id the server did 
 MCP-HTTP-4 | tests/test_streamable_http.nim | Given an initialized session, when a request names it, then it is served
 MCP-HTTP-5 | tests/test_streamable_http.nim | Given a session, when the client sends DELETE, then the session ends on the transport and the server
 MCP-HTTP-5 | tests/test_streamable_http.nim | Given DELETE without a session id or with an unknown one, when sent, then the answer is 400 or 404
-MCP-HTTP-5 | tests/test_streamable_http.nim | Given the session limit is reached, when another client initializes, then the answer is 503
+MCP-HTTP-5 | tests/test_streamable_http.nim | Given the session limit is reached by a session in use, when another client initializes, then the answer is 503
 MCP-HTTP-5 | tests/test_streamable_http.nim | Given an initialize the server rejects, when answered, then no session is opened
 MCP-HTTP-6 | tests/test_streamable_http.nim | Given the specification's tools/call request, when posted with its headers, then the answer is 200 with a complete result
 MCP-HTTP-6 | tests/test_streamable_http.nim | Given an Mcp-Name that differs from the body, when posted, then the answer is 400 header mismatch
@@ -1074,3 +1074,12 @@ MCP-SEC-HTTP-6 | tests/test_security_http.nim | Given a 2026-07-28 request in pr
 MCP-SEC-HTTP-6 | tests/test_security_http.nim | Given a session with a request in progress, when it cancels the request by the id it chose, then the request is cancelled
 MCP-SEC-HTTP-6 | tests/test_security_http.nim | Given two sessions that chose the same request id, when one cancels it, then only its own request is cancelled
 MCP-SEC-HTTP-6 | tests/test_security_http.nim | Given a request of another session, when a session cancels the exchange id the transport made for it, then that request is still in progress
+MCP-SEC-HTTP-3 | tests/test_security_http.nim | Given a session limit reached by sessions never used again, when another client initializes, then it gets a session and the oldest unused one is dropped
+MCP-SEC-HTTP-3 | tests/test_security_http.nim | Given a session limit reached by sessions in use, when another client initializes, then the answer is 503 and the sessions are kept
+MCP-SEC-HTTP-3 | tests/test_security_http.nim | Given a session in use among a flood of initialize requests, when the flood fills the limit, then the session in use survives
+MCP-SEC-HTTP-3 | tests/test_security_http.nim | Given a client address at its session limit with sessions in use, when it initializes again, then the answer is 503
+MCP-SEC-HTTP-3 | tests/test_security_http.nim | Given a client address at its session limit with unused sessions, when it initializes again, then its own oldest unused session is dropped
+MCP-SEC-HTTP-3 | tests/test_security_http.nim | Given a client address at its limit, when it opens another HTTP+SSE stream, then the answer is 503
+MCP-SEC-HTTP-3 | tests/test_security_http.nim | Given a batch longer than the limit, when posted, then the answer is 400, and a batch within it is answered
+MCP-SEC-HTTP-3 | tests/test_security_http.nim | Given requests in progress up to the limit, when another arrives, then the answer is 503 with Retry-After
+MCP-SEC-HTTP-3 | tests/test_security_http.nim | Given messages waiting for the server up to the limit, when another arrives, then the answer is 503
