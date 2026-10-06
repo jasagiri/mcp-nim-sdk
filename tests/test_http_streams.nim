@@ -38,7 +38,9 @@ proc runScript(t: HttpServerTransport, s: Script) {.async.} =
   ## Methods: `initialize` answers with the script's version; `work` sends
   ## two progress notifications related to the request, then answers; `wait`
   ## sends one, waits for `release`, sends another and answers; `ping`
-  ## answers at once; `silent` is never answered.
+  ## answers at once; `silent` is never answered; `paced` sends three
+  ## progress notifications 20 ms apart and answers as soon as the third has
+  ## gone out.
   while true:
     let incoming = await t.receive()
     let message = incoming.message
@@ -61,6 +63,13 @@ proc runScript(t: HttpServerTransport, s: Script) {.async.} =
       await t.sendNotification(progress(1), route)
       await s.release
       await t.sendNotification(progress(2), route)
+      await t.sendResponse(newJsonRpcResponse(id, %*{"done": true}))
+    of "paced":
+      for n in 1 .. 3:
+        await t.sendNotification(progress(n), route)
+        if n < 3:
+          await sleepAsync(20)
+      await sleepAsync(0)
       await t.sendResponse(newJsonRpcResponse(id, %*{"done": true}))
     of "silent":
       discard  # never answered; the client gives up
@@ -127,6 +136,15 @@ suite "SSE response to a request (versions 2025-03-26 to 2025-11-25)":
       check got[1]["params"]["progress"].getInt() == 2
       check got[2]["id"].getInt() == 7
       check got[2]["result"]["done"].getBool()
+      stream.close()
+
+    test "Given a response that is ready while the last notification is being written, when posted, then the stream ends with the response without waiting for a keep-alive":
+      let (_, url, _) = startRaw(version)
+      let session = initialize(url, version)
+      let stream = open(url, HttpPost, $rpc(7, "paced"), legacyHeaders(session, version))
+      let got = stream.messages()
+      check got.len == 4
+      check got[3]["id"].getInt() == 7
       stream.close()
 
     test "Given a request during which the server sent nothing, when posted, then the answer is a plain JSON body":
@@ -429,6 +447,14 @@ if SpeaksModern:
       check got.len == 3
       check got[0].methodOf == "notifications/progress"
       check got[2]["id"].getInt() == 7
+      stream.close()
+
+    test "Given a response that is ready while the last notification is being written, when posted, then the stream ends with the response without waiting for a keep-alive (2026-07-28)":
+      let (_, url, _) = startRaw(DefaultProtocolVersion)
+      let stream = modernPost(url, 7, "paced")
+      let got = stream.messages()
+      check got.len == 4
+      check got[3]["id"].getInt() == 7
       stream.close()
 
     test "Given a request of 2026-07-28, when the server tries to send a request of its own on its stream, then McpTransportError is raised":

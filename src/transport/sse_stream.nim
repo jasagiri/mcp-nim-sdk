@@ -147,6 +147,10 @@ proc serveStream*(req: Request, stream: SseStream, afterSeq: int,
   try:
     await req.writeHead(Http200, headers)
     while true:
+      # Taken before the events are read: a push that lands while they are
+      # being written completes this future, so the wait below returns at
+      # once instead of sleeping through an event it has not seen.
+      let changed = stream.changed
       var batch = ""
       var last = cursor
       for stored in stream.events:
@@ -166,7 +170,7 @@ proc serveStream*(req: Request, stream: SseStream, afterSeq: int,
       if gone.finished:
         result = seClientGone
         break
-      await (stream.changed or gone or idle)
+      await (changed or gone or idle)
       if idle.finished:
         idle = sleepAsync(keepAliveMs)
         if not gone.finished:

@@ -247,6 +247,8 @@ MCP-CLIENTREQ-5 | tests/test_client_server_requests.nim | Given a numeric reques
 MCP-HTTPSTREAM-1 | tests/test_http_streams.nim | Given a request during which the server sent notifications, when posted, then the answer is an event stream with the notifications first and the response last
 MCP-HTTPSTREAM-1 | tests/test_http_streams.nim | Given a request during which the server sent nothing, when posted, then the answer is a plain JSON body
 MCP-HTTPSTREAM-1 | tests/test_http_streams.nim | Given a request during which the server sent notifications, when posted, then the stream carries them and ends with the response
+MCP-HTTPSTREAM-1 | tests/test_http_streams.nim | Given a response that is ready while the last notification is being written, when posted, then the stream ends with the response without waiting for a keep-alive
+MCP-HTTPSTREAM-1 | tests/test_http_streams.nim | Given a response that is ready while the last notification is being written, when posted, then the stream ends with the response without waiting for a keep-alive (2026-07-28)
 MCP-HTTPSTREAM-2 | tests/test_http_streams.nim | Given two requests at once on one session, when each sends notifications, then each stream carries only its own
 MCP-HTTPSTREAM-2 | tests/test_http_streams.nim | Given a notification the server sends for a request that is not in progress, when sent, then McpTransportError is raised
 MCP-HTTPSTREAM-3 | tests/test_http_streams.nim | Given an event stream, when its head is read, then it carries the security headers and no caching
