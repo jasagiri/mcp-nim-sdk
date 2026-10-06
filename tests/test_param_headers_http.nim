@@ -165,6 +165,13 @@ if SpeaksModern:
                        callHeaders({"Mcp-Param-Region": "=?base64?SGVsbG8sIOS4lueVjA==?="}))
       check reply.code == Http200
 
+    test "Given a Base64 header without its padding, when posted, then the answer is 400 header mismatch":
+      let (url, _) = startServer(@[sqlTool()])
+      let reply = post(url, sqlCall(%*{"region": "Hello", "query": "q"}),
+                       callHeaders({"Mcp-Param-Region": "=?base64?SGVsbG8?=" }))
+      check reply.code == Http400
+      check reply.errorCode == -32020
+
     test "Given a header value with a control character, when posted, then the answer is 400 header mismatch":
       let (url, _) = startServer(@[sqlTool()])
       let reply = post(url, sqlCall(%*{"region": "a", "query": "q"}),

@@ -226,10 +226,26 @@ func encodeHeaderValue*(value: string): string {.raises: [].} =
   else:
     Base64SentinelPrefix & base64.encode(value) & Base64SentinelSuffix
 
+func isPaddedBase64(text: string): bool {.raises: [].} =
+  ## RFC 4648 section 4 with its padding: whole groups of four, `=` only at
+  ## the end and at most twice. The decoder of the standard library accepts a
+  ## missing pad, which SEP-2243 has a server reject.
+  if text.len mod 4 != 0:
+    return false
+  let body = text.strip(leading = false, chars = {'='})
+  if text.len - body.len > 2:
+    return false
+  for c in body:
+    if c notin {'A'..'Z', 'a'..'z', '0'..'9', '+', '/'}:
+      return false
+  true
+
 func decodeHeaderValue*(value: string): Option[string] {.raises: [].} =
   ## The value a header carries, or none when the header is malformed.
   if isSentinel(value):
     let encoded = value[Base64SentinelPrefix.len ..< value.len - Base64SentinelSuffix.len]
+    if not isPaddedBase64(encoded):
+      return none(string)
     try:
       return some(base64.decode(encoded))
     except ValueError:

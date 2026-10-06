@@ -464,6 +464,7 @@ MCP-HTTP-10 | tests/test_param_headers_http.nim | Given a tool with x-mcp-header
 MCP-HTTP-10 | tests/test_param_headers_http.nim | Given a tool with x-mcp-header, when the argument is null and the header is absent, then the answer is 200
 MCP-HTTP-10 | tests/test_param_headers_http.nim | Given a tool with x-mcp-header, when the header is sent without the argument, then the answer is 400 header mismatch
 MCP-HTTP-10 | tests/test_param_headers_http.nim | Given a Base64 header, when it decodes to the body value, then the answer is 200
+MCP-HTTP-10 | tests/test_param_headers_http.nim | Given a Base64 header without its padding, when posted, then the answer is 400 header mismatch
 MCP-HTTP-10 | tests/test_param_headers_http.nim | Given a tool without x-mcp-header, when a Mcp-Param header is sent, then it is ignored
 MCP-HTTP-10 | tests/test_param_headers.nim | Given a header that equals the body, when checked, then the request is accepted
 MCP-HTTP-10 | tests/test_param_headers.nim | Given a header name in another case, when checked, then it is still the same header

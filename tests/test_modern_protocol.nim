@@ -257,6 +257,12 @@ suite "2026-07-28: header value encoding":
   test "Given a sentinel whose payload is not Base64, when decoded, then the header is malformed":
     check decodeHeaderValue("=?base64?***?=").isNone
 
+  test "Given a sentinel whose Base64 payload lacks its padding or has too much, when decoded, then the header is malformed":
+    check decodeHeaderValue("=?base64?SGVsbG8=?=") == some("Hello")
+    check decodeHeaderValue("=?base64?SGVsbG8?=").isNone
+    check decodeHeaderValue("=?base64?SGVsbG8===?=").isNone
+    check decodeHeaderValue("=?base64?SG=sbG8=?=").isNone
+
   test "Given a plain value with a raw control or non-ASCII character, when decoded, then the header is malformed":
     check decodeHeaderValue("line1\nline2").isNone
     check decodeHeaderValue("世界").isNone
