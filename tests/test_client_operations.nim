@@ -212,6 +212,30 @@ suite "resources":
       waitFor client.subscribeResource("file:///a")
     check peer.requestsFor("resources/subscribe").len == 0
 
+  test "Given resources without subscribe, when a resource is unsubscribed, then McpUnsupportedError is raised":
+    let peer = startPeer(nil, capabilities = %*{"resources": {}})
+    let client = peer.connectedClient(LegacyDefault)
+    expect McpUnsupportedError:
+      waitFor client.unsubscribeResource("file:///a")
+    check peer.requestsFor("resources/unsubscribe").len == 0
+
+  test "Given a server without the resources capability, when resources are listed, read or subscribed, then McpUnsupportedError is raised and nothing is sent":
+    let peer = startPeer(nil, capabilities = %*{"tools": {}})
+    let client = peer.connectedClient(LegacyDefault)
+    expect McpUnsupportedError:
+      discard waitFor client.listResources()
+    expect McpUnsupportedError:
+      discard waitFor client.listResourceTemplates()
+    expect McpUnsupportedError:
+      discard waitFor client.readResource("file:///a")
+    expect McpUnsupportedError:
+      waitFor client.subscribeResource("file:///a")
+    expect McpUnsupportedError:
+      waitFor client.unsubscribeResource("file:///a")
+    for operation in ["resources/list", "resources/templates/list", "resources/read",
+                      "resources/subscribe", "resources/unsubscribe"]:
+      check peer.requestsFor(operation).len == 0
+
   test "Given a resource whose entry has no uri, when it is read, then McpProtocolError is raised":
     let peer = startPeer(proc(peer: Peer, message: JsonNode) =
       if message{"method"}.getStr() == "resources/read":
@@ -257,6 +281,26 @@ suite "prompts":
     let client = peer.connectedClient(LegacyDefault)
     discard waitFor client.getPrompt("p")
     check not peer.requestsFor("prompts/get")[0]["params"].hasKey("arguments")
+
+  test "Given a prompt without an arguments field, when prompts are listed, then the prompt has no arguments":
+    let peer = startPeer(proc(peer: Peer, message: JsonNode) =
+      if message{"method"}.getStr() == "prompts/list":
+        peer.reply(message["id"], %*{"prompts": [{"name": "plain"}]}),
+      capabilities = AllCapabilities)
+    let client = peer.connectedClient(LegacyDefault)
+    let all = waitFor client.listAllPrompts()
+    check all.len == 1
+    check all[0].arguments.len == 0
+
+  test "Given a server without the prompts capability, when prompts are listed or fetched, then McpUnsupportedError is raised and nothing is sent":
+    let peer = startPeer(nil, capabilities = %*{"tools": {}})
+    let client = peer.connectedClient(LegacyDefault)
+    expect McpUnsupportedError:
+      discard waitFor client.listPrompts()
+    expect McpUnsupportedError:
+      discard waitFor client.getPrompt("p")
+    check peer.requestsFor("prompts/list").len == 0
+    check peer.requestsFor("prompts/get").len == 0
 
 suite "ping, logging and completion":
 
@@ -365,3 +409,11 @@ if SpeaksModern:
       check peer.requestsFor("ping").len == 0
       check peer.requestsFor("logging/setLevel").len == 0
       check peer.requestsFor("resources/subscribe").len == 0
+
+    test "Given a 2026-07-28 connection, when a resource is unsubscribed, then McpUnsupportedError is raised and nothing is sent":
+      let peer = startPeer(nil, modern = true,
+        capabilities = %*{"resources": {"subscribe": true}})
+      let client = peer.connectedClient()
+      expect McpUnsupportedError:
+        waitFor client.unsubscribeResource("file:///a")
+      check peer.requestsFor("resources/unsubscribe").len == 0

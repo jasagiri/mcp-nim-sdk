@@ -104,6 +104,14 @@ suite "icons in the client":
     let client = peer.connectedClient(LegacyDefault)
     check waitFor(client.listAllTools())[0].icons.len == 0
 
+  test "Given a resource link with icons, when it is written back, then its icons are in the block and a link without icons has no icons key":
+    let withIcons = McpContentItem(kind: mckResourceLink, linkUri: "file:///r", linkName: "r",
+      linkIcons: @[McpIcon(src: "https://example.com/i.png")])
+    check withIcons.toJson()["icons"].len == 1
+    check withIcons.toJson()["icons"][0]["src"].getStr() == "https://example.com/i.png"
+    let bare = McpContentItem(kind: mckResourceLink, linkUri: "file:///r", linkName: "r")
+    check not bare.toJson().hasKey("icons")
+
   test "Given a malformed icon, when the client lists tools, then the protocol violation is raised":
     for broken in [%*[{"mimeType": "image/png"}], %*[{"src": 5}],
                    %*[{"src": "https://example.com/i.png", "theme": "sepia"}],

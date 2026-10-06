@@ -123,8 +123,11 @@ MCP-RESOURCES-10 | tests/test_server_notifications.nim | Given a handler for sub
 MCP-RESOURCES-11 | tests/test_client_operations.nim | Given a server that supports subscriptions, when a resource is subscribed and unsubscribed, then both requests are sent
 MCP-RESOURCES-11 | tests/test_client_operations.nim | Given resources without subscribe, when a resource is subscribed, then McpUnsupportedError is raised
 MCP-RESOURCES-11 | tests/test_client_server_requests.nim | Given a resource-updated callback, when the server reports an update, then the uri is passed
+MCP-RESOURCES-11 | tests/test_client_operations.nim | Given resources without subscribe, when a resource is unsubscribed, then McpUnsupportedError is raised
+MCP-RESOURCES-11 | tests/test_client_operations.nim | Given a server without the resources capability, when resources are listed, read or subscribed, then McpUnsupportedError is raised and nothing is sent
 MCP-RESOURCES-12 | tests/test_server_notifications.nim | Given a 2026-07-28 client, when it subscribes, then the method is not found
 MCP-RESOURCES-12 | tests/test_client_operations.nim | Given a 2026-07-28 connection, when ping, setLevel or subscribe is used, then McpUnsupportedError is raised and nothing is sent
+MCP-RESOURCES-12 | tests/test_client_operations.nim | Given a 2026-07-28 connection, when a resource is unsubscribed, then McpUnsupportedError is raised and nothing is sent
 MCP-LISTCHANGED-1 | tests/test_server_notifications.nim | Given two initialized clients, when the tool list changes, then each is told on its own session
 MCP-LISTCHANGED-1 | tests/test_server_notifications.nim | Given resources, prompts and tools, when each list changes, then each notification has its method
 MCP-LISTCHANGED-1 | tests/test_server_notifications.nim | Given a server that did not declare listChanged, when a list changes, then nothing is sent
@@ -137,6 +140,8 @@ MCP-PROMPTS-1 | tests/test_server_resources_prompts.nim | Given a prompt, when a
 MCP-PROMPTS-2 | tests/test_client_operations.nim | Given prompts, when listed, then arguments are read
 MCP-PROMPTS-2 | tests/test_client_operations.nim | Given a prompt, when it is fetched with arguments, then they are sent as strings and messages are read
 MCP-PROMPTS-2 | tests/test_client_operations.nim | Given no arguments, when a prompt is fetched, then no arguments key is sent
+MCP-PROMPTS-2 | tests/test_client_operations.nim | Given a prompt without an arguments field, when prompts are listed, then the prompt has no arguments
+MCP-PROMPTS-2 | tests/test_client_operations.nim | Given a server without the prompts capability, when prompts are listed or fetched, then McpUnsupportedError is raised and nothing is sent
 MCP-PROMPTS-3 | tests/test_server_resources_prompts.nim | Given no prompts capability, when a client lists or gets prompts, then the method is not found
 MCP-PROMPTS-4 | tests/test_server_errors.nim | Given an unknown prompt, when it is requested, then the answer is invalid params
 MCP-PROMPTS-4 | tests/test_server_resources_prompts.nim | Given a prompt that needs an argument, when a client gets it without, then the answer is invalid params
@@ -151,6 +156,7 @@ MCP-PAGINATION-4 | tests/test_client_operations.nim | Given a server with tools,
 MCP-PAGINATION-4 | tests/test_client_operations.nim | Given a cursor, when the next page is listed, then the cursor is sent and the last page has none
 MCP-PAGINATION-4 | tests/test_client_operations.nim | Given a paged server, when every tool is listed, then all pages are followed
 MCP-PAGINATION-4 | tests/test_client_operations.nim | Given a server that repeats a cursor, when every tool is listed, then McpProtocolError is raised
+MCP-PAGINATION-4 | tests/test_security_pages.nim | Given a server that repeats a cursor, when all pages are read, then it is a protocol error at the repeat, not at the limit
 MCP-PAGINATION-5 | tests/test_client_operations.nim | Given a nextCursor that is the empty string, when every tool is listed, then the empty cursor is sent and the list does not end there
 MCP-COMPLETION-1 | tests/test_server_completion.nim | Given a prompt reference, when a client completes an argument, then the handler's values, total and hasMore come back
 MCP-COMPLETION-1 | tests/test_server_completion.nim | Given a resource template reference, when a client completes, then the handler sees the URI template
@@ -594,6 +600,7 @@ MCP-ICONS-2 | tests/test_icons.nim | Given a version without icons, when each li
 MCP-ICONS-3 | tests/test_icons.nim | Given listed items with icons, when the client lists them, then each carries its icons
 MCP-ICONS-3 | tests/test_icons.nim | Given an item without icons, when the client lists it, then it has none
 MCP-ICONS-3 | tests/test_icons.nim | Given a malformed icon, when the client lists tools, then the protocol violation is raised
+MCP-ICONS-3 | tests/test_icons.nim | Given a resource link with icons, when it is written back, then its icons are in the block and a link without icons has no icons key
 MCP-ICONS-4 | tests/test_icons.nim | Given https and base64 image data uris, when screened, then they are kept
 MCP-ICONS-4 | tests/test_icons.nim | Given unsafe schemes, when screened, then every one is dropped
 MCP-ICONS-4 | tests/test_icons.nim | Given a server origin, when screened, then an https icon from another origin is dropped and data stays

@@ -15,6 +15,19 @@ suite "security: following nextCursor":
       discard waitFor allPages[int]("tools/list", fetch, maxPages = 5)
     check fetched == 5
 
+  test "Given a server that repeats a cursor, when all pages are read, then it is a protocol error at the repeat, not at the limit":
+    var fetched = 0
+    let fetch = proc(cursor: Option[string]): Future[tuple[items: seq[int], next: Option[string]]] {.async.} =
+      inc fetched
+      return (items: @[fetched], next: some("same"))
+    var message = ""
+    try:
+      discard waitFor allPages[int]("tools/list", fetch)
+    except McpProtocolError as e:
+      message = e.msg
+    check "repeated cursor 'same'" in message
+    check fetched == 2
+
   test "Given a server whose last page is the limit, when all pages are read, then every item is returned":
     var fetched = 0
     let fetch = proc(cursor: Option[string]): Future[tuple[items: seq[int], next: Option[string]]] {.async.} =
