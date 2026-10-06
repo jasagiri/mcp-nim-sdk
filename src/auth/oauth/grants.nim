@@ -158,9 +158,7 @@ proc parseTokenExchangeResponse*(reply: HttpReply, now: Time): TokenExchangeResp
   let scope = body.strField("scope")
   if scope.isSome:
     result.scopes = some(scope.get.splitWhitespace())
-  let expiresIn = body.intField("expires_in")
-  if expiresIn.isSome and expiresIn.get > 0:
-    result.expiresAt = some(now + initDuration(seconds = expiresIn.get))
+  result.expiresAt = tokenExpiry(body, "expires_in", now)
 
 proc exchangeToken*(tokenEndpoint: string, request: TokenExchangeRequest,
                     auth: ClientAuthentication, policy: FetchPolicy,

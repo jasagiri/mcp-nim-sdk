@@ -27,7 +27,7 @@
 ## checks the claims that decide where the grant may be sent), and the
 ## authorization-server side (validating an ID-JAG is that server's job).
 
-import std/[asyncdispatch, json, options, strutils, times]
+import std/[asyncdispatch, json, math, options, strutils, times]
 import ../protocol/version
 import ../transport/auth_hook
 import ../transport/http
@@ -181,6 +181,17 @@ func claimStrings(claims: JsonNode, name: string): Option[seq[string]] {.raises:
   else:
     raise newException(OAuthError, "the ID-JAG claim " & name & " is neither a string nor an array")
 
+proc numericDate(claims: JsonNode, name: string): float {.raises: [OAuthError].} =
+  ## A NumericDate (RFC 7519 2) is any JSON number, a fractional one too. The
+  ## value is not converted to an integer type: that is how `getBiggestInt`
+  ## turned a float into 0 and a huge value into overflow.
+  let node = claims{name}
+  if node.isNil or node.kind notin {JInt, JFloat}:
+    raise newException(OAuthError, "the ID-JAG has no " & name)
+  result = node.getFloat()
+  if result != result:
+    raise newException(OAuthError, "the ID-JAG's " & name & " is not a number")
+
 proc checkIdentityAssertionGrant*(jag: string, idpIssuer, authorizationServer: string,
                                   resource: Option[string], clientId: string,
                                   now: Time): DecodedJwt
@@ -195,7 +206,9 @@ proc checkIdentityAssertionGrant*(jag: string, idpIssuer, authorizationServer: s
   ##  - `client_id` is the client that will authenticate at that server;
   ##  - `resource`, when the exchange asked for one, is in the grant and names
   ##    the MCP server (string or array);
-  ##  - `sub`, `jti` are present, `exp` is in the future, `iat` is a number.
+  ##  - `sub`, `jti` are present, `exp` is in the future and not further away
+##    than `MaxTokenLifetimeSeconds` (a grant that lives for years is not one
+##    the IdP issued for an exchange), `iat` is a number.
   result = decodeJwtUnverified(jag)
   let header = result.header
   if header{"typ"}.isNil or header{"typ"}.kind != JString or
@@ -216,12 +229,13 @@ proc checkIdentityAssertionGrant*(jag: string, idpIssuer, authorizationServer: s
     if claims{required}.isNil or claims{required}.kind != JString or
        claims{required}.getStr().len == 0:
       raise newException(OAuthError, "the ID-JAG has no " & required)
-  if claims{"iat"}.isNil or claims{"iat"}.kind notin {JInt, JFloat}:
-    raise newException(OAuthError, "the ID-JAG has no iat")
-  if claims{"exp"}.isNil or claims{"exp"}.kind notin {JInt, JFloat}:
-    raise newException(OAuthError, "the ID-JAG has no exp")
-  if claims{"exp"}.getBiggestInt() <= now.toUnix:
+  discard numericDate(claims, "iat")
+  let exp = numericDate(claims, "exp")
+  if exp <= float(now.toUnix):
     raise newException(OAuthError, "the ID-JAG has expired")
+  if exp > float(now.toUnix) + float(MaxTokenLifetimeSeconds):
+    raise newException(OAuthError,
+      "the ID-JAG expires more than " & $MaxTokenLifetimeSeconds & " seconds from now")
   if resource.isSome:
     let granted = claimStrings(claims, "resource")
     if granted.isNone:
@@ -301,7 +315,7 @@ proc obtainGrant(c: EnterpriseManagedAuth, found: ResourceAuthorization,
     c.config.resourceClientAuthentication.clientId, now)
   c.grant = some(CachedGrant(
     token: exchanged.accessToken, scopes: scopes,
-    expiresAt: fromUnix(jag.claims{"exp"}.getBiggestInt())))
+    expiresAt: fromUnix(BiggestInt(floor(jag.claims{"exp"}.getFloat())))))
   return exchanged.accessToken
 
 proc acquire(c: EnterpriseManagedAuth, found: ResourceAuthorization,

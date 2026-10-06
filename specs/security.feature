@@ -467,3 +467,9 @@ Feature: Security properties
     When the client meets a 401 from that MCP server
     Then the IdP is not asked for a grant, the identity assertion is not read, no request reaches the named server, and the error names both issuers
     And a configuration without that issuer is refused when it is made
+
+  @spec:MCP-SEC-AUTH-6
+  Scenario: Numbers in an ID-JAG and in a token exchange response cannot overflow or be misread
+    Given an ID-JAG whose exp or iat is fractional, in the past, or years away, and an exchange response whose expires_in is huge, negative or not a number
+    When the client checks the ID-JAG and parses the response
+    Then a fractional date counts, a past one has expired, a date beyond ten years is refused, and the response is read as the token response is (MCP-SEC-AUTH-5)

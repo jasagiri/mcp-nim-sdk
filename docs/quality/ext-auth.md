@@ -85,6 +85,11 @@ auth-requirements.md). "Impl" says where.
   for anything (for enterprise-managed authorization that includes the IdP exchange, which would
   otherwise carry the user's identity assertion and a grant naming that server). The IdP is the
   organization's own configuration (`idpIssuer`), not something the MCP server names.
+- **Numbers in the ID-JAG and the exchange response (SDK's addition, MCP-SEC-AUTH-6).** `exp` and `iat`
+  are NumericDates (RFC 7519 2), so a fractional one is read as such; an `exp` more than ten years away
+  (`MaxTokenLifetimeSeconds`) is refused, since the draft has the IdP issue a grant for one exchange and
+  the client keeps it in memory until `exp`. `expires_in` of the exchange response is read like any
+  token response (`tokenExpiry`).
 - **JWT client credentials: two descriptions.** The ext-auth text (normative) uses
   `grant_type=client_credentials` with `client_assertion` (RFC 7523 2.2). The extension page of the
   specification repository draws `grant_type=...:jwt-bearer` with `assertion` for the same method.

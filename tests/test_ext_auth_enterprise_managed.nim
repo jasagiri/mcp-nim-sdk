@@ -126,7 +126,7 @@ proc startEnv(grantProfiles = @[GrantProfileIdJag],
       claims.delete(name)
     let jag = hs256Signer(IdpKey).signJwt(claims, typ = some(behavior.typ))
     var body = %*{"issued_token_type": behavior.issuedTokenType, "access_token": jag,
-                  "token_type": behavior.tokenType, "expires_in": behavior.lifetime}
+                  "token_type": behavior.tokenType, "expires_in": max(behavior.lifetime, 0)}
     if granted.len > 0:
       body["scope"] = %granted
     GrantAnswer(code: Http200, body: body))

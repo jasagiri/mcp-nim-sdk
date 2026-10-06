@@ -4,10 +4,10 @@
 ## The resource server in these tests is the hostile one: its Protected
 ## Resource Metadata lists an authorization server it controls.
 
-import std/[unittest, asyncdispatch, json, options, strutils]
+import std/[unittest, asyncdispatch, json, options, strutils, times]
 import ext/auth_client_credentials
 import ext/auth_enterprise_managed
-import auth/oauth/errors
+import auth/oauth/[errors, fetch, grants, tokens, jwt]
 import ext_auth_fixtures
 
 const
@@ -114,3 +114,52 @@ suite "enterprise-managed authorization: the grant is for one authorization serv
     check "ras-secret-value" notin message
     check env.attacker.log.len == 0
     check calls[] == 0
+
+suite "enterprise-managed authorization: numbers in an ID-JAG and in an exchange response":
+
+  proc jag(claims: JsonNode): string =
+    hs256Signer("k").signJwt(claims, typ = some(IdJagJwtType))
+
+  proc claimsWith(exp: JsonNode): JsonNode =
+    %*{"jti": "j", "iss": "https://idp.example", "sub": "u", "aud": "https://as.example",
+       "client_id": "c", "exp": exp, "iat": 1_799_999_900}
+
+  let now = fromUnix(1_800_000_000)
+
+  proc grantChecked(claims: JsonNode): DecodedJwt =
+    checkIdentityAssertionGrant(jag(claims), "https://idp.example", "https://as.example",
+                                none(string), "c", now)
+
+  test "Given an exp or iat that is a fractional number, which a NumericDate may be, when checked, then it is accepted":
+    discard grantChecked(claimsWith(%1_800_000_100.5))
+    var claims = claimsWith(%1_800_000_100)
+    claims["iat"] = %1_799_999_900.25
+    discard grantChecked(claims)
+
+  test "Given a fractional exp that has passed, when checked, then the ID-JAG has expired":
+    expect OAuthError:
+      discard grantChecked(claimsWith(%1_799_999_999.5))
+
+  test "Given an exp beyond what a grant can plausibly live, when checked, then it is refused and nothing overflows":
+    for far in [%9_223_372_036_854_775_807, %1e300, %1e18, %(1_800_000_000 + MaxTokenLifetimeSeconds + 1)]:
+      checkpoint $far
+      expect OAuthError:
+        discard grantChecked(claimsWith(far))
+
+  test "Given an exp at the largest lifetime or a negative one, when checked, then the first is accepted and the second has expired":
+    discard grantChecked(claimsWith(%(1_800_000_000 + MaxTokenLifetimeSeconds)))
+    for past in [%(-9_223_372_036_854_775_807 - 1), %(-1), %(-1e300)]:
+      checkpoint $past
+      expect OAuthError:
+        discard grantChecked(past.claimsWith)
+
+  test "Given an expires_in that is huge, negative or not a number in a token exchange response, when parsed, then it is no expiry, an error, an error":
+    func body(expiresIn: string): HttpReply =
+      HttpReply(code: 200, body: """{"access_token":"jag","issued_token_type":"urn:ietf:params:oauth:token-type:id-jag","token_type":"N_A","expires_in":""" & expiresIn & "}")
+    check parseTokenExchangeResponse(body("9223372036854775807"), now).expiresAt.isNone
+    check parseTokenExchangeResponse(body("\"3600\""), now).expiresAt ==
+      some(now + initDuration(seconds = 3600))
+    for bad in ["-1", "\"soon\"", "[1]"]:
+      checkpoint bad
+      expect OAuthError:
+        discard parseTokenExchangeResponse(body(bad), now)
