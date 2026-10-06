@@ -3,17 +3,47 @@
 ## JSON Schema 2020-12 asks for ECMA-262 syntax and says a pattern matches
 ## when it matches anywhere in the string. The standard library has no engine
 ## of that kind that works without a system library, so this is a small
-## backtracking one: literals, `.`, classes (`[a-z]`, `\d`, `\w`, `\s` and
-## their negations), anchors, `\b`, groups (capturing, `(?:`), alternation,
-## the lookaheads `(?=` and `(?!`, and the quantifiers `* + ? {n} {n,} {n,m}`
+## one: literals, `.`, classes (`[a-z]`, `\d`, `\w`, `\s` and their
+## negations), anchors, `\b`, groups (capturing, `(?:`), alternation, the
+## lookaheads `(?=` and `(?!`, and the quantifiers `* + ? {n} {n,} {n,m}`
 ## with their lazy forms. Back references and Unicode property escapes are
 ## not supported; a pattern that uses one is rejected, never ignored.
+##
+## Both the pattern and the text can be hostile (a tool's arguments, or an
+## `outputSchema` from a server one does not trust), so the engine does not
+## backtrack. A pattern is compiled to a program for a Thompson NFA and
+## matching advances the set of live states over the text one character at a
+## time: the work is at most (text length) x (program size), with no stack
+## that grows with the text. The syntax allows this because the supported
+## constructs only ask whether a match exists, and the lookaheads are
+## zero-width: each one is a sub-program that runs from one position and is
+## remembered per position. Lazy and greedy quantifiers differ only in which
+## match is found first, which a yes/no answer does not show.
+##
+## Limits (`RegexLimits`, `DefaultMaxRegexSteps`) turn a pattern that is too
+## large to check into a `RegexLimitError`; a pattern is never taken as
+## matching or not matching because a limit was reached.
 
-import std/[unicode, strutils]
+import std/[unicode, strutils, tables]
 
 type
   RegexError* = object of ValueError
     ## The pattern is malformed or uses syntax this engine does not support.
+
+  RegexLimitError* = object of RegexError
+    ## The pattern or the work it asks for is above a limit; whether it
+    ## matches is not known.
+
+  RegexLimits* = object
+    maxPatternLength*: int
+      ## Characters in the pattern.
+    maxRepeat*: int
+      ## The largest count in `{n}`, `{n,}` and `{n,m}`.
+    maxProgramSize*: int
+      ## Instructions after the counted repetitions are expanded, over the
+      ## pattern and its lookaheads together.
+    maxNesting*: int
+      ## Groups inside groups.
 
   RangeSet = seq[tuple[lo, hi: int32]]
 
@@ -35,12 +65,11 @@ type
     of nkLookahead, nkNotLookahead: look: Node
     else: discard
 
-  Regex* = object
-    root: Node
-
   Parser = object
     src: seq[Rune]
     pos: int
+    depth: int
+    limits: RegexLimits
 
 const
   DigitSet: RangeSet = @[(int32('0'), int32('9'))]
@@ -54,8 +83,21 @@ const
   LineTerminators: RangeSet = @[(10'i32, 10'i32), (13'i32, 13'i32), (0x2028'i32, 0x2029'i32)]
   NoRepeatLimit = high(int)
 
+  DefaultRegexLimits* = RegexLimits(
+    maxPatternLength: 4096,  # tool schemas carry short patterns; 4 KiB is generous
+    maxRepeat: 1000,         # `{1,255}` is common, `{1000000}` is an expansion bomb
+    maxProgramSize: 50_000,  # 50 instructions per pattern character on average
+    maxNesting: 64)
+
+  DefaultMaxRegexSteps* = 200_000_000
+    ## What one `isMatch` may spend by default, in state visits (about a
+    ## second). `^[a-z]+$` over 4 MiB spends under 20 million.
+
 proc fail(p: Parser, what: string) {.noreturn.} =
   raise newException(RegexError, what & " at position " & $p.pos)
+
+proc failLimit(p: Parser, what: string) {.noreturn.} =
+  raise newException(RegexLimitError, what & " at position " & $p.pos)
 
 func atEnd(p: Parser): bool = p.pos >= p.src.len
 func peek(p: Parser): int32 = int32(p.src[p.pos])
@@ -159,7 +201,11 @@ proc parseNumber(p: var Parser): int =
   while not p.atEnd and char(p.peek) in {'0' .. '9'}:
     text.add char(p.peek)
     inc p.pos
-  if text.len == 0: -1 else: parseInt(text)
+  if text.len == 0: return -1
+  # Ten digits already exceed every limit; parseInt must not see an overflow.
+  if text.len > 9:
+    p.failLimit("a repetition count has more than 9 digits")
+  parseInt(text)
 
 proc parseQuantifier(p: var Parser, atom: Node): Node =
   if p.atEnd:
@@ -186,6 +232,8 @@ proc parseQuantifier(p: var Parser, atom: Node): Node =
     inc p.pos
     if max < min:
       p.fail("a repetition runs backwards")
+    if min > p.limits.maxRepeat or (max != NoRepeatLimit and max > p.limits.maxRepeat):
+      p.failLimit("a repetition count is above " & $p.limits.maxRepeat)
   else:
     return atom
   result = Node(kind: nkRepeat, body: atom, min: min, max: max)
@@ -209,7 +257,11 @@ proc parseAtom(p: var Parser): Node =
       of '=': p.pos += 2; kind = nkLookahead
       of '!': p.pos += 2; kind = nkNotLookahead
       else: p.fail("group syntax is not supported")
+    inc p.depth
+    if p.depth > p.limits.maxNesting:
+      p.failLimit("groups are nested deeper than " & $p.limits.maxNesting)
     let inner = p.parseAlternation()
+    dec p.depth
     if p.atEnd or p.peek != int32(')'):
       p.fail("a group is not closed")
     inc p.pos
@@ -247,64 +299,236 @@ proc parseAlternation(p: var Parser): Node =
     inc p.pos
     result.children.add p.parseSequence()
 
-proc compileRegex*(pattern: string): Regex =
-  ## Raises RegexError for a malformed or unsupported pattern.
-  var p = Parser(src: pattern.toRunes)
+
+# Compiling to a Thompson NFA
+
+type
+  InstKind = enum
+    ikChar, ikAny, ikSet, ikSplit, ikJmp, ikBol, ikEol, ikWordBoundary,
+    ikNotWordBoundary, ikLook, ikMatch
+
+  Inst = object
+    kind: InstKind
+    ch: int32          # ikChar
+    setIndex: int      # ikSet
+    negated: bool      # ikLook: a negative lookahead
+    x, y: int          # ikSplit: both targets; ikJmp: x; ikLook: x is the sub-program
+
+  Program = seq[Inst]
+    ## Ends with ikMatch, so `pc + 1` is always a valid successor of a
+    ## consuming or asserting instruction.
+
+  CharSet = tuple[ranges: RangeSet, negated: bool]
+
+  RegexCode = ref object
+    programs: seq[Program]  # [0] is the pattern, the rest are lookaheads
+    sets: seq[CharSet]
+    size: int
+
+  Regex* = object
+    code: RegexCode
+
+  Compiler = object
+    code: RegexCode
+    limits: RegexLimits
+    work: int
+
+proc size*(re: Regex): int =
+  ## Instructions in the compiled pattern; what compiling it cost.
+  re.code.size
+
+proc emit(c: var Compiler, program: int, inst: Inst): int =
+  inc c.code.size
+  if c.code.size > c.limits.maxProgramSize:
+    raise newException(RegexLimitError,
+      "the pattern needs more than " & $c.limits.maxProgramSize & " instructions")
+  c.code.programs[program].add inst
+  c.code.programs[program].high
+
+proc compileNode(c: var Compiler, program: int, n: Node) =
+  # Repetitions can nest around bodies that emit nothing (`(?:){1000}`), so
+  # the size check in `emit` alone would not stop `((?:){1000}){1000}...`.
+  inc c.work
+  if c.work > 4 * c.limits.maxProgramSize:
+    raise newException(RegexLimitError, "the pattern expands to too much work")
+  case n.kind
+  of nkChar: discard c.emit(program, Inst(kind: ikChar, ch: n.ch))
+  of nkAny: discard c.emit(program, Inst(kind: ikAny))
+  of nkSet:
+    c.code.sets.add (n.ranges, n.negated)
+    discard c.emit(program, Inst(kind: ikSet, setIndex: c.code.sets.high))
+  of nkSeq:
+    for child in n.children:
+      c.compileNode(program, child)
+  of nkAlt:
+    var jumps: seq[int]
+    for index, child in n.children:
+      if index < n.children.high:
+        let split = c.emit(program, Inst(kind: ikSplit))
+        c.code.programs[program][split].x = split + 1
+        c.compileNode(program, child)
+        jumps.add c.emit(program, Inst(kind: ikJmp))
+        c.code.programs[program][split].y = c.code.programs[program].len
+      else:
+        c.compileNode(program, child)
+    for jump in jumps:
+      c.code.programs[program][jump].x = c.code.programs[program].len
+  of nkRepeat:
+    for _ in 0 ..< n.min:
+      c.compileNode(program, n.body)
+    if n.max == NoRepeatLimit:
+      let split = c.emit(program, Inst(kind: ikSplit))
+      c.code.programs[program][split].x = split + 1
+      c.compileNode(program, n.body)
+      discard c.emit(program, Inst(kind: ikJmp, x: split))
+      c.code.programs[program][split].y = c.code.programs[program].len
+    else:
+      var splits: seq[int]
+      for _ in n.min ..< n.max:
+        let split = c.emit(program, Inst(kind: ikSplit))
+        c.code.programs[program][split].x = split + 1
+        splits.add split
+        c.compileNode(program, n.body)
+      for split in splits:
+        c.code.programs[program][split].y = c.code.programs[program].len
+  of nkBol: discard c.emit(program, Inst(kind: ikBol))
+  of nkEol: discard c.emit(program, Inst(kind: ikEol))
+  of nkWordBoundary: discard c.emit(program, Inst(kind: ikWordBoundary))
+  of nkNotWordBoundary: discard c.emit(program, Inst(kind: ikNotWordBoundary))
+  of nkLookahead, nkNotLookahead:
+    c.code.programs.add @[]
+    let sub = c.code.programs.high
+    c.compileNode(sub, n.look)
+    discard c.emit(sub, Inst(kind: ikMatch))
+    discard c.emit(program, Inst(kind: ikLook, x: sub, negated: n.kind == nkNotLookahead))
+
+proc compileRegex*(pattern: string, limits = DefaultRegexLimits): Regex =
+  ## Raises RegexError for a malformed or unsupported pattern, and
+  ## RegexLimitError (a RegexError) for one above `limits`.
+  let runes = pattern.toRunes
+  if runes.len > limits.maxPatternLength:
+    raise newException(RegexLimitError,
+      "the pattern has " & $runes.len & " characters; the limit is " &
+      $limits.maxPatternLength)
+  var p = Parser(src: runes, limits: limits)
   let root = p.parseAlternation()
   if not p.atEnd:
     p.fail("unbalanced parenthesis")
-  Regex(root: root)
+  var c = Compiler(code: RegexCode(programs: @[newSeq[Inst]()]), limits: limits)
+  c.compileNode(0, root)
+  discard c.emit(0, Inst(kind: ikMatch))
+  Regex(code: c.code)
 
 # Matching
 
-type Continuation = proc(i: int): bool
+type
+  Run = ref object
+    code: RegexCode
+    budget: int
+    lookResults: Table[(int, int), bool]  # (sub-program, position) -> it matches there
 
 func inRanges(r: RangeSet, c: int32): bool =
   for (lo, hi) in r:
     if c >= lo and c <= hi:
       return true
 
-func isWord(text: seq[Rune], i: int): bool =
+func isWord(text: openArray[Rune], i: int): bool =
   i >= 0 and i < text.len and WordSet.inRanges(int32(text[i]))
 
-proc step(n: Node, text: seq[Rune], i: int, k: Continuation): bool
+proc charge(run: Run) =
+  dec run.budget
+  if run.budget < 0:
+    raise newException(RegexLimitError, "matching spent its step budget")
 
-proc repeatFrom(n: Node, text: seq[Rune], i, count: int, k: Continuation): bool =
-  let again = proc(): bool =
-    n.max > count and step(n.body, text, i, proc(j: int): bool =
-      # An iteration that consumed nothing cannot help once the minimum is met.
-      (j != i or count < n.min) and repeatFrom(n, text, j, count + 1, k))
-  let stop = proc(): bool = count >= n.min and k(i)
-  if n.lazy: stop() or again() else: again() or stop()
+proc matchesFrom(run: Run, program: int, text: openArray[Rune], start: int,
+                 anchored: bool): bool
 
-proc step(n: Node, text: seq[Rune], i: int, k: Continuation): bool =
-  case n.kind
-  of nkChar: i < text.len and int32(text[i]) == n.ch and k(i + 1)
-  of nkAny:
-    i < text.len and not LineTerminators.inRanges(int32(text[i])) and k(i + 1)
-  of nkSet:
-    i < text.len and n.ranges.inRanges(int32(text[i])) != n.negated and k(i + 1)
-  of nkSeq:
-    proc chain(index, at: int): bool =
-      if index == n.children.len: k(at)
-      else: step(n.children[index], text, at, proc(j: int): bool = chain(index + 1, j))
-    chain(0, i)
-  of nkAlt:
-    for child in n.children:
-      if step(child, text, i, k):
-        return true
-    false
-  of nkRepeat: repeatFrom(n, text, i, 0, k)
-  of nkBol: i == 0 and k(i)
-  of nkEol: i == text.len and k(i)
-  of nkWordBoundary: text.isWord(i - 1) != text.isWord(i) and k(i)
-  of nkNotWordBoundary: text.isWord(i - 1) == text.isWord(i) and k(i)
-  of nkLookahead: step(n.look, text, i, proc(j: int): bool = true) and k(i)
-  of nkNotLookahead: not step(n.look, text, i, proc(j: int): bool = true) and k(i)
+proc lookMatches(run: Run, sub: int, text: openArray[Rune], i: int): bool =
+  let key = (sub, i)
+  if key notin run.lookResults:
+    run.lookResults[key] = run.matchesFrom(sub, text, i, anchored = true)
+  run.lookResults[key]
 
-proc isMatch*(re: Regex, text: string): bool =
-  ## Whether the pattern matches anywhere in `text`.
-  let runes = text.toRunes
-  for start in 0 .. runes.len:
-    if step(re.root, runes, start, proc(j: int): bool = true):
+proc reach(run: Run, program: int, text: openArray[Rune], first, i: int,
+           marks: var seq[int], gen: int, live: var seq[int],
+           pending: var seq[int]): bool =
+  ## Follows the instructions that consume nothing from `first` at text
+  ## position `i`, adding the ones that consume a character to `live`.
+  ## True when ikMatch is among them.
+  pending.setLen 0
+  pending.add first
+  while pending.len > 0:
+    let pc = pending.pop
+    if marks[pc] == gen:
+      continue
+    marks[pc] = gen
+    run.charge()
+    let inst = run.code.programs[program][pc]
+    case inst.kind
+    of ikChar, ikAny, ikSet: live.add pc
+    of ikSplit:
+      pending.add inst.y
+      pending.add inst.x
+    of ikJmp: pending.add inst.x
+    of ikBol:
+      if i == 0: pending.add pc + 1
+    of ikEol:
+      if i == text.len: pending.add pc + 1
+    of ikWordBoundary:
+      if text.isWord(i - 1) != text.isWord(i): pending.add pc + 1
+    of ikNotWordBoundary:
+      if text.isWord(i - 1) == text.isWord(i): pending.add pc + 1
+    of ikLook:
+      if run.lookMatches(inst.x, text, i) != inst.negated: pending.add pc + 1
+    of ikMatch: return true
+
+proc matchesFrom(run: Run, program: int, text: openArray[Rune], start: int,
+                 anchored: bool): bool =
+  ## Whether the program matches starting at `start` (anchored) or starting
+  ## anywhere from `start` on.
+  var
+    marks = newSeq[int](run.code.programs[program].len)
+    live, next, pending: seq[int]
+    gen = 1
+    i = start
+  while true:
+    if (not anchored or i == start) and
+       run.reach(program, text, 0, i, marks, gen, live, pending):
       return true
+    if i >= text.len or (anchored and live.len == 0):
+      return false
+    let c = int32(text[i])
+    inc gen
+    next.setLen 0
+    for pc in live:
+      run.charge()
+      let inst = run.code.programs[program][pc]
+      let consumed = case inst.kind
+        of ikChar: c == inst.ch
+        of ikAny: not LineTerminators.inRanges(c)
+        of ikSet:
+          let set = run.code.sets[inst.setIndex]
+          set.ranges.inRanges(c) != set.negated
+        else: false
+      if consumed and run.reach(program, text, pc + 1, i + 1, marks, gen, next, pending):
+        return true
+    swap(live, next)
+    inc i
+
+proc isMatch*(re: Regex, text: string, budget: var int): bool =
+  ## Whether the pattern matches anywhere in `text`. `budget` is the number
+  ## of state visits still allowed and is reduced by what this match spent,
+  ## so one budget can cover many matches. Raises RegexLimitError when it
+  ## runs out.
+  let runes = text.toRunes
+  let run = Run(code: re.code, budget: budget)
+  try:
+    result = run.matchesFrom(0, runes, 0, anchored = false)
+  finally:
+    budget = run.budget
+
+proc isMatch*(re: Regex, text: string, maxSteps = DefaultMaxRegexSteps): bool =
+  ## Whether the pattern matches anywhere in `text`, spending at most
+  ## `maxSteps` state visits. Raises RegexLimitError beyond that.
+  var budget = maxSteps
+  re.isMatch(text, budget)

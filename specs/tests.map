@@ -1024,3 +1024,13 @@ MCP-HOOKS-1 | tests/test_request_hooks.nim | Given no response filter, when the 
 MCP-HOOKS-1 | tests/test_request_hooks.nim | Given no list scope, or one that answers nil, when lists are asked and a tool is called, then the registered handlers serve and validate
 MCP-HOOKS-1 | tests/test_request_hooks.nim | Given notifyListChanged is never called, when requests are served, then no list-changed notification is sent, and notifyToolListChanged still sends it with empty params
 MCP-HTTP-6 | tests/test_streamable_http.nim | Given a server without the extension that defines it, when tasks/get is posted without Mcp-Name, then the answer is method not found and not a header mismatch
+MCP-SEC-SCHEMA-1 | tests/test_security_schema.nim | Given a plain pattern, when 4 MiB of text is matched, then the process survives and answers
+MCP-SEC-SCHEMA-1 | tests/test_security_schema.nim | Given a lookahead, when long text is matched, then it is answered
+MCP-SEC-SCHEMA-2 | tests/test_security_schema.nim | Given patterns that backtrack exponentially, when matched, then each answers at once
+MCP-SEC-SCHEMA-2 | tests/test_security_schema.nim | Given a match that needs more steps than the budget, when matched, then the limit is reported, not a verdict
+MCP-SEC-SCHEMA-2 | tests/test_security_schema.nim | Given one budget for several matches, when they add up above it, then the later one is reported
+MCP-SEC-SCHEMA-3 | tests/test_security_schema.nim | Given a repetition count above the limit, when compiled, then the limit is reported
+MCP-SEC-SCHEMA-3 | tests/test_security_schema.nim | Given repetitions nested inside each other, when compiled, then the expansion is stopped
+MCP-SEC-SCHEMA-3 | tests/test_security_schema.nim | Given a pattern longer than the limit, when compiled, then the limit is reported
+MCP-SEC-SCHEMA-3 | tests/test_security_schema.nim | Given groups nested too deep, when compiled, then the limit is reported
+MCP-SEC-SCHEMA-3 | tests/test_security_schema.nim | Given a limit raised by the caller, when compiled, then the larger pattern is accepted
