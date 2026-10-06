@@ -1,8 +1,16 @@
-Feature: The JSON Schema validator against hostile input and hostile schemas
-  As an operator whose server checks tool arguments, and a client that checks
-  results against a schema the server supplied
-  I want the validator to stay within bounded stack, time and memory
-  So that one request or one schema cannot take the process down
+Feature: Security properties
+  As an application that talks to MCP peers it does not control
+  I want the SDK to hold its security properties without my configuration
+  So that a hostile peer cannot turn the SDK against me or against another caller
+
+  These Scenarios are the SDK's own requirements, from the security review of
+  2026-10-06, not text of an MCP specification, except where one says so.
+
+  Rule: The JSON Schema validator against hostile input and hostile schemas
+    As an operator whose server checks tool arguments, and a client that checks
+    results against a schema the server supplied
+    I want the validator to stay within bounded stack, time and memory
+    So that one request or one schema cannot take the process down
 
   @spec:MCP-SEC-SCHEMA-1
   Scenario: A plain pattern is checked against text of any length the transport allows
@@ -51,10 +59,11 @@ Feature: The JSON Schema validator against hostile input and hostile schemas
     Given dependentRequired or draft-07 dependencies that do not hold lists of names, a $ref index that overflows or is out of range, or a multipleOf whose quotient a double cannot hold
     When an instance is validated
     Then InvalidSchemaError (or SchemaLimitError for the quotient) is raised, and the instance is not reported as conforming
-Feature: Security of the HTTP server transport
-  As an operator who puts an MCP server behind authorization
-  I want every endpoint of the transport to be protected, and a client to be bound to its own session
-  So that one caller cannot read, answer, cancel or starve another's
+
+  Rule: Security of the HTTP server transport
+    As an operator who puts an MCP server behind authorization
+    I want every endpoint of the transport to be protected, and a client to be bound to its own session
+    So that one caller cannot read, answer, cancel or starve another's
 
   Specification: Authorization (2025-03-26 and later, basic/authorization:
   "Token Requirements": every HTTP request from client to server MUST carry
@@ -108,10 +117,11 @@ Feature: Security of the HTTP server transport
     Then line breaks, escape and other control characters, line separators and bidirectional overrides are shown as escapes
     And invalid UTF-8 bytes are shown as escapes
     And one message is cut to a bounded length, with the number of bytes left out
-Feature: Security of the outgoing HTTP client
-  As someone who connects an MCP client to servers across a network
-  I want the client to talk only to the server it was pointed at
-  So that a stranger on the path or a server's own redirection cannot take the connection over
+
+  Rule: Security of the outgoing HTTP client
+    As someone who connects an MCP client to servers across a network
+    I want the client to talk only to the server it was pointed at
+    So that a stranger on the path or a server's own redirection cannot take the connection over
 
   Not a rule of the MCP specification: these follow the security guidance of
   basic/authorization and basic/transports (HTTPS, no credentials to other
@@ -171,13 +181,11 @@ Feature: Security of the outgoing HTTP client
     Given an icon of a server the user addressed by a name
     When the name resolves to a loopback, private, link-local or reserved address
     Then the fetch is refused unless the user allowed private networks, and link-local and reserved addresses are always refused
-Feature: Security properties
-  As an application that connects to MCP servers it does not control
-  I want the SDK to hold its security properties without my configuration
-  So that a hostile peer cannot turn the SDK against me
 
-  Source: the security review of 2026-10-06 (build/SECURITY_FINDINGS.md). These Scenarios are
-  the SDK's own requirements, not text of an MCP specification, except where one says so.
+  Rule: Credentials and tokens of the authorization client
+    As a client that holds a secret or tokens of one authorization server
+    I want them sent to that server only, and its answers read without overflow
+    So that an MCP server cannot have them delivered to a server of its choosing
 
   @spec:MCP-SEC-AUTH-1
   Scenario: A client secret is configured for one authorization server and sent to no other
@@ -197,10 +205,11 @@ Feature: Security properties
     Given a token response whose expires_in is an integer, a float, a string of digits, absent, larger than ten years, or negative or not a number
     When the client parses it
     Then it counts the lifetime from now for the first three, treats the next three as "no expiry given", and refuses the last without reading a token into the store
-Feature: Security findings of the 2026-10-06 review
-  As an operator of a receiver of tasks
-  I want one peer's choices to be unable to stop or exhaust the receiver
-  So that the tasks of every other owner keep working
+
+  Rule: Security findings of the 2026-10-06 review
+    As an operator of a receiver of tasks
+    I want one peer's choices to be unable to stop or exhaust the receiver
+    So that the tasks of every other owner keep working
 
   Resource limits are the receiver's to set (basic/utilities/tasks, "Resource
   Management": enforce limits on concurrent tasks per requestor, enforce
