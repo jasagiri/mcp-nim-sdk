@@ -134,3 +134,83 @@ suite "list-changed notifications with params":
     let server = toolServer()
     expect ValueError:
       waitFor server.notifyListChanged("notifications/message")
+
+suite "a server that uses none of the hooks":
+
+  proc plainServer(): McpServer =
+    result = newServer(McpServerCapabilities(
+      tools: some(McpToolsCapability(listChanged: true)),
+      resources: some(McpResourcesCapability()), prompts: some(McpPromptsCapability())))
+    result.onToolsList(pageOf("plain"))
+    result.onResourcesList(proc(cursor: Option[string]): Future[McpPage] {.async.} =
+      return McpPage(items: @[%*{"uri": "file:///a", "name": "a"}]))
+    result.onPromptsList(proc(cursor: Option[string]): Future[McpPage] {.async.} =
+      return McpPage(items: @[%*{"name": "p"}]))
+    result.onToolCall(proc(ctx: McpRequestContext, name: string,
+                           arguments: JsonNode): Future[JsonNode] {.async.} =
+      return %*{"content": [{"type": "text", "text": "ran " & name}]})
+    result.onResourceRead(proc(ctx: McpRequestContext, uri: string): Future[seq[JsonNode]] {.async.} =
+      return @[%*{"uri": uri, "text": "body"}])
+    result.onPromptGet(proc(ctx: McpRequestContext, name: string,
+                            arguments: JsonNode): Future[JsonNode] {.async.} =
+      return %*{"messages": [{"role": "user", "content": {"type": "text", "text": "hi"}}]})
+
+  let requests = [
+    ("tools/list", %*{}), ("tools/call", %*{"name": "plain", "arguments": {"n": 1}}),
+    ("resources/list", %*{}), ("resources/read", %*{"uri": "file:///a"}),
+    ("prompts/list", %*{}), ("prompts/get", %*{"name": "p"})]
+
+  test "Given handlers that never read ctx.meta, when requests carry different _meta, then the results are identical":
+    for v in SupportedProtocolVersions:
+      let server = plainServer()
+      let peer = server.connect(server.attach(), v)
+      for (methodName, params) in requests:
+        let bare = peer.ask(methodName, params)["result"]
+        let withMeta = peer.ask(methodName, params, meta = %*{MetaKey: "wide", "x": 1})["result"]
+        let other = peer.ask(methodName, params, meta = %*{"unrelated": [1, 2]})["result"]
+        check bare == withMeta
+        check bare == other
+
+  test "Given no response filter, when the standard methods are answered, then each result is what the handler returned":
+    for v in SupportedProtocolVersions:
+      let server = plainServer()
+      let peer = server.connect(server.attach(), v)
+      check peer.ask("tools/list")["result"]["tools"].len == 1
+      check peer.ask("tools/list")["result"]["tools"][0]["name"].getStr() == "plain"
+      check peer.ask("tools/call", %*{"name": "plain", "arguments": {"n": 1}})["result"]["content"] ==
+        %*[{"type": "text", "text": "ran plain"}]
+      check peer.ask("resources/read", %*{"uri": "file:///a"})["result"]["contents"] ==
+        %*[{"uri": "file:///a", "text": "body"}]
+      check peer.ask("prompts/get", %*{"name": "p"})["result"]["messages"] ==
+        %*[{"role": "user", "content": {"type": "text", "text": "hi"}}]
+
+  test "Given no list scope, or one that answers nil, when lists are asked and a tool is called, then the registered handlers serve and validate":
+    for useScope in [false, true]:
+      for v in SupportedProtocolVersions:
+        let server = plainServer()
+        if useScope:
+          server.onListScope(proc(ctx: McpRequestContext, methodName: string): ListHandler = nil)
+        let peer = server.connect(server.attach(), v)
+        check peer.ask("tools/list")["result"]["tools"][0]["name"].getStr() == "plain"
+        check peer.ask("resources/list")["result"]["resources"][0]["uri"].getStr() == "file:///a"
+        check peer.ask("prompts/list")["result"]["prompts"][0]["name"].getStr() == "p"
+        # the registered tool list wants an integer n
+        check not peer.ask("tools/call", %*{"name": "plain", "arguments": {"n": 1}})["result"].hasKey("isError")
+        let bad = peer.ask("tools/call", %*{"name": "plain", "arguments": {}})
+        check (bad.hasKey("error") or bad["result"]{"isError"}.getBool())
+
+  test "Given notifyListChanged is never called, when requests are served, then no list-changed notification is sent, and notifyToolListChanged still sends it with empty params":
+    for v in legacyVersions():
+      let server = plainServer()
+      let transport = server.attach()
+      let peer = server.connect(transport, v)
+      discard peer.ask("tools/list")
+      discard peer.ask("tools/call", %*{"name": "plain", "arguments": {"n": 1}})
+      settle()
+      check transport.messagesOf("notifications/tools/list_changed").len == 0
+      waitFor server.notifyToolListChanged()
+      untilTrue("the notification", proc(): bool =
+        transport.messagesOf("notifications/tools/list_changed").len == 1)
+      let sent = transport.messagesOf("notifications/tools/list_changed")[0].message
+      check sent["method"].getStr() == "notifications/tools/list_changed"
+      check sent{"params"}.isNil or sent["params"] == %*{}

@@ -1019,4 +1019,8 @@ MCP-EXT-11 | tests/test_extensions.nim | Given an extension declared with onLega
 MCP-EXT-12 | tests/test_extensions.nim | Given a legacy client that declared an extension in initialize, when a handler asks, then it sees the settings; without the declaration it does not
 MCP-EXT-13 | tests/test_extensions.nim | Given an extension registered with onLegacyHandshake, when a legacy client initializes, then the result announces it and only it
 MCP-EXT-14 | tests/test_extensions.nim | Given an extension the server alone declares, when a client that declared nothing calls its method, then the server serves it and the client sends it
+MCP-HOOKS-1 | tests/test_request_hooks.nim | Given handlers that never read ctx.meta, when requests carry different _meta, then the results are identical
+MCP-HOOKS-1 | tests/test_request_hooks.nim | Given no response filter, when the standard methods are answered, then each result is what the handler returned
+MCP-HOOKS-1 | tests/test_request_hooks.nim | Given no list scope, or one that answers nil, when lists are asked and a tool is called, then the registered handlers serve and validate
+MCP-HOOKS-1 | tests/test_request_hooks.nim | Given notifyListChanged is never called, when requests are served, then no list-changed notification is sent, and notifyToolListChanged still sends it with empty params
 MCP-HTTP-6 | tests/test_streamable_http.nim | Given a server without the extension that defines it, when tasks/get is posted without Mcp-Name, then the answer is method not found and not a header mismatch
