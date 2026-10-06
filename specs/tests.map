@@ -1131,3 +1131,7 @@ MCP-SEC-WIRE-7 | tests/test_security_icons.nim | Given an answer that comes afte
 MCP-SEC-WIRE-8 | tests/test_security_icons.nim | Given a server whose name resolves to a loopback address, when its icon is fetched, then the fetch is refused
 MCP-SEC-WIRE-8 | tests/test_security_icons.nim | Given a server whose name resolves to a metadata service address, when its icon is fetched, then the fetch is refused
 MCP-SEC-WIRE-8 | tests/test_security_icons.nim | Given a server whose name resolves to a private address, when its icon is fetched, then it is refused unless private networks are allowed
+MCP-SEC-AUTH-1 | tests/test_security_auth.nim | Given a client secret without an issuer and version <version>, when the client is made, then it is refused and the message says how to fix it
+MCP-SEC-AUTH-1 | tests/test_security_auth.nim | Given a client secret for one issuer and version <version>, when the resource names another, then nothing but metadata reaches it and the error names both
+MCP-SEC-AUTH-1 | tests/test_security_auth.nim | Given a public pre-registered client for one issuer and version <version>, when the resource names another, then the user is not sent there
+MCP-SEC-AUTH-2 | tests/test_security_auth.nim | Given tokens of one issuer and a later challenge that met another and failed, when the tokens have expired, then the refresh token is not sent to the other server (version <version>)

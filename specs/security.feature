@@ -171,3 +171,23 @@ Feature: Security of the outgoing HTTP client
     Given an icon of a server the user addressed by a name
     When the name resolves to a loopback, private, link-local or reserved address
     Then the fetch is refused unless the user allowed private networks, and link-local and reserved addresses are always refused
+Feature: Security properties
+  As an application that connects to MCP servers it does not control
+  I want the SDK to hold its security properties without my configuration
+  So that a hostile peer cannot turn the SDK against me
+
+  Source: the security review of 2026-10-06 (build/SECURITY_FINDINGS.md). These Scenarios are
+  the SDK's own requirements, not text of an MCP specification, except where one says so.
+
+  @spec:MCP-SEC-AUTH-1
+  Scenario: A client secret is configured for one authorization server and sent to no other
+    Given a pre-registered client with a secret, and an MCP server that names an authorization server of its own
+    When the client meets a 401 from that MCP server
+    Then the client refuses before anything but metadata is requested from that server, says which issuer was expected and which was named, and does not print the secret
+    And a client secret that does not name its issuer is refused when the client is made, in every protocol version
+
+  @spec:MCP-SEC-AUTH-2
+  Scenario: Tokens and credentials go back only to the authorization server that issued them
+    Given tokens of one authorization server and a later challenge that met another and failed
+    When the tokens have expired
+    Then the refresh token and the client's credentials are not sent to the other server

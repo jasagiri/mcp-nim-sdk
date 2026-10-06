@@ -234,7 +234,7 @@ The HTTP server accepts requests from loopback origins only; add others to `tran
 {{#if spoken:ftAuthorization}}
 #### Authorization
 
-Authorization is off until it is attached to an HTTP transport. A server sets `transport.auth = newResourceServerAuth(config, mcpPath)` with a token verifier of its own; a client sets `transport.auth` to an OAuth client made with `newOAuthClient`. Both live in `auth/` and are imported separately (`import auth/resource_server`, `import auth/client`). Build with `-d:ssl`: authorization servers are reached over `https://`.
+Authorization is off until it is attached to an HTTP transport. A server sets `transport.auth = newResourceServerAuth(config, mcpPath)` with a token verifier of its own; a client sets `transport.auth` to an OAuth client made with `newOAuthClient`; a client secret is configured together with the issuer of the authorization server it belongs to, and is sent to no other. Both live in `auth/` and are imported separately (`import auth/resource_server`, `import auth/client`). Build with `-d:ssl`: authorization servers are reached over `https://`.
 
 {{/if}}
 {{#if spoken:ftExtensions}}

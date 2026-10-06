@@ -96,6 +96,15 @@ SDK implements the two roles an MCP implementation plays.
 
 ## Decisions that are the SDK's own
 
+- A client secret is configured together with the issuer it belongs to
+  (`PreRegisteredClient.issuer`), in every version, not only from 2026-07-28
+  where R7 makes that a MUST for all credentials. The MCP server chooses which
+  authorization server the client meets, so a secret that is not bound to one
+  would go to whichever server a hostile MCP server names (MCP-SEC-AUTH-1).
+  Credentials are checked against the issuer before any request other than
+  metadata goes to it. Refresh tokens and the credentials they were issued
+  with return only to the issuer that issued them (MCP-SEC-AUTH-2).
+
 - The protocol version of an authorization exchange is the one the client is
   configured to speak (`AuthConfig.version`, default `DefaultProtocolVersion`);
   a 401 arrives before `initialize` has negotiated anything.

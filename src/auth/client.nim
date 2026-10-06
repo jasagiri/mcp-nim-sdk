@@ -37,8 +37,12 @@ type
     clientId*: string
     clientSecret*: Option[string]
     issuer*: Option[string]
-      ## The authorization server these belong to. Required from version
-      ## 2026-07-28 on, which binds credentials to an issuer.
+      ## The authorization server these belong to, as its metadata names it.
+      ## Required whenever there is a `clientSecret`, in every version: the
+      ## MCP server decides which authorization server the client meets, and
+      ## without this a malicious one could name its own and receive the
+      ## secret. Required from version 2026-07-28 on for every pre-registered
+      ## client, since that version binds credentials to an issuer.
 
   OAuthClientConfig* = object
     serverUrl*: string
@@ -96,7 +100,8 @@ proc newOAuthClient*(config: OAuthClientConfig): OAuthClient
                     {.raises: [ValueError, OAuthError, OAuthSecurityError].} =
   ## Raises for a version without authorization and for a configuration
   ## that could never succeed (a redirect URI that is neither https nor
-  ## localhost, a server URL that is not absolute).
+  ## localhost, a server URL that is not absolute, a client secret that does
+  ## not say which authorization server it belongs to).
   result = OAuthClient(config: config, policy: authPolicy(config.version),
                        attempts: initTable[string, (int, Time)]())
   # Loopback is reachable only if the user pointed the client at a loopback
@@ -107,6 +112,12 @@ proc newOAuthClient*(config: OAuthClientConfig): OAuthClient
   checkRedirectUri(config.redirectUri)
   if config.authorize.isNil:
     raise newException(ValueError, "an authorize callback is required")
+  if config.preRegistered.isSome and config.preRegistered.get.clientSecret.isSome and
+     config.preRegistered.get.issuer.isNone:
+    raise newException(ValueError,
+      "the pre-registered client secret has to name the authorization server it belongs to: " &
+      "set PreRegisteredClient.issuer to that server's issuer identifier. Without it a " &
+      "resource server could name an authorization server of its own and receive the secret.")
 
 proc tokenKey(c: OAuthClient): string = c.resource
 
@@ -122,6 +133,12 @@ proc authorizationHeader*(c: OAuthClient): Future[Option[string]] {.async.} =
       return none(string)
     let creds = c.config.credentialStore.load(tokens.issuer)
     if creds.isNone:
+      return none(string)
+    # The last discovery may have met another authorization server than the
+    # one that issued these tokens (a challenge that failed half way). The
+    # refresh token and the client's credentials go back to their own issuer
+    # or nowhere; the server's 401 starts a full authorization.
+    if tokens.issuer != c.metadata.get.issuer or creds.get.issuer != tokens.issuer:
       return none(string)
     try:
       tokens = await refreshTokens(
@@ -179,19 +196,30 @@ proc clientIdMetadataUrlIsValid(url: string) {.raises: [OAuthSecurityError].} =
     raise newException(OAuthSecurityError,
       "a client metadata document URL must be https and have a path: " & url)
 
+proc requirePreRegisteredIssuer(c: OAuthClient, issuer: string)
+                               {.raises: [OAuthError].} =
+  ## Pre-registered credentials are used only at the authorization server
+  ## they belong to. Checked before anything is sent to `issuer`, and before
+  ## the checks of its metadata, so that the error says what is wrong.
+  if c.config.preRegistered.isNone:
+    return
+  let pre = c.config.preRegistered.get
+  if pre.issuer.isSome and pre.issuer.get != issuer:
+    raise newException(OAuthSecurityError,
+      "the pre-registered client belongs to " & pre.issuer.get &
+      " but the resource server names " & issuer & "; the client is not used with another " &
+      "authorization server. If the resource lists several, choose the right one with " &
+      "selectAuthorizationServer")
+  if pre.issuer.isNone and c.policy.issuerBoundCredentials:
+    raise newException(OAuthError,
+      "pre-registered credentials must name the issuer they belong to")
+
 proc obtainCredentials(c: OAuthClient, md: AuthorizationServerMetadata): Future[ClientCredentials] {.async.} =
   ## Pre-registered, then Client ID Metadata Document, then what dynamic
   ## registration made earlier, then dynamic registration.
   let issuer = md.issuer
   if c.config.preRegistered.isSome:
     let pre = c.config.preRegistered.get
-    if pre.issuer.isSome and pre.issuer.get != issuer:
-      raise newException(OAuthSecurityError,
-        "the pre-registered client belongs to " & pre.issuer.get &
-        " but the server now uses " & issuer & "; it is not reused with another authorization server")
-    if pre.issuer.isNone and c.policy.issuerBoundCredentials:
-      raise newException(OAuthError,
-        "pre-registered credentials must name the issuer they belong to")
     return ClientCredentials(
       issuer: issuer, clientId: pre.clientId, clientSecret: pre.clientSecret,
       authMethod: if pre.clientSecret.isSome: "client_secret_basic" else: "none",
@@ -269,6 +297,7 @@ proc handleChallenge*(c: OAuthClient, status: int,
   let advertised = if bearer.isSome: bearer.get.resourceMetadata else: none(string)
   let found = await c.discover(advertised)
   let md = found.metadata
+  c.requirePreRegisteredIssuer(found.issuer)
   c.metadata = some(md)
   c.requirePkce(md)
   let creds = await c.obtainCredentials(md)
