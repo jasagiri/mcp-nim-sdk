@@ -119,6 +119,34 @@ when DefaultProtocolVersion.has(ftProtectedResourceMetadata):
       check env.attacker.log.len == 0
       check calls[] == 0
 
+  suite "the authorization extensions fetch loopback only for a server the user chose":
+    const LoopbackChallenge =
+      @["Bearer resource_metadata=\"http://127.0.0.1:1/.well-known/oauth-protected-resource\""]
+
+    proc refusal[T](auth: T): string =
+      try:
+        discard waitFor auth.handleChallenge(401, LoopbackChallenge)
+      except OAuthSecurityError as e:
+        result = e.msg
+
+    proc remoteServerConfig(calls: ref int): EnterpriseManagedConfig =
+      result = newEnterpriseManagedConfig(
+        "https://mcp.example.test/mcp", LegitIdp, LegitIssuer,
+        secretBasic("sso-client", Secret), secretPost("mcp-client", "ras-secret-value"),
+        proc(): Future[IdentityAssertion] {.async.} =
+          inc calls[]
+          return IdentityAssertion(kind: iakIdToken, token: "id-token-of-the-user"))
+
+    test "Given a remote server that names a loopback metadata URL, when the client credentials client answers its 401, then OAuthSecurityError is raised and nothing is requested":
+      var config = newClientCredentialsConfig("https://mcp.example.test/mcp", "svc", LegitIssuer)
+      config.secret = some(Secret)
+      check "loopback" in refusal(newClientCredentialsAuth(config))
+
+    test "Given a remote server that names a loopback metadata URL, when the enterprise-managed client answers its 401, then OAuthSecurityError is raised and the assertion is not read":
+      let calls = new int
+      check "loopback" in refusal(newEnterpriseManagedAuth(remoteServerConfig(calls)))
+      check calls[] == 0
+
   suite "enterprise-managed authorization: numbers in an ID-JAG and in an exchange response":
 
     proc jag(claims: JsonNode): string =

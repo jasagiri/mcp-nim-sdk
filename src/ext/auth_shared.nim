@@ -58,8 +58,12 @@ proc discoverResourceAuthorization*(
   ## server's metadata. The two documents are validated the way the core
   ## flow validates them. A server that is not `expectedIssuer` is not asked
   ## for anything.
+  # The metadata URL comes from the resource server's challenge: loopback is
+  # followed only when the server the user chose is itself on loopback. The
+  # authorization server below is the configured one, so it is not narrowed.
   let prm = await discoverProtectedResource(serverUrl, advertised,
-                                            policy.wellKnownResourceFallback, fetchPolicy)
+                                            policy.wellKnownResourceFallback,
+                                            fetchPolicy.narrowedTo(serverUrl))
   let issuer = if choose.isNil: firstAuthorizationServer(prm.authorizationServers)
                else: choose(prm.authorizationServers)
   if issuer notin prm.authorizationServers:

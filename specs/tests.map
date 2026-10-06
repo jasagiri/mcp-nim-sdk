@@ -1966,6 +1966,8 @@ MCP-SEC-WIRE-5 | tests/external/test_security_address.nim | Given a name that do
 MCP-SEC-WIRE-5 | tests/internal/test_security_address_internal.nim | Given a name that resolves to an allowed address, when a request is made, then the connection goes to that address
 MCP-SEC-WIRE-6 | tests/internal/test_security_address_internal.nim | Given a policy and a server URL, when narrowed, then loopback stays allowed only for a loopback server
 MCP-SEC-WIRE-6 | tests/external/test_security_address.nim | Given a remote server that names a loopback metadata URL, when the client answers its 401, then OAuthSecurityError is raised and nothing is requested
+MCP-SEC-WIRE-6 | tests/test_security_ext_auth.nim | Given a remote server that names a loopback metadata URL, when the client credentials client answers its 401, then OAuthSecurityError is raised and nothing is requested
+MCP-SEC-WIRE-6 | tests/test_security_ext_auth.nim | Given a remote server that names a loopback metadata URL, when the enterprise-managed client answers its 401, then OAuthSecurityError is raised and the assertion is not read
 MCP-SEC-WIRE-7 | tests/internal/test_security_icons_internal.nim | Given an answer that comes after the timeout, when the fetch has failed, then the connection is closed
 MCP-SEC-WIRE-7 | tests/external/test_security_trusted_ca.nim | Given an answer that comes after the timeout, when the fetch has failed, then the client closes that connection
 MCP-SEC-WIRE-10 | tests/internal/test_security_icons_internal.nim | Given an answer that is not 200, when the fetch is refused, then the connection is closed
