@@ -39,6 +39,9 @@ import ../protocol/features
 
 const
   DefaultMaxResponseSize* = 16 * 1024 * 1024
+  DefaultStreamOpenTimeoutMs* = 30_000
+    ## A server that accepted a GET for its stream sends the head at once;
+    ## 30 s allows for a slow link and a busy server, not for a silent one.
   DefaultReconnectDelayMs* = 500
   DefaultMaxReconnects* = 5
   ErrStreamClosed* = -32000
@@ -60,6 +63,15 @@ type
     protocolVersion*: Option[McpProtocolVersion]
       ## The version agreed by initialize; sent as MCP-Protocol-Version.
     maxResponseSize*: int
+    connectTimeoutMs*: int
+      ## How long to wait for the connection (TCP and, for https, the TLS
+      ## handshake) of every request.
+    streamOpenTimeoutMs*: int
+      ## How long the server may take to start answering a GET that opens its
+      ## stream. Not applied to a POST: the answer to a request (a tool call)
+      ## may take as long as the caller allows, and the client's own request
+      ## timeout (`McpClient.requestTimeoutMs`, applied from `beginRequest`)
+      ## ends that wait; a limit here would end it earlier without telling it.
     reconnectDelayMs*: int
       ## How long to wait before resuming a broken stream, unless the server
       ## asked for another delay with `retry`.
@@ -95,6 +107,8 @@ proc newStreamableHttpTransport*(baseUrl: string): StreamableHttpTransport =
     sessionId: none(string),
     protocolVersion: none(McpProtocolVersion),
     maxResponseSize: DefaultMaxResponseSize,
+    connectTimeoutMs: wire.DefaultConnectTimeoutMs,
+    streamOpenTimeoutMs: DefaultStreamOpenTimeoutMs,
     reconnectDelayMs: DefaultReconnectDelayMs,
     maxReconnects: DefaultMaxReconnects,
     listenForServerMessages: true,
@@ -219,7 +233,7 @@ proc consume(t: StreamableHttpTransport, response: WireResponse,
   ## Deliver the messages of an event stream as they arrive, until it ends
   ## or breaks. Events without data (a priming event) only move the last
   ## event id. A broken stream is logged, and reported by what was learned.
-  var parser = initSseParser()
+  var parser = initSseParser(t.maxResponseSize, t.maxResponseSize)
   result.answered = requestId.isNil
   try:
     while true:
@@ -259,7 +273,8 @@ proc openStream(t: StreamableHttpTransport, lastEventId: string): Future[Option[
   await t.authorize(headers)
   var response: WireResponse
   try:
-    response = await wire.request(t.baseUrl, HttpGet, headers)
+    response = await wire.request(t.baseUrl, HttpGet, headers,
+      connectTimeoutMs = t.connectTimeoutMs, headerTimeoutMs = t.streamOpenTimeoutMs)
   except McpTransportError as e:
     stderr.writeLine("[mcp-http] GET " & t.baseUrl & " failed: " & peerText(e.msg))
     return none(WireResponse)
@@ -353,7 +368,8 @@ proc postOnce(t: StreamableHttpTransport, body: string,
       t.inflight[key] = connection
   var response: WireResponse
   try:
-    response = await wire.request(t.baseUrl, HttpPost, headers, body, connected)
+    response = await wire.request(t.baseUrl, HttpPost, headers, body, connected,
+      connectTimeoutMs = t.connectTimeoutMs)
   except McpTransportError:
     if key.len > 0:
       t.inflight.del key
@@ -527,7 +543,8 @@ proc endSession(t: StreamableHttpTransport) {.async.} =
   let headers = t.requestHeaders("application/json", t.legacyHeaders())
   await t.authorize(headers)
   try:
-    let attempt = wire.request(t.baseUrl, HttpDelete, headers)
+    let attempt = wire.request(t.baseUrl, HttpDelete, headers,
+      connectTimeoutMs = t.connectTimeoutMs, headerTimeoutMs = DeleteTimeoutMs)
     if not await withTimeout(attempt, DeleteTimeoutMs):
       stderr.writeLine("[mcp-http] DELETE " & t.baseUrl & " timed out")
       return

@@ -130,3 +130,11 @@ Feature: Security of the outgoing HTTP client
     When the URL or a header name or value contains a CR, LF or NUL, or a header name is not a token
     Then the request is refused before a connection is made
     And a response head with a bare LF or CR, a NUL or another control character inside a line is refused
+
+  @spec:MCP-SEC-WIRE-3
+  Scenario: What a server sends is bounded in size and in time
+    Given a client reading an event stream
+    When a line or an event grows past its limit without a line break or a blank line
+    Then the stream is ended with an error before the line or event is complete
+    And a request on a connection that gets no TLS handshake or no response head within its timeout fails
+    And with no header timeout the answer to a request is waited for as long as its caller waits

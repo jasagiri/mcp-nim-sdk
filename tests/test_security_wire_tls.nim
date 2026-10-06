@@ -67,9 +67,8 @@ else:
     result.process.kill()
     raise newException(OSError, "openssl s_server did not start")
 
-  proc outcome(url, caFile: string, connectTo = ""): string =
+  proc outcome(pending: Future[WireResponse]): string =
     ## "ok" when the request is answered, otherwise the message of the failure.
-    let pending = request(url, HttpGet, caFile = caFile, connectTo = connectTo)
     let deadline = 8000
     var waited = 0
     while not pending.finished and waited < deadline:
@@ -81,6 +80,9 @@ else:
       return pending.readError().msg
     pending.read().close()
     "ok"
+
+  proc outcome(url, caFile: string, connectTo = ""): string =
+    outcome(request(url, HttpGet, caFile = caFile, connectTo = connectTo))
 
   suite "TLS host name verification":
     var pki: Pki
@@ -130,3 +132,14 @@ else:
         server.close()
       let result = outcome("https://127.0.0.1:" & $port & "/", pki.caFile)
       check "is not valid for" in result
+
+  suite "TLS connection timeout":
+
+    test "Given a server that accepts the connection and never speaks TLS, when the connect timeout passes, then the request fails":
+      let silent = newSocket()
+      silent.bindAddr(Port(0), "127.0.0.1")
+      silent.listen()
+      defer: silent.close()
+      let port = silent.getLocalAddr()[1].int
+      let attempt = request("https://127.0.0.1:" & $port & "/", HttpGet, connectTimeoutMs = 300)
+      check "no connection" in outcome(attempt)

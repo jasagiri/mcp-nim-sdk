@@ -23,6 +23,11 @@ when defined(ssl):
     ## addresses; it is imported from the library `std/openssl` loads.
 
 const
+  DefaultConnectTimeoutMs* = 30_000
+    ## For the connection: name resolution, TCP and, for https, the TLS
+    ## handshake. Slower than any link a protocol client is used over, and
+    ## far short of the minutes an operating system waits on its own. Nothing
+    ## has been sent yet, so ending it loses no work.
   MaxHeadSize = 64 * 1024
   ReadSize = 16 * 1024
   MaxRedirects = 5
@@ -207,40 +212,76 @@ type Connected* = proc(response: WireResponse) {.closure, gcsafe.}
   ## the server has said anything: the caller can `close` it to abandon a
   ## request still waiting for its answer.
 
-proc requestOnce(url: string, httpMethod: HttpMethod, headers: HttpHeaders,
-                 body: string, connected: Connected,
-                 connectTo, caFile: string): Future[WireResponse] {.async.} =
-  let target = parseUri(url)
-  checkRequestFields(target, headers)
-  let response = WireResponse(leftOpen: newFuture[void]("WireResponse.leftOpen"))
+proc connectWithin(target: Uri, url, connectTo, caFile: string,
+                   timeoutMs: int): Future[AsyncSocket] {.async.} =
+  ## `connect`, ended after `timeoutMs` (none when it is not positive).
+  let attempt = connect(target, connectTo, caFile)
+  if timeoutMs > 0:
+    let timer = sleepAsync(timeoutMs)
+    await (attempt or timer)
+    if not attempt.finished:
+      # The connection is still being made: whoever finishes it closes it,
+      # and a failure of an attempt nobody waits for is not news.
+      attempt.addCallback(proc() =
+        if attempt.failed:
+          discard attempt.readError()
+        else:
+          attempt.read().close())
+      raise httpFailure("no connection to " & url & " within " & $timeoutMs & " ms")
   try:
-    response.socket = await connect(target, connectTo, caFile)
+    return await attempt
   except McpTransportError:
     raise
   except CatchableError as e:
     raise httpFailure("cannot connect to " & url & ": " & e.msg)
+
+proc exchangeHead(response: WireResponse, url: string, httpMethod: HttpMethod,
+                  target: Uri, headers: HttpHeaders, body: string) {.async.} =
+  ## Send the request and read the response head into `response`.
+  let sent = if headers.isNil: newHttpHeaders() else: headers
+  await response.socket.send(requestText(target, httpMethod, sent, body))
+  var head = ""
+  while true:
+    let at = head.find("\c\L\c\L")
+    if at >= 0:
+      response.pending = head[at + 4 .. ^1]
+      head.setLen(at)
+      break
+    if head.len > MaxHeadSize:
+      raise httpFailure("response head from " & url & " is too long")
+    let (data, interrupted) = await response.receive()
+    if interrupted:
+      raise httpFailure("the request to " & url & " was abandoned")
+    if data.len == 0:
+      raise httpFailure("connection to " & url & " closed before the response")
+    head.add data
+  response.parseHead(head)
+  response.chooseBodyMode(httpMethod)
+
+proc requestOnce(url: string, httpMethod: HttpMethod, headers: HttpHeaders,
+                 body: string, connected: Connected,
+                 connectTo, caFile: string,
+                 connectTimeoutMs, headerTimeoutMs: int): Future[WireResponse] {.async.} =
+  let target = parseUri(url)
+  checkRequestFields(target, headers)
+  let response = WireResponse(leftOpen: newFuture[void]("WireResponse.leftOpen"))
+  response.socket = await connectWithin(target, url, connectTo, caFile, connectTimeoutMs)
   if not connected.isNil:
     connected(response)
   try:
-    let sent = if headers.isNil: newHttpHeaders() else: headers
-    await response.socket.send(requestText(target, httpMethod, sent, body))
-    var head = ""
-    while true:
-      let at = head.find("\c\L\c\L")
-      if at >= 0:
-        response.pending = head[at + 4 .. ^1]
-        head.setLen(at)
-        break
-      if head.len > MaxHeadSize:
-        raise httpFailure("response head from " & url & " is too long")
-      let (data, interrupted) = await response.receive()
-      if interrupted:
-        raise httpFailure("the request to " & url & " was abandoned")
-      if data.len == 0:
-        raise httpFailure("connection to " & url & " closed before the response")
-      head.add data
-    response.parseHead(head)
-    response.chooseBodyMode(httpMethod)
+    let exchange = response.exchangeHead(url, httpMethod, target, headers, body)
+    if headerTimeoutMs > 0:
+      let timer = sleepAsync(headerTimeoutMs)
+      await (exchange or timer)
+      if not exchange.finished:
+        # Closing wakes a read that waits (see `receive`); how the abandoned
+        # exchange ends is of no interest, the caller is told of the timeout.
+        response.close()
+        exchange.addCallback(proc() =
+          if exchange.failed:
+            discard exchange.readError())
+        raise httpFailure("no response from " & url & " within " & $headerTimeoutMs & " ms")
+    await exchange
   except CatchableError as e:
     response.close()
     if e of McpTransportError:
@@ -262,7 +303,9 @@ func sameOrigin(a, b: Uri): bool =
 
 proc request*(url: string, httpMethod: HttpMethod, headers: HttpHeaders = nil,
               body = "", connected: Connected = nil, followRedirects = true,
-              connectTo = "", caFile = ""): Future[WireResponse] {.async.} =
+              connectTo = "", caFile = "",
+              connectTimeoutMs = DefaultConnectTimeoutMs,
+              headerTimeoutMs = 0): Future[WireResponse] {.async.} =
   ## Send the request and read the response head. The body is read with
   ## `readSome` / `readAll`. Redirects to the same server are followed (up
   ## to `MaxRedirects`); one to another server is an error, so that
@@ -272,10 +315,18 @@ proc request*(url: string, httpMethod: HttpMethod, headers: HttpHeaders = nil,
   ## resolving the host of `url`, which still names the server in `Host` and,
   ## for https, in the TLS handshake: a caller that has checked an address
   ## connects to exactly that one. Raises McpTransportError when the server
-  ## cannot be reached or does not answer in HTTP.
+  ## cannot be reached, does not answer in HTTP, or is too slow:
+  ## `connectTimeoutMs` bounds the connection (including the TLS handshake),
+  ## `headerTimeoutMs` the wait from the connection until the response head
+  ## has arrived. A limit that is not positive means none. The default of
+  ## `headerTimeoutMs` is none because the answer to a request may legitimately
+  ## take as long as its caller is willing to wait (a tool call): the caller
+  ## that owns such a wait (`McpClient` times a request out itself) must not
+  ## be cut short from here. A caller with no timer of its own passes one.
   var current = url
   for hop in 0 .. MaxRedirects:
-    let response = await requestOnce(current, httpMethod, headers, body, connected, connectTo, caFile)
+    let response = await requestOnce(current, httpMethod, headers, body, connected, connectTo, caFile,
+                                         connectTimeoutMs, headerTimeoutMs)
     let location = response.headers.getOrDefault("Location")
     if not followRedirects or not isRedirect(response.code, httpMethod) or location.len == 0:
       return response

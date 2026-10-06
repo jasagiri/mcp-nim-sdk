@@ -3,7 +3,18 @@
 
 import std/[strutils, options]
 
+const
+  DefaultSseLimitBytes* = 16 * 1024 * 1024
+    ## The default of both limits of a parser: as much as a transport accepts
+    ## for one message (`DefaultMaxResponseSize`), since a message is one
+    ## event and may be one line. A transport passes its own
+    ## `maxResponseSize`.
+
 type
+  SseLimitError* = object of CatchableError
+    ## A line or an event grew past its limit. The parser is not usable after
+    ## it: what it holds is a part of something that has no end.
+
   SseEvent* = object
     event*: string  ## the event type; empty when the event names none
     data*: string   ## the data lines joined with "\n"
@@ -18,13 +29,22 @@ type
     retry: Option[int]    ## the newest valid retry field, in milliseconds
     pendingCr: bool       ## the previous chunk ended in CR; a LF may follow
     started: bool         ## past the position where a byte order mark may be
+    maxLineBytes: int
+    maxEventBytes: int
+    eventBytes: int       ## what the event being read holds so far
 
 const ByteOrderMark = "\xEF\xBB\xBF"
 
-func initSseParser*(): SseParser {.raises: [].} =
-  SseParser()
+func initSseParser*(maxLineBytes = DefaultSseLimitBytes,
+                    maxEventBytes = DefaultSseLimitBytes): SseParser {.raises: [].} =
+  ## `feed` raises SseLimitError for a line longer than `maxLineBytes`
+  ## (decided before the line ends: a server that never sends a line break
+  ## must not make the client buffer without end) and for an event whose
+  ## data, event and id fields together pass `maxEventBytes` (decided before
+  ## the blank line that would end it).
+  SseParser(maxLineBytes: maxLineBytes, maxEventBytes: maxEventBytes)
 
-func takeLine(p: var SseParser, events: var seq[SseEvent]) {.raises: [].} =
+func takeLine(p: var SseParser, events: var seq[SseEvent]) {.raises: [SseLimitError].} =
   ## Interpret the finished line: a blank line ends an event.
   var line = move(p.line)
   p.line = ""
@@ -39,6 +59,7 @@ func takeLine(p: var SseParser, events: var seq[SseEvent]) {.raises: [].} =
     p.data.setLen(0)
     p.hasData = false
     p.event = ""
+    p.eventBytes = 0
     return
   if line[0] == ':':
     return
@@ -49,6 +70,11 @@ func takeLine(p: var SseParser, events: var seq[SseEvent]) {.raises: [].} =
   if value.len > 0 and value[0] == ' ':
     value = value[1 .. ^1]
 
+  if name in ["data", "event", "id"]:
+    p.eventBytes += value.len + 1
+    if p.eventBytes > p.maxEventBytes:
+      raise newException(SseLimitError,
+        "an event of the stream is longer than " & $p.maxEventBytes & " bytes")
   case name
   of "data":
     p.data.add value
@@ -72,9 +98,10 @@ func retryMs*(p: SseParser): Option[int] {.raises: [].} =
   ## The reconnection delay the server asked for, if it did.
   p.retry
 
-func feed*(p: var SseParser, chunk: string): seq[SseEvent] {.raises: [].} =
+func feed*(p: var SseParser, chunk: string): seq[SseEvent] {.raises: [SseLimitError].} =
   ## The events completed by `chunk`. Lines may end in LF, CR or CRLF, and a
-  ## chunk may end anywhere, including between a CR and its LF.
+  ## chunk may end anywhere, including between a CR and its LF. Raises
+  ## SseLimitError past a limit of `initSseParser`.
   for c in chunk:
     if p.pendingCr:
       p.pendingCr = false
@@ -87,6 +114,9 @@ func feed*(p: var SseParser, chunk: string): seq[SseEvent] {.raises: [].} =
       p.takeLine(result)
       p.pendingCr = true
     else:
+      if p.line.len >= p.maxLineBytes:
+        raise newException(SseLimitError,
+          "a line of the stream is longer than " & $p.maxLineBytes & " bytes")
       p.line.add c
 
 func formatSseEvent*(data: string, event = "", id = ""): string {.raises: [].} =

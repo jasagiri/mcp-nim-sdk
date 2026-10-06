@@ -1106,3 +1106,10 @@ MCP-SEC-WIRE-2 | tests/test_security_wire_headers.nim | Given a URL whose path c
 MCP-SEC-WIRE-2 | tests/test_security_wire_headers.nim | Given ordinary headers including a tab in a value, when a request is sent, then it is answered
 MCP-SEC-WIRE-2 | tests/test_security_wire_headers.nim | Given a response header with a bare LF, when the head is read, then the response is refused
 MCP-SEC-WIRE-2 | tests/test_security_wire_headers.nim | Given a response header with a NUL or a bare CR, when the head is read, then the response is refused
+MCP-SEC-WIRE-3 | tests/test_security_wire_limits.nim | Given a line that does not end within the limit, when it is fed, then SseLimitError is raised before the line is complete
+MCP-SEC-WIRE-3 | tests/test_security_wire_limits.nim | Given data lines that add up past the event limit, when they are fed, then SseLimitError is raised before the event is complete
+MCP-SEC-WIRE-3 | tests/test_security_wire_limits.nim | Given events within both limits, when they are fed, then each is delivered
+MCP-SEC-WIRE-3 | tests/test_security_wire_limits.nim | Given an event stream whose line never ends, when the line is longer than the response limit, then the request fails instead of buffering on
+MCP-SEC-WIRE-3 | tests/test_security_wire_limits.nim | Given a server that never answers, when a header timeout is given, then the request fails after it
+MCP-SEC-WIRE-3 | tests/test_security_wire_limits.nim | Given no header timeout, when a server answers after a while, then the response is waited for
+MCP-SEC-WIRE-3 | tests/test_security_wire_tls.nim | Given a server that accepts the connection and never speaks TLS, when the connect timeout passes, then the request fails

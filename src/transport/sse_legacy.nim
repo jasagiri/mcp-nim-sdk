@@ -83,7 +83,7 @@ proc resolveEndpoint(t: SseLegacyTransport, data: string): string =
 
 proc readLoop(t: SseLegacyTransport, response: WireResponse,
               ready: Future[void]) {.async.} =
-  var parser = initSseParser()
+  var parser = initSseParser(t.maxResponseSize, t.maxResponseSize)
   try:
     while true:
       let chunk = await response.readSome()
@@ -118,7 +118,11 @@ proc connect(t: SseLegacyTransport) {.async.} =
   let headers = newHttpHeaders({"Accept": "text/event-stream"})
   for name, value in t.headers.pairs:
     headers[name] = value
-  let response = await wire.request(t.sseUrl, HttpGet, headers)
+  # The head of an event stream comes at once; `connectTimeoutMs` (the wait
+  # for the endpoint event) bounds the wait for it too.
+  let response = await wire.request(t.sseUrl, HttpGet, headers,
+                                    connectTimeoutMs = t.connectTimeoutMs,
+                                    headerTimeoutMs = t.connectTimeoutMs)
   if not response.code.is2xx:
     let text = await response.readAll(ErrorBodyPreview)
     response.close()
