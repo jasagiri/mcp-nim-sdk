@@ -1162,3 +1162,5 @@ MCP-SEC-SWEEP-1 | tests/test_security_poll.nim | Given a task that suggests a ne
 MCP-SEC-SWEEP-1 | tests/test_security_poll.nim | Given a task that suggests days, when polled, then the wait is the maximum
 MCP-SEC-SWEEP-1 | tests/test_security_poll.nim | Given a task that suggests a reasonable interval, when polled, then it is respected
 MCP-SEC-SWEEP-1 | tests/test_security_poll.nim | Given a task that suggests none, when polled, then the caller's default is used as given
+MCP-SEC-SWEEP-2 | tests/test_security_expiry.nim | Given a task that expires while it works, when the store is used, then the expiry hook sees it once
+MCP-SEC-SWEEP-2 | tests/test_security_expiry.nim | Given an expiry hook that raises, when a task expires, then the others are still removed and heard

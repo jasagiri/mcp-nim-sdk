@@ -118,6 +118,12 @@ proc enableTasks*(server: McpServer, config = TaskConfig(),
       sessionOf.del(task.taskId)
     asyncCheck server.announceStatus(session, task)
 
+  # An expired task never reaches a terminal status here, so its entries
+  # would stay for as long as the server runs.
+  tasksStore.onExpire = proc(owner: string, task: McpTask) =
+    held.del(task.taskId)
+    sessionOf.del(task.taskId)
+
   server.addRequestInterceptor(proc(ctx: McpRequestContext, request: JsonRpcRequest
                                    ): Future[Option[JsonRpcResponse]] {.async.} =
     if not ctx.version.has(ftTasks):

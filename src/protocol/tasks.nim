@@ -107,6 +107,10 @@ type
       ## How many tasks the store holds; 0 is no limit.
     onStatusChange*: proc(owner: string, task: McpTask) {.closure.}
       ## Called after every change of a task, with the whole task.
+    onExpire*: proc(owner: string, task: McpTask) {.closure.}
+      ## Called after a task whose ttl elapsed was deleted, whatever its
+      ## status: where a receiver keeps state of its own per task, this is
+      ## when to let go of it (`onStatusChange` does not run for an expiry).
     onResultStream*: proc(owner, taskId, requestId: string) {.closure.}
       ## Called when a `tasks/result` request (`requestId`) starts to wait on
       ## a task: the stream the receiver can now send the task's messages on.
@@ -327,6 +331,11 @@ proc sweep*(store: TaskStore): seq[string] =
     except CatchableError as e:
       stderr.writeLine("[mcp-tasks] stopping the work of expired task " & id &
                        " raised " & e.msg)
+    try:
+      if not store.onExpire.isNil:
+        store.onExpire(entry.owner, entry.task)
+    except CatchableError as e:
+      stderr.writeLine("[mcp-tasks] the expiry hook for task " & id & " raised " & e.msg)
     entry.wake()
 
 proc notFound(): ref McpTaskError =

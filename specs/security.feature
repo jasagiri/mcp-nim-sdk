@@ -242,3 +242,9 @@ Feature: Security findings of the 2026-10-06 review
     Given a task of a peer that suggests a poll interval of 0, a negative number, or days
     When a requestor of the core or of the Tasks extension polls it
     Then it waits at least the minimum and at most the maximum, and the caller's default as given when the peer suggests none
+
+  @spec:MCP-SEC-SWEEP-2
+  Scenario: State kept per task is released when the task expires
+    Given a receiver that keeps state of its own for the tasks it made
+    When a task expires without reaching a terminal status
+    Then the store's expiry hook is called once for it, a hook that raises does not stop the others, and the server and the Tasks extension release their state of the task
