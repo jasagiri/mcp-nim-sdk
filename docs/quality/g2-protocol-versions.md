@@ -175,6 +175,8 @@ nim-muter 0.2.5 の RVR は、戻り値がリテラルのとき `default(typeof(
 | `src/server/tasks.nim` (期限切れでの解放) | `tests/test_security_expiry.nim` | 2026-10-06 |
 | `src/client/sampling.nim` (`numberField`) | `tests/test_security_sampling.nim` | 2026-10-06 |
 | `src/client/content.nim` (`allPages` の上限) | `tests/test_security_pages.nim` | 2026-10-06 |
+| `src/ext/tasks/client.nim` (`pollPauseMs`)、`src/ext/tasks/server.nim` (期限切れでの解放) | `tests/test_security_ext_tasks.nim` | 2026-10-06 |
+| `src/ext/auth_shared.nim`、`src/ext/auth_client_credentials.nim`、`src/ext/auth_enterprise_managed.nim` (issuer との結び付け、数値の読み取り) | `tests/test_security_ext_auth.nim` | 2026-10-06 |
 
 ## 未測定 (適合性テストで見つけた修正)
 
