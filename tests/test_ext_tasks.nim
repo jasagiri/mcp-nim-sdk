@@ -14,6 +14,7 @@ import protocol/tasks
 import protocol/subscriptions
 import protocol/version
 import ext/tasks
+import transport/transport as wireTransport
 
 const Ext = TasksExtensionId
 
@@ -228,12 +229,15 @@ if isSupported(mpv20260728):
         let params = withRequestMeta(%*{"taskId": "task-1"}, modernMeta())
         let headers = modernRequestHeaders(methodName, params)
         check (HeaderName, "task-1") in headers
+        # The rule holds on a server that serves the method for the extension.
         check checkRequestHeaders(some("2026-07-28"), some(methodName), some("task-1"),
-                                  methodName, params).isNone
+                                  methodName, params, extensionMethodServed = true).isNone
         check checkRequestHeaders(some("2026-07-28"), some(methodName), some("task-2"),
-                                  methodName, params).isSome
+                                  methodName, params, extensionMethodServed = true).isSome
         check checkRequestHeaders(some("2026-07-28"), some(methodName), none(string),
-                                  methodName, params).isSome
+                                  methodName, params, extensionMethodServed = true).isSome
+        check checkRequestHeaders(some("2026-07-28"), some(methodName), none(string),
+                                  methodName, params).isNone
 
   suite "Tasks extension: creating and following a task":
 
@@ -514,7 +518,25 @@ if isSupported(mpv20260728):
       check peer.ask("tasks/update", %*{"taskId": mine, "inputResponses": {}}, meta = asOwner("bob")).errorCode == -32602
       check peer.ask("tasks/get", %*{"taskId": mine}, meta = asOwner("alice"))["result"]["status"].getStr() == "working"
 
-    test "Given no ownerOf, when two clients ask, then they are one owner and the unguessable task id is the only separation":
+    proc askAs(f: Fixture, principal: Option[string], methodName: string, params: JsonNode): JsonNode =
+      ## A 2026-07-28 request as the transport hands it over after authorization.
+      var body = params.copy()
+      body["_meta"] = caps()
+      body["_meta"]["io.modelcontextprotocol/protocolVersion"] = %"2026-07-28"
+      body["_meta"]["io.modelcontextprotocol/clientInfo"] = %*{"name": "c", "version": "1"}
+      var request = newJsonRpcRequest("r" & $methodName.len & $body.len, methodName, body)
+      request.principal = principal
+      return wireTransport.toJson(waitFor f.server.handleRequest(request))
+
+    test "Given no ownerOf and authorized requests, when another principal asks for a task, then it is unknown to them":
+      let f = fixture()
+      let mine = f.askAs(some("alice"), "tools/call", %*{"name": "slow", "arguments": {}}).taskIdOf
+      check f.askAs(some("alice"), "tasks/get", %*{"taskId": mine})["result"]["status"].getStr() == "working"
+      check f.askAs(some("bob"), "tasks/get", %*{"taskId": mine}).errorCode == -32602
+      check f.askAs(some("bob"), "tasks/cancel", %*{"taskId": mine}).errorCode == -32602
+      check f.askAs(none(string), "tasks/get", %*{"taskId": mine}).errorCode == -32602
+
+    test "Given no ownerOf and no authorization, when two clients ask, then they are one owner and the unguessable task id is the only separation":
       let f = fixture()
       let peer = f.newPeer
       let id = peer.call("slow").taskIdOf

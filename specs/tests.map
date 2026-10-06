@@ -2484,7 +2484,8 @@ MCP-EXT-TASKS-11 | tests/test_ext_tasks_client.nim | Given an input request list
 MCP-EXT-TASKS-11 | tests/test_ext_tasks_client.nim | Given a task that asks for something the client has no handler for, when it waits, then it raises McpUnsupportedError
 MCP-EXT-TASKS-12 | tests/test_ext_tasks.nim | Given a decider that waits for input gathered with multi round-trip requests, when the retry arrives, then the task starts only then
 MCP-EXT-TASKS-13 | tests/test_ext_tasks.nim | Given tasks of two owners, when one asks for the other's task, then it is unknown to it
-MCP-EXT-TASKS-13 | tests/test_ext_tasks.nim | Given no ownerOf, when two clients ask, then they are one owner and the unguessable task id is the only separation
+MCP-EXT-TASKS-13 | tests/test_ext_tasks.nim | Given no ownerOf and no authorization, when two clients ask, then they are one owner and the unguessable task id is the only separation
+MCP-EXT-TASKS-13 | tests/test_ext_tasks.nim | Given no ownerOf and authorized requests, when another principal asks for a task, then it is unknown to them
 MCP-EXT-TASKS-13 | tests/test_ext_tasks_dual.nim | Given a task of each kind, when the other kind of client asks for it, then it is unknown
 MCP-EXT-TASKS-14 | tests/test_ext_tasks.nim | Given a listen filter with taskIds, when parsed and written, then the ids round-trip and a malformed list is rejected
 MCP-EXT-TASKS-14 | tests/test_ext_tasks.nim | Given a client that did not declare the extension, when it listens for task ids, then the answer is -32021

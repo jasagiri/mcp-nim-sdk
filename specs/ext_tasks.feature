@@ -83,7 +83,9 @@ Feature: Tasks extension (2026-07-28)
   Scenario: A task belongs to its owner
     Given tasks of two owners
     When one asks for the other's task
-    Then it is unknown to the asker; without an owner function all clients are one owner and only the task id separates them
+    Then it is unknown to the asker
+    And without an owner function the owner is the authorized principal of the request
+    And without authorization either, all clients are one owner and only the task id separates them
 
   @spec:MCP-EXT-TASKS-14
   Scenario: Task status can be pushed over subscriptions/listen

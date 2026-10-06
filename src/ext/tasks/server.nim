@@ -11,10 +11,10 @@
 ## negotiated 2026-07-28. A client of 2025-11-25 is served the core's Tasks
 ## (`server/tasks`) if the server enabled them, on the same `TaskStore`.
 ##
-## Who owns a task. 2026-07-28 has no session, and the request context knows
-## no authenticated principal, so the owner comes from `ownerOf`, which the
-## application supplies from whatever it authenticated (the specification
-## requires an authorization check on every task request). Without it every
+## Who owns a task. 2026-07-28 has no session, so the owner is the principal
+## the transport's authorization names (`ctx.principal`), or what `ownerOf`
+## says when the application supplies it (the specification requires an
+## authorization check on every task request). Without either, every
 ## requestor is the same owner and the task ID, which is unguessable, is the
 ## only thing between a requestor and another's task. An owner of this
 ## extension never sees a task of the core's, nor the other way round.
@@ -65,7 +65,8 @@ type
       ## nil: no request becomes a task.
     ownerOf*: TaskOwnerOf
       ## The owner of the tasks a request creates, and the only one that may
-      ## read, update or cancel them. nil: one owner for all.
+      ## read, update or cancel them. nil: the authorized principal of the
+      ## request, and one owner for all where there is no authorization.
 
   PendingInput = object
     request: JsonNode
@@ -92,7 +93,13 @@ func toolsNamed*(names: openArray[string]): TaskDecider =
     if toolName in named: tdTask else: tdInline
 
 proc ownerOf(ext: TasksExtension, ctx: McpRequestContext): string =
-  ExtOwnerPrefix & (if ext.config.ownerOf.isNil: "" else: ext.config.ownerOf(ctx))
+  ## The prefix keeps an owner of this extension apart from an owner of the
+  ## core's tasks on the same store.
+  if not ext.config.ownerOf.isNil:
+    return ExtOwnerPrefix & ext.config.ownerOf(ctx)
+  if ctx.principal.isSome:
+    return ExtOwnerPrefix & "principal:" & ctx.principal.get
+  ExtOwnerPrefix
 
 proc taskIdParam(params: JsonNode, methodName: string): string =
   let node = if params.isNil or params.kind != JObject: nil else: params{"taskId"}
