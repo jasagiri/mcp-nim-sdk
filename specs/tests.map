@@ -992,6 +992,7 @@ MCP-TASKS-22 | tests/test_tasks_http.nim | Given a task and no tasks/result, whe
 MCP-TASKS-23 | tests/test_tasks_http.nim | Given a task that asks and no tasks/result, when tasks/result arrives, then the question is on its stream and not before
 MCP-TASKS-23 | tests/test_tasks_http.nim | Given a task whose held questions are limited, when the tool asks beyond the limit, then the question is refused and the task fails
 MCP-TASKS-24 | tests/test_tasks_principal.nim | Given a task made by one principal, when another with the same session id asks for it, then it is unknown to them
+MCP-TASKS-24 | tests/test_tasks_principal.nim | Given a task made by one principal, when another asks for it by its id in a session of their own, then the task store does not show it
 MCP-TASKS-24 | tests/test_tasks_principal.nim | Given an authorized request, when a tool runs, then ctx.principal is the subject of the token
 MCP-TASKS-24 | tests/test_tasks_principal.nim | Given an endpoint without authorization, when a tool runs, then ctx.principal is none and tasks belong to the session
 MCP-CONTENT-FIELDS-1 | tests/test_client_field_types.nim | Given a tool whose title is a number, when tools are listed, then it is a protocol error naming the field

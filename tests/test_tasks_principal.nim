@@ -98,6 +98,24 @@ if isSupported(TaskVersion):
       check rig.post("token-alice", session, rpc(7, "tasks/list", newJObject())
                     ).body["result"]["tasks"].len == 1
 
+    test "Given a task made by one principal, when another asks for it by its id in a session of their own, then the task store does not show it":
+      # Past the transport: bob's session is his, so what refuses him here is
+      # the store, which keeps a task for the principal that made it.
+      let rig = startRig(withAuth = true)
+      let alice = rig.handshake("token-alice")
+      let created = rig.post("token-alice", alice, rpc(2, "tools/call",
+        %*{"name": "work", "arguments": {}, "task": {}}))
+      let taskId = created.body["result"]["task"]["taskId"].getStr()
+      let bob = rig.handshake("token-bob")
+      check rig.post("token-bob", bob, rpc(3, "tasks/get", %*{"taskId": taskId})
+                    ).body["error"]["code"].getInt() == -32602
+      check rig.post("token-bob", bob, rpc(4, "tasks/cancel", %*{"taskId": taskId})
+                    ).body["error"]["code"].getInt() == -32602
+      check rig.post("token-bob", bob, rpc(5, "tasks/list", newJObject())
+                    ).body["result"]["tasks"].len == 0
+      check rig.post("token-alice", alice, rpc(6, "tasks/get", %*{"taskId": taskId})
+                    ).body["result"]["taskId"].getStr() == taskId
+
     test "Given an authorized request, when a tool runs, then ctx.principal is the subject of the token":
       let rig = startRig(withAuth = true)
       let session = rig.handshake("token-alice")
