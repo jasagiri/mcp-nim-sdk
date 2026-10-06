@@ -4,162 +4,166 @@
 ## The resource server in these tests is the hostile one: its Protected
 ## Resource Metadata lists an authorization server it controls.
 
-import std/[unittest, asyncdispatch, json, options, strutils, times]
-import ext/auth_client_credentials
-import ext/auth_enterprise_managed
-import auth/oauth/[errors, fetch, grants, tokens, jwt]
-import ext_auth_fixtures
+import protocol/version
+import protocol/features
 
-const
-  LegitIssuer = "https://as.legit.example"
-  LegitIdp = "https://idp.legit.example"
-  Secret = "s3cret-value-for-legit-as-Qx81"
-  JwtKey = "jwt-signing-key-do-not-leak"
+when DefaultProtocolVersion.has(ftProtectedResourceMetadata):
+  import std/[unittest, asyncdispatch, json, options, strutils, times]
+  import ext/auth_client_credentials
+  import ext/auth_enterprise_managed
+  import auth/oauth/[errors, fetch, grants, tokens, jwt]
+  import ext_auth_fixtures
 
-type Env = object
-  attacker: FakeAs
-  rs: FakeRs
+  const
+    LegitIssuer = "https://as.legit.example"
+    LegitIdp = "https://idp.legit.example"
+    Secret = "s3cret-value-for-legit-as-Qx81"
+    JwtKey = "jwt-signing-key-do-not-leak"
 
-proc start(): Env =
-  result.attacker = startFakeAs(registration = false)
-  result.rs = startFakeRs(result.attacker)
-  result.attacker.metadata["token_endpoint_auth_methods_supported"] =
-    %*["private_key_jwt", "client_secret_basic", "client_secret_post"]
-  result.attacker.metadata["token_endpoint_auth_signing_alg_values_supported"] = %*["HS256"]
+  type Env = object
+    attacker: FakeAs
+    rs: FakeRs
 
-proc stop(e: Env) =
-  e.rs.stop()
-  e.attacker.stop()
+  proc start(): Env =
+    result.attacker = startFakeAs(registration = false)
+    result.rs = startFakeRs(result.attacker)
+    result.attacker.metadata["token_endpoint_auth_methods_supported"] =
+      %*["private_key_jwt", "client_secret_basic", "client_secret_post"]
+    result.attacker.metadata["token_endpoint_auth_signing_alg_values_supported"] = %*["HS256"]
 
-proc challengeOf(e: Env): seq[string] =
-  @["Bearer resource_metadata=\"http://127.0.0.1:" & $e.rs.port &
-    "/.well-known/oauth-protected-resource/mcp\""]
+  proc stop(e: Env) =
+    e.rs.stop()
+    e.attacker.stop()
 
-proc failureOf[T](e: Env, auth: T): string =
-  try:
-    discard waitFor auth.handleChallenge(401, e.challengeOf)
-    fail()
-  except OAuthError as ex:
-    result = ex.msg
+  proc challengeOf(e: Env): seq[string] =
+    @["Bearer resource_metadata=\"http://127.0.0.1:" & $e.rs.port &
+      "/.well-known/oauth-protected-resource/mcp\""]
 
-suite "client credentials: the credential belongs to one issuer":
-
-  test "Given no issuer for the credential, when the auth is made, then it is refused and the message says how to fix it":
-    let env = start()
-    defer: env.stop()
-    var config = newClientCredentialsConfig(env.rs.url, "svc", "")
-    config.secret = some(Secret)
-    var message = ""
+  proc failureOf[T](e: Env, auth: T): string =
     try:
-      discard newClientCredentialsAuth(config)
+      discard waitFor auth.handleChallenge(401, e.challengeOf)
       fail()
-    except ValueError as e:
-      message = e.msg
-    check "issuer" in message
-    check Secret notin message
+    except OAuthError as ex:
+      result = ex.msg
 
-  test "Given a client secret for one issuer, when the resource names another, then no request reaches that server and the error names both":
-    let env = start()
-    defer: env.stop()
-    var config = newClientCredentialsConfig(env.rs.url, "svc", LegitIssuer)
-    config.secret = some(Secret)
-    let message = env.failureOf(newClientCredentialsAuth(config))
-    check LegitIssuer in message
-    check env.attacker.issuer in message
-    check Secret notin message
-    check env.attacker.log.len == 0
+  suite "client credentials: the credential belongs to one issuer":
 
-  test "Given a signing key for one issuer, when the resource names another, then no assertion is made out to that server":
-    let env = start()
-    defer: env.stop()
-    var config = newClientCredentialsConfig(env.rs.url, "jwt-client", LegitIssuer)
-    config.signer = some(hs256Signer(JwtKey))
-    let message = env.failureOf(newClientCredentialsAuth(config))
-    check LegitIssuer in message
-    check env.attacker.issuer in message
-    check env.attacker.log.len == 0
+    test "Given no issuer for the credential, when the auth is made, then it is refused and the message says how to fix it":
+      let env = start()
+      defer: env.stop()
+      var config = newClientCredentialsConfig(env.rs.url, "svc", "")
+      config.secret = some(Secret)
+      var message = ""
+      try:
+        discard newClientCredentialsAuth(config)
+        fail()
+      except ValueError as e:
+        message = e.msg
+      check "issuer" in message
+      check Secret notin message
 
-suite "enterprise-managed authorization: the grant is for one authorization server":
+    test "Given a client secret for one issuer, when the resource names another, then no request reaches that server and the error names both":
+      let env = start()
+      defer: env.stop()
+      var config = newClientCredentialsConfig(env.rs.url, "svc", LegitIssuer)
+      config.secret = some(Secret)
+      let message = env.failureOf(newClientCredentialsAuth(config))
+      check LegitIssuer in message
+      check env.attacker.issuer in message
+      check Secret notin message
+      check env.attacker.log.len == 0
 
-  proc idpAssertionConfig(env: Env, calls: ref int): EnterpriseManagedConfig =
-    result = newEnterpriseManagedConfig(
-      env.rs.url, LegitIdp, LegitIssuer, secretBasic("sso-client", Secret),
-      secretPost("mcp-client", "ras-secret-value"),
-      proc(): Future[IdentityAssertion] {.async.} =
-        inc calls[]
-        return IdentityAssertion(kind: iakIdToken, token: "id-token-of-the-user"))
+    test "Given a signing key for one issuer, when the resource names another, then no assertion is made out to that server":
+      let env = start()
+      defer: env.stop()
+      var config = newClientCredentialsConfig(env.rs.url, "jwt-client", LegitIssuer)
+      config.signer = some(hs256Signer(JwtKey))
+      let message = env.failureOf(newClientCredentialsAuth(config))
+      check LegitIssuer in message
+      check env.attacker.issuer in message
+      check env.attacker.log.len == 0
 
-  test "Given no authorization server for the resource client, when the auth is made, then it is refused and the message says how to fix it":
-    let env = start()
-    defer: env.stop()
-    let calls = new(int)
-    var config = idpAssertionConfig(env, calls)
-    config.resourceIssuer = ""
-    var message = ""
-    try:
-      discard newEnterpriseManagedAuth(config)
-      fail()
-    except ValueError as e:
-      message = e.msg
-    check "resourceIssuer" in message
+  suite "enterprise-managed authorization: the grant is for one authorization server":
 
-  test "Given credentials for one authorization server, when the resource names another, then neither the IdP nor that server is contacted and the assertion is not read":
-    let env = start()
-    defer: env.stop()
-    let calls = new(int)
-    let message = env.failureOf(newEnterpriseManagedAuth(idpAssertionConfig(env, calls)))
-    check LegitIssuer in message
-    check env.attacker.issuer in message
-    check Secret notin message
-    check "ras-secret-value" notin message
-    check env.attacker.log.len == 0
-    check calls[] == 0
+    proc idpAssertionConfig(env: Env, calls: ref int): EnterpriseManagedConfig =
+      result = newEnterpriseManagedConfig(
+        env.rs.url, LegitIdp, LegitIssuer, secretBasic("sso-client", Secret),
+        secretPost("mcp-client", "ras-secret-value"),
+        proc(): Future[IdentityAssertion] {.async.} =
+          inc calls[]
+          return IdentityAssertion(kind: iakIdToken, token: "id-token-of-the-user"))
 
-suite "enterprise-managed authorization: numbers in an ID-JAG and in an exchange response":
+    test "Given no authorization server for the resource client, when the auth is made, then it is refused and the message says how to fix it":
+      let env = start()
+      defer: env.stop()
+      let calls = new(int)
+      var config = idpAssertionConfig(env, calls)
+      config.resourceIssuer = ""
+      var message = ""
+      try:
+        discard newEnterpriseManagedAuth(config)
+        fail()
+      except ValueError as e:
+        message = e.msg
+      check "resourceIssuer" in message
 
-  proc jag(claims: JsonNode): string =
-    hs256Signer("k").signJwt(claims, typ = some(IdJagJwtType))
+    test "Given credentials for one authorization server, when the resource names another, then neither the IdP nor that server is contacted and the assertion is not read":
+      let env = start()
+      defer: env.stop()
+      let calls = new(int)
+      let message = env.failureOf(newEnterpriseManagedAuth(idpAssertionConfig(env, calls)))
+      check LegitIssuer in message
+      check env.attacker.issuer in message
+      check Secret notin message
+      check "ras-secret-value" notin message
+      check env.attacker.log.len == 0
+      check calls[] == 0
 
-  proc claimsWith(exp: JsonNode): JsonNode =
-    %*{"jti": "j", "iss": "https://idp.example", "sub": "u", "aud": "https://as.example",
-       "client_id": "c", "exp": exp, "iat": 1_799_999_900}
+  suite "enterprise-managed authorization: numbers in an ID-JAG and in an exchange response":
 
-  let now = fromUnix(1_800_000_000)
+    proc jag(claims: JsonNode): string =
+      hs256Signer("k").signJwt(claims, typ = some(IdJagJwtType))
 
-  proc grantChecked(claims: JsonNode): DecodedJwt =
-    checkIdentityAssertionGrant(jag(claims), "https://idp.example", "https://as.example",
-                                none(string), "c", now)
+    proc claimsWith(exp: JsonNode): JsonNode =
+      %*{"jti": "j", "iss": "https://idp.example", "sub": "u", "aud": "https://as.example",
+         "client_id": "c", "exp": exp, "iat": 1_799_999_900}
 
-  test "Given an exp or iat that is a fractional number, which a NumericDate may be, when checked, then it is accepted":
-    discard grantChecked(claimsWith(%1_800_000_100.5))
-    var claims = claimsWith(%1_800_000_100)
-    claims["iat"] = %1_799_999_900.25
-    discard grantChecked(claims)
+    let now = fromUnix(1_800_000_000)
 
-  test "Given a fractional exp that has passed, when checked, then the ID-JAG has expired":
-    expect OAuthError:
-      discard grantChecked(claimsWith(%1_799_999_999.5))
+    proc grantChecked(claims: JsonNode): DecodedJwt =
+      checkIdentityAssertionGrant(jag(claims), "https://idp.example", "https://as.example",
+                                  none(string), "c", now)
 
-  test "Given an exp beyond what a grant can plausibly live, when checked, then it is refused and nothing overflows":
-    for far in [%9_223_372_036_854_775_807, %1e300, %1e18, %(1_800_000_000 + MaxTokenLifetimeSeconds + 1)]:
-      checkpoint $far
+    test "Given an exp or iat that is a fractional number, which a NumericDate may be, when checked, then it is accepted":
+      discard grantChecked(claimsWith(%1_800_000_100.5))
+      var claims = claimsWith(%1_800_000_100)
+      claims["iat"] = %1_799_999_900.25
+      discard grantChecked(claims)
+
+    test "Given a fractional exp that has passed, when checked, then the ID-JAG has expired":
       expect OAuthError:
-        discard grantChecked(claimsWith(far))
+        discard grantChecked(claimsWith(%1_799_999_999.5))
 
-  test "Given an exp at the largest lifetime or a negative one, when checked, then the first is accepted and the second has expired":
-    discard grantChecked(claimsWith(%(1_800_000_000 + MaxTokenLifetimeSeconds)))
-    for past in [%(-9_223_372_036_854_775_807 - 1), %(-1), %(-1e300)]:
-      checkpoint $past
-      expect OAuthError:
-        discard grantChecked(past.claimsWith)
+    test "Given an exp beyond what a grant can plausibly live, when checked, then it is refused and nothing overflows":
+      for far in [%9_223_372_036_854_775_807, %1e300, %1e18, %(1_800_000_000 + MaxTokenLifetimeSeconds + 1)]:
+        checkpoint $far
+        expect OAuthError:
+          discard grantChecked(claimsWith(far))
 
-  test "Given an expires_in that is huge, negative or not a number in a token exchange response, when parsed, then it is no expiry, an error, an error":
-    func body(expiresIn: string): HttpReply =
-      HttpReply(code: 200, body: """{"access_token":"jag","issued_token_type":"urn:ietf:params:oauth:token-type:id-jag","token_type":"N_A","expires_in":""" & expiresIn & "}")
-    check parseTokenExchangeResponse(body("9223372036854775807"), now).expiresAt.isNone
-    check parseTokenExchangeResponse(body("\"3600\""), now).expiresAt ==
-      some(now + initDuration(seconds = 3600))
-    for bad in ["-1", "\"soon\"", "[1]"]:
-      checkpoint bad
-      expect OAuthError:
-        discard parseTokenExchangeResponse(body(bad), now)
+    test "Given an exp at the largest lifetime or a negative one, when checked, then the first is accepted and the second has expired":
+      discard grantChecked(claimsWith(%(1_800_000_000 + MaxTokenLifetimeSeconds)))
+      for past in [%(-9_223_372_036_854_775_807 - 1), %(-1), %(-1e300)]:
+        checkpoint $past
+        expect OAuthError:
+          discard grantChecked(past.claimsWith)
+
+    test "Given an expires_in that is huge, negative or not a number in a token exchange response, when parsed, then it is no expiry, an error, an error":
+      func body(expiresIn: string): HttpReply =
+        HttpReply(code: 200, body: """{"access_token":"jag","issued_token_type":"urn:ietf:params:oauth:token-type:id-jag","token_type":"N_A","expires_in":""" & expiresIn & "}")
+      check parseTokenExchangeResponse(body("9223372036854775807"), now).expiresAt.isNone
+      check parseTokenExchangeResponse(body("\"3600\""), now).expiresAt ==
+        some(now + initDuration(seconds = 3600))
+      for bad in ["-1", "\"soon\"", "[1]"]:
+        checkpoint bad
+        expect OAuthError:
+          discard parseTokenExchangeResponse(body(bad), now)
