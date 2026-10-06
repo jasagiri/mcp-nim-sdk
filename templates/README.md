@@ -286,9 +286,11 @@ These follow texts that are not accepted specifications and that change upstream
 |---|---|---|---|
 | MCP Events | `ext/events` | `server.enableEvents(config)`, `registerEventType`, `emitEvent` | nothing to declare: `listEvents`, `pollEvents`, `openEventStream`, `subscribeWebhook` |
 | Interceptors (SEP-2624) | `ext/interceptors` | `newInterceptorHost()`, `host.install(server)` | `client.declareInterceptors()` |
-| Server variants (SEP-2053) | `ext/variants` | `newVariantSet()`, `variants.install(server)` | `client.declareVariants()` |
+| Server variants (SEP-2053; the proposal was closed upstream without being merged) | `ext/variants` | `newVariantSet()`, `variants.install(server)` | `client.declareVariants()` |
 | Trust annotations, action metadata | `ext/tool_annotations` | `server.installTrustAnnotations()`, `server.installActionMetadata()` | `client.declareTrustAnnotations()`, `client.declareActionMetadata()` |
 | Server Card | `ext/server_card` | `publishServerCard(transport, card)` | fetch and check it with the procs of `ext/server_card` |
+
+The Server Card is published with `Access-Control-Allow-Origin: *`, as its text requires of a card: it is public, read-only metadata, and the header is on that one document, not on the MCP endpoint. Pass `corsOrigin` to `publishServerCard` to name one origin, or `""` to send no CORS headers.
 
 MCP Events declares itself the way its design sketch says, as `capabilities.events`, and asks no declaration of the client. It delivers three ways: the client polls with a cursor, holds a stream open, or names a webhook the server posts to. Webhooks need an authenticated principal (the transport's authorization, or `principalOf` in the config) and are sent to `https://` addresses outside private networks only.
 
