@@ -36,12 +36,15 @@ func protectedResourceMetadataUrls*(resourceUrl: string): seq[string] {.raises: 
   result.add root
 
 proc fetchProtectedResourceMetadata*(url, requestedResource: string,
-                                     policy: FetchPolicy): Future[ProtectedResourceMetadata] {.async.} =
+                                     policy: FetchPolicy,
+                                     alsoAccepted: seq[string] = @[]
+                                    ): Future[ProtectedResourceMetadata] {.async.} =
   let reply = await getJson(url, policy, "protected resource metadata")
   if reply.code != 200 or reply.document.isNone:
     raise newException(OAuthError, "protected resource metadata at " & url &
       " is not a JSON object (HTTP " & $reply.code & ")")
-  return parseProtectedResourceMetadata(reply.document.get, requestedResource, policy)
+  return parseProtectedResourceMetadata(reply.document.get, requestedResource, policy,
+                                        alsoAccepted)
 
 proc discoverProtectedResource*(resourceUrl: string, advertisedUrl: Option[string],
                                 wellKnownFallback: bool,
@@ -57,9 +60,13 @@ proc discoverProtectedResource*(resourceUrl: string, advertisedUrl: Option[strin
       "version does not define another way to find it")
   var failures: seq[string]
   var security: ref OAuthSecurityError = nil
+  let root = originOf(resourceUrl) & "/.well-known/oauth-protected-resource"
   for url in protectedResourceMetadataUrls(resourceUrl):
     try:
-      return await fetchProtectedResourceMetadata(url, resourceUrl, policy)
+      # RFC 9728 3.3: the resource is the identifier the well-known URL was
+      # built from, which for the root URL is the origin.
+      let builtFromOrigin = if url == root: @[originOf(resourceUrl)] else: @[]
+      return await fetchProtectedResourceMetadata(url, resourceUrl, policy, builtFromOrigin)
     except OAuthSecurityError as e:
       security = e
       failures.add e.msg

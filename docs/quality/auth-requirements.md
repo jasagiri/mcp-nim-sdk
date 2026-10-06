@@ -24,7 +24,7 @@ SDK implements the two roles an MCP implementation plays.
 | D5 | Client uses PRM to find the authorization server | - | M | M | M | C |
 | D6 | Client falls back to the well-known PRM URIs when the header has no `resource_metadata` (path-specific first, then root) | - | - | M | M | C |
 | D7 | Client picks the authorization server among several (RFC 9728 7.6) | - | M (client's choice) | = | = | C (callback, default first) |
-| D8 | PRM `resource` must match the resource the client asked for (RFC 9728 3.3, "Validate RS metadata" in the diagram) | - | implied | implied | implied | C |
+| D8 | PRM `resource` must match the resource the client asked for (RFC 9728 3.3, "Validate RS metadata" in the diagram); a document fetched from the root well-known URI may name the origin instead, since that is the identifier its URL was built from | - | implied | implied | implied | C |
 | D9 | AS metadata: RFC 8414 | M | M | M (or OIDC) | M (or OIDC) | C |
 | D10 | AS base URL is the MCP server URL without its path; metadata at `<base>/.well-known/oauth-authorization-server` | M | - | - | - | C |
 | D11 | If metadata is missing (404): default endpoints `/authorize`, `/token`, `/register` on the base URL | M | - | - | - | C |

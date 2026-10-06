@@ -64,15 +64,22 @@ func optBool(doc: JsonNode, key: string): bool {.raises: [OAuthError].} =
   node.getBool()
 
 proc parseProtectedResourceMetadata*(doc: JsonNode, requestedResource: string,
-                                     policy: FetchPolicy): ProtectedResourceMetadata
+                                     policy: FetchPolicy,
+                                     alsoAccepted: openArray[string] = []
+                                    ): ProtectedResourceMetadata
                                     {.raises: [OAuthError, OAuthSecurityError].} =
   ## RFC 9728 3.3: the `resource` of the document must be the resource the
-  ## client asked about, or a server could vouch for another one. MCP
-  ## additionally requires at least one authorization server.
+  ## client asked about, or a server could vouch for another one.
+  ## `alsoAccepted` are other identifiers the document may name, for a
+  ## document fetched from a URL that was not built from `requestedResource`.
+  ## MCP additionally requires at least one authorization server.
   if doc.kind != JObject:
     raise newException(OAuthError, "protected resource metadata is not a JSON object")
   result.resource = doc.requiredString("resource")
-  if canonicalResource(result.resource) != canonicalResource(requestedResource):
+  var named = canonicalResource(result.resource) == canonicalResource(requestedResource)
+  for identifier in alsoAccepted:
+    named = named or canonicalResource(result.resource) == canonicalResource(identifier)
+  if not named:
     raise newException(OAuthSecurityError,
       "protected resource metadata describes " & result.resource &
       ", not " & requestedResource)

@@ -330,6 +330,28 @@ suite "Authorization flow, discovery through resource metadata":
       check env.resourceServer.log.requestsTo("/.well-known/oauth-protected-resource/mcp").len == 1
       check env.resourceServer.log.requestsTo("/.well-known/oauth-protected-resource").len == 1
 
+    test "Given metadata at the root well-known URI that names the origin as its resource, when the client probes, then it accepts it":
+      var env = start(mpv20251125)
+      defer: env.stop()
+      env.resourceServer.advertiseInChallenge = false
+      env.resourceServer.resourceMetadataPaths.clear()
+      env.resourceServer.resourceMetadataPaths.incl "/.well-known/oauth-protected-resource"
+      env.resourceServer.resourceMetadata["resource"] = %("http://127.0.0.1:" & $env.resourceServer.port)
+      let transport = transportFor(newOAuthClient(env.config), env.resourceServer.url)
+      check transport.ping(){"result", "served"}.getBool()
+
+    test "Given metadata at the root well-known URI that names a path of another resource, when the client probes, then it refuses it":
+      var env = start(mpv20251125)
+      defer: env.stop()
+      env.resourceServer.advertiseInChallenge = false
+      env.resourceServer.resourceMetadataPaths.clear()
+      env.resourceServer.resourceMetadataPaths.incl "/.well-known/oauth-protected-resource"
+      env.resourceServer.resourceMetadata["resource"] =
+        %("http://127.0.0.1:" & $env.resourceServer.port & "/other")
+      let transport = transportFor(newOAuthClient(env.config), env.resourceServer.url)
+      expect McpTransportError:
+        discard transport.ping()
+
     test "Given an issuer with a path and metadata only at the OpenID path-appending URL, when version 2025-11-25 discovers, then it tries the three URLs in order and finds it":
       var env = start(mpv20251125, issuerPath = "/tenant1",
                       metadataPaths = @["/tenant1/.well-known/openid-configuration"])
