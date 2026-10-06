@@ -30,7 +30,7 @@ proc startRig(withAuth: bool): Rig =
       verify: proc(token, resource: string): Future[TokenVerdict] {.async.} =
         if token.startsWith("token-"):
           return TokenVerdict(kind: tvValid, principal: some(token[6 .. ^1]))
-        return TokenVerdict(kind: tvInvalid)), "/mcp")
+        return TokenVerdict(kind: tvInvalid)))
   let server = newMcpServer(McpServerInfo(name: "s", version: "1"),
     protocolVersion = TaskVersion,
     capabilities = McpServerCapabilities(tools: some(McpToolsCapability())))

@@ -1059,3 +1059,8 @@ MCP-SEC-SCHEMA-8 | tests/test_security_schema.nim | Given a $ref with an index t
 MCP-SEC-SCHEMA-8 | tests/test_security_schema.nim | Given dependentRequired in a form that is not a list of names, when an object is validated, then the schema is invalid
 MCP-SEC-SCHEMA-8 | tests/test_security_schema.nim | Given draft-07 dependencies in a form that is neither a list of names nor a schema, when validated, then the schema is invalid
 MCP-SEC-SCHEMA-8 | tests/test_security_schema.nim | Given multipleOf whose quotient is beyond a double, when validated, then it is reported, not passed
+MCP-SEC-HTTP-1 | tests/test_security_http.nim | Given an authorized transport, when GET /sse comes without a token, then the answer is 401 and no session is made
+MCP-SEC-HTTP-1 | tests/test_security_http.nim | Given an authorized transport, when POST /messages comes without a token, then the answer is 401 and nothing reaches the server
+MCP-SEC-HTTP-1 | tests/test_security_http.nim | Given a token, when a client opens /sse and posts, then the request reaches the server as that principal
+MCP-SEC-HTTP-1 | tests/test_security_http.nim | Given an invalid token, when GET /sse comes, then the answer is 401
+MCP-SEC-HTTP-1 | tests/test_security_http.nim | Given an authorized transport with documents, when a document and the metadata are read without a token, then both are served

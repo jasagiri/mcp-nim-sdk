@@ -51,3 +51,21 @@ Feature: The JSON Schema validator against hostile input and hostile schemas
     Given dependentRequired or draft-07 dependencies that do not hold lists of names, a $ref index that overflows or is out of range, or a multipleOf whose quotient a double cannot hold
     When an instance is validated
     Then InvalidSchemaError (or SchemaLimitError for the quotient) is raised, and the instance is not reported as conforming
+Feature: Security of the HTTP server transport
+  As an operator who puts an MCP server behind authorization
+  I want every endpoint of the transport to be protected, and a client to be bound to its own session
+  So that one caller cannot read, answer, cancel or starve another's
+
+  Specification: Authorization (2025-03-26 and later, basic/authorization:
+  "Token Requirements": every HTTP request from client to server MUST carry
+  the token, whether or not they are part of the same logical session) and
+  Streamable HTTP, "Security Warning" (2025-11-25, 2026-07-28). Findings:
+  build/SECURITY_FINDINGS.md C1, M1, M2, M6, L5, L6.
+
+  @spec:MCP-SEC-HTTP-1
+  Scenario: A transport with authorization protects every MCP endpoint
+    Given a transport with a token verifier
+    When a request without a token arrives at the MCP path, at the HTTP+SSE event stream path or at the HTTP+SSE messages path
+    Then each is answered 401 and nothing reaches the MCP server
+    And a request with a good token reaches the server as that principal
+    And a fixed document and the authorization metadata are still served without a token

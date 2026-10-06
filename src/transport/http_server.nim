@@ -889,9 +889,12 @@ func endpointOf(t: HttpServerTransport, path: string): Endpoint =
   else: epNone
 
 proc dispatch(t: HttpServerTransport, req: Request) {.async.} =
-  # Before the path is looked at: the hook also serves its own documents.
+  # The hook is asked about every MCP endpoint (so that none is left open by
+  # a hook that does not know the path) and about the documents it serves
+  # itself; fixed documents and unknown paths are public.
+  let endpoint = t.endpointOf(req.url.path)
   var principal = none(string)
-  if not t.auth.isNil:
+  if not t.auth.isNil and (endpoint != epNone or req.url.path in t.auth.ownPaths):
     let verdict = await t.authenticate(req)
     if verdict.answered:
       return
@@ -899,7 +902,6 @@ proc dispatch(t: HttpServerTransport, req: Request) {.async.} =
   if req.url.path in t.documents:
     await serveDocument(req, t.documents[req.url.path])
     return
-  let endpoint = t.endpointOf(req.url.path)
   if endpoint == epNone:
     await req.respondEmpty(Http404)
     return

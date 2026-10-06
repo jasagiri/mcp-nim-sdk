@@ -72,7 +72,7 @@ proc startServer(v: McpProtocolVersion, verdicts: TableRef[string, TokenVerdict]
     resource: result.url, authorizationServers: authServers,
     scopesSupported: @["files:read", "files:write"], challengeScopes: challengeScopes,
     verify: verifierFor(result.seen, verdicts), version: v)
-  transport.auth = newResourceServerAuth(result.config, "/mcp")
+  transport.auth = newResourceServerAuth(result.config)
 
 proc issuedByVerifier(authServer: FakeAs, seen: Seen, v: McpProtocolVersion): TokenVerifier =
   ## Accepts what the authorization server issued, and, from the version
@@ -173,7 +173,7 @@ suite "Resource server, every version of the build":
       env.transport.auth = newResourceServerAuth(ResourceServerConfig(
         resource: env.url, authorizationServers: @["https://auth.example.com"], version: v,
         verify: proc(token, resource: string): Future[TokenVerdict] {.async.} =
-          raise newException(ValueError, "introspection endpoint is down")), "/mcp")
+          raise newException(ValueError, "introspection endpoint is down")))
       let reply = send(env.url, HttpPost, initializeBody, {"Authorization": "Bearer good"})
       check reply.code == Http500
       check "introspection" notin reply.body
@@ -222,23 +222,23 @@ suite "Resource server, configuration":
     expect ValueError:
       discard newResourceServerAuth(ResourceServerConfig(
         resource: "http://127.0.0.1:1/mcp", authorizationServers: @["https://a.example"],
-        version: mpv20241105, verify: verify), "/mcp")
+        version: mpv20241105, verify: verify))
     when mpv20250618 in authVersions:
       expect ValueError:   # no verifier
         discard newResourceServerAuth(ResourceServerConfig(
           resource: "http://127.0.0.1:1/mcp", authorizationServers: @["https://a.example"],
-          version: mpv20250618), "/mcp")
+          version: mpv20250618))
       expect ValueError:   # PRM without an authorization server
         discard newResourceServerAuth(ResourceServerConfig(
-          resource: "http://127.0.0.1:1/mcp", version: mpv20250618, verify: verify), "/mcp")
+          resource: "http://127.0.0.1:1/mcp", version: mpv20250618, verify: verify))
       expect ValueError:   # resource not in canonical form
         discard newResourceServerAuth(ResourceServerConfig(
           resource: "HTTP://127.0.0.1:1/mcp", authorizationServers: @["https://a.example"],
-          version: mpv20250618, verify: verify), "/mcp")
+          version: mpv20250618, verify: verify))
       expect ValueError:   # a header-splitting scope
         discard newResourceServerAuth(ResourceServerConfig(
           resource: "http://127.0.0.1:1/mcp", authorizationServers: @["https://a.example"],
-          challengeScopes: @["a\r\nX: y"], version: mpv20250618, verify: verify), "/mcp")
+          challengeScopes: @["a\r\nX: y"], version: mpv20250618, verify: verify))
 
 suite "Resource server with this SDK's client and an authorization server":
   for v in authVersions:
@@ -258,7 +258,7 @@ suite "Resource server with this SDK's client and an authorization server":
         let url = "http://127.0.0.1:" & $transport.port & "/mcp"
         transport.auth = newResourceServerAuth(ResourceServerConfig(
           resource: url, authorizationServers: @[authServer.issuer],
-          verify: issuedByVerifier(authServer, seen, v), version: v), "/mcp")
+          verify: issuedByVerifier(authServer, seen, v), version: v))
         let consents = new(seq[string])
         let config = newOAuthClientConfig(url, "http://127.0.0.1:53682/callback",
                                           authorizerFor(authServer, consents), v)

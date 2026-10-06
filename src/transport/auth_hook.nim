@@ -35,6 +35,15 @@ type
     ## Server side, held by `HttpServerTransport.auth`. A hook sets `check`,
     ## which also names the principal; `intercept` alone is enough where no
     ## handler needs to know who is asking.
+    ##
+    ## The transport asks the hook about every request to an MCP endpoint it
+    ## serves (the Streamable HTTP path, and the HTTP+SSE paths where they are
+    ## on) and about the paths in `ownPaths`; it never asks about anything
+    ## else (fixed documents, unknown paths). So the hook cannot leave an
+    ## endpoint unprotected by not knowing its path: a request it is asked
+    ## about, and does not answer itself, needs a token.
+    ownPaths*: seq[string]
+      ## Paths the hook answers itself, without a token (a metadata document).
     check*: proc(httpMethod, path: string, authorization: Option[string]):
                 Future[HttpServerAuthOutcome] {.closure, gcsafe.}
       ## Used instead of `intercept` when set.

@@ -5,11 +5,12 @@
 ## For every HTTP request the hook
 ##   * serves the Protected Resource Metadata document (RFC 9728) at its
 ##     well-known URI (2025-06-18 and later);
-##   * answers a request to the MCP endpoint that carries no acceptable
-##     token with 401 and a `WWW-Authenticate` challenge, which names the
+##   * answers a request to any MCP endpoint of the transport (the transport
+##     asks about all of them: Streamable HTTP, and the HTTP+SSE paths) that
+##     carries no acceptable token with 401 and a `WWW-Authenticate` challenge, which names the
 ##     metadata document (`resource_metadata`) from 2025-06-18 on;
 ##   * answers a token that lacks scope with 403 `insufficient_scope`;
-##   * lets everything else through to the MCP server.
+##   * lets a request with a good token through to the MCP server.
 ##
 ## Judging the token is the application's: `TokenVerifier`.
 
@@ -121,10 +122,11 @@ proc bearerToken(authorization: Option[string]): Option[string] {.raises: [].} =
 func answered(response: HttpServerAuthResponse): HttpServerAuthOutcome {.raises: [].} =
   HttpServerAuthOutcome(answer: some(response))
 
-proc newResourceServerAuth*(config: ResourceServerConfig, mcpPath: string): HttpServerAuth
+proc newResourceServerAuth*(config: ResourceServerConfig): HttpServerAuth
                            {.raises: [ValueError, OAuthError].} =
-  ## `mcpPath` is the path the HTTP transport serves MCP on. Raises for a
-  ## configuration that could never work.
+  ## Raises for a configuration that could never work. Which requests need a
+  ## token is the transport's to say (`HttpServerAuth`): every MCP endpoint
+  ## it serves, not one path given here.
   if not config.version.has(ftAuthorization):
     raise newException(ValueError, "protocol version " & $config.version & " has no authorization")
   if config.verify.isNil:
@@ -150,8 +152,6 @@ proc newResourceServerAuth*(config: ResourceServerConfig, mcpPath: string): Http
       if metadataPath.isSome and path == metadataPath.get and httpMethod == "GET":
         return answered(HttpServerAuthResponse(
           code: 200, headers: @[("Content-Type", "application/json")], body: document))
-      if path != mcpPath:
-        return HttpServerAuthOutcome()
       let token = bearerToken(authorization)
       if token.isNone:
         return answered(HttpServerAuthResponse(
@@ -183,6 +183,7 @@ proc newResourceServerAuth*(config: ResourceServerConfig, mcpPath: string): Http
           stderr.writeLine("[mcp-auth] required scopes cannot be written as a challenge")
           return answered(HttpServerAuthResponse(code: 500))
   HttpServerAuth(
+    ownPaths: if metadataPath.isSome: @[metadataPath.get] else: @[],
     check: check,
     intercept: proc(httpMethod, path: string, authorization: Option[string]):
                    Future[Option[HttpServerAuthResponse]] {.closure, gcsafe, async.} =
