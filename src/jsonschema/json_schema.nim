@@ -129,6 +129,23 @@ func isInteger(node: JsonNode): bool =
   node.kind == JInt or (node.kind == JFloat and node.fnum.classify in {fcNormal, fcZero, fcSubnormal} and
                         node.fnum == floor(node.fnum))
 
+proc count(schema: JsonNode, name: string): int =
+  ## The value of keyword `name`, which must be a non-negative integer; -1
+  ## when the keyword is absent. 2020-12 reads a number with no fractional
+  ## part, such as 5.0, as an integer; anything else is an invalid schema.
+  let value = schema.keyword(name, {JInt, JFloat})
+  if value.isNil:
+    return -1
+  case value.kind
+  of JInt:
+    if value.num < 0:
+      invalid("'" & name & "' must not be negative")
+    int(min(value.num, int64(high(int))))
+  else:
+    if not value.isInteger or value.fnum < 0:
+      invalid("'" & name & "' must be a non-negative integer")
+    if value.fnum >= 9.2e18: high(int) else: int(value.fnum)
+
 func jsonEquals(a, b: JsonNode): bool =
   ## JSON equality, where 1 and 1.0 are the same number.
   if a.kind in {JInt, JFloat} and b.kind in {JInt, JFloat}:
@@ -258,28 +275,26 @@ proc checkNumber(v: var Validator, schema, instance: JsonNode, path: seq[string]
 
 proc checkString(v: var Validator, schema, instance: JsonNode, path: seq[string]) =
   let text = instance.getStr()
-  let numbers = {JInt, JFloat}
-  let shortest = schema.keyword("minLength", numbers)
-  let longest = schema.keyword("maxLength", numbers)
-  if not shortest.isNil or not longest.isNil:
+  let shortest = schema.count("minLength")
+  let longest = schema.count("maxLength")
+  if shortest >= 0 or longest >= 0:
     let length = text.runeLen
-    if not shortest.isNil and length < shortest.getInt():
-      v.add(path, "shorter than " & $shortest & " characters")
-    if not longest.isNil and length > longest.getInt():
-      v.add(path, "longer than " & $longest & " characters")
+    if shortest >= 0 and length < shortest:
+      v.add(path, "shorter than " & $schema["minLength"] & " characters")
+    if longest >= 0 and length > longest:
+      v.add(path, "longer than " & $schema["maxLength"] & " characters")
   let pattern = schema.keyword("pattern", {JString})
   if not pattern.isNil and not v.matches(pattern.getStr(), text):
     v.add(path, "does not match the pattern '" & pattern.getStr() & "'")
 
 proc checkArray(v: var Validator, schema, instance: JsonNode, path: seq[string]) =
-  let numbers = {JInt, JFloat}
   let items = instance.elems
-  var limit = schema.keyword("minItems", numbers)
-  if not limit.isNil and items.len < limit.getInt():
-    v.add(path, "fewer than " & $limit & " items")
-  limit = schema.keyword("maxItems", numbers)
-  if not limit.isNil and items.len > limit.getInt():
-    v.add(path, "more than " & $limit & " items")
+  let fewest = schema.count("minItems")
+  if fewest >= 0 and items.len < fewest:
+    v.add(path, "fewer than " & $schema["minItems"] & " items")
+  let most = schema.count("maxItems")
+  if most >= 0 and items.len > most:
+    v.add(path, "more than " & $schema["maxItems"] & " items")
   let unique = schema.keyword("uniqueItems", {JBool})
   if not unique.isNil and unique.getBool():
     for i in 0 ..< items.len:
@@ -316,22 +331,21 @@ proc checkArray(v: var Validator, schema, instance: JsonNode, path: seq[string])
     for index, item in items:
       if v.passes(contains, item, path & $index):
         inc matching
-    let minContains = schema.keyword("minContains", numbers)
-    let maxContains = schema.keyword("maxContains", numbers)
-    let least = if minContains.isNil or v.dialect == sdDraft07: 1 else: minContains.getInt()
+    let minContains = if v.dialect == sdDraft07: -1 else: schema.count("minContains")
+    let maxContains = if v.dialect == sdDraft07: -1 else: schema.count("maxContains")
+    let least = if minContains < 0: 1 else: minContains
     if matching < least:
       v.add(path, "fewer than " & $least & " items satisfy 'contains'")
-    if not maxContains.isNil and v.dialect != sdDraft07 and matching > maxContains.getInt():
+    if maxContains >= 0 and matching > maxContains:
       v.add(path, "more than " & $maxContains & " items satisfy 'contains'")
 
 proc checkObject(v: var Validator, schema, instance: JsonNode, path: seq[string]) =
-  let numbers = {JInt, JFloat}
-  var limit = schema.keyword("minProperties", numbers)
-  if not limit.isNil and instance.len < limit.getInt():
-    v.add(path, "fewer than " & $limit & " properties")
-  limit = schema.keyword("maxProperties", numbers)
-  if not limit.isNil and instance.len > limit.getInt():
-    v.add(path, "more than " & $limit & " properties")
+  let fewest = schema.count("minProperties")
+  if fewest >= 0 and instance.len < fewest:
+    v.add(path, "fewer than " & $schema["minProperties"] & " properties")
+  let most = schema.count("maxProperties")
+  if most >= 0 and instance.len > most:
+    v.add(path, "more than " & $schema["maxProperties"] & " properties")
   let required = schema.keyword("required", {JArray})
   if not required.isNil:
     for name in required:

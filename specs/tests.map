@@ -1046,3 +1046,6 @@ MCP-SEC-SCHEMA-5 | tests/test_security_schema.nim | Given $refs that double at e
 MCP-SEC-SCHEMA-5 | tests/test_security_schema.nim | Given a pattern the engine refuses by size, when validated, then the schema is reported invalid with the limit
 MCP-SEC-SCHEMA-5 | tests/test_security_schema.nim | Given many matches that add up above the regex budget, when validated, then the limit is reported
 MCP-SEC-SCHEMA-5 | tests/test_security_schema.nim | Given a 4 MiB string and a pattern, when validated, then the answer is given
+MCP-SEC-SCHEMA-6 | tests/test_security_schema.nim | Given a length or size limit written as 5.0, when an instance breaks it, then it is reported like 5
+MCP-SEC-SCHEMA-6 | tests/test_security_schema.nim | Given a limit written as 5.0, when an instance keeps it, then it conforms
+MCP-SEC-SCHEMA-6 | tests/test_security_schema.nim | Given a limit that is not a non-negative integer, when validated, then the schema is invalid

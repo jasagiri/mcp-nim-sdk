@@ -162,3 +162,36 @@ suite "limits on depth and total work":
     let shorter = %('a'.repeat(512 * 1024))
     check validate(parseJson("""{"pattern": "^[0-9]+$"}"""), shorter).len == 1
     check validate(parseJson("""{"pattern": "(a|a)*$"}"""), shorter).len == 0
+
+suite "numeric keywords that are written as floats":
+
+  proc fails(schema, instance: string): bool =
+    validate(parseJson(schema), parseJson(instance)).len > 0
+
+  test "Given a length or size limit written as 5.0, when an instance breaks it, then it is reported like 5":
+    check fails("""{"minLength": 5.0}""", "\"abc\"")
+    check fails("""{"maxLength": 2.0}""", "\"abc\"")
+    check fails("""{"minItems": 2.0}""", "[1]")
+    check fails("""{"maxItems": 1.0}""", "[1, 2]")
+    check fails("""{"minProperties": 2.0}""", """{"a": 1}""")
+    check fails("""{"maxProperties": 1.0}""", """{"a": 1, "b": 2}""")
+    check fails("""{"contains": true, "minContains": 2.0}""", "[1]")
+    check fails("""{"contains": true, "maxContains": 1.0}""", "[1, 2]")
+
+  test "Given a limit written as 5.0, when an instance keeps it, then it conforms":
+    check not fails("""{"minLength": 3.0, "maxLength": 3.0}""", "\"abc\"")
+    check not fails("""{"minItems": 1.0, "maxItems": 2.0}""", "[1, 2]")
+    check not fails("""{"minLength": 0.0}""", "\"\"")
+    check not fails("""{"maxLength": 1e300}""", "\"abc\"")
+    check fails("""{"minLength": 1e300}""", "\"abc\"")
+
+  test "Given a limit that is not a non-negative integer, when validated, then the schema is invalid":
+    for (keyword, instance) in [("minLength", "\"abc\""), ("maxLength", "\"abc\""),
+                                ("minItems", "[1]"), ("maxItems", "[1]"),
+                                ("minProperties", """{"a": 1}"""),
+                                ("maxProperties", """{"a": 1}"""),
+                                ("minContains", "[1]"), ("maxContains", "[1]")]:
+      for bad in ["2.5", "-1", "-1.0", "\"2\"", "null", "true"]:
+        let schema = parseJson("{\"contains\": true, \"" & keyword & "\": " & bad & "}")
+        expect InvalidSchemaError:
+          discard validate(schema, parseJson(instance))

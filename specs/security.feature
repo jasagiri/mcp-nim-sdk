@@ -33,3 +33,9 @@ Feature: The JSON Schema validator against hostile input and hostile schemas
     Given an instance or a schema nested beyond the depth limit, $refs that double at every level, or matches that add up above the regex budget
     When an instance is validated
     Then SchemaLimitError (an InvalidSchemaError) is raised, never a verdict, and the caller can change the limits
+
+  @spec:MCP-SEC-SCHEMA-6
+  Scenario: A length or size limit written as a number with no fractional part is read as that integer
+    Given minLength, maxLength, minItems, maxItems, minProperties, maxProperties, minContains or maxContains with the value 5.0
+    When an instance is validated
+    Then the limit applies as 5 does, and a value that is negative, fractional or not a number is an invalid schema, never read as 0
