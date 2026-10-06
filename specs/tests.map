@@ -1049,3 +1049,8 @@ MCP-SEC-SCHEMA-5 | tests/test_security_schema.nim | Given a 4 MiB string and a p
 MCP-SEC-SCHEMA-6 | tests/test_security_schema.nim | Given a length or size limit written as 5.0, when an instance breaks it, then it is reported like 5
 MCP-SEC-SCHEMA-6 | tests/test_security_schema.nim | Given a limit written as 5.0, when an instance keeps it, then it conforms
 MCP-SEC-SCHEMA-6 | tests/test_security_schema.nim | Given a limit that is not a non-negative integer, when validated, then the schema is invalid
+MCP-SEC-SCHEMA-7 | tests/test_security_schema.nim | Given 100000 distinct items, when uniqueItems is checked, then it finishes at once
+MCP-SEC-SCHEMA-7 | tests/test_security_schema.nim | Given items that are equal as JSON values, when uniqueItems is checked, then they are reported
+MCP-SEC-SCHEMA-7 | tests/test_security_schema.nim | Given items that only look alike, when uniqueItems is checked, then they are distinct
+MCP-SEC-SCHEMA-7 | tests/test_security_schema.nim | Given three equal items, when uniqueItems is checked, then each later copy names the first
+MCP-SEC-SCHEMA-7 | tests/test_security_schema.nim | Given enum and const with 1 and 1.0, when large integers are compared, then they are told apart

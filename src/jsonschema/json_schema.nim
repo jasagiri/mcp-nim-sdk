@@ -30,7 +30,7 @@
 ## itself without moving into the instance can never finish and is reported
 ## as an invalid schema.
 
-import std/[json, math, strutils, tables, unicode]
+import std/[algorithm, json, math, strutils, tables, unicode]
 import ./json_schema_regex
 
 type
@@ -146,10 +146,23 @@ proc count(schema: JsonNode, name: string): int =
       invalid("'" & name & "' must be a non-negative integer")
     if value.fnum >= 9.2e18: high(int) else: int(value.fnum)
 
+func numberKey(node: JsonNode): string =
+  ## One spelling per mathematical value: 1 and 1.0 are the same, and two
+  ## integers that differ by one are not the same even above 2^53.
+  if node.kind == JInt:
+    return $node.num
+  let value = node.fnum
+  if value == floor(value) and value >= -9223372036854775808.0 and
+     value < 9223372036854775808.0:
+    $int64(value)
+  else:
+    $value
+
 func jsonEquals(a, b: JsonNode): bool =
   ## JSON equality, where 1 and 1.0 are the same number.
   if a.kind in {JInt, JFloat} and b.kind in {JInt, JFloat}:
-    return a.getFloat() == b.getFloat()
+    return (if a.kind == JInt and b.kind == JInt: a.num == b.num
+            else: numberKey(a) == numberKey(b))
   if a.kind != b.kind:
     return false
   case a.kind
@@ -184,6 +197,42 @@ func matchesType(node: JsonNode, name: string): bool =
   of "array": node.kind == JArray
   of "object": node.kind == JObject
   else: invalid("'" & name & "' is not a JSON Schema type")
+
+proc canonical(node: JsonNode, into: var string, depth: int) =
+  ## Appends a text that is equal for two values exactly when `jsonEquals`
+  ## holds for them. Every part says what it is and how long, so no two
+  ## different values share a text.
+  if depth <= 0:
+    raise newException(SchemaLimitError, "an item nests too deep to compare")
+  case node.kind
+  of JNull: into.add 'n'
+  of JBool: into.add (if node.bval: 't' else: 'f')
+  of JInt, JFloat:
+    into.add 'd'
+    into.add node.numberKey
+    into.add ';'
+  of JString:
+    into.add 's'
+    into.add $node.str.len
+    into.add ':'
+    into.add node.str
+  of JArray:
+    into.add '['
+    for item in node.elems:
+      canonical(item, into, depth - 1)
+    into.add ']'
+  of JObject:
+    into.add '{'
+    var keys: seq[string]
+    for key in node.keys:
+      keys.add key
+    keys.sort()
+    for key in keys:
+      into.add $key.len
+      into.add ':'
+      into.add key
+      canonical(node[key], into, depth - 1)
+    into.add '}'
 
 proc resolveRef(v: Validator, reference: string): JsonNode =
   if not reference.startsWith("#"):
@@ -297,10 +346,15 @@ proc checkArray(v: var Validator, schema, instance: JsonNode, path: seq[string])
     v.add(path, "more than " & $schema["maxItems"] & " items")
   let unique = schema.keyword("uniqueItems", {JBool})
   if not unique.isNil and unique.getBool():
-    for i in 0 ..< items.len:
-      for j in i + 1 ..< items.len:
-        if jsonEquals(items[i], items[j]):
-          v.add(path, "items " & $i & " and " & $j & " are equal")
+    # One pass over canonical texts instead of every pair.
+    var firstSeen: Table[string, int]
+    for index, item in items:
+      var text: string
+      canonical(item, text, v.limits.maxDepth)
+      if text in firstSeen:
+        v.add(path, "items " & $firstSeen[text] & " and " & $index & " are equal")
+      else:
+        firstSeen[text] = index
 
   # The items after the positional ones; `prefixItems` in 2020-12, an array
   # `items` in draft-07.

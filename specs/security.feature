@@ -39,3 +39,9 @@ Feature: The JSON Schema validator against hostile input and hostile schemas
     Given minLength, maxLength, minItems, maxItems, minProperties, maxProperties, minContains or maxContains with the value 5.0
     When an instance is validated
     Then the limit applies as 5 does, and a value that is negative, fractional or not a number is an invalid schema, never read as 0
+
+  @spec:MCP-SEC-SCHEMA-7
+  Scenario: uniqueItems takes time proportional to the items and follows JSON equality
+    Given an array of 100000 distinct objects, and arrays of values that are or only look equal such as 1 and 1.0, objects with keys in another order, [1, 2] and [2, 1], or 9007199254740993 and 9007199254740992
+    When uniqueItems is checked
+    Then the answer is immediate, equal values are reported with the index of the first copy, and values that differ are not

@@ -195,3 +195,49 @@ suite "numeric keywords that are written as floats":
         let schema = parseJson("{\"contains\": true, \"" & keyword & "\": " & bad & "}")
         expect InvalidSchemaError:
           discard validate(schema, parseJson(instance))
+
+suite "uniqueItems":
+
+  proc duplicates(items: string): seq[string] =
+    for violation in validate(parseJson("""{"uniqueItems": true}"""), parseJson(items)):
+      result.add violation.message
+
+  test "Given 100000 distinct items, when uniqueItems is checked, then it finishes at once":
+    var items = newJArray()
+    for i in 0 ..< 100_000:
+      items.add %*{"id": i, "tags": ["a", $i]}
+    check validate(parseJson("""{"uniqueItems": true}"""), items).len == 0
+    items.add %*{"tags": ["a", "5"], "id": 5}
+    let found = validate(parseJson("""{"uniqueItems": true}"""), items)
+    check found.len == 1
+    check found[0].message == "items 5 and 100000 are equal"
+
+  test "Given items that are equal as JSON values, when uniqueItems is checked, then they are reported":
+    check duplicates("[1, 1.0]").len == 1
+    check duplicates("[0, -0.0]").len == 1
+    check duplicates("""[{"a": 1, "b": 2}, {"b": 2, "a": 1}]""").len == 1
+    check duplicates("""[{"a": 1}, {"a": 1.0}]""").len == 1
+    check duplicates("""[{"a": [1, {"b": 2}]}, {"a": [1.0, {"b": 2.0}]}]""").len == 1
+    check duplicates("""["x", "x"]""").len == 1
+    check duplicates("[null, null]").len == 1
+    check duplicates("[1.5, 1.5]").len == 1
+    check duplicates("[1e2, 100]").len == 1
+
+  test "Given items that only look alike, when uniqueItems is checked, then they are distinct":
+    check duplicates("[[1, 2], [2, 1]]").len == 0
+    check duplicates("""["1", 1]""").len == 0
+    check duplicates("[true, 1]").len == 0
+    check duplicates("[null, false]").len == 0
+    check duplicates("[0, false]").len == 0
+    check duplicates("""[{"a": 1}, {"a": 1, "b": null}]""").len == 0
+    check duplicates("""[["a", "b"], ["ab"]]""").len == 0
+    check duplicates("""[["a,b"], ["a", "b"]]""").len == 0
+    check duplicates("[9007199254740993, 9007199254740992]").len == 0
+    check duplicates("[1.5, 1.50001]").len == 0
+
+  test "Given three equal items, when uniqueItems is checked, then each later copy names the first":
+    check duplicates("[7, 7, 7]") == @["items 0 and 1 are equal", "items 0 and 2 are equal"]
+
+  test "Given enum and const with 1 and 1.0, when large integers are compared, then they are told apart":
+    check validate(parseJson("""{"const": 9007199254740993}"""), parseJson("9007199254740992")).len == 1
+    check validate(parseJson("""{"const": 1}"""), parseJson("1.0")).len == 0
