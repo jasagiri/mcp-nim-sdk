@@ -2,7 +2,7 @@
   "sources": [
     "src/transport/event_stream.nim"
   ],
-  "testCommand": "nim c -r --hints:off tests/test_event_stream.nim",
+  "testCommand": "nim c -r --hints:off tests/test_event_stream.nim && nim c -r --hints:off tests/test_security_wire_limits.nim",
   "mutators": [
     "AOR",
     "ROR",

@@ -11,6 +11,14 @@ name: g2
 on: push
 
 jobs:
+  address_policy:
+    steps:
+      - name: nim-muter address_policy
+        run: |
+          status=0
+          ../nim-muter/bin/nim-muter run --config tests/mutation/address_policy.json || status=$?
+          cp .nim-muter/address_policy/report.json "$KURATSUGI_RESULT_DIR/address_policy.report.json" || exit 1
+          exit $status
   auth_client:
     steps:
       - name: nim-muter auth_client
@@ -50,6 +58,14 @@ jobs:
           status=0
           ../nim-muter/bin/nim-muter run --config tests/mutation/content.json || status=$?
           cp .nim-muter/content/report.json "$KURATSUGI_RESULT_DIR/content.report.json" || exit 1
+          exit $status
+  diagnostic:
+    steps:
+      - name: nim-muter diagnostic
+        run: |
+          status=0
+          ../nim-muter/bin/nim-muter run --config tests/mutation/diagnostic.json || status=$?
+          cp .nim-muter/diagnostic/report.json "$KURATSUGI_RESULT_DIR/diagnostic.report.json" || exit 1
           exit $status
   elicitation:
     steps:
