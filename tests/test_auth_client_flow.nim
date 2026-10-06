@@ -330,15 +330,20 @@ suite "Authorization flow, discovery through resource metadata":
       check env.resourceServer.log.requestsTo("/.well-known/oauth-protected-resource/mcp").len == 1
       check env.resourceServer.log.requestsTo("/.well-known/oauth-protected-resource").len == 1
 
-    test "Given metadata at the root well-known URI that names the origin as its resource, when the client probes, then it accepts it":
+    test "Given metadata at the root well-known URI that names the origin as its resource, when the client probes, then it accepts it and sends that origin as the resource":
       var env = start(mpv20251125)
       defer: env.stop()
       env.resourceServer.advertiseInChallenge = false
       env.resourceServer.resourceMetadataPaths.clear()
       env.resourceServer.resourceMetadataPaths.incl "/.well-known/oauth-protected-resource"
-      env.resourceServer.resourceMetadata["resource"] = %("http://127.0.0.1:" & $env.resourceServer.port)
+      let origin = "http://127.0.0.1:" & $env.resourceServer.port
+      env.resourceServer.resourceMetadata["resource"] = %origin
       let transport = transportFor(newOAuthClient(env.config), env.resourceServer.url)
       check transport.ping(){"result", "served"}.getBool()
+      # The resource indicator is the identifier the metadata published,
+      # in the authorization request and, via it, in the token.
+      for issued in env.authServer.accessTokens.values:
+        check issued.resource == origin
 
     test "Given metadata at the root well-known URI that names a path of another resource, when the client probes, then it refuses it":
       var env = start(mpv20251125)

@@ -104,3 +104,4 @@
 | `src/transport/sse_stream.nim` (待機の前に `changed` を控える。書き込み中に積まれたイベントを待ち落とさない) | `tests/test_http_streams.nim` | 2026-10-06 |
 | `src/protocol/modern.nim` (`decodeHeaderValue`: パディングの無い Base64 を拒否する) | `tests/test_modern_protocol.nim`, `tests/test_param_headers_http.nim` | 2026-10-06 |
 | `src/auth/oauth/discovery.nim`、`src/auth/oauth/metadata.nim` (ルートの well-known URI から得た PRM は、オリジンを `resource` に名乗ってよい) | `tests/test_auth_client_flow.nim` | 2026-10-06 |
+| `src/auth/client.nim` (`indicator`: `resource` は PRM が公表した識別子をそのまま送る) | `tests/test_auth_client_flow.nim` | 2026-10-06 |

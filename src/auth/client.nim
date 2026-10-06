@@ -78,6 +78,10 @@ type
     config: OAuthClientConfig
     policy: AuthPolicy
     resource: string
+    indicator: string
+      ## The `resource` of authorization and token requests: the identifier the
+      ## protected resource metadata published, once it has been read; the MCP
+      ## URL before that and where there is no such metadata.
     requestedScopes: seq[string]
     attempts: Table[string, (int, Time)]
     metadata: Option[AuthorizationServerMetadata]
@@ -109,6 +113,7 @@ proc newOAuthClient*(config: OAuthClientConfig): OAuthClient
   # user's own localhost.
   result.config.fetchPolicy = config.fetchPolicy.narrowedTo(config.serverUrl)
   result.resource = canonicalResource(config.serverUrl)
+  result.indicator = result.resource
   checkRedirectUri(config.redirectUri)
   if config.authorize.isNil:
     raise newException(ValueError, "an authorize callback is required")
@@ -145,7 +150,7 @@ proc authorizationHeader*(c: OAuthClient): Future[Option[string]] {.async.} =
         TokenEndpointClient(tokenEndpoint: c.metadata.get.tokenEndpoint,
                             credentials: creds.get, policy: c.config.fetchPolicy),
         tokens.refreshToken.get, tokens.scopes,
-        (if c.policy.resourceIndicator: some(c.resource) else: none(string)),
+        (if c.policy.resourceIndicator: some(c.indicator) else: none(string)),
         c.config.now())
     except OAuthServerError:
       # The refresh token is spent or revoked. The server's 401 starts a
@@ -156,6 +161,7 @@ proc authorizationHeader*(c: OAuthClient): Future[Option[string]] {.async.} =
   return some("Bearer " & tokens.accessToken)
 
 type Discovered = object
+  resource: string
   issuer: string
   metadata: AuthorizationServerMetadata
   resourceScopes: seq[string]
@@ -165,7 +171,7 @@ proc discover(c: OAuthClient, advertised: Option[string]): Future[Discovered] {.
   if c.policy.defaultEndpoints:
     let md = await discoverOrDefault(c.config.serverUrl, policy,
                                      @{"MCP-Protocol-Version": $c.config.version})
-    return Discovered(issuer: md.issuer, metadata: md)
+    return Discovered(resource: c.resource, issuer: md.issuer, metadata: md)
   let prm = await discoverProtectedResource(c.config.serverUrl, advertised,
                                             c.policy.wellKnownResourceFallback, policy)
   let issuer = c.config.selectAuthorizationServer(prm.authorizationServers)
@@ -173,7 +179,8 @@ proc discover(c: OAuthClient, advertised: Option[string]): Future[Discovered] {.
     raise newException(OAuthSecurityError,
       "the chosen authorization server " & issuer & " is not one the resource lists")
   let md = await discoverAuthorizationServer(issuer, c.policy.asDiscovery, policy)
-  return Discovered(issuer: issuer, metadata: md, resourceScopes: prm.scopesSupported)
+  return Discovered(resource: prm.resource, issuer: issuer, metadata: md,
+                    resourceScopes: prm.scopesSupported)
 
 proc requirePkce(c: OAuthClient, md: AuthorizationServerMetadata) {.raises: [OAuthSecurityError].} =
   ## The server is the only source on PKCE support; without it a client
@@ -297,6 +304,7 @@ proc handleChallenge*(c: OAuthClient, status: int,
   let advertised = if bearer.isSome: bearer.get.resourceMetadata else: none(string)
   let found = await c.discover(advertised)
   let md = found.metadata
+  c.indicator = found.resource
   c.requirePreRegisteredIssuer(found.issuer)
   c.metadata = some(md)
   c.requirePkce(md)
@@ -311,7 +319,7 @@ proc handleChallenge*(c: OAuthClient, status: int,
         TokenEndpointClient(tokenEndpoint: md.tokenEndpoint, credentials: creds,
                             policy: c.config.fetchPolicy),
         stored.get.refreshToken.get, stored.get.scopes,
-        (if c.policy.resourceIndicator: some(c.resource) else: none(string)),
+        (if c.policy.resourceIndicator: some(c.indicator) else: none(string)),
         c.config.now())
       c.config.tokenStore.save(c.tokenKey, refreshed)
       return true
@@ -322,7 +330,7 @@ proc handleChallenge*(c: OAuthClient, status: int,
   c.countAttempt($status & " " & scopes.join(" "))
   let request = newAuthorizationRequest(
     md.authorizationEndpoint, creds.clientId, c.config.redirectUri, scopes,
-    (if c.policy.resourceIndicator: some(c.resource) else: none(string)),
+    (if c.policy.resourceIndicator: some(c.indicator) else: none(string)),
     expectedIssuer = md.issuer,
     issuerParameterAdvertised = md.authorizationResponseIssParameterSupported,
     checkIssuer = c.policy.validateIssuer)
