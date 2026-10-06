@@ -175,7 +175,7 @@ proc config(e: Env, idpClient: ClientAuthentication = secretBasic("sso-client", 
            ): EnterpriseManagedConfig =
   let (calls, assertion, clock) = (e.providerCalls, e.assertion, e.clock)
   result = newEnterpriseManagedConfig(
-    e.rs.url, e.idp.issuer, idpClient, rasClient,
+    e.rs.url, e.idp.issuer, e.ras.issuer, idpClient, rasClient,
     proc(): Future[IdentityAssertion] {.async.} =
       inc calls[]
       return assertion[])

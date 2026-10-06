@@ -70,7 +70,7 @@ proc stop(e: Env) =
   e.authServer.stop()
 
 proc configFor(e: Env, clientId: string): ClientCredentialsConfig =
-  result = newClientCredentialsConfig(e.rs.url, clientId)
+  result = newClientCredentialsConfig(e.rs.url, clientId, e.authServer.issuer)
   let clock = e.clock
   result.now = proc(): Time {.closure, gcsafe, raises: [].} = clock[]
 

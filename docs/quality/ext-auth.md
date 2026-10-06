@@ -49,7 +49,7 @@ auth-requirements.md). "Impl" says where.
 | CC3 | Authenticate with JWT (RFC 7523 2.2) or a client secret | C | `ClientAuthentication`, `grants.nim` |
 | CC4 | AS metadata MUST list `private_key_jwt` or `client_secret_basic` in `token_endpoint_auth_methods_supported`, and the signing algorithms for JWT | C checks it, A provides | `authenticationFor`: nothing is sent to a server that does not |
 | CC5 | `resource` and `scope` in the request; `client_id` omitted for JWT (RFC 7523 3) | C | `clientCredentialsGrant`, `authenticate` |
-| CC6 | Pre-registered credentials; no DCR | C | config takes `clientId` and a credential; no registration code |
+| CC6 | Pre-registered credentials; no DCR | C | config takes `clientId`, the `issuer` the credential belongs to, and a credential; no registration code |
 | CC7 | Follow OAuth 2.1 security practices; protect credentials | C | no secret in an error message; token endpoint https (loopback http), no redirects, bounded response (`fetch.nim`) |
 | CC8 | Extension `extensions` declaration | C, R (optional) | `declareClientCredentials`, `advertiseClientCredentials` |
 | CC9 | Validate the access token (signature, claims), check scopes | R | existing `auth/resource_server` (`TokenVerifier`); nothing new |
@@ -77,6 +77,14 @@ auth-requirements.md). "Impl" says where.
   before any MCP message (on the 401), so it does not depend on the declaration. The two are
   separate calls (`asHttpAuth` for the behavior, `declare...` for the capability); `enable...`
   does both. A client does not wait for the server to advertise the extension.
+- **Credentials are bound to an issuer (SDK's addition, MCP-SEC-AUTH-3, -4).** Neither text says
+  what a client does when the MCP server's metadata names an authorization server other than the one
+  its credential was issued by. The MCP server chooses that name, so a client that sent the credential
+  anyway would hand it to whoever the server points at. `ClientCredentialsConfig.issuer` and
+  `EnterpriseManagedConfig.resourceIssuer` are required; any other issuer is refused before it is asked
+  for anything (for enterprise-managed authorization that includes the IdP exchange, which would
+  otherwise carry the user's identity assertion and a grant naming that server). The IdP is the
+  organization's own configuration (`idpIssuer`), not something the MCP server names.
 - **JWT client credentials: two descriptions.** The ext-auth text (normative) uses
   `grant_type=client_credentials` with `client_assertion` (RFC 7523 2.2). The extension page of the
   specification repository draws `grant_type=...:jwt-bearer` with `assertion` for the same method.

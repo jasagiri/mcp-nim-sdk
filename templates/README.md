@@ -272,7 +272,7 @@ Extensions of the `extensions` capability are agreed in protocol version `2026-0
 
 The Tasks extension is not the tasks of `2025-11-25`. A server may have both, on one store: `server.enableTasks()` serves clients of `2025-11-25`, `server.enableTasksExtension(...)` those of `2026-07-28`, and neither sees the other's tasks.
 
-The authorization extensions sign with a key the application holds: it passes the signing function, and the SDK does no asymmetric cryptography of its own. Build with `-d:ssl`.
+The authorization extensions sign with a key the application holds: it passes the signing function, and the SDK does no asymmetric cryptography of its own. Each is configured with the issuer of the authorization server its credentials belong to, and sends them to no other. Build with `-d:ssl`.
 
 A server with the Tasks extension ([examples/ext_tasks_server.nim](examples/ext_tasks_server.nim)):
 

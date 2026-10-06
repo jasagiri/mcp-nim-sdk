@@ -14,7 +14,8 @@
 ## (`asHttpAuth`), or calls `enableClientCredentials`, which also declares the
 ## extension.
 ##
-##   var config = newClientCredentialsConfig("https://mcp.example/mcp", "my-client")
+##   var config = newClientCredentialsConfig("https://mcp.example/mcp", "my-client",
+##                                           "https://as.example")  # who issued the credential
 ##   config.signer = some(mySigner)            # private_key_jwt (recommended)
 ##   # config.secret = some("...")             # or a client secret
 ##   let auth = enableClientCredentials(client, transport, config)
@@ -50,6 +51,12 @@ type
     clientId*: string
       ## Pre-registered at the authorization server; this flow does no
       ## dynamic client registration.
+    issuer*: string
+      ## The authorization server the credential (`secret` or `signer`)
+      ## belongs to, as its metadata names it. The MCP server names the
+      ## authorization server the client meets; a credential is sent only to
+      ## this one, so a malicious MCP server cannot collect it by naming its
+      ## own.
     secret*: Option[string]
       ## Authenticate with a client secret. Exactly one of `secret` and
       ## `signer` is set.
@@ -76,10 +83,10 @@ type
       ## From the last 401; what getting a new token before the next one
       ## needs.
 
-proc newClientCredentialsConfig*(serverUrl, clientId: string,
+proc newClientCredentialsConfig*(serverUrl, clientId, issuer: string,
                                  version = DefaultProtocolVersion): ClientCredentialsConfig =
   ClientCredentialsConfig(
-    serverUrl: serverUrl, clientId: clientId, version: version,
+    serverUrl: serverUrl, clientId: clientId, issuer: issuer, version: version,
     assertionAudience: aaIssuer, assertionLifetime: initDuration(minutes = 1),
     selectAuthorizationServer: firstAuthorizationServer,
     fetchPolicy: defaultFetchPolicy(),
@@ -89,10 +96,16 @@ proc newClientCredentialsConfig*(serverUrl, clientId: string,
 proc newClientCredentialsAuth*(config: ClientCredentialsConfig): ClientCredentialsAuth
                               {.raises: [ValueError, OAuthError].} =
   ## Raises for a configuration that could never succeed: no credential or
-  ## two, no client id, a version without Protected Resource Metadata, a
-  ## server URL that is not absolute.
+  ## two, no client id, no issuer the credential belongs to, a version
+  ## without Protected Resource Metadata, a server URL that is not absolute.
   if config.clientId.len == 0:
     raise newException(ValueError, "a client id is required")
+  if config.issuer.len == 0:
+    raise newException(ValueError,
+      "the credential has to name the authorization server it belongs to: set " &
+      "ClientCredentialsConfig.issuer (the third argument of newClientCredentialsConfig) " &
+      "to that server's issuer identifier. Without it a resource server could name an " &
+      "authorization server of its own and receive the credential.")
   if config.secret.isSome == config.signer.isSome:
     raise newException(ValueError,
       "exactly one of a client secret and a JWT signer is required")
@@ -188,7 +201,7 @@ proc handleChallenge*(c: ClientCredentialsAuth, status: int,
   let advertised = if bearer.isSome: bearer.get.resourceMetadata else: none(string)
   let found = await discoverResourceAuthorization(
     c.config.serverUrl, advertised, c.policy, c.config.selectAuthorizationServer,
-    c.config.fetchPolicy)
+    c.config.fetchPolicy, c.config.issuer, "the client credentials")
   c.last = some(found)
   var scopes: seq[string]
   if c.config.scopes.isSome:

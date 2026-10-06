@@ -2173,6 +2173,11 @@ MCP-SEC-SCHEMA-14 | tests/external/test_security_schema.nim | Given a pattern wh
 MCP-SEC-SCHEMA-14 | tests/external/test_security_schema.nim | Given a pattern whose parts emit nothing, when it does as much work as the limit allows, then it is applied, and one step more is a SchemaLimitError
 MCP-SEC-SCHEMA-14 | tests/external/test_security_schema.nim | Given a step budget that is exactly what a pattern and its match need, when validated, then it is answered, and with one step less it is a SchemaLimitError
 MCP-SEC-HTTP-8 | tests/external/test_security_http.nim | Given a session whose end callback raises, when the client sends DELETE, then the answer is a bare 500, the log names the failure and the server goes on
+MCP-SEC-AUTH-3 | tests/test_security_ext_auth.nim | Given no issuer for the credential, when the auth is made, then it is refused and the message says how to fix it
+MCP-SEC-AUTH-3 | tests/test_security_ext_auth.nim | Given a client secret for one issuer, when the resource names another, then no request reaches that server and the error names both
+MCP-SEC-AUTH-3 | tests/test_security_ext_auth.nim | Given a signing key for one issuer, when the resource names another, then no assertion is made out to that server
+MCP-SEC-AUTH-4 | tests/test_security_ext_auth.nim | Given no authorization server for the resource client, when the auth is made, then it is refused and the message says how to fix it
+MCP-SEC-AUTH-4 | tests/test_security_ext_auth.nim | Given credentials for one authorization server, when the resource names another, then neither the IdP nor that server is contacted and the assertion is not read
 MCP-ERRORS-1 | tests/external/test_error_message_g0f.nim | Given requests that fail in each standard way, when the server answers, then every message is one concise sentence
 MCP-ERRORS-1 | tests/external/test_error_message_g0f.nim | Given a handler that fails with a long message of its own, when the server answers, then the peer is told 'Internal error' and nothing the handler wrote
 MCP-ERRORS-1 | tests/external/test_error_message_g0f.nim | Given bodies that are not requests, when posted, then each answer carries one concise sentence

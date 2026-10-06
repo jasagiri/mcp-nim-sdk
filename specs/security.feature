@@ -453,3 +453,17 @@ Feature: Security properties
     Then the answer is a bare 500 with no body
     And the log holds one line naming the failure
     And the server goes on answering
+
+  @spec:MCP-SEC-AUTH-3
+  Scenario: Client credentials of the extension go to the authorization server they were issued by
+    Given a client secret or a signing key configured for one issuer, and an MCP server whose metadata names another
+    When the client meets a 401 from that MCP server
+    Then no request reaches the named server, no assertion is made out to it, and the error names both issuers
+    And a configuration without an issuer is refused when it is made
+
+  @spec:MCP-SEC-AUTH-4
+  Scenario: The identity assertion and the resource client's credential go only to the authorization server they are configured for
+    Given enterprise-managed authorization configured for one authorization server, and an MCP server whose metadata names another
+    When the client meets a 401 from that MCP server
+    Then the IdP is not asked for a grant, the identity assertion is not read, no request reaches the named server, and the error names both issuers
+    And a configuration without that issuer is refused when it is made

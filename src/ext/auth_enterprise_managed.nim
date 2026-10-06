@@ -74,6 +74,13 @@ type
     version*: McpProtocolVersion
       ## The version whose authorization rules apply (Protected Resource
       ## Metadata: 2025-06-18 and later).
+    resourceIssuer*: string
+      ## The authorization server `resourceClientAuthentication` belongs to,
+      ## as its metadata names it. The MCP server names the authorization
+      ## server the client meets; the client talks to it, and asks the IdP for
+      ## a grant that names it, only when it is this one. Otherwise a
+      ## malicious MCP server could collect the user's identity assertion
+      ## and the client's credential by naming its own.
     idpIssuer*: string
       ## The enterprise IdP, as the organization configures it. Its metadata
       ## (RFC 8414 or OpenID Connect Discovery) gives the token endpoint.
@@ -112,12 +119,13 @@ type
       ## The ID-JAG, kept in memory only, until it expires (draft 4.4.3: a
       ## client may present the same ID-JAG again for a new access token).
 
-proc newEnterpriseManagedConfig*(serverUrl, idpIssuer: string,
+proc newEnterpriseManagedConfig*(serverUrl, idpIssuer, resourceIssuer: string,
                                  idpClient, resourceClient: ClientAuthentication,
                                  identityAssertion: IdentityAssertionProvider,
                                  version = DefaultProtocolVersion): EnterpriseManagedConfig =
   EnterpriseManagedConfig(
-    serverUrl: serverUrl, idpIssuer: idpIssuer, version: version,
+    serverUrl: serverUrl, idpIssuer: idpIssuer, resourceIssuer: resourceIssuer,
+    version: version,
     idpClientAuthentication: idpClient, resourceClientAuthentication: resourceClient,
     identityAssertion: identityAssertion,
     selectAuthorizationServer: firstAuthorizationServer,
@@ -133,6 +141,13 @@ proc newEnterpriseManagedAuth*(config: EnterpriseManagedConfig): EnterpriseManag
   if config.idpClientAuthentication.clientId.len == 0 or
      config.resourceClientAuthentication.clientId.len == 0:
     raise newException(ValueError, "a client id is required at the IdP and at the authorization server")
+  if config.resourceIssuer.len == 0:
+    raise newException(ValueError,
+      "the resource client has to name the authorization server it belongs to: set " &
+      "EnterpriseManagedConfig.resourceIssuer (the third argument of " &
+      "newEnterpriseManagedConfig) to that server's issuer identifier. Without it a " &
+      "resource server could name an authorization server of its own and receive the " &
+      "identity assertion and the client's credential.")
   let policy = authPolicy(config.version)
   if not policy.protectedResourceMetadata:
     raise newException(ValueError,
@@ -340,7 +355,7 @@ proc handleChallenge*(c: EnterpriseManagedAuth, status: int,
   let advertised = if bearer.isSome: bearer.get.resourceMetadata else: none(string)
   let found = await discoverResourceAuthorization(
     c.config.serverUrl, advertised, c.policy, c.config.selectAuthorizationServer,
-    c.config.fetchPolicy)
+    c.config.fetchPolicy, c.config.resourceIssuer, "the resource client's credentials")
   c.last = some(found)
   var scopes: seq[string]
   if c.config.scopes.isSome:

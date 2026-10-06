@@ -37,14 +37,27 @@ proc requireExtensionsCapability*(id: string) {.raises: [ValueError].} =
 func firstAuthorizationServer*(servers: seq[string]): string {.raises: [].} =
   servers[0]
 
+proc requireIssuer*(expected, found: string, what: string) {.raises: [OAuthSecurityError].} =
+  ## The MCP server decides which authorization server a client meets, so a
+  ## credential is used only at the one it was configured for. The message
+  ## names both and, because it ends up in logs, nothing secret.
+  if found != expected:
+    raise newException(OAuthSecurityError,
+      what & " belong to the authorization server " & expected &
+      " but the resource server names " & found & "; nothing is sent to it. If the " &
+      "resource lists several, choose the right one with selectAuthorizationServer")
+
 proc discoverResourceAuthorization*(
     serverUrl: string, advertised: Option[string], policy: AuthPolicy,
-    choose: AuthorizationServerChooser, fetchPolicy: FetchPolicy
+    choose: AuthorizationServerChooser, fetchPolicy: FetchPolicy,
+    expectedIssuer: string, credentials: string
   ): Future[ResourceAuthorization] {.async.} =
   ## Protected Resource Metadata (RFC 9728), the choice among its
-  ## authorization servers (which has to be one the resource lists), and
-  ## that server's metadata. The two documents are validated the way the
-  ## core flow validates them.
+  ## authorization servers (which has to be one the resource lists, and the
+  ## one `credentials` are configured for: `expectedIssuer`), and that
+  ## server's metadata. The two documents are validated the way the core
+  ## flow validates them. A server that is not `expectedIssuer` is not asked
+  ## for anything.
   let prm = await discoverProtectedResource(serverUrl, advertised,
                                             policy.wellKnownResourceFallback, fetchPolicy)
   let issuer = if choose.isNil: firstAuthorizationServer(prm.authorizationServers)
@@ -52,6 +65,7 @@ proc discoverResourceAuthorization*(
   if issuer notin prm.authorizationServers:
     raise newException(OAuthSecurityError,
       "the chosen authorization server " & issuer & " is not one the resource lists")
+  requireIssuer(expectedIssuer, issuer, credentials)
   let md = await discoverAuthorizationServer(issuer, policy.asDiscovery, fetchPolicy)
   return ResourceAuthorization(resource: canonicalResource(serverUrl), issuer: issuer,
                                metadata: md, resourceScopes: prm.scopesSupported)
