@@ -575,6 +575,7 @@ These came with the security review of 2026-10-06 and with the reading of the sp
 | `newResourceServerAuth(config, mcpPath)` protected one path | `newResourceServerAuth(config)`: the transport protects every MCP endpoint it serves |
 | A pre-registered client's secret went to whichever authorization server the MCP server named | `PreRegisteredClient` with a `clientSecret` needs `issuer`; the secret is sent to that authorization server only |
 | `newTaskStore()` kept any number of tasks for any time | A `ttl` above 24 hours is lowered to it; one owner has 16 active and 256 kept tasks, the store 4096. Pass `maxTtlMs = none(int64)` and 0 for a count to lift a limit |
+| `newClientCredentialsConfig(url, clientId)` and `newEnterpriseManagedConfig(url, idpIssuer, ...)` | Both take the issuer of the authorization server the credentials belong to: `newClientCredentialsConfig(url, clientId, issuer)`, `newEnterpriseManagedConfig(url, idpIssuer, resourceIssuer, ...)` |
 
 ## Other versions
 
