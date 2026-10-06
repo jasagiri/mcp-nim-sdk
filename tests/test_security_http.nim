@@ -18,6 +18,10 @@ const
   Spoken = SupportedProtocolVersions
   ServesLegacySse = Spoken.anyIt(it.has(ftHttpSse))
   ServesSessions = latestLegacyVersion(Spoken).isSome
+  ServesAuth = Spoken.anyIt(it.has(ftAuthorization))
+    ## 2024-11-05 has no authorization: a build that speaks nothing newer has
+    ## no token to check.
+  ServesResourceMetadata = Spoken.anyIt(it.has(ftProtectedResourceMetadata))
 
 type
   Script = ref object
@@ -98,98 +102,101 @@ proc openSession(env: Env, token: string): string =
   doAssert reply.code == Http200, "initialize answered " & $reply.code
   $reply.headers["Mcp-Session-Id"]
 
-suite "Authorization covers every endpoint the transport serves (MCP-SEC-HTTP-1)":
-  if ServesLegacySse:
-    test "Given an authorized transport, when GET /sse comes without a token, then the answer is 401 and no session is made":
+if ServesAuth:
+  suite "Authorization covers every endpoint the transport serves (MCP-SEC-HTTP-1)":
+    if ServesLegacySse:
+      test "Given an authorized transport, when GET /sse comes without a token, then the answer is 401 and no session is made":
+        let env = startProtected()
+        let stream = open(env.base & "/sse", HttpGet, "", @[("Accept", "text/event-stream")])
+        check stream.code == Http401
+        stream.close()
+        check env.transport.sessionCount == 0
+
+      test "Given an authorized transport, when POST /messages comes without a token, then the answer is 401 and nothing reaches the server":
+        let env = startProtected()
+        let reply = send(env.base & "/messages?sessionId=x", HttpPost, rpc(1, "tools/list"))
+        check reply.code == Http401
+        waitFor sleepAsync(30)
+        check env.script.received.len == 0
+
+      test "Given a token, when a client opens /sse and posts, then the request reaches the server as that principal":
+        let env = startProtected()
+        let stream = open(env.base & "/sse", HttpGet, "",
+                          @[("Accept", "text/event-stream")] & bearer("alice"))
+        check stream.code == Http200
+        let endpoint = stream.next().get.data
+        let reply = send(env.base & endpoint, HttpPost, rpc(7, "tools/list"), bearer("alice"))
+        check reply.code == Http202
+        let answer = parseJson(stream.next().get.data)
+        check answer["result"]["principal"].getStr() == "alice"
+        stream.close()
+
+      test "Given an invalid token, when GET /sse comes, then the answer is 401":
+        let env = startProtected()
+        let stream = open(env.base & "/sse", HttpGet, "",
+                          @[("Accept", "text/event-stream")] & bearer("nobody"))
+        check stream.code == Http401
+        stream.close()
+
+    test "Given an authorized transport with documents, when a document and the metadata are read without a token, then both are served":
       let env = startProtected()
-      let stream = open(env.base & "/sse", HttpGet, "", @[("Accept", "text/event-stream")])
-      check stream.code == Http401
-      stream.close()
-      check env.transport.sessionCount == 0
+      env.transport.documents["/.well-known/server-card.json"] = HttpDocument(
+        contentType: "application/json", body: """{"name":"card"}""")
+      check send(env.base & "/.well-known/server-card.json", HttpGet).code == Http200
+      # The metadata document exists from 2025-06-18 on.
+      if ServesResourceMetadata:
+        check send(env.base & "/.well-known/oauth-protected-resource/mcp", HttpGet).code == Http200
 
-    test "Given an authorized transport, when POST /messages comes without a token, then the answer is 401 and nothing reaches the server":
+    test "Given an authorized transport, when an unknown path is asked, then it is 404":
       let env = startProtected()
-      let reply = send(env.base & "/messages?sessionId=x", HttpPost, rpc(1, "tools/list"))
-      check reply.code == Http401
-      waitFor sleepAsync(30)
-      check env.script.received.len == 0
+      check send(env.base & "/nothing", HttpGet).code == Http404
 
-    test "Given a token, when a client opens /sse and posts, then the request reaches the server as that principal":
-      let env = startProtected()
-      let stream = open(env.base & "/sse", HttpGet, "",
-                        @[("Accept", "text/event-stream")] & bearer("alice"))
-      check stream.code == Http200
-      let endpoint = stream.next().get.data
-      let reply = send(env.base & endpoint, HttpPost, rpc(7, "tools/list"), bearer("alice"))
-      check reply.code == Http202
-      let answer = parseJson(stream.next().get.data)
-      check answer["result"]["principal"].getStr() == "alice"
-      stream.close()
+  suite "A session belongs to the principal that made it (MCP-SEC-HTTP-2)":
+    if ServesSessions:
+      test "Given alice's session, when bob posts with its id, then the answer is 404 and the server sees nothing":
+        let env = startProtected()
+        let session = env.openSession("alice")
+        let before = env.script.received.len
+        let reply = send(env.base & "/mcp", HttpPost, rpc(2, "tools/list"),
+                         bearer("bob") & @[("Mcp-Session-Id", session)])
+        check reply.code == Http404
+        check env.script.received.len == before
 
-    test "Given an invalid token, when GET /sse comes, then the answer is 401":
-      let env = startProtected()
-      let stream = open(env.base & "/sse", HttpGet, "",
-                        @[("Accept", "text/event-stream")] & bearer("nobody"))
-      check stream.code == Http401
-      stream.close()
+      test "Given alice's session, when alice posts with its id, then it is served":
+        let env = startProtected()
+        let session = env.openSession("alice")
+        let reply = send(env.base & "/mcp", HttpPost, rpc(2, "tools/list"),
+                         bearer("alice") & @[("Mcp-Session-Id", session)])
+        check reply.code == Http200
 
-  test "Given an authorized transport with documents, when a document and the metadata are read without a token, then both are served":
-    let env = startProtected()
-    env.transport.documents["/.well-known/server-card.json"] = HttpDocument(
-      contentType: "application/json", body: """{"name":"card"}""")
-    check send(env.base & "/.well-known/server-card.json", HttpGet).code == Http200
-    check send(env.base & "/.well-known/oauth-protected-resource/mcp", HttpGet).code == Http200
+      test "Given alice's session, when bob opens its GET stream, then the answer is 404":
+        let env = startProtected()
+        let session = env.openSession("alice")
+        let stream = open(env.base & "/mcp", HttpGet, "",
+                          @[("Accept", "text/event-stream"), ("Mcp-Session-Id", session)] &
+                          bearer("bob"))
+        check stream.code == Http404
+        stream.close()
 
-  test "Given an authorized transport, when an unknown path is asked, then it is 404":
-    let env = startProtected()
-    check send(env.base & "/nothing", HttpGet).code == Http404
+      test "Given alice's session, when bob sends DELETE with its id, then the answer is 404 and the session stays":
+        let env = startProtected()
+        let session = env.openSession("alice")
+        check send(env.base & "/mcp", HttpDelete, "",
+                   bearer("bob") & @[("Mcp-Session-Id", session)]).code == Http404
+        check env.transport.sessionCount == 1
+        check send(env.base & "/mcp", HttpDelete, "",
+                   bearer("alice") & @[("Mcp-Session-Id", session)]).code == Http200
+        check env.transport.sessionCount == 0
 
-suite "A session belongs to the principal that made it (MCP-SEC-HTTP-2)":
-  if ServesSessions:
-    test "Given alice's session, when bob posts with its id, then the answer is 404 and the server sees nothing":
-      let env = startProtected()
-      let session = env.openSession("alice")
-      let before = env.script.received.len
-      let reply = send(env.base & "/mcp", HttpPost, rpc(2, "tools/list"),
-                       bearer("bob") & @[("Mcp-Session-Id", session)])
-      check reply.code == Http404
-      check env.script.received.len == before
-
-    test "Given alice's session, when alice posts with its id, then it is served":
-      let env = startProtected()
-      let session = env.openSession("alice")
-      let reply = send(env.base & "/mcp", HttpPost, rpc(2, "tools/list"),
-                       bearer("alice") & @[("Mcp-Session-Id", session)])
-      check reply.code == Http200
-
-    test "Given alice's session, when bob opens its GET stream, then the answer is 404":
-      let env = startProtected()
-      let session = env.openSession("alice")
-      let stream = open(env.base & "/mcp", HttpGet, "",
-                        @[("Accept", "text/event-stream"), ("Mcp-Session-Id", session)] &
-                        bearer("bob"))
-      check stream.code == Http404
-      stream.close()
-
-    test "Given alice's session, when bob sends DELETE with its id, then the answer is 404 and the session stays":
-      let env = startProtected()
-      let session = env.openSession("alice")
-      check send(env.base & "/mcp", HttpDelete, "",
-                 bearer("bob") & @[("Mcp-Session-Id", session)]).code == Http404
-      check env.transport.sessionCount == 1
-      check send(env.base & "/mcp", HttpDelete, "",
-                 bearer("alice") & @[("Mcp-Session-Id", session)]).code == Http200
-      check env.transport.sessionCount == 0
-
-  if ServesLegacySse:
-    test "Given alice's HTTP+SSE session, when bob posts to its endpoint, then the answer is 404":
-      let env = startProtected()
-      let stream = open(env.base & "/sse", HttpGet, "",
-                        @[("Accept", "text/event-stream")] & bearer("alice"))
-      let endpoint = stream.next().get.data
-      check send(env.base & endpoint, HttpPost, rpc(1, "tools/list"), bearer("bob")).code == Http404
-      check send(env.base & endpoint, HttpPost, rpc(1, "tools/list"), bearer("alice")).code == Http202
-      stream.close()
+    if ServesLegacySse:
+      test "Given alice's HTTP+SSE session, when bob posts to its endpoint, then the answer is 404":
+        let env = startProtected()
+        let stream = open(env.base & "/sse", HttpGet, "",
+                          @[("Accept", "text/event-stream")] & bearer("alice"))
+        let endpoint = stream.next().get.data
+        check send(env.base & endpoint, HttpPost, rpc(1, "tools/list"), bearer("bob")).code == Http404
+        check send(env.base & endpoint, HttpPost, rpc(1, "tools/list"), bearer("alice")).code == Http202
+        stream.close()
 
 type Serving = object
   transport: HttpServerTransport
