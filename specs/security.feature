@@ -123,3 +123,10 @@ Feature: Security of the outgoing HTTP client
     When the client requests a URL whose host is not in that certificate
     Then the request fails before any HTTP is sent
     And the same certificate is accepted for a URL whose host it names, as a DNS name or an IP address
+
+  @spec:MCP-SEC-WIRE-2
+  Scenario: Line breaks and control characters cannot travel in a request or be read from a response head
+    Given a client about to send a request
+    When the URL or a header name or value contains a CR, LF or NUL, or a header name is not a token
+    Then the request is refused before a connection is made
+    And a response head with a bare LF or CR, a NUL or another control character inside a line is refused

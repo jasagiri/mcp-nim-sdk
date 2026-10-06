@@ -97,6 +97,33 @@ proc connect(url: Uri, connectTo, caFile: string): Future[AsyncSocket] {.async.}
       raise httpFailure("https needs a build with -d:ssl")
   return socket
 
+func hasControlCharacter(text: string, allowed: set[char] = {}): bool =
+  ## A byte below SPACE (a line break, NUL), or DEL, other than `allowed`.
+  for c in text:
+    if (c < ' ' or c == '\x7f') and c notin allowed:
+      return true
+
+func isToken(name: string): bool =
+  const tokenChars = {'!', '#', '$', '%', '&', '\'', '*', '+', '-', '.', '^', '_', '`', '|', '~'} +
+                     Digits + Letters
+  name.len > 0 and name.allCharsInSet(tokenChars)
+
+proc checkRequestFields(url: Uri, headers: HttpHeaders) =
+  ## What goes on the request line and into header lines must not be able to
+  ## end the line: a CR, LF or NUL in the target, the host or a header would
+  ## let whoever chose the URL or the value add headers or a second request.
+  ## A tab may stay in a header value. Raises before anything is connected.
+  if hasControlCharacter(url.path & url.query & url.hostname & url.port) or
+     ' ' in url.path or ' ' in url.query:
+    raise httpFailure("the URL contains a space, a line break or control character")
+  if headers.isNil:
+    return
+  for name, value in headers:
+    if not name.isToken:
+      raise httpFailure("not a valid header name: " & name[0 ..< min(name.len, 40)].escape)
+    if hasControlCharacter(value, {'\t'}):
+      raise httpFailure("header " & name & " has a line break or control character in its value")
+
 proc requestText(url: Uri, httpMethod: HttpMethod, headers: HttpHeaders,
                  body: string): string =
   var target = if url.path.len > 0: url.path else: "/"
@@ -114,6 +141,12 @@ proc requestText(url: Uri, httpMethod: HttpMethod, headers: HttpHeaders,
   result.add body
 
 proc parseHead(r: WireResponse, head: string) =
+  # A head is lines ended by CRLF. A bare LF or CR, a NUL or another control
+  # character inside a line means the server and this client could read it
+  # differently (`Location: /a\nSet-Cookie: x`), and the values are used
+  # later (`Location`, `Mcp-Session-Id`), so such a head is refused.
+  if hasControlCharacter(head.replace("\c\L", ""), {'\t'}):
+    raise httpFailure("the response head has a line break or control character inside a line")
   let lines = head.split("\c\L")
   let status = lines[0].split(' ', maxsplit = 2)
   if status.len < 2 or not status[0].startsWith("HTTP/"):
@@ -178,6 +211,7 @@ proc requestOnce(url: string, httpMethod: HttpMethod, headers: HttpHeaders,
                  body: string, connected: Connected,
                  connectTo, caFile: string): Future[WireResponse] {.async.} =
   let target = parseUri(url)
+  checkRequestFields(target, headers)
   let response = WireResponse(leftOpen: newFuture[void]("WireResponse.leftOpen"))
   try:
     response.socket = await connect(target, connectTo, caFile)

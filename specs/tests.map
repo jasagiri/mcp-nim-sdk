@@ -1099,3 +1099,10 @@ MCP-SEC-WIRE-1 | tests/test_security_wire_tls.nim | Given a certificate for the 
 MCP-SEC-WIRE-1 | tests/test_security_wire_tls.nim | Given a certificate for another host than the URL names, when the request is sent, then it is refused
 MCP-SEC-WIRE-1 | tests/test_security_wire_tls.nim | Given a certificate for the IP address in the URL, when the request is sent, then it is answered
 MCP-SEC-WIRE-1 | tests/test_security_wire_tls.nim | Given a certificate for a name only, when the URL names an IP address, then it is refused
+MCP-SEC-WIRE-2 | tests/test_security_wire_headers.nim | Given a header value with a line break, when a request is sent, then it is refused and nothing is connected
+MCP-SEC-WIRE-2 | tests/test_security_wire_headers.nim | Given a bare LF or a NUL in a header value, when a request is sent, then it is refused
+MCP-SEC-WIRE-2 | tests/test_security_wire_headers.nim | Given a header name that is not a token, when a request is sent, then it is refused
+MCP-SEC-WIRE-2 | tests/test_security_wire_headers.nim | Given a URL whose path carries a line break, when a request is sent, then it is refused
+MCP-SEC-WIRE-2 | tests/test_security_wire_headers.nim | Given ordinary headers including a tab in a value, when a request is sent, then it is answered
+MCP-SEC-WIRE-2 | tests/test_security_wire_headers.nim | Given a response header with a bare LF, when the head is read, then the response is refused
+MCP-SEC-WIRE-2 | tests/test_security_wire_headers.nim | Given a response header with a NUL or a bare CR, when the head is read, then the response is refused
