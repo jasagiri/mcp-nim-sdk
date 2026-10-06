@@ -225,25 +225,41 @@ func classifyHost*(host: string): Option[AddressClass] {.raises: [].} =
     return some(acReserved)
   none(AddressClass)
 
-proc resolveHost*(host: string): seq[IpAddress] =
-  ## The system resolver. It blocks while it works. Raises OSError when the
-  ## name does not resolve.
+proc systemAddresses*(host: string): seq[string] {.nimcall, gcsafe, raises: [OSError].} =
+  ## What the system resolver gives for `host`, as texts, IPv4 then IPv6. It
+  ## blocks while it works. A plain procedure that touches nothing but its
+  ## arguments, so that a caller who cannot afford to block may run it on a
+  ## thread of its own. Raises OSError when the name does not resolve.
   for family in [Domain.AF_INET, Domain.AF_INET6]:
     var info: ptr AddrInfo
     try:
       info = getAddrInfo(host, Port(0), family)
     except OSError:
       continue
-    var current = info
-    while not current.isNil:
-      try:
-        let address = getAddrString(current.ai_addr).parseIpAddress()
-        if address notin result:
-          result.add address
-      except ValueError:
-        discard  # an address family this build cannot represent is no candidate
-      current = current.ai_next
-    freeAddrInfo(info)
+    try:
+      var current = info
+      while not current.isNil:
+        let text =
+          try:
+            getAddrString(current.ai_addr)
+          except IOError as e:
+            raise newException(OSError, "cannot read an address of " & host & ": " & e.msg)
+        if text notin result:
+          result.add text
+        current = current.ai_next
+    finally:
+      freeAddrInfo(info)
+  if result.len == 0:
+    raise newException(OSError, "cannot resolve " & host)
+
+proc resolveHost*(host: string): seq[IpAddress] =
+  ## The system resolver. It blocks while it works. Raises OSError when the
+  ## name does not resolve.
+  for text in systemAddresses(host):
+    try:
+      result.add parseIpAddress(text)
+    except ValueError:
+      discard  # an address family this build cannot represent is no candidate
   if result.len == 0:
     raise newException(OSError, "cannot resolve " & host)
 
