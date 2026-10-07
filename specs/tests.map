@@ -855,8 +855,11 @@ MCP-SUBSCRIBE-9 | tests/test_subscriptions.nim | Given a modern server, when the
 MCP-SUBSCRIBE-9 | tests/test_subscriptions.nim | Given an open subscription, when notifications arrive, then the client's callbacks and the stream's callback see them
 MCP-SUBSCRIBE-9 | tests/test_subscriptions.nim | Given a notification tagged with an unknown subscription id, when it arrives, then it is ignored
 MCP-SUBSCRIBE-9 | tests/test_subscriptions.nim | Given two subscriptions, when notifications arrive on each, then each stream's callback sees only its own
+MCP-SUBSCRIBE-9 | tests/test_subscriptions.nim | Given an open subscription without a callback of its own, when a notification arrives on it, then the client's callback still runs
+MCP-SUBSCRIBE-9 | tests/test_subscriptions.nim | Given an acknowledged subscription, when a second acknowledgment arrives, then the first counts and the stream's callback does not see it
 MCP-SUBSCRIBE-10 | tests/test_subscriptions.nim | Given the server answers the listen request, when the response arrives, then the stream ended gracefully
 MCP-SUBSCRIBE-10 | tests/test_subscriptions.nim | Given a stdio server that cancels the stream, when notifications/cancelled arrives, then the stream ended by the server
+MCP-SUBSCRIBE-10 | tests/test_subscriptions.nim | Given an open subscription, when notifications/cancelled arrives without a request id or with one that names nothing, then the stream stays open
 MCP-SUBSCRIBE-10 | tests/test_subscriptions.nim | Given an open subscription on stdio, when the client cancels it, then notifications/cancelled names the request and the stream ends
 MCP-SUBSCRIBE-10 | tests/test_subscriptions.nim | Given the transport fails while listening, when the stream breaks, then it ended lost
 MCP-SUBSCRIBE-11 | tests/test_subscriptions.nim | Given a server that rejects the listen request, when the client listens, then it raises McpRequestError

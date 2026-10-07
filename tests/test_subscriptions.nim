@@ -327,6 +327,37 @@ suite "subscriptions on the client":
       check updated == @[Config]
       check onStream == @["notifications/tools/list_changed", "notifications/resources/updated"]
 
+  test "Given an open subscription without a callback of its own, when a notification arrives on it, then the client's callback still runs":
+    for v in versionsWith(ftSubscriptionsListen):
+      var listenMessage: JsonNode
+      let peer = listenPeer(proc(peer: client_peer.Peer, message: JsonNode) =
+        listenMessage = message
+        acknowledge(peer, message, %*{"toolsListChanged": true}))
+      let client = peer.connectedClient(v)
+      var toolsChanged = 0
+      client.onToolsListChanged = proc() = inc toolsChanged
+      let sub = waitFor client.listen(SubscriptionFilter(toolsListChanged: true))
+      check sub.onNotification.isNil
+      peer.push("notifications/tools/list_changed", tagged(listenMessage))
+      untilTrue("the notification", proc(): bool = toolsChanged == 1)
+
+  test "Given an acknowledged subscription, when a second acknowledgment arrives, then the first counts and the stream's callback does not see it":
+    for v in versionsWith(ftSubscriptionsListen):
+      var listenMessage: JsonNode
+      let peer = listenPeer(proc(peer: client_peer.Peer, message: JsonNode) =
+        listenMessage = message
+        acknowledge(peer, message, %*{"toolsListChanged": true}))
+      let client = peer.connectedClient(v)
+      let sub = waitFor client.listen(SubscriptionFilter(
+        toolsListChanged: true, promptsListChanged: true))
+      var onStream: seq[string]
+      sub.onNotification = proc(methodName: string, params: JsonNode) = onStream.add methodName
+      acknowledge(peer, listenMessage, %*{"promptsListChanged": true})
+      settle()
+      check onStream.len == 0
+      check sub.acknowledged.get.toolsListChanged
+      check not sub.acknowledged.get.promptsListChanged
+
   test "Given a notification tagged with an unknown subscription id, when it arrives, then it is ignored":
     for v in versionsWith(ftSubscriptionsListen):
       let peer = listenPeer(proc(peer: client_peer.Peer, message: JsonNode) =
@@ -380,6 +411,19 @@ suite "subscriptions on the client":
       peer.push("notifications/cancelled", %*{"requestId": listenMessage["id"]})
       waitFor sub.ended
       check sub.endedBy == some(sbServerCancelled)
+
+  test "Given an open subscription, when notifications/cancelled arrives without a request id or with one that names nothing, then the stream stays open":
+    for v in versionsWith(ftSubscriptionsListen):
+      let peer = listenPeer(proc(peer: client_peer.Peer, message: JsonNode) =
+        acknowledge(peer, message, %*{"toolsListChanged": true}))
+      let client = peer.connectedClient(v)
+      let sub = waitFor client.listen(SubscriptionFilter(toolsListChanged: true))
+      peer.push("notifications/cancelled", newJObject())
+      peer.push("notifications/cancelled", %*{"requestId": true})
+      peer.push("notifications/cancelled", %*{"requestId": 0})
+      settle()
+      check not sub.ended.finished
+      check client.subscriptions.len == 1
 
   test "Given an open subscription on stdio, when the client cancels it, then notifications/cancelled names the request and the stream ends":
     for v in versionsWith(ftSubscriptionsListen):
