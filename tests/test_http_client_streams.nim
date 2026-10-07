@@ -1132,6 +1132,24 @@ if speaks >= mpv20250326:
       waitFor transport.close()
       check waitFor withTimeout(hangedUp, 2000)
 
+    test "Given a GET stream still being opened, when the client closes, then the connection of that stream is closed as well":
+      let hangedUp = newFuture[void]("hangedUp")
+      let url = startRawServer(proc(request: RawRequest, socket: AsyncSocket) {.async.} =
+        if request.httpMethod == "GET":
+          await sleepAsync(150)
+          await eventStreamHead(socket)
+          await socket.send(formatSseEvent($notification(1)))
+          let gone = await socket.recv(1)
+          if gone.len == 0:
+            hangedUp.complete()
+        else:
+          await socket.accepted())
+      let transport = newStreamableHttpTransport(url)
+      transport.initialized()
+      waitFor sleepAsync(30)
+      waitFor transport.close()
+      check waitFor withTimeout(hangedUp, 2000)
+
     test "Given a GET stream that is open, when the client is initialized again, then it does not open a second stream":
       var gets = 0
       let url = startRawServer(proc(request: RawRequest, socket: AsyncSocket) {.async.} =

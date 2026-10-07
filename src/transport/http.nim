@@ -213,7 +213,12 @@ func isEventStream(response: WireResponse): bool =
   response.headers.getOrDefault("Content-Type").toLowerAscii().startsWith("text/event-stream")
 
 proc track(t: StreamableHttpTransport, response: WireResponse) =
-  t.streams.add response
+  ## A stream that finishes opening after `close` is ended at once: `close`
+  ## has already gone through the streams there were.
+  if t.closed:
+    response.close()
+  else:
+    t.streams.add response
 
 proc untrack(t: StreamableHttpTransport, response: WireResponse) =
   response.close()

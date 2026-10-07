@@ -258,7 +258,7 @@ Feature: Streamable HTTP transport
     Given event streams of a request and of the GET
     When an event is no JSON, the connection is closed and one log line names the failure
     And a GET answered other than by an event stream is closed, logged unless it is 405, and not asked again
-    And closing the transport closes the connection of an open GET stream
+    And closing the transport closes the connection of an open GET stream, also of one that was still being opened
 
   @spec:MCP-HTTP-g2g-hc-a-5
   Scenario: A POST stream is resumed from the last event id, however often it breaks while the server is working
