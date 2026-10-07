@@ -6,6 +6,7 @@
 import std/[unittest, asyncdispatch, json, options]
 import ./server_harness
 import server/server
+import protocol/subscriptions
 
 const MetaKey = "com.example/lens"
 
@@ -214,3 +215,73 @@ suite "a server that uses none of the hooks":
       let sent = transport.messagesOf("notifications/tools/list_changed")[0].message
       check sent["method"].getStr() == "notifications/tools/list_changed"
       check sent{"params"}.isNil or sent["params"] == %*{}
+
+proc appending(suffix: string): ToolListTransform =
+  ## A transform of the description, so that the order of two shows.
+  result = proc(ctx: McpRequestContext, tool: JsonNode): JsonNode =
+    result = tool.copy()
+    result["description"] = %(tool{"description"}.getStr() & suffix)
+
+suite "hooks run in the order they were added":
+
+  test "Given two request interceptors, when a request arrives, then the first that answers ends the matter and one that answers none lets the server carry on":
+    for v in SupportedProtocolVersions:
+      let server = toolServer()
+      var seen: seq[string]
+      server.addRequestInterceptor(proc(ctx: McpRequestContext,
+                                        request: JsonRpcRequest): Future[Option[JsonRpcResponse]] {.async.} =
+        seen.add "first " & request.`method`
+        if request.`method` == "tools/call":
+          return some(newJsonRpcResponse(request.id, %*{"by": "first"}))
+        return none(JsonRpcResponse))
+      server.addRequestInterceptor(proc(ctx: McpRequestContext,
+                                        request: JsonRpcRequest): Future[Option[JsonRpcResponse]] {.async.} =
+        seen.add "second " & request.`method`
+        return some(newJsonRpcResponse(request.id, %*{"by": "second"})))
+      let peer = server.connect(server.attach(), v)
+      seen.setLen(0)
+      check peer.ask("tools/call", %*{"name": "plain", "arguments": {"n": 1}})["result"]["by"].getStr() == "first"
+      check seen == @["first tools/call"]
+      seen.setLen(0)
+      check peer.ask("tools/list")["result"]["by"].getStr() == "second"
+      check seen == @["first tools/list", "second tools/list"]
+
+  test "Given two tool list transforms, when tools/list is asked, then each tool passes through them in the order they were added":
+    for v in SupportedProtocolVersions:
+      let server = toolServer()
+      server.addToolListTransform(appending("-a"))
+      server.addToolListTransform(appending("-b"))
+      let peer = server.connect(server.attach(), v)
+      check peer.ask("tools/list")["result"]["tools"][0]["description"].getStr() == "-a-b"
+
+  test "Given two listen filter hooks, when subscriptions/listen is asked, then each sees what the earlier ones agreed to and the acknowledgment carries the result":
+    for v in versionsWith(ftSubscriptionsListen):
+      let server = newServer(McpServerCapabilities(tools: some(McpToolsCapability(listChanged: true))))
+      server.addListenFilterHook(proc(ctx: McpRequestContext, requested: SubscriptionFilter,
+                                      honored: var SubscriptionFilter) =
+        honored.taskIds.add "task-1")
+      server.addListenFilterHook(proc(ctx: McpRequestContext, requested: SubscriptionFilter,
+                                      honored: var SubscriptionFilter) =
+        if honored.taskIds == @["task-1"]:
+          honored.promptsListChanged = true)
+      let t = server.attach()
+      let peer = server.connect(t, v)
+      peer.send(%"listen-1", "subscriptions/listen", %*{"notifications": {"toolsListChanged": true}})
+      untilTrue("the acknowledgment", proc(): bool =
+        t.messagesOf("notifications/subscriptions/acknowledged").len > 0)
+      let honored = t.messagesOf("notifications/subscriptions/acknowledged")[0].message["params"]["notifications"]
+      check honored["toolsListChanged"].getBool()
+      check honored["taskIds"] == %*["task-1"]
+      check honored["promptsListChanged"].getBool()
+
+  test "Given a listen filter hook that raises a request error, when subscriptions/listen is asked, then the client gets that error and nothing is subscribed":
+    for v in versionsWith(ftSubscriptionsListen):
+      let server = newServer(McpServerCapabilities(tools: some(McpToolsCapability(listChanged: true))))
+      server.addListenFilterHook(proc(ctx: McpRequestContext, requested: SubscriptionFilter,
+                                      honored: var SubscriptionFilter) =
+        raise newRequestError(-32602, "no such task"))
+      let peer = server.connect(server.attach(), v)
+      let answer = peer.ask("subscriptions/listen", %*{"notifications": {"toolsListChanged": true}})
+      check answer.errorCode == -32602
+      check answer["error"]["message"].getStr() == "no such task"
+      check server.subscriptionCount == 0

@@ -11,3 +11,10 @@ Feature: Hooks for extensions in the server's request handling
     When it serves requests, whatever their _meta, and when notifyListChanged is never called
     Then each result is what the handler returned, the registered list handlers serve and validate tool input, and no list-changed notification is sent
     And notifyToolListChanged sends it as before, with empty params
+
+  @spec:MCP-HOOKS-2
+  Scenario: Hooks act in the order they were added
+    Given request interceptors, tool list transforms and listen filter hooks registered one after another
+    When a request arrives, tools/list is asked, or subscriptions/listen is asked
+    Then the first interceptor that answers ends the matter, each tool passes through the transforms in turn, and each listen hook sees what the earlier ones agreed to
+    And a listen hook that raises a request error refuses the request and subscribes nothing
