@@ -650,3 +650,30 @@ suite "starting the server transport (mutation review, g2f-hs-c)":
     check not running.finished
     waitFor transport.close()
     check waitFor withTimeout(running, 2000)
+
+suite "HTTP client transport headers by version (mutation review, g2g-hc-b)":
+
+  proc protocolHeaderSent(version: McpProtocolVersion): string =
+    ## The MCP-Protocol-Version header a notification carries once `version`
+    ## was negotiated ("" when it carries none).
+    var seen = ""
+    let url = startScripted(proc(req: Request) {.async, gcsafe.} =
+      {.cast(gcsafe).}:
+        seen = if req.headers.hasKey("MCP-Protocol-Version"): $req.headers["MCP-Protocol-Version"] else: ""
+      await req.respond(Http202, ""))
+    let transport = newStreamableHttpTransport(url)
+    transport.listenForServerMessages = false
+    transport.protocolVersionNegotiated(version)
+    waitFor transport.sendNotification(newJsonRpcNotification("notifications/cancelled", newJObject()))
+    result = seen
+    waitFor transport.close()
+
+  test "Given versions without the header, when a notification is sent, then it names no protocol version":
+    # The header exists from 2025-06-18 on; a 2026-07-28 request carries its own, mirrored from its body.
+    check protocolHeaderSent(mpv20241105) == ""
+    check protocolHeaderSent(mpv20250326) == ""
+    check protocolHeaderSent(mpv20260728) == ""
+
+  test "Given versions with the header, when a notification is sent, then it names the negotiated version":
+    check protocolHeaderSent(mpv20250618) == "2025-06-18"
+    check protocolHeaderSent(mpv20251125) == "2025-11-25"
