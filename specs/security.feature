@@ -301,6 +301,12 @@ Feature: Security properties
     When it is compiled and matched
     Then the character stands for itself, or the pattern is refused with a RegexError, and nothing else is raised
 
+  @spec:MCP-SEC-SCHEMA-g2h-js-a-1
+  Scenario: A limit is reached only beyond its value
+    Given maxDepth, maxChecks, or an item compared for uniqueItems that nests as deep as maxDepth
+    When a validation needs exactly that much, and when it needs one more
+    Then the first is validated and the second raises SchemaLimitError, and siblings do not add to the depth
+
   @spec:MCP-SEC-SWEEP-6
   Scenario: The inputs that fuzzing found stay handled
     Given the seeds of every fuzzing target and every input kept under tests/fuzz/corpus

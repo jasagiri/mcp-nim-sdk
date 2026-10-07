@@ -14,6 +14,30 @@ Feature: Content of tools, resources and prompts
     When an instance is validated against it
     Then the dialect is reported as unsupported and the instance is not taken as valid
 
+  @spec:MCP-SCHEMA-g2h-js-a-1
+  Scenario: A schema that is not a schema is reported, whatever the instance
+    Given a schema with a keyword of the wrong type, a count that is no non-negative integer, a divisor of zero, or a $ref that names nothing, passes through itself or has an array index with a leading zero
+    When an instance is validated against it
+    Then the schema is reported as invalid, and a $ref that loops is not reported as a limit
+
+  @spec:MCP-SCHEMA-g2h-js-a-2
+  Scenario: Values are compared as JSON values
+    Given const, enum or uniqueItems over numbers, arrays and objects, including 1 and 1.0 and integers at the edge of 64 bits
+    When an instance is compared with them
+    Then 1 and 1.0 are the same value, two values that differ in one part are different, and an infinite number is no integer
+
+  @spec:MCP-SCHEMA-g2h-js-a-3
+  Scenario: The bounds of the size keywords are inclusive
+    Given minLength, maxLength, minItems, maxItems, minProperties, maxProperties, minContains or maxContains, with a bound of zero or a bound the instance meets exactly
+    When an instance is validated
+    Then it conforms at the bound and fails one beyond it, minContains of 0 makes contains optional, and lengths count characters, not bytes
+
+  @spec:MCP-SCHEMA-g2h-js-a-4
+  Scenario: The remaining keywords follow the dialect
+    Given multipleOf with a decimal divisor, a $ref with sibling keywords, a $ref into an array, patternProperties beside additionalProperties, dependencies, or minContains and maxContains without contains
+    When an instance is validated as 2020-12 and as draft-07
+    Then each dialect gives the verdict its specification gives
+
   @spec:MCP-TOOLANN-1 @feature:ftToolAnnotations
   Scenario: A tool's annotations are listed
     Given a server whose tool has annotations and a client of a version that has them
