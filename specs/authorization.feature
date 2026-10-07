@@ -263,58 +263,58 @@ Feature: Authorization
     Then it fails with McpAuthorizationError carrying the HTTP status and, when the authorization failed, its error
     And a client that probes for the server's protocol version does not go on to the handshake of another version
 
-  @spec:MCP-AUTH-g2f-oauth-a-1 @feature:ftAuthorization
+  @spec:MCP-AUTH-34 @feature:ftAuthorization
   Scenario: A Bearer challenge is read whatever surrounds its parameters
     Given WWW-Authenticate headers with token68 padding before a Bearer challenge, white space around the equals sign, a parameter that ends the header, a quoted string cut off after a backslash, or a parameter before any scheme
     When the client parses them
     Then the Bearer parameters are found, an empty value is empty, and a parameter without a scheme belongs to no challenge
 
-  @spec:MCP-AUTH-g2f-oauth-a-2 @feature:ftAuthorization
+  @spec:MCP-AUTH-35 @feature:ftAuthorization
   Scenario: Discovery uses only a 200 with a JSON object and says what each URL answered
     Given an issuer or a resource whose well-known URLs answer 201, a 200 that is no JSON object, another issuer's document, a document without a token endpoint, or 404
     When the client discovers
     Then none of them is used, a document naming another issuer is a security failure and the others are not, and the error names every URL tried with what it answered
     And an issuer with a fragment is refused before any request, and the candidate URLs of an issuer path that ends in a slash have the slash dropped
 
-  @spec:MCP-AUTH-g2f-oauth-a-3 @feature:ftAuthorization
+  @spec:MCP-AUTH-36 @feature:ftAuthorization
   Scenario: The OAuth client never follows a redirect and does not leave a connection open
     Given an endpoint that answers 302, 304, a body-less keep-alive answer, or nothing at all
     When the client requests it
     Then the 302 is reported and its target is never requested, the 304 is the reply, and the connection is closed afterwards and after a timeout
     And plain http to a host name is refused before anything is sent, even when the name resolves to loopback
 
-  @spec:MCP-AUTH-g2f-oauth-a-4 @feature:ftAuthorization
+  @spec:MCP-AUTH-37 @feature:ftAuthorization
   Scenario: A URL the client is sent to needs a scheme, a host and no credentials
     Given URLs without a host or a scheme, with a user name alone or a password alone, and resources with a query
     When the client checks or canonicalizes them
     Then URLs without a host or a scheme and URLs with any credentials are refused
     And a canonical resource keeps its query, and a form field with a space is encoded as %20
 
-  @spec:MCP-AUTH-g2f-oauth-b-1
+  @spec:MCP-AUTH-38
   Scenario: The metadata of an authorization server is read for what it states, and its endpoints are HTTPS
     Given an authorization server metadata document
     When its authorization_endpoint or registration_endpoint is plain http to a remote host, or the registration_endpoint is missing or null
     Then the document is rejected in the first case and offers no registration in the second
 
-  @spec:MCP-AUTH-g2f-oauth-b-2
+  @spec:MCP-AUTH-39
   Scenario: A redirect URI is absolute, without a fragment, and https or loopback
     Given a redirect URI with a fragment, without a host, with another scheme, or plain http to a remote host
     When it is checked, or an authorization request is made with it
     Then it is refused with OAuthSecurityError and no request is made
 
-  @spec:MCP-AUTH-g2f-oauth-b-3
+  @spec:MCP-AUTH-40
   Scenario: An authorization response answers the request only by its exact state, and carries a code
     Given an authorization response
     When its state differs from the request's in one character, or it has no code or an empty one
     Then it is refused
 
-  @spec:MCP-AUTH-g2f-oauth-b-4
+  @spec:MCP-AUTH-41
   Scenario: A token response is kept only when it has an access token, and its lifetime is read exactly
     Given a token response
     When it has no or an empty access_token, an expires_in of zero, at the bound, as digits with leading zeros, or not made of digits
     Then the first is refused, the others are read by their value or refused, and a token inside the skew of its expiry counts as expired
 
-  @spec:MCP-AUTH-g2f-oauth-b-5
+  @spec:MCP-AUTH-42
   Scenario: A registration answer names a client, and an OAuth error answer is reported as such
     Given a registration response or an error answer
     When the response has no or an empty client_id, or the error answer has a description, none, or is not JSON

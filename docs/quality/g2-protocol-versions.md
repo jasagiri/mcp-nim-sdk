@@ -117,6 +117,9 @@
 | `src/client/icons.nim` | data URI の中身が base64 でなければ復号の前に断る | `tests/test_icon_fetch.nim` (MCP-SEC-WIRE-9) |
 | `src/protocol/modern.nim` | 自前の `isPaddedBase64` を消し、`base64_shape` のものを使う (内容は同じ) | `tests/test_modern_protocol.nim`、`tests/test_param_headers.nim` |
 | `src/jsonschema/json_schema_regex.nim` | U+00FF を超える文字を文字クラスの外に持つパターンが `RangeDefect` になっていたのを修正 (ファジングで発見)。`\b` の読み取りを普通の `if` に (nim-muter の書き直しがコンパイル不能にしていた。36a4c8a5 の測定ではこのジョブは 1 件も試せていない) | `tests/test_security_schema.nim` (MCP-SEC-SCHEMA-9)、`tests/test_fuzz_regressions.nim` (MCP-SEC-SWEEP-6) |
+| `src/auth/oauth/discovery.nim` | 探索の失敗を並べるとき、例外の文面から async の追跡を外す (2 番目以降の失敗が消えていた) | `tests/test_auth_oauth_basics.nim` |
+| `src/protocol/diagnostic.nim` | `plainMessage` をここへ移した (`server/errors.nim` は再 export) | `tests/test_server_errors.nim`、`tests/test_auth_oauth_basics.nim` |
+| `src/auth/oauth/jsonfield.nim` | 呼び出し元の無い `intField` を削除 | (なし) |
 
 ## 未測定 (HTTP サーバーのセキュリティ修正。本線向け)
 
