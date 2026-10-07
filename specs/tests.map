@@ -352,6 +352,24 @@ MCP-HTTPSTREAM-9 | tests/test_http_client_streams.nim | Given a server that answ
 MCP-HTTPSTREAM-9 | tests/test_http_client_streams.nim | Given a version without resumption, when the stream was cut, then nothing is resumed
 MCP-HTTPSTREAM-10 | tests/test_http_client_streams.nim | Given a server that asked for a delay with retry, when the stream was cut, then the client waits at least that long before resuming
 MCP-HTTPSTREAM-11 | tests/test_http_client_streams.nim | Given an event with an id and no data, when it arrives, then it is not a message and not an error
+MCP-HTTPSTREAM-g2f-hs-a-1 | tests/test_http_streams.nim | Given a transport that was never started, when it is asked, then it is not accepting; listening starts it and close stops it and frees the port
+MCP-HTTPSTREAM-g2f-hs-a-1 | tests/test_http_streams.nim | Given a posted request, when the server takes it with receiveMessage, then it gets the message
+MCP-HTTPSTREAM-g2f-hs-a-2 | tests/test_http_streams.nim | Given a response stream still open, when its session ends, then the stream ends
+MCP-HTTPSTREAM-g2f-hs-a-2 | tests/test_http_streams.nim | Given a session timeout of 0, when idle sessions are expired long after the last request, then the session stays
+MCP-HTTPSTREAM-g2f-hs-a-2 | tests/test_http_streams.nim | Given the session limit is reached by sessions that were used and then went idle, when another client initializes, then an idle one is dropped to make room
+MCP-HTTPSTREAM-g2f-hs-a-2 | tests/test_http_streams.nim | Given no limit on sessions per address (0), when a client initializes, then it gets a session
+MCP-HTTPSTREAM-g2f-hs-a-3 | tests/test_http_streams.nim | Given a limit of two queued messages and nobody receiving, when two requests are posted, then both are taken and a third is refused
+MCP-HTTPSTREAM-g2f-hs-a-3 | tests/test_http_streams.nim | Given a session that keeps one finished stream, when a second request ends, then the first stream can no longer be resumed and the second can
+MCP-HTTPSTREAM-g2f-hs-a-3 | tests/test_http_streams.nim | Given a session that keeps two finished streams, when a second request ends, then both can be resumed
+MCP-HTTPSTREAM-g2f-hs-a-4 | tests/test_http_streams.nim | Given two sessions that chose the same request ids, when one cancels its requests, then each notification names that session's own request
+MCP-HTTPSTREAM-g2f-hs-a-4 | tests/test_version_floor.nim | Given a request in progress on a server of 2026-07-28 alone, when a cancellation naming its id comes without a session, then it is not passed to the server
+MCP-HTTPSTREAM-g2f-hs-a-4 | tests/test_http_streams.nim | Given a subscription stream, when the server sends a notification that names another subscription, then the id is left as it is, and one that names this stream's request is given the client's id
+MCP-HTTPSTREAM-g2f-hs-a-4 | tests/test_http_streams.nim | Given a notification whose params is an array, when the server sends it on a request's stream, then it arrives as it was sent
+MCP-HTTPSTREAM-g2f-hs-a-5 | tests/test_http_streams.nim | Given an initialized session, when a notification is posted on it, then the empty answer carries no Content-Type
+MCP-HTTPSTREAM-g2f-hs-a-5 | tests/test_http_streams.nim | Given an initialize answer that names no version, when the session is used, then it is held to the newest version the build speaks and a version header it does not speak is refused
+MCP-HTTPSTREAM-g2f-hs-a-6 | tests/test_version_floor.nim | Given a version the build does not speak, when a transport is made for it, then ValueError is raised
+MCP-HTTPSTREAM-g2f-hs-a-7 | tests/test_security_http.nim | Given a transport bound to loopback, when a request names the bare IPv6 loopback address, then it is served
+MCP-HTTPSTREAM-g2f-hs-a-7 | tests/test_security_http.nim | Given a transport bound to loopback, when a request carries no Host header at all, then the answer is 403
 MCP-HTTPGET-1 | tests/test_http_streams.nim | Given a session, when the client opens GET, then the server's own notifications arrive on it
 MCP-HTTPGET-1 | tests/test_http_streams.nim | Given a notification sent to every client, when two sessions listen, then each hears it once
 MCP-HTTPGET-1 | tests/test_http_streams.nim | Given a notification sent before the client opened GET, when it opens, then the notification is waiting

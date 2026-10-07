@@ -169,3 +169,38 @@ suite "an HTTP server transport for a version outside the build (mutation review
       if not isSupported(v):
         expect ValueError:
           discard newHttpServerTransport(port = 0, protocolVersion = v)
+
+  test "Given a request in progress on a server of 2026-07-28 alone, when a cancellation naming its id comes without a session, then it is not passed to the server":
+    # Only here does a notification reach the transport without a session:
+    # a build that also speaks a legacy version refuses it for want of one.
+    if SpeaksModern and not SpeaksLegacy:
+      type Seen = ref object
+        methods: seq[string]
+      let seen = Seen()
+      let transport = newHttpServerTransport(port = 0)
+      transport.listen()
+      asyncCheck transport.serve()
+      proc record() {.async.} =
+        while true:
+          let incoming = await transport.receive()
+          seen.methods.add incoming.message{"method"}.getStr()
+      asyncCheck record()
+      let url = "http://127.0.0.1:" & $transport.port & "/mcp"
+      let held = newAsyncHttpClient()
+      let body = %*{"jsonrpc": "2.0", "id": 1, "method": "hang", "params": {"_meta": {
+        "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+        "io.modelcontextprotocol/clientInfo": {"name": "c", "version": "1"},
+        "io.modelcontextprotocol/clientCapabilities": {}}}}
+      discard held.request(url, HttpPost, $body, newHttpHeaders({
+        "Content-Type": "application/json", "Accept": "application/json, text/event-stream",
+        "MCP-Protocol-Version": "2026-07-28", "Mcp-Method": "hang"}))
+      waitFor sleepAsync(50)
+      check seen.methods == @["hang"]
+      let reply = send(url, HttpPost, $(%*{"jsonrpc": "2.0", "method": "notifications/cancelled",
+                                           "params": {"requestId": 1}}), {
+        "Content-Type": "application/json", "Accept": "application/json, text/event-stream",
+        "MCP-Protocol-Version": "2026-07-28"})
+      check reply.code == Http202
+      waitFor sleepAsync(50)
+      check seen.methods == @["hang"]
+      held.close()

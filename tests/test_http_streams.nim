@@ -709,3 +709,268 @@ suite "idle sessions":
           break
       check ended
       listen.close()
+
+import protocol/modern
+
+type Ledger = ref object
+  ## Everything the transport handed to the fake server side, in order.
+  seen: seq[McpIncoming]
+
+proc runLedger(t: HttpServerTransport, l: Ledger, version: McpProtocolVersion) {.async.} =
+  ## `initialize` is answered at `version`; every other request is left
+  ## unanswered, so that what a peer does to a request in progress is seen.
+  while true:
+    let incoming = await t.receive()
+    l.seen.add incoming
+    let message = incoming.message
+    if isRequest(message) and message["method"].getStr() == "initialize":
+      await t.sendResponse(newJsonRpcResponse(message["id"].getStr(), %*{
+        "protocolVersion": $version, "capabilities": {},
+        "serverInfo": {"name": "ledger", "version": "0"}}))
+
+proc startLedger(version: McpProtocolVersion): tuple[
+    transport: HttpServerTransport, url: string, ledger: Ledger] =
+  let transport = newHttpServerTransport(port = 0, protocolVersion = version)
+  transport.listen()
+  asyncCheck transport.serve()
+  let ledger = Ledger()
+  asyncCheck runLedger(transport, ledger, min(version, mpv20251125))
+  (transport, "http://127.0.0.1:" & $transport.port & "/mcp", ledger)
+
+proc postWithoutWaiting(url: string, body: JsonNode,
+                        headers: openArray[(string, string)]): AsyncHttpClient =
+  ## Posts and leaves the answer pending; closing the result is the client leaving.
+  let http = newAsyncHttpClient()
+  let all = newHttpHeaders({"Content-Type": "application/json",
+                            "Accept": "application/json, text/event-stream"})
+  for (name, value) in headers:
+    all[name] = value
+  discard http.request(url, HttpPost, $body, all)
+  waitFor sleepAsync(50)
+  http
+
+proc cancelNotice(requestId: int): JsonNode =
+  %*{"jsonrpc": "2.0", "method": "notifications/cancelled",
+     "params": {"requestId": requestId}}
+
+proc modernBody(id: int, name: string): JsonNode =
+  %*{"jsonrpc": "2.0", "id": id, "method": name, "params": {"_meta": {
+    "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+    "io.modelcontextprotocol/clientInfo": {"name": "c", "version": "0"},
+    "io.modelcontextprotocol/clientCapabilities": {}}}}
+
+proc withSubscriptionId(named: string): JsonRpcNotification =
+  let params = newJObject()
+  params["_meta"] = newJObject()
+  params["_meta"][MetaSubscriptionId] = %named
+  newJsonRpcNotification("notifications/progress", params)
+
+proc bareInitializeBody(version: McpProtocolVersion): JsonNode =
+  %*{"jsonrpc": "2.0", "id": 1, "method": "initialize",
+     "params": {"protocolVersion": $version, "capabilities": {},
+                "clientInfo": {"name": "peer", "version": "0"}}}
+
+suite "the HTTP server transport's own rules (mutation review, g2f-hs-a)":
+  let version = min(DefaultProtocolVersion, mpv20251125)
+
+  test "Given a transport that was never started, when it is asked, then it is not accepting; listening starts it and close stops it and frees the port":
+    let transport = newHttpServerTransport(port = 0, protocolVersion = version)
+    check not transport.started
+    transport.listen()
+    check transport.started
+    let port = transport.port
+    waitFor transport.close()
+    check not transport.started
+    expect OSError:
+      let socket = waitFor asyncnet.dial("127.0.0.1", Port(port))
+      socket.close()
+
+  test "Given a posted request, when the server takes it with receiveMessage, then it gets the message":
+    let transport = newHttpServerTransport(port = 0, protocolVersion = version)
+    transport.listen()
+    asyncCheck transport.serve()
+    let http = newAsyncHttpClient()
+    let all = newHttpHeaders({"Content-Type": "application/json",
+                              "Accept": "application/json, text/event-stream"})
+    discard http.request("http://127.0.0.1:" & $transport.port & "/mcp", HttpPost,
+                         $bareInitializeBody(version), all)
+    let message = waitFor transport.receiveMessage()
+    check message{"method"}.getStr() == "initialize"
+    check message{"id"}.getStr().startsWith("http-")
+    http.close()
+    waitFor transport.close()
+
+  if version >= mpv20250326:
+
+    test "Given an initialized session, when a notification is posted on it, then the empty answer carries no Content-Type":
+      let (_, url, _) = startRaw(version)
+      let session = initialize(url, version)
+      let reply = post(url, %*{"jsonrpc": "2.0", "method": "notifications/initialized"},
+                       legacyHeaders(session, version))
+      check reply.code == Http202
+      check not reply.headers.hasKey("Content-Type")
+
+    test "Given a response stream still open, when its session ends, then the stream ends":
+      let (transport, url, _) = startRaw(version)
+      let session = initialize(url, version)
+      let stream = open(url, HttpPost, $rpc(7, "wait"), legacyHeaders(session, version))
+      discard stream.next()
+      transport.endSession(session)
+      while stream.next().isSome:
+        discard
+      stream.close()
+
+    test "Given a session timeout of 0, when idle sessions are expired long after the last request, then the session stays":
+      let (transport, url, _) = startRaw(version)
+      transport.sessionIdleTimeoutMs = 0
+      discard initialize(url, version)
+      waitFor sleepAsync(40)
+      transport.expireIdleSessions()
+      check transport.sessionCount == 1
+
+    test "Given the session limit is reached by sessions that were used and then went idle, when another client initializes, then an idle one is dropped to make room":
+      let (transport, url, _) = startRaw(version)
+      transport.maxSessions = 1
+      transport.sessionIdleTimeoutMs = 30
+      let first = initialize(url, version)
+      check post(url, rpc(2, "ping"), legacyHeaders(first, version)).code == Http200
+      waitFor sleepAsync(80)
+      discard initialize(url, version)
+      check transport.sessionCount == 1
+      check post(url, rpc(3, "ping"), legacyHeaders(first, version)).code == Http404
+
+    test "Given no limit on sessions per address (0), when a client initializes, then it gets a session":
+      let (transport, url, _) = startRaw(version)
+      transport.maxSessionsPerPeer = 0
+      discard initialize(url, version)
+      check transport.sessionCount == 1
+
+    test "Given a limit of two queued messages and nobody receiving, when two requests are posted, then both are taken and a third is refused":
+      let transport = newHttpServerTransport(port = 0, protocolVersion = version)
+      transport.listen()
+      asyncCheck transport.serve()
+      transport.maxQueuedMessages = 2
+      let url = "http://127.0.0.1:" & $transport.port & "/mcp"
+      let first = postWithoutWaiting(url, bareInitializeBody(version), [])
+      let second = postWithoutWaiting(url, bareInitializeBody(version), [])
+      check transport.pendingExchangeCount == 2
+      check post(url, bareInitializeBody(version)).code == Http503
+      first.close()
+      second.close()
+      waitFor transport.close()
+
+    test "Given a session that keeps one finished stream, when a second request ends, then the first stream can no longer be resumed and the second can":
+      let (transport, url, _) = startRaw(version)
+      transport.maxStoredStreams = 1
+      let session = initialize(url, version)
+      let first = open(url, HttpPost, $rpc(7, "work"), legacyHeaders(session, version))
+      let firstId = first.next().get.id
+      discard first.messages()
+      first.close()
+      let second = open(url, HttpPost, $rpc(8, "work"), legacyHeaders(session, version))
+      let secondId = second.next().get.id
+      discard second.messages()
+      second.close()
+      let tooOld = open(url, HttpGet, "",
+        legacyHeaders(session, version) & @[("Last-Event-ID", firstId)])
+      check tooOld.code == Http400
+      tooOld.close()
+      let kept = open(url, HttpGet, "",
+        legacyHeaders(session, version) & @[("Last-Event-ID", secondId)])
+      check kept.code == Http200
+      kept.close()
+
+    test "Given a session that keeps two finished streams, when a second request ends, then both can be resumed":
+      let (transport, url, _) = startRaw(version)
+      transport.maxStoredStreams = 2
+      let session = initialize(url, version)
+      let first = open(url, HttpPost, $rpc(7, "work"), legacyHeaders(session, version))
+      let firstId = first.next().get.id
+      discard first.messages()
+      first.close()
+      let second = open(url, HttpPost, $rpc(8, "work"), legacyHeaders(session, version))
+      discard second.messages()
+      second.close()
+      let resumed = open(url, HttpGet, "",
+        legacyHeaders(session, version) & @[("Last-Event-ID", firstId)])
+      check resumed.code == Http200
+      resumed.close()
+
+    test "Given two sessions that chose the same request ids, when one cancels its requests, then each notification names that session's own request":
+      let (_, url, ledger) = startLedger(version)
+      let a = initialize(url, version)
+      let b = initialize(url, version)
+      let held = @[
+        postWithoutWaiting(url, rpc(5, "silent"), legacyHeaders(a, version)),
+        postWithoutWaiting(url, rpc(5, "silent"), legacyHeaders(b, version)),
+        postWithoutWaiting(url, rpc(6, "silent"), legacyHeaders(a, version))]
+      let silent = ledger.seen.filterIt(it.message{"method"}.getStr() == "silent")
+      check silent.len == 3
+      # (session, the id the client chose, which of the three requests it is)
+      for (session, chosen, which) in [(a, 6, 2), (a, 5, 0), (b, 5, 1)]:
+        check post(url, cancelNotice(chosen), legacyHeaders(session, version)).code == Http202
+        waitFor sleepAsync(30)
+        let notice = ledger.seen[^1].message
+        check notice{"method"}.getStr() == "notifications/cancelled"
+        check notice{"params"}{"requestId"}.getStr() == silent[which].message["id"].getStr()
+      for http in held:
+        http.close()
+
+    test "Given a notification whose params is an array, when the server sends it on a request's stream, then it arrives as it was sent":
+      let (transport, url, ledger) = startLedger(version)
+      let session = initialize(url, version)
+      let pending = openAsync(url, HttpPost, $rpc(5, "silent"), legacyHeaders(session, version))
+      waitFor sleepAsync(50)
+      let silent = ledger.seen.filterIt(it.message{"method"}.getStr() == "silent")
+      check silent.len == 1
+      waitFor transport.sendNotification(
+        newJsonRpcNotification("notifications/progress", %*[1, 2]),
+        MessageRoute(requestId: silent[0].message["id"].getStr()))
+      let stream = waitFor pending
+      var event = stream.next().get
+      while event.data.len == 0:
+        event = stream.next().get
+      check parseJson(event.data)["params"] == %*[1, 2]
+      stream.close()
+
+  if DefaultProtocolVersion.isModern:
+
+    test "Given a subscription stream, when the server sends a notification that names another subscription, then the id is left as it is, and one that names this stream's request is given the client's id":
+      let (transport, url, ledger) = startLedger(DefaultProtocolVersion)
+      let pending = openAsync(url, HttpPost, $modernBody(7, "silent"),
+        @[("MCP-Protocol-Version", "2026-07-28"), ("Mcp-Method", "silent")])
+      waitFor sleepAsync(50)
+      check ledger.seen.len == 1
+      let exchangeId = ledger.seen[0].message["id"].getStr()
+      let route = MessageRoute(requestId: exchangeId)
+      waitFor transport.sendNotification(withSubscriptionId("other"), route)
+      waitFor transport.sendNotification(withSubscriptionId(exchangeId), route)
+      let stream = waitFor pending
+      var named: seq[JsonNode] = @[]
+      while named.len < 2:
+        let event = stream.next().get
+        if event.data.len > 0:
+          named.add parseJson(event.data){"params"}{"_meta"}{MetaSubscriptionId}
+      check named[0] == %"other"
+      check named[1] == %7
+      stream.close()
+
+  block sessionWithoutNamedVersion:
+    let ceiling = latestLegacyVersion(spokenVersionsUpTo(version))
+    if ceiling.isSome and ceiling.get >= mpv20250618:
+      test "Given an initialize answer that names no version, when the session is used, then it is held to the newest version the build speaks and a version header it does not speak is refused":
+        let transport = newHttpServerTransport(port = 0, protocolVersion = version)
+        transport.listen()
+        asyncCheck transport.serve()
+        proc answerAll() {.async.} =
+          while true:
+            let incoming = await transport.receive()
+            if isRequest(incoming.message):
+              await transport.sendResponse(newJsonRpcResponse(
+                incoming.message["id"].getStr(), newJObject()))
+        asyncCheck answerAll()
+        let url = "http://127.0.0.1:" & $transport.port & "/mcp"
+        let session = initialize(url, ceiling.get)
+        check post(url, rpc(2, "ping"), @[("Mcp-Session-Id", session),
+          ("MCP-Protocol-Version", "1999-01-01")]).code == Http400
+        check post(url, rpc(3, "ping"), legacyHeaders(session, ceiling.get)).code == Http200

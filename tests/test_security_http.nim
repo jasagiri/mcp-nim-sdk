@@ -516,3 +516,18 @@ suite "The Host header names this server (MCP-SEC-HTTP-5)":
     asyncCheck transport.serve()
     let base = "http://127.0.0.1:" & $transport.port & "/mcp"
     check sendAs("evil.example", base, HttpPost, rpc(1, "ping")) == Http403
+
+import std/asyncnet
+
+suite "The Host header names this server, in its odd forms (mutation review, g2f-hs-a)":
+  test "Given a transport bound to loopback, when a request names the bare IPv6 loopback address, then it is served":
+    let env = startOpen()
+    check sendAs("::1", env.base & "/mcp", HttpPost, rpc(1, "ping")) != Http403
+
+  test "Given a transport bound to loopback, when a request carries no Host header at all, then the answer is 403":
+    let env = startOpen()
+    let socket = waitFor asyncnet.dial("127.0.0.1", Port(env.transport.port))
+    waitFor socket.send("GET /mcp HTTP/1.0\c\L\c\L")
+    let status = waitFor socket.recvLine()
+    socket.close()
+    check " 403 " in status

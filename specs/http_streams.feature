@@ -180,3 +180,52 @@ Feature: Event streams over Streamable HTTP
     When it posts a message
     Then the Accept header lists both application/json and text/event-stream
     And the GET that opens a stream lists text/event-stream
+
+  @spec:MCP-HTTPSTREAM-g2f-hs-a-1
+  Scenario: The server transport says whether it is accepting, stops accepting on close, and hands over what a peer posted
+    Given a transport that has not been started
+    Then it is not accepting; listening starts it and close stops it and frees its port
+    And a request a peer posted is handed to the server by receive and by receiveMessage
+
+  @spec:MCP-HTTPSTREAM-g2f-hs-a-2
+  Scenario: Sessions end when asked, expire only when a timeout is set, and make room when idle
+    Given a session with a response stream open
+    When the session ends
+    Then the stream ends
+    And a timeout of 0 keeps sessions until DELETE
+    And at the session limit a session that was used but went idle is dropped to make room for a new client
+    And 0 sessions per address means no limit
+
+  @spec:MCP-HTTPSTREAM-g2f-hs-a-3
+  Scenario: The limits on queued messages and stored streams are exact
+    Given a limit of N queued messages
+    Then N messages are taken and the next is refused with 503
+    And a session that may keep N finished streams keeps N and forgets the oldest finished one when it would hold more
+
+  @spec:MCP-HTTPSTREAM-g2f-hs-a-4
+  Scenario: A cancellation names only the sender's own request, and a notification's subscription id is rewritten only for its own stream
+    Given requests in progress from two sessions that chose the same ids
+    When one session cancels by the id it chose
+    Then the server is told to cancel that session's own request
+    And a 2026-07-28 request is not cancelled by a notification that names its id without a session
+    And a notification on a subscription stream that names another subscription keeps that id
+    And a notification whose params is not an object arrives as it was sent
+
+  @spec:MCP-HTTPSTREAM-g2f-hs-a-5
+  Scenario: Empty answers carry no Content-Type, and a session whose initialize answer names no version is held to the newest legacy version
+    Given an initialized session
+    When a notification is posted on it
+    Then the 202 answer has no Content-Type header
+    And an initialize answer that names no version gives a session that refuses a version header the build does not speak
+
+  @spec:MCP-HTTPSTREAM-g2f-hs-a-6
+  Scenario: A transport is made only for a version the build speaks
+    Given a version outside the range the build speaks
+    When a transport is made for it
+    Then ValueError is raised
+
+  @spec:MCP-HTTPSTREAM-g2f-hs-a-7
+  Scenario: The Host header is judged as the sender wrote it
+    Given a transport bound to loopback
+    Then a Host that is the bare IPv6 loopback address is served
+    And a request with no Host header is answered 403
