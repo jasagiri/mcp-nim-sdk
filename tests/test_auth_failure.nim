@@ -107,3 +107,17 @@ suite "an authorization that cannot be obtained":
       # The refusal of the probe is not a legacy server's: no handshake follows.
       check refuser.methods == @["server/discover"]
     waitFor client.close()
+
+suite "an authorization that cannot be obtained (mutation review, g2g-hc-b)":
+
+  test "Given a hook that always says it improved things, when the server keeps refusing, then the request is posted again three times and the failure counts them":
+    let refuser = startRefuser()
+    let transport = newStreamableHttpTransport(refuser.url)
+    transport.auth = answering(proc(status: int, wwwAuthenticate: seq[string]): Future[bool]
+                                   {.closure, gcsafe, async.} = return true)
+    let failure = failureOf(transport.sendRequest(newJsonRpcRequest("1", "tools/list", newJObject())))
+    check not failure.isNil
+    if not failure.isNil:
+      check "after 3 authorization attempts" in failure.msg
+    check refuser.methods.len == 4
+    waitFor transport.close()
