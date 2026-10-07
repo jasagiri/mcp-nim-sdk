@@ -172,14 +172,14 @@ proc parseClass(p: var Parser): Node =
   if not p.atEnd and p.peek == int32('^'):
     result.negated = true
     inc p.pos
-  var first = true
   while true:
     if p.atEnd:
       p.fail("a character class is not closed")
-    if p.peek == int32(']') and not first:
+    if p.peek == int32(']'):
+      # ECMA-262 has no "]" as the first member: `[]` is the empty class and
+      # `[^]` any character.
       inc p.pos
       return
-    first = false
     var lo: int32
     if p.peek == int32('\\'):
       inc p.pos
