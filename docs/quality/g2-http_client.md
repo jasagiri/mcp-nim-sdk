@@ -18,7 +18,7 @@
 | 測定後に置き換わった文 (置き換え後の文で確認) | 0 | 0 | 1 | 0 | 1 |
 | 計 | 45 | 35 | 51 | 18 | 149 |
 
-## 見つかった不具合 (4 件、どれも落ちるテストを先に書いて修正)
+## 見つかった不具合 (6 件、どれも落ちるテストを先に書いて修正)
 
 | 場所 | 不具合 | 修正 |
 |---|---|---|
@@ -26,6 +26,13 @@
 | `http.nim` `track` | `close()` の後に開き終わったストリームを誰も閉じない。閉じたトランスポートへメッセージを配り続ける | `fix(transport): close a stream that finishes opening after the transport closed` |
 | `http_wire.nim` `receive` | `close()` で起こされた読み取りが "Bad file descriptor" の失敗になる。`readSome` は "" を返し、ヘッダ待ちは「打ち切られた」で終わるのが本来 | `fix(transport): a read woken by close() of its response ends quietly` |
 | `http_wire.nim` `chooseBodyMode` | `Content-Length: -5` を受け入れ、空の本文として扱う | `fix(transport): refuse a negative Content-Length` |
+
+取り込みの後、担当が読んで挙げた 2 つの疑いをリードがテストで再現し、直した (`fix(transport): a stream that answers a notification, and a cancelled request, are left alone`):
+
+| 場所 | 不具合 | テスト |
+|---|---|---|
+| `http.nim` `pump` | 通知の POST にサーバーがイベントストリームで答えると、ストリームの終了時に nil の id を読んで **クライアントのプロセスが SIGSEGV で落ちる** (相手のサーバーが起こせる) | MCP-HTTP-40 |
+| `http.nim` `pump` / `resume` | イベント id を受け取った後に取り消した要求を、`Last-Event-ID` で再開し、取り消したはずの答えを配る | MCP-HTTP-41 |
 
 3 つ目の修正には、取り込み時にリードが 1 点足した: `readAll` は、`close()` が本文の途中で読み取りを終わらせたときは
 `McpTransportError` を上げる (それまでに読めた分は本文ではない)。足さないと、取り消された要求の途中までの JSON が
@@ -60,8 +67,6 @@
 - id 83 (`http.nim` の `key.len > 0`): 空文字列の id の要求は取り消せない。SDK のクライアントは空の id を作らない。
 - `sameOrigin` は既定のポートの明示と省略を別オリジンと見る (`g2-protocol-versions.md` の注)。
 - `http.nim:153` の `hasKey("id")` は `isResponse` に含まれる冗長な条件 (変異の対象外)。
-- g2g-hc-b が読んで挙げた 2 つの疑い (`pump` 末尾の `abandoned.excl idKey(requestId)` が通知で nil を引く、取り消した要求を
-  `resume` が再開して答えを配る) は、**再現も否定もしていない**。次に確かめる。
 
 ## G2 変異検査: http_client (src/transport/http.nim 134-346 行、g2g-hc-a の担当分)
 

@@ -274,3 +274,15 @@ Feature: Streamable HTTP transport
     When every stream ends at once, the client asks once and as often again as it may reconnect
     And it waits for the reconnect delay, and names the last id that was sent
     And a second initialization opens no second stream while one is open, and asks again after one ended
+
+  @spec:MCP-HTTP-40
+  Scenario: An event stream in answer to a notification does not bring the client down
+    Given a server that answers the POST of a notification with an event stream instead of 202
+    When the stream ends
+    Then the messages it carried were delivered and the client keeps working
+
+  @spec:MCP-HTTP-41
+  Scenario: A cancelled request is not resumed
+    Given a request whose event stream already carried an event id
+    When the client cancels the request
+    Then the stream is not asked for again with Last-Event-ID and no answer of that request is delivered

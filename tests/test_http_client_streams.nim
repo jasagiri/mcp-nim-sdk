@@ -1211,3 +1211,60 @@ if speaks.has(ftProtocolVersionHeader):
       check "POST" in methods
       check "GET" in methods
       check "DELETE" in methods
+
+suite "client: an event stream in answer to a notification":
+  # The transport pages have a server answer a notification with 202. A
+  # server that opens an event stream instead is not following them, and
+  # what it does must not bring the client down.
+
+  test "Given a server that answers a notification with an event stream, when the stream ends, then its messages were delivered and the client goes on":
+    var posts = 0
+    let url = startRawServer(proc(request: RawRequest, socket: AsyncSocket) {.async.} =
+      inc posts
+      let message = parseJson(request.body)
+      if message.hasKey("id"):
+        let body = $(%*{"jsonrpc": "2.0", "id": message["id"], "result": {}})
+        await socket.send("HTTP/1.1 200 OK\c\LContent-Type: application/json\c\L" &
+                          "Content-Length: " & $body.len & "\c\L\c\L" & body)
+      else:
+        await eventStreamHead(socket)
+        await socket.send("data: " & $notification(1) & "\n\n"))
+    let transport = newStreamableHttpTransport(url)
+    waitFor transport.sendNotification(
+      newJsonRpcNotification("notifications/roots/list_changed", newJObject()))
+    check transport.received()["params"]["progress"].getInt() == 1
+    # The stream has ended by the time the next exchange completes.
+    waitFor sleepAsync(100)
+    transport.ask("after")
+    check transport.received()["id"].getStr() == "after"
+    check posts == 2
+    waitFor transport.close()
+
+if speaks >= mpv20250326:
+  suite "client: a cancelled request is not resumed":
+
+    test "Given a request whose stream already carried an event id, when the client cancels it, then the stream is not asked for again and no answer arrives":
+      var gets = 0
+      var postedId: JsonNode = nil
+      let url = startRawServer(proc(request: RawRequest, socket: AsyncSocket) {.async.} =
+        if request.httpMethod == "POST":
+          postedId = parseJson(request.body)["id"]
+          await eventStreamHead(socket)
+          await socket.send(formatSseEvent($notification(1), id = "a-1"))
+          # Holds the stream open until the client hangs up.
+          discard await socket.recv(1)
+        else:
+          inc gets
+          await eventStreamHead(socket)
+          await socket.send(formatSseEvent($(%*{"jsonrpc": "2.0", "id": postedId, "result": {}}),
+                                           id = "a-2")))
+      let transport = newStreamableHttpTransport(url)
+      transport.sessionId = some("s-1")
+      transport.reconnectDelayMs = 5
+      transport.protocolVersionNegotiated(speaks)
+      transport.ask()
+      check transport.received()["method"].getStr() == "notifications/progress"
+      transport.cancelRequest("r1")
+      check transport.nothingMoreWithin(300)
+      check gets == 0
+      waitFor transport.close()

@@ -1471,6 +1471,8 @@ MCP-HTTP-38 | tests/test_auth_failure.nim | Given a hook that always says it imp
 MCP-HTTP-39 | tests/test_param_headers_http.nim | Given a call that does not name 2026-07-28, when it is sent after the tool was listed, then it carries no Mcp-Param header
 MCP-HTTP-39 | tests/test_param_headers_http.nim | Given a 2026-07-28 tools/call without a tool name, when it is sent, then it is posted without Mcp-Param headers
 MCP-HTTP-39 | tests/test_param_headers_http.nim | Given a tools/list that failed, when its id is used again by another request, then that answer is not read as a tool list
+MCP-HTTP-40 | tests/test_http_client_streams.nim | Given a server that answers a notification with an event stream, when the stream ends, then its messages were delivered and the client goes on
+MCP-HTTP-41 | tests/test_http_client_streams.nim | Given a request whose stream already carried an event id, when the client cancels it, then the stream is not asked for again and no answer arrives
 MCP-HTTP-26 | tests/test_param_headers_http.nim | Given a tools/list answer without a tools member, when the client reads it, then the answer is handed over as it is
 MCP-HTTP-26 | tests/test_param_headers_http.nim | Given a tools/list answer whose tools member is no array, when the client reads it, then the answer is handed over as it is
 MCP-HTTP-26 | tests/test_param_headers_http.nim | Given a tool listed with x-mcp-header, when the next listing declares it invalid, then a call no longer carries the header

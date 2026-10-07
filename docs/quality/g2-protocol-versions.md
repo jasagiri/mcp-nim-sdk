@@ -122,7 +122,7 @@
 | `src/auth/oauth/jsonfield.nim` | 呼び出し元の無い `intField` を削除 | (なし) |
 | `src/transport/sse_legacy.nim` | 呼び出し元の無い `port` を削除。`sameOrigin` は URL に書かれたポートをそのまま比べる (下の注) | `tests/test_http_sse_legacy.nim` |
 | `src/protocol/implementation_status.nim`、`src/protocol/sampling_tools.nim` | 使われていない `notYet` と定数 `ContentTypes` を削除 | `tests/test_docs_version.nim`、`tests/test_sampling_tools_payload.nim` |
-| `src/transport/http.nim` | ストリームが終わった要求を `inflight` から消す。`close()` の後に開き終わったストリームを閉じる | `tests/test_http_client_streams.nim` |
+| `src/transport/http.nim` | ストリームが終わった要求を `inflight` から消す。`close()` の後に開き終わったストリームを閉じる。通知に答えたストリームの終了で落ちない。取り消した要求を再開しない | `tests/test_http_client_streams.nim` |
 | `src/transport/http_wire.nim` | `close()` で起こされた読み取りは静かに終わる。`readAll` は途中で閉じられた本文を返さない。負の `Content-Length` を拒否 | `tests/test_http_client_streams.nim`、`tests/test_security_wire_limits.nim`、`tests/test_security_wire_headers.nim` |
 
 注 (利用者の判断待ち): `sse_legacy.nim` と `http_wire.nim` の `sameOrigin` は、既定のポートを書いた URL と省いた URL

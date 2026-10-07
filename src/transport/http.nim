@@ -302,7 +302,8 @@ proc resume(t: StreamableHttpTransport, first: StreamOutcome,
         attempts < t.maxReconnects:
     inc attempts
     await sleepAsync(outcome.retryMs.get(t.reconnectDelayMs))
-    if t.closed:
+    # A request given up while its stream was down is not picked up again.
+    if t.closed or idKey(requestId) in t.abandoned:
       break
     let response = await t.openStream(outcome.lastEventId)
     if response.isNone:
@@ -320,12 +321,17 @@ proc pump(t: StreamableHttpTransport, response: WireResponse,
   ## Deliver the stream of a request. When it ends without that request's
   ## response and cannot be resumed, say so in its place.
   let outcome = await t.consume(response, requestId)
+  if requestId.isNil:
+    # The stream answered a notification or a response: no request waits for
+    # an answer on it, so there is none to report missing or to forget.
+    return
+  let key = idKey(requestId)
   var answered = outcome.answered
-  if not answered and t.canResume:
+  if not answered and t.canResume and key notin t.abandoned:
     answered = await t.resume(outcome, requestId)
-  if not answered and not t.closed and idKey(requestId) notin t.abandoned:
+  if not answered and not t.closed and key notin t.abandoned:
     t.deliver(streamClosed(requestId))
-  t.abandoned.excl idKey(requestId)
+  t.abandoned.excl key
 
 proc listen(t: StreamableHttpTransport) {.async.} =
   ## The GET stream: what the server says outside any request. Kept open for
