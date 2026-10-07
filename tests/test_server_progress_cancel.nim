@@ -10,7 +10,6 @@ var
   sawCancelled: bool
   seenReason: string
   checkRaised: bool
-  lateProgressError: string
   raceWonByCancel: bool
 
 var kept: McpRequestContext

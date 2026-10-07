@@ -41,9 +41,6 @@ proc listenAndWait(peer: server_harness.Peer, id: JsonNode, notifications: JsonN
   untilTrue("the acknowledgment", proc(): bool =
     peer.transport.messagesOf("notifications/subscriptions/acknowledged").len > 0)
 
-proc idText(id: JsonNode): string =
-  if id.kind == JString: id.getStr() else: $id
-
 suite "subscriptions: the filter and the messages of the specification":
 
   test "Given the specification's listen request, when its filter is parsed, then the types and uris are read":

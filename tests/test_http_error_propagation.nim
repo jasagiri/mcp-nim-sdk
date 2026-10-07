@@ -89,3 +89,5 @@ suite "HTTP transport error propagation":
       caught = true
     waitFor t.close()
     check caught
+
+server.close()

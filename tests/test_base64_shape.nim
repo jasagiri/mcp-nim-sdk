@@ -3,8 +3,6 @@
 import std/[unittest, base64, random, strutils]
 import protocol/base64_shape
 
-const Alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
-
 proc anyBytes(r: var Rand, most: int): string =
   for _ in 0 ..< r.rand(0 .. most):
     result.add char(r.rand(0 .. 255))

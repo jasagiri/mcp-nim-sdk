@@ -98,10 +98,6 @@ proc callAsTask(rig: Rig): string =
     "name": "work", "arguments": {}, "task": {},
     "_meta": {"progressToken": "p"}}))["result"]["task"]["taskId"].getStr()
 
-proc methodsOf(messages: seq[JsonNode]): seq[string] =
-  for message in messages:
-    result.add message{"method"}.getStr("(response)")
-
 proc awaitStatus(rig: Rig, taskId: string, wanted: TaskStatus) =
   for _ in 0 ..< 200:
     let answer = rig.postOnce(rpc(9, "tasks/get", %*{"taskId": taskId}))
