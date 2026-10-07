@@ -743,3 +743,97 @@ suite "HTTP+SSE client, what it closes and reports (mutation review, g2g-hc-d)":
     waitFor transport.sendNotification(newJsonRpcNotification("x", newJObject()))
     waitFor transport.close()
     check waitFor held.stream
+
+import std/[asynchttpserver, nativesockets]
+
+suite "client that tries Streamable HTTP first (mutation review, g2g-hc-b)":
+
+  type Seen = ref object
+    ## What a hand-written Streamable HTTP server saw: `(method, protocol
+    ## version header, session header)` per request.
+    requests: seq[(string, string, string)]
+
+  proc startScripted(seen: Seen): string =
+    let server = newAsyncHttpServer()
+    server.listen(Port(0), "127.0.0.1")
+    let port = server.getPort.int
+    proc handler(req: Request) {.async, gcsafe.} =
+      proc value(name: string): string =
+        if req.headers.hasKey(name): $req.headers[name] else: ""
+      {.cast(gcsafe).}:
+        seen.requests.add ($req.reqMethod, value("MCP-Protocol-Version"), value("Mcp-Session-Id"))
+      if req.reqMethod == HttpPost and parseJson(req.body).hasKey("id"):
+        await req.respond(Http200, $(%*{"jsonrpc": "2.0", "id": parseJson(req.body)["id"], "result": {}}),
+          newHttpHeaders({"Content-Type": "application/json", "Mcp-Session-Id": "s-1"}))
+      else:
+        await req.respond(Http202, "")
+    proc loop() {.async.} =
+      while true:
+        await server.acceptRequest(handler)
+    asyncCheck loop()
+    "http://127.0.0.1:" & $port & "/mcp"
+
+  test "Given a server of the old transport, when the client sends a notification after falling back, then the server receives it":
+    let (_, base, script) = startLegacy()
+    let transport = newAutoHttpTransport(base & "/sse")
+    waitFor transport.sendRequest(newJsonRpcRequest("r1", "ping", newJObject()))
+    check transport.chosen == hcSseLegacy
+    waitFor transport.sendNotification(newJsonRpcNotification("notifications/initialized", newJObject()))
+    waitFor sleepAsync(100)
+    check script.answered.len == 1
+    check script.answered[0]["method"].getStr() == "notifications/initialized"
+    waitFor transport.close()
+
+  test "Given a server of the old transport, when the client answers a request after falling back, then the server receives the response":
+    let (_, base, script) = startLegacy()
+    let transport = newAutoHttpTransport(base & "/sse")
+    waitFor transport.sendRequest(newJsonRpcRequest("r1", "ping", newJObject()))
+    check transport.chosen == hcSseLegacy
+    waitFor transport.sendResponse(newJsonRpcResponse("srv-1", %*{"roots": []}))
+    waitFor sleepAsync(100)
+    check script.answered.len == 1
+    check script.answered[0]["id"].getStr() == "srv-1"
+    waitFor transport.close()
+
+  test "Given a version agreed through the wrapper, when a Streamable HTTP server is used, then later requests name it":
+    let seen = Seen()
+    let transport = newAutoHttpTransport(startScripted(seen))
+    transport.protocolVersionNegotiated(mpv20250618)
+    waitFor transport.sendNotification(newJsonRpcNotification("notifications/cancelled", newJObject()))
+    check seen.requests.len == 1
+    check seen.requests[0][1] == "2025-06-18"
+    waitFor transport.close()
+
+  test "Given a Streamable HTTP server that issued a session, when the wrapper closes, then the session is ended with DELETE":
+    let seen = Seen()
+    let transport = newAutoHttpTransport(startScripted(seen))
+    transport.streamable.listenForServerMessages = false
+    transport.protocolVersionNegotiated(mpv20250326)
+    waitFor transport.sendRequest(newJsonRpcRequest("r1", "ping", newJObject()))
+    check transport.chosen == hcStreamable
+    waitFor transport.close()
+    var methods: seq[string] = @[]
+    for request in seen.requests:
+      methods.add request[0]
+    check methods == @["POST", "DELETE"]
+    check seen.requests[1][2] == "s-1"
+
+  test "Given a server of the old transport, when the wrapper closes, then the stream ends and the server's session with it":
+    let (server, base, script) = startLegacy()
+    let transport = newAutoHttpTransport(base & "/sse")
+    waitFor transport.sendRequest(newJsonRpcRequest("r1", "ping", newJObject()))
+    check transport.chosen == hcSseLegacy
+    check server.sessionCount == 1
+    waitFor transport.close()
+    waitFor sleepAsync(100)
+    check server.sessionCount == 0
+    check script.ended.len == 1
+
+  test "Given a wrapper that has not decided, when it closes while a receive waits, then the receive fails with McpTransportError":
+    let transport = newAutoHttpTransport("http://127.0.0.1:1/mcp")
+    let waiting = transport.receiveMessage()
+    waitFor transport.close()
+    waitFor sleepAsync(20)
+    check waiting.failed
+    expect McpTransportError:
+      discard waiting.read()
