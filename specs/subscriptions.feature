@@ -75,3 +75,9 @@ Feature: Subscriptions (2026-07-28)
     Given a client and a server on a stdio-style transport or on Streamable HTTP
     When the tool list changes and the subscription is cancelled or ended by the server
     Then the client is told on the response stream and the server drops the subscription
+
+  @spec:MCP-SUBSCRIBE-13 @feature:ftSubscriptionsListen
+  Scenario: An extension takes part in the acknowledgment through a listen filter hook
+    Given a server with listen filter hooks
+    When a client listens
+    Then each hook runs in the order added, sees what was asked, and the acknowledgment carries what they leave in the filter

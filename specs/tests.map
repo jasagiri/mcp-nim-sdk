@@ -918,6 +918,7 @@ MCP-SUBSCRIBE-11 | tests/test_subscriptions.nim | Given an acknowledgment that i
 MCP-SUBSCRIBE-12 | tests/test_subscriptions.nim | Given a client and a server over stdio-style transport, when the tool list changes and the server shuts down, then the client is told and the stream ends gracefully
 MCP-SUBSCRIBE-12 | tests/test_subscriptions.nim | Given a client and a server over Streamable HTTP, when the tool list changes, then it arrives on the response stream, and cancelling closes the subscription
 MCP-SUBSCRIBE-12 | tests/test_subscriptions.nim | Given a client over Streamable HTTP, when the server ends the subscription, then the client sees a graceful end
+MCP-SUBSCRIBE-13 | tests/test_subscriptions.nim | Given listen filter hooks, when a client listens, then each runs in the order added and the acknowledgment carries what they leave in the filter
 MCP-MRTR-16 | tests/test_mrtr.nim | Given a handler whose input request breaks the rules of its method, when it is called, then it is an internal error and nothing is asked
 MCP-MRTR-16 | tests/test_mrtr.nim | Given input requests whose params break the rules of their method, when checked, then each problem names its request
 MCP-MRTR-17 | tests/test_mrtr.nim | Given a URL elicitation or sampling with tools, when compared with a client's capabilities, then the mode and the tools must be declared too

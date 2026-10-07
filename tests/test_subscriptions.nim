@@ -118,6 +118,26 @@ suite "subscriptions on the server (2026-07-28 only)":
       check id.kind == JInt
       check id.getInt() == 42
 
+  test "Given listen filter hooks, when a client listens, then each runs in the order added and the acknowledgment carries what they leave in the filter":
+    for v in versionsWith(ftSubscriptionsListen):
+      let server = newServer(McpServerCapabilities(tools: some(McpToolsCapability())))
+      var requestedByHooks: seq[SubscriptionFilter]
+      server.addListenFilterHook(proc(ctx: McpRequestContext, requested: SubscriptionFilter,
+                                      honored: var SubscriptionFilter) =
+        requestedByHooks.add requested
+        honored.taskIds = @["first"])
+      server.addListenFilterHook(proc(ctx: McpRequestContext, requested: SubscriptionFilter,
+                                      honored: var SubscriptionFilter) =
+        honored.taskIds.add "second")
+      let t = server.attach()
+      let peer = server.connect(t, v)
+      peer.listenAndWait(%1, %*{"toolsListChanged": true})
+      check requestedByHooks.len == 1 and requestedByHooks[0].toolsListChanged
+      let honored = t.sent[0].message["params"]["notifications"]
+      check honored["taskIds"] == %*["first", "second"]
+      # the core still omits what the server did not declare
+      check not honored.hasKey("toolsListChanged")
+
   test "Given an open subscription, when the tool list changes, then the notification arrives on that stream tagged with its id":
     for v in versionsWith(ftSubscriptionsListen):
       let server = fullServer()
