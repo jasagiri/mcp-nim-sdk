@@ -85,6 +85,15 @@ suite "logging before 2026-07-28":
     check t.levelsSent("quiet").len == 0
     check t.levelsSent("loud") == @["warning"]
 
+  test "Given a client whose level is error, when the server logs at error, then the client gets it":
+    # "error" and above: the level named is itself included.
+    let server = logServer()
+    let t = server.attach()
+    let peer = server.connect(t, DefaultProtocolVersion.min(mpv20251125))
+    discard peer.ask("logging/setLevel", %*{"level": "error"})
+    waitFor server.log(mllError, %"disk failed")
+    check t.levelsSent() == @["error"]
+
   test "Given an unknown level, when setLevel is sent, then the answer is invalid params":
     for v in versionsWith(ftLoggingSetLevel):
       let server = logServer()

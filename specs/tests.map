@@ -206,6 +206,7 @@ MCP-LOGGING-1 | tests/test_server_logging.nim | Given a log message, when it is 
 MCP-LOGGING-1 | tests/test_server_logging.nim | Given a log message without a logger, when it is sent, then it carries no logger key
 MCP-LOGGING-2 | tests/test_server_logging.nim | Given setLevel warning, when a handler logs at every level, then the client gets warning and above
 MCP-LOGGING-2 | tests/test_server_logging.nim | Given two clients with different levels, when the server logs, then each gets what its level allows
+MCP-LOGGING-2 | tests/test_server_logging.nim | Given a client whose level is error, when the server logs at error, then the client gets it
 MCP-LOGGING-3 | tests/test_server_logging.nim | Given an unknown level, when setLevel is sent, then the answer is invalid params
 MCP-LOGGING-3 | tests/test_server_logging.nim | Given a server without the logging capability, when setLevel is sent, then the method is not found
 MCP-LOGGING-3 | tests/test_server_logging.nim | Given a client that has not initialized, when it sends setLevel, then the answer is invalid request
