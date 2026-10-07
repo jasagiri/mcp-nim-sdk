@@ -237,3 +237,8 @@ suite "closing a response while it is read (mutation review, g2g-hc-c)":
     let attempt = request(server.scriptedUrl, HttpGet, connected = abandoningAfter(150))
     check "was abandoned" in attempt.outcome
 
+suite "a Content-Length that cannot be a length (mutation review, g2g-hc-c)":
+
+  test "Given a negative Content-Length, when the head is read, then the response is refused":
+    let server = startScripted(ending("HTTP/1.1 200 OK\c\LContent-Length: -5\c\L\c\Labcde"))
+    check "bad Content-Length" in outcome(request(server.scriptedUrl, HttpGet))

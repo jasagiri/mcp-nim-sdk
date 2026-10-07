@@ -183,6 +183,8 @@ proc chooseBodyMode(r: WireResponse, httpMethod: HttpMethod) =
       r.remaining = parseInt(r.headers["Content-Length"])
     except ValueError:
       raise httpFailure("bad Content-Length: " & $r.headers["Content-Length"])
+    if r.remaining < 0:
+      raise httpFailure("bad Content-Length: " & $r.headers["Content-Length"])
   else:
     r.mode = bmUntilClose
   r.finished = r.mode == bmNone or (r.mode == bmLength and r.remaining == 0)
