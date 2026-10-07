@@ -12,6 +12,7 @@ import ./server_harness
 import ./client_peer
 import ./loopback_transport
 import client/client
+import client/cancel_token
 import client/client as clientMod
 import client/subscriptions as clientSubs
 import protocol/subscriptions

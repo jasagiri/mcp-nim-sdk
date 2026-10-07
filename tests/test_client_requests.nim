@@ -3,6 +3,7 @@
 
 import std/[unittest, asyncdispatch, json, options, os, strutils, tables]
 import client/client
+import client/cancel_token
 import protocol/types
 import protocol/lifecycle
 import transport/transport

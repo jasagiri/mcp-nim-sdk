@@ -1,6 +1,7 @@
 {
   "sources": [
     "src/client/client.nim",
+    "src/client/cancel_token.nim",
     "src/client/content.nim",
     "src/client/tools.nim",
     "src/client/resources.nim",

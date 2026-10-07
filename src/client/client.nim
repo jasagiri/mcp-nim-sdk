@@ -12,6 +12,11 @@ import ../protocol/mrtr
 import ../protocol/subscriptions
 import ../transport/transport
 import ../transport/first_of
+import ./cancel_token
+
+export cancel_token.McpCancelToken, cancel_token.newMcpCancelToken,
+  cancel_token.cancel, cancel_token.isCancelled, cancel_token.whenCancelled,
+  cancel_token.cancelReason
 
 type
   McpError* = object of CatchableError
@@ -73,14 +78,6 @@ type
     onNotification*: proc(methodName: string, params: JsonNode) {.closure.}
       ## Every notification delivered on this stream, after the client's own
       ## callbacks (`onToolsListChanged` and the like) have run for it.
-
-  McpCancelToken* = ref object
-    ## Lets the caller of an operation withdraw it. Pass it in
-    ## McpRequestOptions; `cancel` makes the waiting call raise
-    ## McpCancelledError and tells the server to stop.
-    reason: string
-    signal: Future[void]
-    waiters: seq[Future[void]]
 
   McpProgress* = object
     ## One notifications/progress for a request that asked for them.
@@ -162,51 +159,6 @@ type
 const
   DefaultRequestTimeoutMs* = 60_000
   DefaultMaxInputRounds* = 10
-
-proc newMcpCancelToken*(): McpCancelToken =
-  McpCancelToken(signal: newFuture[void]("McpCancelToken"))
-
-proc cancel*(token: McpCancelToken, reason: string = "") =
-  ## Idempotent: only the first call counts.
-  if not token.signal.finished:
-    token.reason = reason
-    token.signal.complete()
-    # Each waiter is woken from here and not by a callback on `signal`: a
-    # callback cannot be taken off a future again, so one per request would
-    # stay on a token that outlives its requests.
-    let woken = token.waiters
-    token.waiters = @[]
-    for waiter in woken:
-      if not waiter.finished:
-        waiter.complete()
-
-proc isCancelled*(token: McpCancelToken): bool = token.signal.finished
-
-proc whenCancelled*(token: McpCancelToken): Future[void] = token.signal
-  ## Completes when the token is cancelled.
-
-proc cancelReason*(token: McpCancelToken): string = token.reason
-
-proc watchCancellation*(token: McpCancelToken): Future[void] =
-  ## Internal to the SDK. A future that completes when `token` is cancelled,
-  ## for one request to wait on; give it back with `unwatchCancellation`
-  ## when the request ends. Unlike `whenCancelled` it touches no callback of
-  ## the token's own future, so any number of requests can share a token.
-  result = newFuture[void]("McpCancelToken.watch")
-  if token.signal.finished:
-    result.complete()
-  else:
-    token.waiters.add result
-
-proc unwatchCancellation*(token: McpCancelToken, waiter: Future[void]) =
-  ## Internal to the SDK: the request that waited with `waiter` has ended.
-  let at = token.waiters.find(waiter)
-  if at >= 0:
-    token.waiters.del(at)
-
-proc heldWaiters*(token: McpCancelToken): int =
-  ## Internal, for tests: how many requests are still waiting on `token`.
-  token.waiters.len
 
 proc newMcpClient*(
   clientInfo: McpClientInfo,
@@ -557,7 +509,7 @@ proc sendOnce(client: McpClient, methodName: string, params: JsonNode,
     if started.response.finished:
       response = started.response.read
     elif cancelled.finished:
-      let reason = options.cancel.reason
+      let reason = options.cancel.cancelReason
       await client.abandon(started.id, methodName, reason, unsent = not started.sent.finished)
       raise newException(McpCancelledError, methodName & ": cancelled" &
         (if reason.len > 0: " (" & reason & ")" else: ""))

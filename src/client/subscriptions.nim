@@ -17,6 +17,7 @@
 import std/[asyncdispatch, json, options, tables]
 import uuids
 import ./client
+import ./cancel_token
 import ../transport/first_of
 import ../protocol/features
 import ../protocol/lifecycle
