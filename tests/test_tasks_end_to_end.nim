@@ -195,6 +195,45 @@ if isSupported(TaskVersion):
         discard waitFor fetching
         check waitFor(client.getTask(created.task.taskId)).status == tsCompleted
 
+    test "Given a tool that elicits in form or url mode inside a task, when the client has answered, then the task is working again while the tool goes on":
+      for asked in ["form", "link"]:
+        let answered = newFuture[void]("answered")
+        let hold = newFuture[void]("hold")
+        let server = newMcpServer(McpServerInfo(name: "s", version: "1"),
+          capabilities = McpServerCapabilities(tools: some(McpToolsCapability())))
+        server.onToolsList(proc(cursor: Option[string]): Future[McpPage] {.async.} =
+          return McpPage(items: @[
+            %*{"name": "form", "inputSchema": {"type": "object"},
+               "execution": {"taskSupport": "optional"}},
+            %*{"name": "link", "inputSchema": {"type": "object"},
+               "execution": {"taskSupport": "optional"}}]))
+        server.onToolCall(proc(ctx: McpRequestContext, name: string,
+                               arguments: JsonNode): Future[JsonNode] {.async.} =
+          if name == "form":
+            discard await ctx.elicit("name?", %*{"type": "object",
+              "properties": {"name": {"type": "string"}}})
+          else:
+            discard await ctx.elicitUrl("key?", "id-1", "https://example.com/key")
+          answered.complete()
+          await hold
+          return textOf("done"))
+        discard server.enableTasks(store = quickStore())
+        let client = server.connected(proc(client: McpClient) =
+          client.setElicitationHandler(proc(request: McpElicitRequest): Future[McpElicitResult] {.async.} =
+            if request.mode == emForm:
+              return McpElicitResult(action: eaAccept, content: %*{"name": "Ada"})
+            return McpElicitResult(action: eaAccept),
+            modes = {emForm, emUrl}))
+        let tools = waitFor client.listAllTools()
+        let created = waitFor client.callToolAsTask(tools[if asked == "form": 0 else: 1])
+        # the question reaches the client on the stream of tasks/result
+        let fetching = client.taskResult(created.task.taskId)
+        waitFor answered
+        check waitFor(client.getTask(created.task.taskId)).status == tsWorking
+        hold.complete()
+        discard waitFor fetching
+        check waitFor(client.getTask(created.task.taskId)).status == tsCompleted
+
     test "Given a client that receives tasks, when the server asks for elicitation as a task, then the answer is the handler's":
       let server = taskServer(quickStore())
       let client = server.connected(proc(client: McpClient) =

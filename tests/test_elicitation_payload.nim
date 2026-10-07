@@ -420,3 +420,107 @@ suite "elicitation: URL mode (2025-11-25)":
     check urlElicitationRequiredProblems(%*{"elicitations": [urlRequest]}, mpv20251125).len == 0
     check urlElicitationRequiredProblems(%*{}, mpv20251125).mentions("elicitations")
     check urlElicitationRequiredProblems(%*{"elicitations": [{"mode": "form"}]}, mpv20251125).len > 0
+
+suite "elicitation: bounds and shapes the mutation review found unexamined":
+
+  proc propertyReport(prop: JsonNode, version = mpv20251125): seq[string] =
+    requestedSchemaProblems(schemaOf(prop), version)
+
+  proc valueReport(prop, value: JsonNode): seq[string] =
+    elicitationResultProblems(%*{"action": "accept", "content": {"x": value}},
+                              %*{"message": "m", "requestedSchema": schemaOf(prop)})
+
+  test "Given a string or number bound that is not a number or is inverted, when checked, then the bound is named":
+    for (low, high, kind) in [("minLength", "maxLength", "string"), ("minimum", "maximum", "number")]:
+      check propertyReport(%*{"type": kind, low: "1"}).mentions(low)
+      check propertyReport(%*{"type": kind, high: true}).mentions(high)
+      check propertyReport(%*{"type": kind, low: 5, high: 3}).mentions("is above")
+      check propertyReport(%*{"type": kind, low: 3, high: 3}).len == 0
+
+  test "Given a plain enum that is empty or holds a non-string, when checked, then it is reported":
+    check propertyReport(%*{"type": "string", "enum": []}).mentions("non-empty array")
+    check propertyReport(%*{"type": "string", "enum": ["a", 1]}).mentions("not a string")
+    check propertyReport(%*{"type": "string", "enum": ["a", "b"],
+                            "enumNames": ["A", 1]}).mentions("enumNames holds a name")
+
+  test "Given minItems or maxItems that is not a non-negative integer, when checked, then it is reported":
+    let items = %*{"type": "string", "enum": ["a", "b", "c"]}
+    for key in ["minItems", "maxItems"]:
+      check propertyReport(%*{"type": "array", "items": items, key: "1"}).mentions(key)
+      check propertyReport(%*{"type": "array", "items": items, key: -1}).mentions(key)
+      check propertyReport(%*{"type": "array", "items": items, key: 0}).len == 0
+    check propertyReport(%*{"type": "array", "items": items, "maxItems": 2}).len == 0
+    check propertyReport(%*{"type": "array", "items": items, "minItems": 2,
+                            "maxItems": 2}).len == 0
+
+  test "Given a multi-select with no items or with an enum that breaks the rules, when checked, then the items are named":
+    check propertyReport(%*{"type": "array"}).mentions("items is missing")
+    check propertyReport(%*{"type": "array", "items": "x"}).mentions("items is missing")
+    check propertyReport(%*{"type": "array", "items": {"enum": ["a"]}}).mentions("type \"string\"")
+    check propertyReport(%*{"type": "array", "items": {"type": "string", "enum": []}}).mentions(
+      "items: enum is not a non-empty array")
+
+  test "Given a property that is not an object or has no type, when checked, then that property is named":
+    for v in FormVersions:
+      check requestedSchemaProblems(schemaOf(%*"string"), v).mentions("property 'x' is not an object")
+      check requestedSchemaProblems(schemaOf(%*{}), v).mentions("property 'x': type is missing")
+
+  test "Given required that is not an array, when checked, then it is reported":
+    let bad = %*{"type": "object", "properties": {"a": {"type": "string"}}, "required": "a"}
+    check requestedSchemaProblems(bad, mpv20250618).mentions("required is not an array")
+
+  test "Given params that are not an object, when checked, then that is the report":
+    for params in [%*"x", %*[1], newJNull()]:
+      for v in FormVersions:
+        check elicitationParamsProblems(params, v) == @["params is not an object"]
+
+  test "Given a mode that is a string but neither form nor url, when read, then McpPayloadError names it":
+    for mode in ["voice", ""]:
+      expect McpPayloadError:
+        discard elicitationModeOf(%*{"mode": mode})
+    check elicitationParamsProblems(%*{"mode": "voice", "message": "m"},
+                                    mpv20251125).mentions("is not an elicitation mode")
+
+  test "Given error data whose entry is a URL request that breaks the rules, when checked, then it is reported":
+    let entry = %*{"mode": "url", "message": "m", "elicitationId": "", "url": "x"}
+    check urlElicitationRequiredProblems(%*{"elicitations": [entry]}, mpv20251125).mentions(
+      "elicitationId")
+
+  test "Given a result or content that is not an object, when checked, then it is reported":
+    let ask = %*{"message": "m", "requestedSchema": contactSchema}
+    for answer in [%*"x", %*[1], newJNull()]:
+      check elicitationResultProblems(answer, ask) == @["the result is not an object"]
+    for content in [%*"x", %*[1], newJNull()]:
+      check elicitationResultProblems(%*{"action": "accept", "content": content},
+                                      ask) == @["content is not an object"]
+
+  test "Given an answer to params with an unknown mode, when checked, then the mode is reported":
+    check elicitationResultProblems(%*{"action": "decline"}, %*{"mode": "voice"}).mentions(
+      "is not an elicitation mode")
+
+  test "Given values at the limits of their bounds, when checked, then they are accepted":
+    let ask = %*{"message": "m", "requestedSchema": contactSchema}
+    check elicitationResultProblems(%*{"action": "accept", "content": {
+      "name": "Mo", "email": "a@b.c", "age": 120}}, ask).len == 0
+    check elicitationResultProblems(%*{"action": "accept", "content": {
+      "name": "M".repeat(20), "email": "a@b.c", "age": 18}}, ask).len == 0
+
+  test "Given a date-time with an offset, when checked, then only a well-formed offset is accepted":
+    let prop = %*{"type": "string", "format": "date-time"}
+    proc moment(offset: string): JsonNode = %("2026-10-06T12:00:00" & offset)
+    for good in ["Z", "z", "+09:00", "-05:30", "+23:59", "-00:00"]:
+      check valueReport(prop, moment(good)).len == 0
+    # each of these breaks exactly one rule of RFC 3339's time-numoffset
+    for bad in ["+09:000", "x09:00", "+09-00", "+a9:00", "+0a:00", "+09:a0", "+09:0a",
+                "+24:00", "+09:60"]:
+      check valueReport(prop, moment(bad)).mentions("date-time")
+
+suite "elicitation: what a payload error reports":
+
+  test "Given several problems, when an error is built, then its message joins them after the context":
+    check newPayloadError("ctx", @["a", "b", "c"]).msg == "ctx: a; b; c"
+    check newPayloadError("ctx", @["a"]).msg == "ctx: a"
+
+  test "Given no problem, when an error is built, then the contract is broken loudly":
+    expect AssertionDefect:
+      discard newPayloadError("ctx", @[])

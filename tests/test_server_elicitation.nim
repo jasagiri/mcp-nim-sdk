@@ -222,6 +222,22 @@ if DefaultProtocolVersion >= mpv20251125:
       expect McpPayloadError:
         discard waitFor pending
 
+    test "Given a handler that asks in url mode, when a tool is called, then the request belongs to the tool call and the answer drives the result":
+      let server = newServer(McpServerCapabilities(tools: some(McpToolsCapability())))
+      server.onToolCall(proc(ctx: McpRequestContext, name: string,
+                             arguments: JsonNode): Future[JsonNode] {.async.} =
+        let answer = await ctx.elicitUrl("Provide your key", id, link)
+        return %*{"content": [{"type": "text", "text": $answer.action}]})
+      let t = server.attach()
+      let peer = server.connect(t, mpv20251125, clientCapabilities = BothModes)
+      let callId = freshId()
+      peer.send(%callId, "tools/call", %*{"name": "key"})
+      let asked = t.awaitRequest("elicitation/create")
+      check asked.related == callId
+      check asked.message["params"]["mode"].getStr() == "url"
+      t.answer(asked, %*{"action": "decline"})
+      check textOf(t.responseTo(callId)) == "decline"
+
     test "Given a completed interaction, when the server notifies, then only that client gets notifications/elicitation/complete":
       let server = urlServer()
       let t = server.attach()

@@ -754,6 +754,21 @@ MCP-ELICIT-5 | tests/test_client_elicitation.nim | Given an elicitation handler,
 MCP-ELICIT-5 | tests/test_client_elicitation.nim | Given a request whose schema breaks the rules, when it arrives, then the client answers invalid params and the handler is not called
 MCP-ELICIT-5 | tests/test_client_elicitation.nim | Given no elicitation handler, when the server asks, then the client answers method not found
 MCP-ELICIT-5 | tests/test_client_elicitation.nim | Given a connection of a version before elicitation, when the server asks, then the client answers method not found
+MCP-ELICIT-g2e-elicit-b-1 | tests/test_elicitation_payload.nim | Given a string or number bound that is not a number or is inverted, when checked, then the bound is named
+MCP-ELICIT-g2e-elicit-b-1 | tests/test_elicitation_payload.nim | Given a plain enum that is empty or holds a non-string, when checked, then it is reported
+MCP-ELICIT-g2e-elicit-b-1 | tests/test_elicitation_payload.nim | Given minItems or maxItems that is not a non-negative integer, when checked, then it is reported
+MCP-ELICIT-g2e-elicit-b-1 | tests/test_elicitation_payload.nim | Given a multi-select with no items or with an enum that breaks the rules, when checked, then the items are named
+MCP-ELICIT-g2e-elicit-b-1 | tests/test_elicitation_payload.nim | Given a property that is not an object or has no type, when checked, then that property is named
+MCP-ELICIT-g2e-elicit-b-1 | tests/test_elicitation_payload.nim | Given required that is not an array, when checked, then it is reported
+MCP-ELICIT-g2e-elicit-b-2 | tests/test_elicitation_payload.nim | Given params that are not an object, when checked, then that is the report
+MCP-ELICIT-g2e-elicit-b-2 | tests/test_elicitation_payload.nim | Given a mode that is a string but neither form nor url, when read, then McpPayloadError names it
+MCP-ELICIT-g2e-elicit-b-2 | tests/test_elicitation_payload.nim | Given error data whose entry is a URL request that breaks the rules, when checked, then it is reported
+MCP-ELICIT-g2e-elicit-b-2 | tests/test_elicitation_payload.nim | Given a result or content that is not an object, when checked, then it is reported
+MCP-ELICIT-g2e-elicit-b-2 | tests/test_elicitation_payload.nim | Given an answer to params with an unknown mode, when checked, then the mode is reported
+MCP-ELICIT-g2e-elicit-b-3 | tests/test_elicitation_payload.nim | Given values at the limits of their bounds, when checked, then they are accepted
+MCP-ELICIT-g2e-elicit-b-3 | tests/test_elicitation_payload.nim | Given a date-time with an offset, when checked, then only a well-formed offset is accepted
+MCP-ELICIT-g2e-elicit-b-4 | tests/test_elicitation_payload.nim | Given several problems, when an error is built, then its message joins them after the context
+MCP-ELICIT-g2e-elicit-b-4 | tests/test_elicitation_payload.nim | Given no problem, when an error is built, then the contract is broken loudly
 MCP-ELICIT-ENUM-1 | tests/test_elicitation_payload.nim | Given titled and untitled, single and multi-select enums, when checked in 2025-11-25 and later, then they are accepted
 MCP-ELICIT-ENUM-1 | tests/test_elicitation_payload.nim | Given oneOf or an array property, when checked in 2025-06-18, then it is reported
 MCP-ELICIT-ENUM-1 | tests/test_elicitation_payload.nim | Given a oneOf entry without const or title, when checked, then the property is named
@@ -801,6 +816,8 @@ MCP-ELICIT-URL-5 | tests/test_server_elicitation.nim | Given a handler that need
 MCP-ELICIT-URL-5 | tests/test_client_elicitation.nim | Given a request that failed with -32042, when the error is read, then the URL requests come back
 MCP-ELICIT-URL-5 | tests/test_client_elicitation.nim | Given an error with another code, when read for URL requests, then there are none
 MCP-ELICIT-URL-5 | tests/test_client_elicitation.nim | Given a -32042 error with malformed data, when read, then McpProtocolError is raised
+MCP-ELICIT-g2e-elicit-b-5 | tests/test_server_elicitation.nim | Given a handler that asks in url mode, when a tool is called, then the request belongs to the tool call and the answer drives the result
+MCP-ELICIT-g2e-elicit-b-5 | tests/test_tasks_end_to_end.nim | Given a tool that elicits in form or url mode inside a task, when the client has answered, then the task is working again while the tool goes on
 MCP-SAMPLING-TOOLS-1 | tests/test_sampling_tools_payload.nim | Given tools and a tool choice, when the request is checked in 2025-11-25 and later, then there is nothing to report
 MCP-SAMPLING-TOOLS-1 | tests/test_sampling_tools_payload.nim | Given a result that stops for tool use with tool_use blocks, when checked, then it is valid
 MCP-SAMPLING-TOOLS-1 | tests/test_sampling_tools_payload.nim | Given tool uses, when they are read from a result, then they come back as blocks in order
