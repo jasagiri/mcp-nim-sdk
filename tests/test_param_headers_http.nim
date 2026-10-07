@@ -472,3 +472,68 @@ if SpeaksModern:
           "name": "n", "arguments": {"n": 9_007_199_254_740_992'i64}}))
       check posts == 1
       waitFor transport.close()
+
+if SpeaksModern:
+  suite "2026-07-28 parameter headers: client (mutation review, g2g-hc-b)":
+
+    proc paramHeadersOfCalls(calls: seq[JsonNode]): seq[string] =
+      ## The Mcp-Param-Region header ("<none>" when absent) of each tools/call
+      ## sent, after `execute_sql` was listed the way a 2026-07-28 client lists.
+      var seen: seq[string] = @[]
+      let url = startScripted(proc(req: Request) {.async, gcsafe.} =
+        let message = parseJson(req.body)
+        var payload = %*{"content": []}
+        if message["method"].getStr() == "tools/list":
+          payload = %*{"tools": [sqlTool()]}
+        else:
+          {.cast(gcsafe).}:
+            seen.add(if req.headers.hasKey("Mcp-Param-Region"): $req.headers["Mcp-Param-Region"] else: "<none>")
+        await req.respond(Http200, $(%*{"jsonrpc": "2.0", "id": message["id"], "result": payload}),
+          newHttpHeaders({"Content-Type": "application/json"})))
+      let transport = newStreamableHttpTransport(url)
+      waitFor transport.sendRequest(newJsonRpcRequest("0", "tools/list", %*{"_meta": modernMeta()}))
+      discard waitFor transport.receiveMessage()
+      for index, call in calls:
+        waitFor transport.sendRequest(newJsonRpcRequest($(index + 1), "tools/call", call))
+      waitFor transport.close()
+      seen
+
+    let arguments = %*{"region": "us-west1", "query": "q"}
+
+    test "Given a call that does not name 2026-07-28, when it is sent after the tool was listed, then it carries no Mcp-Param header":
+      # Parameter headers belong to 2026-07-28; the call of another version, or of none, has none.
+      func meta(version: JsonNode): JsonNode = %*{"io.modelcontextprotocol/protocolVersion": version}
+      check paramHeadersOfCalls(@[
+        %*{"name": "execute_sql", "arguments": arguments},
+        %*{"_meta": {}, "name": "execute_sql", "arguments": arguments},
+        %*{"_meta": meta(%7), "name": "execute_sql", "arguments": arguments},
+        %*{"_meta": meta(%"2025-11-25"), "name": "execute_sql", "arguments": arguments},
+        %*{"_meta": meta(%"1900-01-01"), "name": "execute_sql", "arguments": arguments},
+        %*{"_meta": modernMeta(), "name": "execute_sql", "arguments": arguments}]) ==
+        @["<none>", "<none>", "<none>", "<none>", "<none>", "us-west1"]
+
+    test "Given a 2026-07-28 tools/call without a tool name, when it is sent, then it is posted without Mcp-Param headers":
+      check paramHeadersOfCalls(@[
+        %*{"_meta": modernMeta(), "arguments": arguments},
+        %*{"_meta": modernMeta(), "name": 7, "arguments": arguments}]) ==
+        @["<none>", "<none>"]
+
+    test "Given a tools/list that failed, when its id is used again by another request, then that answer is not read as a tool list":
+      # Only the answer to a tools/list that was sent is checked for x-mcp-header; the invalid tool stays in any other answer.
+      var posts = 0
+      let url = startScripted(proc(req: Request) {.async, gcsafe.} =
+        let message = parseJson(req.body)
+        {.cast(gcsafe).}:
+          inc posts
+        if posts == 1:
+          await req.respond(Http500, "")
+        else:
+          await req.respond(Http200, $(%*{"jsonrpc": "2.0", "id": message["id"], "result": {
+            "tools": [sqlTool(), badTool()]}}), newHttpHeaders({"Content-Type": "application/json"})))
+      let transport = newStreamableHttpTransport(url)
+      expect McpTransportError:
+        waitFor transport.sendRequest(newJsonRpcRequest("1", "tools/list", %*{"_meta": modernMeta()}))
+      waitFor transport.sendRequest(newJsonRpcRequest("1", "resources/list", %*{"_meta": modernMeta()}))
+      let answer = waitFor transport.receiveMessage()
+      check answer["result"]["tools"].len == 2
+      waitFor transport.close()
