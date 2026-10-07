@@ -586,3 +586,122 @@ suite "Requests of the OAuth client over a scripted server (mutation review, g2f
     check outcome.kind == "oauth"
     check "timed out after 300 ms" in outcome.msg
     check server.closedWithin(2000)
+
+import std/[asyncdispatch, asynchttpserver, httpcore, nativesockets, times, uri]
+import auth/oauth/[authcode, fetch, jsonfield, registration, tokens]
+
+proc stateOf(authorizationUrl: string): string =
+  for (name, value) in decodeQuery(parseUri(authorizationUrl).query):
+    if name == "state":
+      return value
+
+proc newRequest(redirectUri = "http://127.0.0.1:8080/cb"): AuthorizationRequest =
+  newAuthorizationRequest("https://auth.example.com/authorize", "client", redirectUri,
+    @[], none(string), "https://auth.example.com", false, false)
+
+proc registeredWith(status: HttpCode, body: string): ClientCredentials =
+  ## Runs a registration against a registration endpoint that answers `body`.
+  let server = newAsyncHttpServer()
+  server.listen(Port(0), "127.0.0.1")
+  defer: server.close()
+  proc handler(req: Request) {.async, gcsafe.} =
+    await req.respond(status, body, newHttpHeaders({"Content-Type": "application/json"}))
+  asyncCheck server.acceptRequest(handler)
+  waitFor registerClient("http://127.0.0.1:" & $server.getPort.int & "/register",
+    "https://auth.example.com",
+    ClientRegistrationRequest(clientName: "t", redirectUris: @["http://127.0.0.1:1/cb"]),
+    defaultFetchPolicy())
+
+suite "OAuth parsers and checks (mutation review, g2f-oauth-b)":
+  let policy = defaultFetchPolicy()
+
+  test "Given metadata with a plain http authorization or registration endpoint on a remote host, when parsed, then it is rejected":
+    for key in ["authorization_endpoint", "registration_endpoint"]:
+      checkpoint key
+      let doc = parseJson(goodAs)
+      doc[key] = %"http://auth.example.com/endpoint"
+      expect OAuthSecurityError:
+        discard parseAuthorizationServerMetadata(doc, "https://auth.example.com/tenant1", policy)
+
+  test "Given a registration endpoint that is missing or null, when parsed, then the server offers no registration":
+    let missing = parseJson(goodAs)
+    missing.delete("registration_endpoint")
+    check parseAuthorizationServerMetadata(missing, "https://auth.example.com/tenant1", policy)
+      .registrationEndpoint.isNone
+    let null = parseJson(goodAs)
+    null["registration_endpoint"] = newJNull()
+    check parseAuthorizationServerMetadata(null, "https://auth.example.com/tenant1", policy)
+      .registrationEndpoint.isNone
+
+  test "Given JSON that is absent, not an object, or has the key of another type, when a string is read, then there is none":
+    check strField(nil, "a").isNone
+    check strField(%*[1, 2], "a").isNone
+    check strField(%*{"a": 1}, "a").isNone
+    check strField(%*{"a": nil}, "a").isNone
+    check strField(%*{"b": "x"}, "a").isNone
+    check strField(%*{"a": "x"}, "a") == some("x")
+
+  test "Given an error answer that is not JSON, when the error is built, then it names the HTTP status and is no OAuth error response":
+    let e = errorFrom(HttpReply(code: 502, body: "<html>bad gateway</html>"), "the token request")
+    check e.msg == "the token request failed with HTTP 502"
+    check not (e of OAuthServerError)
+
+  test "Given an OAuth error answer, when the error is built, then the description follows only when there is one":
+    check errorFrom(HttpReply(code: 400, body: """{"error": "invalid_redirect_uri"}"""),
+      "client registration").msg == "client registration was refused: invalid_redirect_uri"
+    check errorFrom(HttpReply(code: 400, body: """{"error": "invalid_redirect_uri", "error_description": ""}"""),
+      "client registration").msg == "client registration was refused: invalid_redirect_uri"
+    check errorFrom(HttpReply(code: 400, body: """{"error": "invalid_redirect_uri", "error_description": "no fragments"}"""),
+      "client registration").msg ==
+      "client registration was refused: invalid_redirect_uri (no fragments)"
+
+  test "Given redirect URIs with a fragment, no host, plain http to a remote host or another scheme, when checked, then they are refused":
+    for bad in ["https://app.example/cb#frag", "https:///cb", "/cb", "http://app.example/cb",
+                "ftp://app.example/cb"]:
+      checkpoint bad
+      expect OAuthSecurityError:
+        checkRedirectUri(bad)
+    for good in ["https://app.example/cb", "http://127.0.0.1:8080/cb", "http://localhost/cb"]:
+      checkpoint good
+      checkRedirectUri(good)
+
+  test "Given a plain http redirect URI to a remote host, when an authorization request is made, then no request is made":
+    expect OAuthSecurityError:
+      discard newRequest("http://app.example/cb")
+
+  test "Given a response whose state has the length of the request's but differs, when the code is read, then it is refused":
+    let request = newRequest()
+    let state = stateOf(request.authorizationUrl)
+    check state.len > 0
+    var forged = state
+    forged[0] = if state[0] == 'A': 'B' else: 'A'
+    expect OAuthSecurityError:
+      discard request.authorizationCode({"state": forged, "code": "c"})
+    check request.authorizationCode({"state": state, "code": "c"}) == "c"
+
+  test "Given a response with a matching state but no code or an empty one, when the code is read, then it is refused":
+    let request = newRequest()
+    let state = stateOf(request.authorizationUrl)
+    expect OAuthError:
+      discard request.authorizationCode({"state": state})
+    expect OAuthError:
+      discard request.authorizationCode({"state": state, "code": ""})
+
+  test "Given a token response without an access token or with an empty one, when parsed, then it is refused":
+    for body in ["""{"token_type": "Bearer"}""", """{"access_token": "", "token_type": "Bearer"}""",
+                 """{"access_token": 7, "token_type": "Bearer"}"""]:
+      checkpoint body
+      expect OAuthError:
+        discard parseTokenResponse(HttpReply(code: 200, body: body), "https://as.example", @[],
+          none(string), fromUnix(1_800_000_000))
+
+  test "Given a registration response without a client_id or with an empty one, when read, then registration fails":
+    for body in ["""{"client_secret": "s"}""", """{"client_id": ""}""", """{"client_id": 5}"""]:
+      checkpoint body
+      expect OAuthError:
+        discard registeredWith(Http201, body)
+
+  test "Given a registration response with a client_id, when read, then the client is known by it":
+    let credentials = registeredWith(Http201, """{"client_id": "abc"}""")
+    check credentials.clientId == "abc"
+    check credentials.authMethod == "none"
