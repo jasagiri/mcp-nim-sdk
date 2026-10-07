@@ -106,7 +106,7 @@
 | `src/server/resources.nim`、`src/server/prompts.nim` | 削除 (どこからも使われていなかった) | (なし) |
 | `src/client/client.nim` | 送信に失敗した要求を待ちの表から外す (`startRequest`)。到達しない文 2 つを削除、`discover` の末尾を `raiseAssert` に | `tests/test_client_requests.nim` |
 | `src/protocol/lifecycle.nim` | 呼び出し元の無い補助関数 4 つを削除 | `tests/test_legacy_handshake.nim` |
-| `src/transport/first_of.nim` | 新規。`firstOf`、`Doorbell`。future の既存コールバックを消さずに最初の 1 つを待つ | `tests/test_first_of.nim` (内部実装テスト)。外部仕様テストは下の各モジュールの行 |
+| `src/transport/first_of.nim` | 新規。`firstOf`、`Doorbell`。future の既存コールバックを消さずに最初の 1 つを待つ | `tests/test_first_of.nim` (内部実装テスト)。外部仕様テストは下の各モジュールの行。変異検査は `http_client` ジョブで測る (未測定) |
 | `src/client/client.nim` | `sendOnce`、`startRequest` の待ちを `or` から `firstOf` に。取り消しトークンを共有する複数の要求が全部取り消される。`startRequest` の `try/except` は不要になり削除 | `tests/test_client_requests.nim` (MCP-CANCEL-4。待ち手が残らないことは内部実装テスト) |
 | `src/client/subscriptions.nim` | `listen` の待ちを `firstOf` に。トークン共有 | `tests/test_subscriptions.nim` (MCP-SUBSCRIBE-11) |
 | `src/transport/http_wire.nim` | 読み取りと `close`、接続と応答ヘッダーのタイムアウトの待ちを `firstOf` に。`leftOpen` を読み取りごとの `interrupt` に | `tests/test_http_unresponsive.nim`、`tests/test_http_client_streams.nim`、`tests/test_http_sse_legacy.nim`、`tests/test_security_wire_limits.nim` |
