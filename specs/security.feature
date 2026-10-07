@@ -176,6 +176,19 @@ Feature: Security properties
     When the server answers after the timeout
     Then the client closes that connection
 
+  @spec:MCP-SEC-WIRE-g2f-ap-a-1
+  Scenario: An icon that is refused after its answer began leaves no connection behind
+    Given an icon request that the server answered with a status other than 200
+    When the fetch is refused
+    Then the client has closed the connection without reading the body
+
+  @spec:MCP-SEC-WIRE-g2f-ap-a-2
+  Scenario: A guarded request is plain http for loopback only and follows no redirect unless asked
+    Given a request to a host that resolves to an address the policy allows
+    When the scheme is http and the address is not loopback
+    Then the request is refused before any connection
+    And a redirect is returned as the answer unless the caller asked for redirects to be followed
+
   @spec:MCP-SEC-WIRE-8
   Scenario: An icon is fetched only from an address its server's spelling allows
     Given an icon of a server the user addressed by a name

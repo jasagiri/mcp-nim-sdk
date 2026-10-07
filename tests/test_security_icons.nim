@@ -15,9 +15,9 @@ type LateServer = ref object
   peerClosed: bool
     ## The client closed its end after the answer was sent.
 
-proc startLateServer(delayMs: int): LateServer =
-  ## Answers every request with a PNG after `delayMs`, then waits for the
-  ## client to close the connection.
+proc startLateServer(delayMs: int, status = "200 OK"): LateServer =
+  ## Answers every request with a PNG after `delayMs` (with `status`), then
+  ## waits for the client to close the connection.
   let server = LateServer(socket: newAsyncSocket(buffered = false))
   server.socket.setSockOpt(OptReuseAddr, true)
   server.socket.bindAddr(Port(0), "127.0.0.1")
@@ -31,7 +31,7 @@ proc startLateServer(delayMs: int): LateServer =
         return
       request.add data
     await sleepAsync(delayMs)
-    await client.send("HTTP/1.1 200 OK\c\LContent-Type: image/png\c\LConnection: close\c\L" &
+    await client.send("HTTP/1.1 " & status & "\c\LContent-Type: image/png\c\LConnection: close\c\L" &
                       "Content-Length: " & $Png.len & "\c\L\c\L" & Png)
     # Nothing more is sent; the client closes, or never does.
     let rest = await client.recv(1)
@@ -90,3 +90,18 @@ suite "the address an icon is fetched from":
     let outcome = failure(options)
     check outcome.len > 0
     check "private" notin outcome
+
+suite "an icon fetch that ends (mutation review, g2f-ap-a)":
+
+  test "Given an answer that is not 200, when the fetch is refused, then the connection is closed":
+    let server = startLateServer(delayMs = 0, status = "404 Not Found")
+    var options = IconFetchOptions()
+    let port = server.port
+    options.get = proc(url: string, headers: HttpHeaders): Future[WireResponse] {.closure, gcsafe.} =
+      wire.request("http://127.0.0.1:" & $port & "/icon.png", HttpGet, headers)
+    check "404" in failure(options)
+    var waited = 0
+    while not server.peerClosed and waited < 3000:
+      poll(20)
+      waited += 20
+    check server.peerClosed

@@ -154,3 +154,31 @@ suite "fetching an icon":
     except McpIconError:
       failed = true
     check failed
+
+suite "fetching an icon (mutation review, g2f-ap-a)":
+  test "Given nothing but the signature of an image type, when sniffed, then the type is the one the signature says":
+    check sniffIcon("\x89PNG\r\n\x1a\n") == some(itPng)
+    check sniffIcon("\xFF\xD8\xFF") == some(itJpeg)
+    check sniffIcon("RIFF\x00\x00\x00\x00WEBP") == some(itWebp)
+
+  test "Given a signature cut short, when sniffed, then there is no type":
+    check sniffIcon("\x89PNG\r\n\x1a").isNone
+    check sniffIcon("\xFF\xD8").isNone
+    check sniffIcon("RIFF\x00\x00\x00\x00WEB").isNone
+    check sniffIcon("").isNone
+
+  test "Given markup that opens with a comment or a doctype, when it holds an svg element, then it is an SVG":
+    check sniffIcon("<!-- an icon --><svg xmlns=\"http://www.w3.org/2000/svg\"/>") == some(itSvg)
+    check sniffIcon("<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\"><svg/>") == some(itSvg)
+    check sniffIcon("\xEF\xBB\xBF \n<svg/>") == some(itSvg)
+
+  test "Given markup that holds no svg element at its start, when sniffed, then it is not an SVG":
+    check sniffIcon("<?xml version=\"1.0\"?><rss version=\"2.0\"/>").isNone
+    check sniffIcon("<html><body><svg/></body></html>").isNone
+    check sniffIcon("<!-- a page --><html/>").isNone
+
+  test "Given a data URI icon of exactly the allowed size, when fetched, then it is read; one byte more, refused":
+    let port = startServer(Seen())
+    let uri = "data:image/png;base64," & encode(Png)
+    check port.fetch(uri, options = IconFetchOptions(maxBytes: Png.len)).kind == itPng
+    check "exceeds" in port.refused(uri, options = IconFetchOptions(maxBytes: Png.len - 1))

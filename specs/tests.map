@@ -1249,6 +1249,11 @@ MCP-ICONS-6 | tests/test_icon_fetch.nim | Given a redirect inside the origin, wh
 MCP-ICONS-6 | tests/test_icon_fetch.nim | Given an icon of another origin or scheme, when fetched, then nothing is sent
 MCP-ICONS-6 | tests/test_icon_fetch.nim | Given a data URI, when fetched, then the bytes are checked like any others
 MCP-ICONS-6 | tests/test_icon_fetch.nim | Given a fetch without the server's origin, when asked for a URL, then it is refused
+MCP-ICONS-g2f-ap-a-1 | tests/test_icon_fetch.nim | Given nothing but the signature of an image type, when sniffed, then the type is the one the signature says
+MCP-ICONS-g2f-ap-a-1 | tests/test_icon_fetch.nim | Given a signature cut short, when sniffed, then there is no type
+MCP-ICONS-g2f-ap-a-1 | tests/test_icon_fetch.nim | Given markup that opens with a comment or a doctype, when it holds an svg element, then it is an SVG
+MCP-ICONS-g2f-ap-a-1 | tests/test_icon_fetch.nim | Given markup that holds no svg element at its start, when sniffed, then it is not an SVG
+MCP-ICONS-g2f-ap-a-2 | tests/test_icon_fetch.nim | Given a data URI icon of exactly the allowed size, when fetched, then it is read; one byte more, refused
 MCP-SAMPLING-TOOLS-8 | tests/test_sampling_tools_payload.nim | Given an audio block in a message, when the request is checked, then only versions with audio content accept it
 MCP-SAMPLING-TOOLS-8 | tests/test_sampling_tools_payload.nim | Given an image block in a message, when the request is checked, then every version accepts it
 MCP-EXT-10 | tests/test_extensions.nim | Given extensions registered without onLegacyHandshake, when a legacy client initializes, then the request and the result are those of a peer with no extensions
@@ -1389,6 +1394,9 @@ MCP-SEC-WIRE-5 | tests/test_security_address.nim | Given a name that resolves to
 MCP-SEC-WIRE-6 | tests/test_security_address.nim | Given a policy and a server URL, when narrowed, then loopback stays allowed only for a loopback server
 MCP-SEC-WIRE-6 | tests/test_security_address.nim | Given a remote server that names a loopback metadata URL, when the client answers its 401, then OAuthSecurityError is raised and nothing is requested
 MCP-SEC-WIRE-7 | tests/test_security_icons.nim | Given an answer that comes after the timeout, when the fetch has failed, then the connection is closed
+MCP-SEC-WIRE-g2f-ap-a-1 | tests/test_security_icons.nim | Given an answer that is not 200, when the fetch is refused, then the connection is closed
+MCP-SEC-WIRE-g2f-ap-a-2 | tests/test_security_address.nim | Given a name that resolves to a private address, when plain http is asked for, then it is refused before any connection
+MCP-SEC-WIRE-g2f-ap-a-2 | tests/test_security_address.nim | Given an answer that redirects, when no one asked for redirects to be followed, then the redirect is the answer
 MCP-SEC-WIRE-8 | tests/test_security_icons.nim | Given a server whose name resolves to a loopback address, when its icon is fetched, then the fetch is refused
 MCP-SEC-WIRE-8 | tests/test_security_icons.nim | Given a server whose name resolves to a metadata service address, when its icon is fetched, then the fetch is refused
 MCP-SEC-WIRE-8 | tests/test_security_icons.nim | Given a server whose name resolves to a private address, when its icon is fetched, then it is refused unless private networks are allowed

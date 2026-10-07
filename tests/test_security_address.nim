@@ -2,8 +2,10 @@
 ## network: judged on the address a host stands for, in whatever notation,
 ## and on what a name resolves to, never on the text of the URL.
 
-import std/[unittest, asyncdispatch, asyncnet, json, net, nativesockets, options, strutils]
+import std/[unittest, asyncdispatch, asyncnet, httpcore, json, net, nativesockets, options, strutils]
 import transport/address_policy
+import transport/guarded_wire
+import transport/http_wire as wire
 import auth/client
 import auth/oauth/[errors, fetch, urls]
 import protocol/[version, features]
@@ -161,3 +163,43 @@ suite "loopback only for a server the user chose":
         "https://mcp.example.test/mcp", "http://127.0.0.1:53682/callback", authorize))
       check "loopback" in refused(oauth.handleChallenge(401,
         @["Bearer resource_metadata=\"http://127.0.0.1:1/.well-known/oauth-protected-resource\""]))
+
+suite "a guarded request (mutation review, g2f-ap-a)":
+
+  test "Given a name that resolves to a private address, when plain http is asked for, then it is refused before any connection":
+    # Plain http is for loopback only, whatever the policy lets through.
+    var policy = DestinationPolicy(allowPrivateNetworks: true)
+    let resolver = resolving({"lan.example.test": @["10.0.0.5"]})
+    var message = ""
+    try:
+      discard waitFor guardedRequest("http://lan.example.test/x", HttpGet, policy, resolver,
+                                     connectTimeoutMs = 200)
+    except AddressNotAllowed as e:
+      message = e.msg
+    check "plain http" in message
+
+  test "Given an answer that redirects, when no one asked for redirects to be followed, then the redirect is the answer":
+    let listener = newAsyncSocket(buffered = false)
+    listener.setSockOpt(OptReuseAddr, true)
+    listener.bindAddr(Port(0), "127.0.0.1")
+    listener.listen()
+    let port = listener.getLocalAddr()[1].int
+    proc serveOne(client: AsyncSocket) {.async.} =
+      let request = await client.recv(4096)
+      if request.startsWith("GET /moved "):
+        await client.send("HTTP/1.1 302 Found\c\LLocation: /here\c\LContent-Length: 0\c\L\c\L")
+      else:
+        await client.send("HTTP/1.1 200 OK\c\LContent-Length: 0\c\L\c\L")
+      client.close()
+    proc serve() {.async.} =
+      while true:
+        asyncCheck serveOne(await listener.accept())
+    asyncCheck serve()
+    let policy = DestinationPolicy(allowLoopback: true)
+    let url = "http://127.0.0.1:" & $port & "/moved"
+    let unfollowed = waitFor guardedRequest(url, HttpGet, policy)
+    check unfollowed.code == Http302
+    unfollowed.close()
+    let followed = waitFor guardedRequest(url, HttpGet, policy, followRedirects = true)
+    check followed.code == Http200
+    followed.close()
