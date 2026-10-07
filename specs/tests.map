@@ -54,6 +54,8 @@ MCP-RESULT-1 | tests/test_modern_protocol.nim | Given a tools/call result, when 
 MCP-RESULT-1 | tests/test_modern_protocol.nim | Given results with each resultType, when classified, then absent means complete and unknown values are unknown
 MCP-RESULT-1 | tests/test_era_matrix.nim | Given a result with a resultType the client does not know, when a request completes, then the client raises instead of returning it
 MCP-RESULT-1 | tests/test_era_matrix.nim | Given a result without resultType from an older server, when a request completes, then it is returned as complete
+MCP-RESULT-1 | tests/test_modern_protocol.nim | Given no result or a result that is not an object, when classified, then it is complete
+MCP-RESULT-1 | tests/test_modern_protocol.nim | Given a result that is not a JSON object, when completed, then it is refused as a programming error
 MCP-CACHE-1 | tests/test_modern_protocol.nim | Given a tools/list result and a cache policy, when completed, then it carries that policy
 MCP-CACHE-1 | tests/test_modern_protocol.nim | Given a cacheable result and no policy, when completed, then it is marked not reusable and private
 MCP-CACHE-1 | tests/test_modern_protocol.nim | Given a result whose handler already set cache fields, when completed, then the handler's values are kept
@@ -104,6 +106,11 @@ MCP-HTTP-5 | tests/test_streamable_http.nim | Given an initialize the server rej
 MCP-HTTP-6 | tests/test_streamable_http.nim | Given the specification's tools/call request, when posted with its headers, then the answer is 200 with a complete result
 MCP-HTTP-6 | tests/test_streamable_http.nim | Given an Mcp-Name that differs from the body, when posted, then the answer is 400 header mismatch
 MCP-HTTP-6 | tests/test_streamable_http.nim | Given each required header missing in turn, when posted, then the answer is 400 header mismatch
+MCP-HTTP-6 | tests/test_modern_protocol.nim | Given a _meta without a string protocol version, when headers are built, then there is no version header
+MCP-HTTP-6 | tests/test_modern_protocol.nim | Given params that do not hold a string where Mcp-Name mirrors, when asked for the source, then there is none
+MCP-HTTP-6 | tests/test_modern_protocol.nim | Given a method that carries no Mcp-Name, when asked for the source, then there is none even if params has an empty key
+MCP-HTTP-6 | tests/test_modern_protocol.nim | Given the extension methods, when asked without saying the extension is served, then Mcp-Name is not required
+MCP-HTTP-6 | tests/test_modern_protocol.nim | Given a tasks/get with no Mcp-Name, when checked without saying the extension is served, then the headers agree
 MCP-HTTP-7 | tests/test_streamable_http.nim | Given a 2026-07-28 request, when sent, then it carries the mirrored headers and no session id
 MCP-HTTP-8 | tests/test_streamable_http.nim | Given an HTTP server, when the client connects and calls a tool, then the call succeeds in the newest common version
 MCP-HTTP-8 | tests/test_streamable_http.nim | Given an HTTP server limited to a legacy version, when a newer client connects, then it falls back to initialize and calls a tool
@@ -560,6 +567,11 @@ MCP-HTTP-10 | tests/test_param_headers.nim | Given an integer header, when check
 MCP-HTTP-10 | tests/test_param_headers.nim | Given a boolean header, when checked, then only true and false in lowercase agree
 MCP-HTTP-10 | tests/test_param_headers.nim | Given headers the tool did not declare, when checked, then they are left alone
 MCP-HTTP-10 | tests/test_param_headers.nim | Given a long mismatching value, when the error is built, then the message quotes only a prefix
+MCP-HTTP-10 | tests/test_modern_protocol.nim | Given a sentinel with more than two pad characters, when decoded, then the header is malformed
+MCP-HTTP-10 | tests/test_modern_protocol.nim | Given a sentinel whose payload uses the URL-safe alphabet, when decoded, then the header is malformed
+MCP-HTTP-10 | tests/test_modern_protocol.nim | Given the empty value, when encoded and decoded, then it stays plain
+MCP-HTTP-10 | tests/test_modern_protocol.nim | Given values that only partly look like the sentinel, when encoded and decoded, then they stay plain
+MCP-HTTP-10 | tests/test_modern_protocol.nim | Given the sentinel around an empty payload, when decoded, then it is the empty value, and when that text is a value, then it is Base64
 MCP-HTTP-11 | tests/test_param_headers_http.nim | Given a tool whose x-mcp-header is invalid, when tools are listed, then the server does not publish it
 MCP-HTTP-11 | tests/test_param_headers_http.nim | Given a server that lists an invalid tool, when the client lists tools, then the invalid tool is excluded and the others stay
 MCP-HTTP-12 | tests/test_param_headers_http.nim | Given a client that listed tools, when it calls one with x-mcp-header, then the request carries Mcp-Param-Region

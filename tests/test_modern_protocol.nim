@@ -185,6 +185,16 @@ suite "2026-07-28: results":
     check resultKind(%*{"resultType": "task"}) == rkUnknown
     check resultKind(%*{"resultType": 1}) == rkUnknown
 
+  test "Given no result or a result that is not an object, when classified, then it is complete":
+    check resultKind(nil) == rkComplete
+    check resultKind(%*[1, 2]) == rkComplete
+
+  test "Given a result that is not a JSON object, when completed, then it is refused as a programming error":
+    expect AssertionDefect:
+      discard completeResult("tools/list", nil, server())
+    expect AssertionDefect:
+      discard completeResult("tools/list", %*[1], server())
+
 suite "2026-07-28: discovery":
 
   test "Given a server's versions and capabilities, when the discover result is built, then it matches the specification's example":
@@ -263,6 +273,27 @@ suite "2026-07-28: header value encoding":
     check decodeHeaderValue("=?base64?SGVsbG8===?=").isNone
     check decodeHeaderValue("=?base64?SG=sbG8=?=").isNone
 
+  test "Given a sentinel with more than two pad characters, when decoded, then the header is malformed":
+    check decodeHeaderValue("=?base64?SA======?=").isNone
+    check decodeHeaderValue("=?base64?A===?=").isNone
+
+  test "Given a sentinel whose payload uses the URL-safe alphabet, when decoded, then the header is malformed":
+    check decodeHeaderValue("=?base64?SGVs-G8=?=").isNone
+    check decodeHeaderValue("=?base64?SGVs_G8=?=").isNone
+
+  test "Given the empty value, when encoded and decoded, then it stays plain":
+    check encodeHeaderValue("") == ""
+    check decodeHeaderValue("") == some("")
+
+  test "Given values that only partly look like the sentinel, when encoded and decoded, then they stay plain":
+    for value in ["=?base64?abc", "abc?=", "=?base64?=", "=?base64?"]:
+      check encodeHeaderValue(value) == value
+      check decodeHeaderValue(value) == some(value)
+
+  test "Given the sentinel around an empty payload, when decoded, then it is the empty value, and when that text is a value, then it is Base64":
+    check decodeHeaderValue("=?base64??=") == some("")
+    check encodeHeaderValue("=?base64??=") == "=?base64?PT9iYXNlNjQ/Pz0=?="
+
   test "Given a plain value with a raw control or non-ASCII character, when decoded, then the header is malformed":
     check decodeHeaderValue("line1\nline2").isNone
     check decodeHeaderValue("世界").isNone
@@ -285,6 +316,35 @@ suite "2026-07-28: Streamable HTTP request headers":
   test "Given a prompts/get request with a non-ASCII name, when headers are built, then Mcp-Name is Base64":
     let params = modernParams(%*{"name": "挨拶"})
     check modernRequestHeaders("prompts/get", params)[2][1].startsWith("=?base64?")
+
+  test "Given a _meta without a string protocol version, when headers are built, then there is no version header":
+    check modernRequestHeaders("tools/list", %*{"_meta": {}}) == @[("Mcp-Method", "tools/list")]
+    check modernRequestHeaders("tools/list",
+      %*{"_meta": {"io.modelcontextprotocol/protocolVersion": 20260728}}) ==
+      @[("Mcp-Method", "tools/list")]
+
+  test "Given params that do not hold a string where Mcp-Name mirrors, when asked for the source, then there is none":
+    check headerNameSource("tools/call", nil).isNone
+    check headerNameSource("tools/call", %*[1]).isNone
+    check headerNameSource("tools/call", newJObject()).isNone
+    check headerNameSource("tools/call", %*{"name": 5}).isNone
+    check headerNameSource("tools/call", %*{"name": "x"}) == some("x")
+
+  test "Given a method that carries no Mcp-Name, when asked for the source, then there is none even if params has an empty key":
+    check headerNameSource("tools/list", %*{"": "x", "name": "y"}).isNone
+
+  test "Given the extension methods, when asked without saying the extension is served, then Mcp-Name is not required":
+    check not requiresNameHeader("tasks/get")
+    check requiresNameHeader("tasks/get", true)
+    check not requiresNameHeader("tools/list", true)
+    check requiresNameHeader("tools/call")
+
+  test "Given a tasks/get with no Mcp-Name, when checked without saying the extension is served, then the headers agree":
+    let params = modernParams(%*{"taskId": "t1"})
+    check checkRequestHeaders(some("2026-07-28"), some("tasks/get"), none(string),
+                              "tasks/get", params).isNone
+    check checkRequestHeaders(some("2026-07-28"), some("tasks/get"), none(string),
+                              "tasks/get", params, true).isSome
 
   test "Given a tools/list request, when headers are built, then there is no Mcp-Name":
     check modernRequestHeaders("tools/list", modernParams()) == @[
