@@ -182,57 +182,57 @@ Feature: Streamable HTTP transport
     Then its port is bound at once and it answers requests
     And the start ends only when the transport is closed
 
-  @spec:MCP-HTTP-g2g-hc-b-1
+  @spec:MCP-HTTP-32
   Scenario: A request that is over is forgotten, and cancelling it does nothing
     Given a request that was answered with a JSON body or an event stream, failed after the connection was made, or was cancelled while the server was silent or its body was arriving
     When the client cancels it afterwards and sends the same id again
     Then the new request is not taken for a cancelled one: when its stream ends without a response, the stream-closed error is delivered
 
-  @spec:MCP-HTTP-g2g-hc-b-2
+  @spec:MCP-HTTP-33
   Scenario: Closing the transport ends the event streams it has open
     Given a request whose answer is an event stream that is still open
     When the transport is closed
     Then the server sees the client leave
 
-  @spec:MCP-HTTP-g2g-hc-b-3
+  @spec:MCP-HTTP-34
   Scenario: An answer without a body ends the connection
     Given a server that answers a notification with 202, or DELETE with 204, and sends no body
     When the client has the answer
     Then the client closes the connection and does not leave it open
 
-  @spec:MCP-HTTP-g2g-hc-b-4 @feature:ftHttpGetStream
+  @spec:MCP-HTTP-35 @feature:ftHttpGetStream
   Scenario: The GET stream is opened once
     Given a session whose GET stream is open
     When the client says initialized again
     Then no second GET stream is opened
 
-  @spec:MCP-HTTP-g2g-hc-b-5 @feature:ftHttpSessions
+  @spec:MCP-HTTP-36 @feature:ftHttpSessions
   Scenario: A refusal of DELETE is logged unless the server may refuse it
     Given a session that the client ends by closing
     When the server answers DELETE with 500, or drops the connection
     Then the refusal or the failure is logged and closing succeeds
     And an answer of 204 or 405 is not logged
 
-  @spec:MCP-HTTP-g2g-hc-b-6
+  @spec:MCP-HTTP-37
   Scenario: A notification names the protocol version only in the versions that have the header
     Given a transport that negotiated a version
     When it sends a notification
     Then MCP-Protocol-Version is present for 2025-06-18 and 2025-11-25 and absent for 2024-11-05, 2025-03-26 and 2026-07-28
 
-  @spec:MCP-HTTP-g2g-hc-b-7
+  @spec:MCP-HTTP-38
   Scenario: Authorization is retried at most three times per request
     Given a hook that always says it improved things and a server that keeps refusing
     When a request is sent
     Then it is posted four times in all and McpAuthorizationError counts three attempts
 
-  @spec:MCP-HTTP-g2g-hc-b-8 @feature:ftParameterHeaders
+  @spec:MCP-HTTP-39 @feature:ftParameterHeaders
   Scenario: Only a call that names 2026-07-28 and a tool carries Mcp-Param headers
     Given a transport that listed a tool with x-mcp-header
     When a tools/call is sent whose _meta lacks the version or names another, or that names no tool
     Then it is posted without Mcp-Param headers, and without failing
     And an answer to anything but a tools/list that was sent is not read as a tool list
 
-  @spec:MCP-HTTP-g2g-hc-a-1
+  @spec:MCP-HTTP-26
   Scenario: The client mirrors the x-mcp-header declarations of the latest tools/list answer
     Given a client that listed a tool declaring x-mcp-header
     When a later listing declares the tool invalid, or without the header, a call no longer carries Mcp-Param-Region
@@ -240,20 +240,20 @@ Feature: Streamable HTTP transport
     And a tool left out of a listing is named in the log
     And an answer that has no tools array is handed over as it is
 
-  @spec:MCP-HTTP-g2g-hc-a-2
+  @spec:MCP-HTTP-27
   Scenario: A response is accepted up to the limit, and an HTTP error is a JSON-RPC answer only if its body is one
     Given a client with a limit on the size of a response
     When a response is exactly as long as the limit, it is delivered
     And an HTTP error whose body has no jsonrpc version, or is no object, is a transport error carrying the status
 
-  @spec:MCP-HTTP-g2g-hc-a-3
+  @spec:MCP-HTTP-28
   Scenario: A request whose stream ends without its response is answered by a local error, and only then
     Given a request answered on an event stream
     When the stream carries the response and ends, nothing else is delivered
     And when it ends without it, the stream-closed error follows, whatever else it carried, even a request of the server with the same id
     And a transport that was closed delivers none, and a cancelled id can be used again
 
-  @spec:MCP-HTTP-g2g-hc-a-4
+  @spec:MCP-HTTP-29
   Scenario: The client closes the connection of a stream that ends and says why a stream failed
     Given event streams of a request and of the GET
     When an event is no JSON, the connection is closed and one log line names the failure
@@ -261,14 +261,14 @@ Feature: Streamable HTTP transport
     And closing the transport closes the connection of an open GET stream, also of one that was still being opened
     And every request after the negotiation of a version with the header, the GET and the DELETE included, names that version
 
-  @spec:MCP-HTTP-g2g-hc-a-5
+  @spec:MCP-HTTP-30
   Scenario: A POST stream is resumed from the last event id, however often it breaks while the server is working
     Given a stream broken before the response
     When a resumed stream carries no ids, the next resumption names the last id that was sent
     And a stream that delivers something resets the count of attempts
     And a resumed stream that carries the response ends the resumption
 
-  @spec:MCP-HTTP-g2g-hc-a-6
+  @spec:MCP-HTTP-31
   Scenario: The GET stream is opened once, reopened after a delay, and given up after the reconnect limit
     Given a session that has a GET stream
     When every stream ends at once, the client asks once and as often again as it may reconnect

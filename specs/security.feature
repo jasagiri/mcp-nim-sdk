@@ -328,7 +328,7 @@ Feature: Security properties
     Then it is loopback-only if all of its addresses are loopback, and not if any is not
     And the host written as an address is answered by the system resolver with that address
 
-  @spec:MCP-SEC-WIRE-g2g-hc-c-1
+  @spec:MCP-SEC-WIRE-15
   Scenario: The request is written as HTTP/1.1 asks
     Given a request to a URL with or without a port, a path and a query, and headers the caller chose
     When it is sent
@@ -337,7 +337,7 @@ Feature: Security properties
     And a header name is a token (digits allowed, never empty), and a URL with a space or a control character is refused before a connection is made
     And a URL without a port connects to the port of its scheme, and the host of the URL is the one connected to unless the caller chose an address
 
-  @spec:MCP-SEC-WIRE-g2g-hc-c-2
+  @spec:MCP-SEC-WIRE-16
   Scenario: The response head is read as HTTP/1.1 asks
     Given an answer from a server
     When its status line lacks a reason phrase, does not start with HTTP/, or has no status, or its head is empty, or a header line has no name, or its Content-Length is negative
@@ -345,14 +345,14 @@ Feature: Security properties
     And the answer to HEAD, and any 1xx, 204 or 304, has no body and is finished at once
     And a request that fails on what the server sent closes its connection, as does one that gets no answer within its header timeout
 
-  @spec:MCP-SEC-WIRE-g2g-hc-c-3
+  @spec:MCP-SEC-WIRE-17
   Scenario: A redirect is followed only within the origin and its connection is closed
     Given an answer that redirects
     When the location is on the same origin, on another host name with the same port, or under another scheme
     Then only the first is followed, the others are refused without anything sent there
     And the connection that gave the redirect is closed in every case
 
-  @spec:MCP-SEC-WIRE-g2g-hc-c-4
+  @spec:MCP-SEC-WIRE-18
   Scenario: Limits on a response, and the ends of a body
     Given a server answering a request
     When the head is exactly as long as the limit, or one byte over; a chunk size line is 64 bytes, or 65; a body is exactly or one byte over the size the caller allows
@@ -360,14 +360,14 @@ Feature: Security properties
     And a chunked body ends at its blank line after the last chunk (and any trailer), not before, and a chunk size line that arrives before its data does not end the body
     And a body cut short fails, and the response is finished; a connect timeout of 0 means no limit
 
-  @spec:MCP-SEC-WIRE-g2g-hc-c-5
+  @spec:MCP-SEC-WIRE-19
   Scenario: A response closed while a read waits ends the read without an error
     Given a read waiting for the head or for the body of a response
     When the response is closed by its holder
     Then the read ends as abandoned (the head) or with the end of the body, and no operating system error is reported
     And a read started on a response already closed ends the same way
 
-  @spec:MCP-SEC-WIRE-g2g-hc-c-6
+  @spec:MCP-SEC-WIRE-20
   Scenario: A connection that does not become a response is closed
     Given a request that fails before there is a response
     When the TLS certificate is refused, https is asked of a build without TLS, or a handshake finishes after its connect timeout

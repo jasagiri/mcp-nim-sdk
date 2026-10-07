@@ -466,27 +466,27 @@ MCP-HTTPSSE-10 | tests/test_http_sse_legacy.nim | Given a server that is down, w
 MCP-HTTPSSE-10 | tests/test_http_sse_legacy.nim | Given a full client and server, when the client connects through the wrapper to the old transport, then initialize and tools/list work
 MCP-HTTPSSE-11 | tests/test_http_sse_legacy.nim | Given the SSE endpoint switched off, when a client posts to the messages path, then the answer is 404
 MCP-HTTPSSE-11 | tests/test_http_sse_legacy.nim | Given the messages path, when a client sends GET, then the answer is 405 naming POST
-MCP-HTTPSSE-g2g-hc-d-1 | tests/test_http_sse_legacy.nim | Given an endpoint on the same host and port under another scheme, when the client connects, then it refuses it as another origin
-MCP-HTTPSSE-g2g-hc-d-1 | tests/test_http_sse_legacy.nim | Given an endpoint on another host at the same port, when the client connects, then it refuses it as another origin
-MCP-HTTPSSE-g2g-hc-d-1 | tests/test_http_sse_legacy.nim | Given an endpoint on the same host at another port, when the client connects, then it refuses it as another origin
-MCP-HTTPSSE-g2g-hc-d-1 | tests/test_http_sse_legacy.nim | Given an endpoint on another origin while the stream stays open, when the client connects, then it fails at once and says why
-MCP-HTTPSSE-g2g-hc-d-2 | tests/test_http_sse_legacy.nim | Given a stream that ends before it names an endpoint, when the client connects, then it fails at once and says so
-MCP-HTTPSSE-g2g-hc-d-3 | tests/test_http_sse_legacy.nim | Given events that are not messages, when the client reads the stream, then it skips them and delivers the next message
-MCP-HTTPSSE-g2g-hc-d-3 | tests/test_http_sse_legacy.nim | Given message events without data, when the client reads the stream, then it skips them and delivers the next message
-MCP-HTTPSSE-g2g-hc-d-4 | tests/test_http_sse_legacy.nim | Given a stream that ended some time ago, when the client then waits for a message, then McpTransportClosedError is raised at once
-MCP-HTTPSSE-g2g-hc-d-5 | tests/test_http_sse_legacy.nim | Given a stream that fails on a message that is not JSON, when the client has read it, then it closes its end of the connection
-MCP-HTTPSSE-g2g-hc-d-5 | tests/test_http_sse_legacy.nim | Given a server answering the stream request with 404, when the client gives up, then it closes its end of the connection
-MCP-HTTPSSE-g2g-hc-d-5 | tests/test_http_sse_legacy.nim | Given a server answering the stream request with something that is no event stream, when the client gives up, then it closes its end of the connection
-MCP-HTTPSSE-g2g-hc-d-5 | tests/test_http_sse_legacy.nim | Given a server that names no endpoint in time, when the client gives up, then it closes its end of the stream before it is closed itself
-MCP-HTTPSSE-g2g-hc-d-5 | tests/test_http_sse_legacy.nim | Given a POST the server answered, when the client has read the answer, then it closes its end of the POST connection
-MCP-HTTPSSE-g2g-hc-d-5 | tests/test_http_sse_legacy.nim | Given a connected client, when it is closed, then it closes its end of the stream
-MCP-HTTPSSE-g2g-hc-d-6 | tests/test_http_sse_legacy.nim | Given a stream that fails on a message that is not JSON, when the client reads it, then it says so on stderr
-MCP-HTTPSSE-g2g-hc-b-1 | tests/test_http_sse_legacy.nim | Given a server of the old transport, when the client sends a notification after falling back, then the server receives it
-MCP-HTTPSSE-g2g-hc-b-1 | tests/test_http_sse_legacy.nim | Given a server of the old transport, when the client answers a request after falling back, then the server receives the response
-MCP-HTTPSSE-g2g-hc-b-1 | tests/test_http_sse_legacy.nim | Given a version agreed through the wrapper, when a Streamable HTTP server is used, then later requests name it
-MCP-HTTPSSE-g2g-hc-b-1 | tests/test_http_sse_legacy.nim | Given a Streamable HTTP server that issued a session, when the wrapper closes, then the session is ended with DELETE
-MCP-HTTPSSE-g2g-hc-b-1 | tests/test_http_sse_legacy.nim | Given a server of the old transport, when the wrapper closes, then the stream ends and the server's session with it
-MCP-HTTPSSE-g2g-hc-b-1 | tests/test_http_sse_legacy.nim | Given a wrapper that has not decided, when it closes while a receive waits, then the receive fails with McpTransportError
+MCP-HTTPSSE-12 | tests/test_http_sse_legacy.nim | Given an endpoint on the same host and port under another scheme, when the client connects, then it refuses it as another origin
+MCP-HTTPSSE-12 | tests/test_http_sse_legacy.nim | Given an endpoint on another host at the same port, when the client connects, then it refuses it as another origin
+MCP-HTTPSSE-12 | tests/test_http_sse_legacy.nim | Given an endpoint on the same host at another port, when the client connects, then it refuses it as another origin
+MCP-HTTPSSE-12 | tests/test_http_sse_legacy.nim | Given an endpoint on another origin while the stream stays open, when the client connects, then it fails at once and says why
+MCP-HTTPSSE-13 | tests/test_http_sse_legacy.nim | Given a stream that ends before it names an endpoint, when the client connects, then it fails at once and says so
+MCP-HTTPSSE-14 | tests/test_http_sse_legacy.nim | Given events that are not messages, when the client reads the stream, then it skips them and delivers the next message
+MCP-HTTPSSE-14 | tests/test_http_sse_legacy.nim | Given message events without data, when the client reads the stream, then it skips them and delivers the next message
+MCP-HTTPSSE-15 | tests/test_http_sse_legacy.nim | Given a stream that ended some time ago, when the client then waits for a message, then McpTransportClosedError is raised at once
+MCP-HTTPSSE-16 | tests/test_http_sse_legacy.nim | Given a stream that fails on a message that is not JSON, when the client has read it, then it closes its end of the connection
+MCP-HTTPSSE-16 | tests/test_http_sse_legacy.nim | Given a server answering the stream request with 404, when the client gives up, then it closes its end of the connection
+MCP-HTTPSSE-16 | tests/test_http_sse_legacy.nim | Given a server answering the stream request with something that is no event stream, when the client gives up, then it closes its end of the connection
+MCP-HTTPSSE-16 | tests/test_http_sse_legacy.nim | Given a server that names no endpoint in time, when the client gives up, then it closes its end of the stream before it is closed itself
+MCP-HTTPSSE-16 | tests/test_http_sse_legacy.nim | Given a POST the server answered, when the client has read the answer, then it closes its end of the POST connection
+MCP-HTTPSSE-16 | tests/test_http_sse_legacy.nim | Given a connected client, when it is closed, then it closes its end of the stream
+MCP-HTTPSSE-17 | tests/test_http_sse_legacy.nim | Given a stream that fails on a message that is not JSON, when the client reads it, then it says so on stderr
+MCP-HTTPSSE-18 | tests/test_http_sse_legacy.nim | Given a server of the old transport, when the client sends a notification after falling back, then the server receives it
+MCP-HTTPSSE-18 | tests/test_http_sse_legacy.nim | Given a server of the old transport, when the client answers a request after falling back, then the server receives the response
+MCP-HTTPSSE-18 | tests/test_http_sse_legacy.nim | Given a version agreed through the wrapper, when a Streamable HTTP server is used, then later requests name it
+MCP-HTTPSSE-18 | tests/test_http_sse_legacy.nim | Given a Streamable HTTP server that issued a session, when the wrapper closes, then the session is ended with DELETE
+MCP-HTTPSSE-18 | tests/test_http_sse_legacy.nim | Given a server of the old transport, when the wrapper closes, then the stream ends and the server's session with it
+MCP-HTTPSSE-18 | tests/test_http_sse_legacy.nim | Given a wrapper that has not decided, when it closes while a receive waits, then the receive fails with McpTransportError
 MCP-SSE-1 | tests/test_event_stream.nim | Given a byte order mark after the first line, when read, then it stays part of that line's field name
 MCP-SSE-2 | tests/test_event_stream.nim | Given blank lines after an event, when read, then they dispatch nothing more
 MCP-SSE-3 | tests/test_event_stream.nim | Given a line of exactly the limit, when read, then it is accepted and one byte more raises SseLimitError
@@ -1453,55 +1453,55 @@ MCP-HOOKS-2 | tests/test_request_hooks.nim | Given a listen filter hook that rai
 MCP-HOOKS-3 | tests/test_request_hooks.nim | Given a filter that turns a 2026-07-28 result into something that is not an object, when the request is answered, then it is an internal error
 MCP-HOOKS-4 | tests/test_request_hooks.nim | Given interceptors, when a request is served, then they run in the order added, the first answer ends the matter and none lets the server carry on
 MCP-HTTP-6 | tests/test_streamable_http.nim | Given a server without the extension that defines it, when tasks/get is posted without Mcp-Name, then the answer is method not found and not a header mismatch
-MCP-HTTP-g2g-hc-b-1 | tests/test_http_client_streams.nim | Given a request whose answer was a JSON body, when the client cancels it afterwards and sends the id again, then the new request is not taken for a cancelled one
-MCP-HTTP-g2g-hc-b-1 | tests/test_http_client_streams.nim | Given a request whose answer was an event stream, when the client cancels it afterwards and sends the id again, then the new request is not taken for a cancelled one
-MCP-HTTP-g2g-hc-b-1 | tests/test_http_client_streams.nim | Given a request that failed after the connection was made, when the client cancels it afterwards and sends the id again, then the new request is not taken for a cancelled one
-MCP-HTTP-g2g-hc-b-1 | tests/test_http_client_streams.nim | Given a request cancelled while the server was silent, when the id is sent again, then the new request is not taken for a cancelled one
-MCP-HTTP-g2g-hc-b-1 | tests/test_http_client_streams.nim | Given a request cancelled while its JSON body is arriving, when the client cancels, then sendRequest returns without an error and the id is free again
-MCP-HTTP-g2g-hc-b-2 | tests/test_http_client_streams.nim | Given a request whose event stream is open, when the transport closes, then the server sees the client leave
-MCP-HTTP-g2g-hc-b-3 | tests/test_http_client_streams.nim | Given a server that answers a notification with 202 and an empty body, when the notification is sent, then the client closes the connection
-MCP-HTTP-g2g-hc-b-3 | tests/test_http_client_streams.nim | Given a server that answers DELETE with 204 and no body, when the client closes, then the client closes the connection
-MCP-HTTP-g2g-hc-b-4 | tests/test_http_client_streams.nim | Given a client that says initialized twice, when the GET stream is already open, then it does not open a second one
-MCP-HTTP-g2g-hc-b-5 | tests/test_http_client_streams.nim | Given a server that answers DELETE with 500, when the client closes, then the refusal is logged and closing succeeds
-MCP-HTTP-g2g-hc-b-5 | tests/test_http_client_streams.nim | Given a server that answers DELETE with 204 or 405, when the client closes, then nothing is logged
-MCP-HTTP-g2g-hc-b-5 | tests/test_http_client_streams.nim | Given a server that drops the connection on DELETE, when the client closes, then the failure is logged and closing succeeds
-MCP-HTTP-g2g-hc-b-6 | tests/test_streamable_http.nim | Given versions without the header, when a notification is sent, then it names no protocol version
-MCP-HTTP-g2g-hc-b-6 | tests/test_streamable_http.nim | Given versions with the header, when a notification is sent, then it names the negotiated version
-MCP-HTTP-g2g-hc-b-7 | tests/test_auth_failure.nim | Given a hook that always says it improved things, when the server keeps refusing, then the request is posted again three times and the failure counts them
-MCP-HTTP-g2g-hc-b-8 | tests/test_param_headers_http.nim | Given a call that does not name 2026-07-28, when it is sent after the tool was listed, then it carries no Mcp-Param header
-MCP-HTTP-g2g-hc-b-8 | tests/test_param_headers_http.nim | Given a 2026-07-28 tools/call without a tool name, when it is sent, then it is posted without Mcp-Param headers
-MCP-HTTP-g2g-hc-b-8 | tests/test_param_headers_http.nim | Given a tools/list that failed, when its id is used again by another request, then that answer is not read as a tool list
-MCP-HTTP-g2g-hc-a-1 | tests/test_param_headers_http.nim | Given a tools/list answer without a tools member, when the client reads it, then the answer is handed over as it is
-MCP-HTTP-g2g-hc-a-1 | tests/test_param_headers_http.nim | Given a tools/list answer whose tools member is no array, when the client reads it, then the answer is handed over as it is
-MCP-HTTP-g2g-hc-a-1 | tests/test_param_headers_http.nim | Given a tool listed with x-mcp-header, when the next listing declares it invalid, then a call no longer carries the header
-MCP-HTTP-g2g-hc-a-1 | tests/test_param_headers_http.nim | Given a tool listed with x-mcp-header, when the next listing no longer declares it, then a call no longer carries the header
-MCP-HTTP-g2g-hc-a-1 | tests/test_param_headers_http.nim | Given a tools/list answered twice with the same id, when the second answer drops the header, then the first answer is what counts
-MCP-HTTP-g2g-hc-a-1 | tests/test_param_headers_http.nim | Given a request of the server whose id equals that of a pending tools/list, when the answer follows, then the answer is what counts
-MCP-HTTP-g2g-hc-a-1 | tests/test_param_headers_http.nim | Given a tool listed with an invalid x-mcp-header, when the client reads the listing, then it says which tool it left out
-MCP-HTTP-g2g-hc-a-2 | tests/test_http_client_streams.nim | Given a body exactly as long as the limit, when a request is sent, then the response is delivered
-MCP-HTTP-g2g-hc-a-2 | tests/test_http_client_streams.nim | Given an HTTP error whose JSON body has an error but no jsonrpc version, when a request is sent, then it is a transport error with the status
-MCP-HTTP-g2g-hc-a-2 | tests/test_http_client_streams.nim | Given an HTTP error whose JSON body is no object, when a request is sent, then it is a transport error with the status
-MCP-HTTP-g2g-hc-a-3 | tests/test_http_client_streams.nim | Given a stream that carries the response and then ends, when the response was read, then nothing else is delivered
-MCP-HTTP-g2g-hc-a-3 | tests/test_http_client_streams.nim | Given a stream that carries the response to another request, when it ends without its own, then the stream-closed error is delivered
-MCP-HTTP-g2g-hc-a-3 | tests/test_http_client_streams.nim | Given a stream with a request of the server that has the id of the posted request, when it ends without the response, then the stream-closed error is delivered
-MCP-HTTP-g2g-hc-a-3 | tests/test_http_client_streams.nim | Given a request whose event stream is open, when the client closes, then no stream-closed error is delivered
-MCP-HTTP-g2g-hc-a-3 | tests/test_http_client_streams.nim | Given an id that was cancelled while its stream was open, when the id is used again and its stream breaks, then the stream-closed error is delivered
-MCP-HTTP-g2g-hc-a-3 | tests/test_http_client_streams.nim | Given a resumed stream that carries the response, when it ends, then the client neither asks again nor delivers a stream-closed error
-MCP-HTTP-g2g-hc-a-4 | tests/test_http_client_streams.nim | Given an event that is no JSON, when it arrives on the stream of a request, then the client says the stream failed and closes the connection
-MCP-HTTP-g2g-hc-a-4 | tests/test_http_client_streams.nim | Given a server that answers the GET with 200 and no event stream, when the session is initialized, then the client asks once, says so and closes the connection
-MCP-HTTP-g2g-hc-a-4 | tests/test_http_client_streams.nim | Given a server that answers the GET with 405, when the session is initialized, then the client closes the connection and logs nothing
-MCP-HTTP-g2g-hc-a-4 | tests/test_http_client_streams.nim | Given a server that hangs up on the GET, when the session is initialized, then the client logs the failure once and does not ask again
-MCP-HTTP-g2g-hc-a-4 | tests/test_http_client_streams.nim | Given an event that is no JSON on the GET stream, when it arrives, then the client says the stream failed
-MCP-HTTP-g2g-hc-a-4 | tests/test_http_client_streams.nim | Given a GET stream that is open, when the client closes, then the connection of the stream is closed
-MCP-HTTP-g2g-hc-a-4 | tests/test_http_client_streams.nim | Given a GET stream still being opened, when the client closes, then the connection of that stream is closed as well
-MCP-HTTP-g2g-hc-a-4 | tests/test_http_client_streams.nim | Given a negotiated version that has the header, when the client posts, opens the GET stream and ends the session, then each request names the version
-MCP-HTTP-g2g-hc-a-5 | tests/test_http_client_streams.nim | Given a resumed stream whose events carry no id, when it is cut too, then the next resumption still names the last id that was sent
-MCP-HTTP-g2g-hc-a-5 | tests/test_http_client_streams.nim | Given a server that says something on every resumed stream, when the stream is cut more often than the limit, then the response still arrives
-MCP-HTTP-g2g-hc-a-6 | tests/test_http_client_streams.nim | Given a server that ends every GET stream at once, when the session is initialized, then the client asks once and as often again as it may reconnect
-MCP-HTTP-g2g-hc-a-6 | tests/test_http_client_streams.nim | Given a GET stream cut after a message, when the client reconnects, then it waits for the reconnect delay
-MCP-HTTP-g2g-hc-a-6 | tests/test_http_client_streams.nim | Given GET streams whose later events carry no id, when each is cut, then every reconnection names the last id that was sent
-MCP-HTTP-g2g-hc-a-6 | tests/test_http_client_streams.nim | Given a GET stream that is open, when the client is initialized again, then it does not open a second stream
-MCP-HTTP-g2g-hc-a-6 | tests/test_http_client_streams.nim | Given a GET stream that ended because the server offers none, when the client is initialized again, then it asks again
+MCP-HTTP-32 | tests/test_http_client_streams.nim | Given a request whose answer was a JSON body, when the client cancels it afterwards and sends the id again, then the new request is not taken for a cancelled one
+MCP-HTTP-32 | tests/test_http_client_streams.nim | Given a request whose answer was an event stream, when the client cancels it afterwards and sends the id again, then the new request is not taken for a cancelled one
+MCP-HTTP-32 | tests/test_http_client_streams.nim | Given a request that failed after the connection was made, when the client cancels it afterwards and sends the id again, then the new request is not taken for a cancelled one
+MCP-HTTP-32 | tests/test_http_client_streams.nim | Given a request cancelled while the server was silent, when the id is sent again, then the new request is not taken for a cancelled one
+MCP-HTTP-32 | tests/test_http_client_streams.nim | Given a request cancelled while its JSON body is arriving, when the client cancels, then sendRequest returns without an error and the id is free again
+MCP-HTTP-33 | tests/test_http_client_streams.nim | Given a request whose event stream is open, when the transport closes, then the server sees the client leave
+MCP-HTTP-34 | tests/test_http_client_streams.nim | Given a server that answers a notification with 202 and an empty body, when the notification is sent, then the client closes the connection
+MCP-HTTP-34 | tests/test_http_client_streams.nim | Given a server that answers DELETE with 204 and no body, when the client closes, then the client closes the connection
+MCP-HTTP-35 | tests/test_http_client_streams.nim | Given a client that says initialized twice, when the GET stream is already open, then it does not open a second one
+MCP-HTTP-36 | tests/test_http_client_streams.nim | Given a server that answers DELETE with 500, when the client closes, then the refusal is logged and closing succeeds
+MCP-HTTP-36 | tests/test_http_client_streams.nim | Given a server that answers DELETE with 204 or 405, when the client closes, then nothing is logged
+MCP-HTTP-36 | tests/test_http_client_streams.nim | Given a server that drops the connection on DELETE, when the client closes, then the failure is logged and closing succeeds
+MCP-HTTP-37 | tests/test_streamable_http.nim | Given versions without the header, when a notification is sent, then it names no protocol version
+MCP-HTTP-37 | tests/test_streamable_http.nim | Given versions with the header, when a notification is sent, then it names the negotiated version
+MCP-HTTP-38 | tests/test_auth_failure.nim | Given a hook that always says it improved things, when the server keeps refusing, then the request is posted again three times and the failure counts them
+MCP-HTTP-39 | tests/test_param_headers_http.nim | Given a call that does not name 2026-07-28, when it is sent after the tool was listed, then it carries no Mcp-Param header
+MCP-HTTP-39 | tests/test_param_headers_http.nim | Given a 2026-07-28 tools/call without a tool name, when it is sent, then it is posted without Mcp-Param headers
+MCP-HTTP-39 | tests/test_param_headers_http.nim | Given a tools/list that failed, when its id is used again by another request, then that answer is not read as a tool list
+MCP-HTTP-26 | tests/test_param_headers_http.nim | Given a tools/list answer without a tools member, when the client reads it, then the answer is handed over as it is
+MCP-HTTP-26 | tests/test_param_headers_http.nim | Given a tools/list answer whose tools member is no array, when the client reads it, then the answer is handed over as it is
+MCP-HTTP-26 | tests/test_param_headers_http.nim | Given a tool listed with x-mcp-header, when the next listing declares it invalid, then a call no longer carries the header
+MCP-HTTP-26 | tests/test_param_headers_http.nim | Given a tool listed with x-mcp-header, when the next listing no longer declares it, then a call no longer carries the header
+MCP-HTTP-26 | tests/test_param_headers_http.nim | Given a tools/list answered twice with the same id, when the second answer drops the header, then the first answer is what counts
+MCP-HTTP-26 | tests/test_param_headers_http.nim | Given a request of the server whose id equals that of a pending tools/list, when the answer follows, then the answer is what counts
+MCP-HTTP-26 | tests/test_param_headers_http.nim | Given a tool listed with an invalid x-mcp-header, when the client reads the listing, then it says which tool it left out
+MCP-HTTP-27 | tests/test_http_client_streams.nim | Given a body exactly as long as the limit, when a request is sent, then the response is delivered
+MCP-HTTP-27 | tests/test_http_client_streams.nim | Given an HTTP error whose JSON body has an error but no jsonrpc version, when a request is sent, then it is a transport error with the status
+MCP-HTTP-27 | tests/test_http_client_streams.nim | Given an HTTP error whose JSON body is no object, when a request is sent, then it is a transport error with the status
+MCP-HTTP-28 | tests/test_http_client_streams.nim | Given a stream that carries the response and then ends, when the response was read, then nothing else is delivered
+MCP-HTTP-28 | tests/test_http_client_streams.nim | Given a stream that carries the response to another request, when it ends without its own, then the stream-closed error is delivered
+MCP-HTTP-28 | tests/test_http_client_streams.nim | Given a stream with a request of the server that has the id of the posted request, when it ends without the response, then the stream-closed error is delivered
+MCP-HTTP-28 | tests/test_http_client_streams.nim | Given a request whose event stream is open, when the client closes, then no stream-closed error is delivered
+MCP-HTTP-28 | tests/test_http_client_streams.nim | Given an id that was cancelled while its stream was open, when the id is used again and its stream breaks, then the stream-closed error is delivered
+MCP-HTTP-28 | tests/test_http_client_streams.nim | Given a resumed stream that carries the response, when it ends, then the client neither asks again nor delivers a stream-closed error
+MCP-HTTP-29 | tests/test_http_client_streams.nim | Given an event that is no JSON, when it arrives on the stream of a request, then the client says the stream failed and closes the connection
+MCP-HTTP-29 | tests/test_http_client_streams.nim | Given a server that answers the GET with 200 and no event stream, when the session is initialized, then the client asks once, says so and closes the connection
+MCP-HTTP-29 | tests/test_http_client_streams.nim | Given a server that answers the GET with 405, when the session is initialized, then the client closes the connection and logs nothing
+MCP-HTTP-29 | tests/test_http_client_streams.nim | Given a server that hangs up on the GET, when the session is initialized, then the client logs the failure once and does not ask again
+MCP-HTTP-29 | tests/test_http_client_streams.nim | Given an event that is no JSON on the GET stream, when it arrives, then the client says the stream failed
+MCP-HTTP-29 | tests/test_http_client_streams.nim | Given a GET stream that is open, when the client closes, then the connection of the stream is closed
+MCP-HTTP-29 | tests/test_http_client_streams.nim | Given a GET stream still being opened, when the client closes, then the connection of that stream is closed as well
+MCP-HTTP-29 | tests/test_http_client_streams.nim | Given a negotiated version that has the header, when the client posts, opens the GET stream and ends the session, then each request names the version
+MCP-HTTP-30 | tests/test_http_client_streams.nim | Given a resumed stream whose events carry no id, when it is cut too, then the next resumption still names the last id that was sent
+MCP-HTTP-30 | tests/test_http_client_streams.nim | Given a server that says something on every resumed stream, when the stream is cut more often than the limit, then the response still arrives
+MCP-HTTP-31 | tests/test_http_client_streams.nim | Given a server that ends every GET stream at once, when the session is initialized, then the client asks once and as often again as it may reconnect
+MCP-HTTP-31 | tests/test_http_client_streams.nim | Given a GET stream cut after a message, when the client reconnects, then it waits for the reconnect delay
+MCP-HTTP-31 | tests/test_http_client_streams.nim | Given GET streams whose later events carry no id, when each is cut, then every reconnection names the last id that was sent
+MCP-HTTP-31 | tests/test_http_client_streams.nim | Given a GET stream that is open, when the client is initialized again, then it does not open a second stream
+MCP-HTTP-31 | tests/test_http_client_streams.nim | Given a GET stream that ended because the server offers none, when the client is initialized again, then it asks again
 MCP-SEC-SCHEMA-1 | tests/test_security_schema.nim | Given a plain pattern, when 4 MiB of text is matched, then the process survives and answers
 MCP-SEC-SCHEMA-1 | tests/test_security_schema.nim | Given a lookahead, when long text is matched, then it is answered
 MCP-SEC-SCHEMA-2 | tests/test_security_schema.nim | Given patterns that backtrack exponentially, when matched, then each answers at once
@@ -1644,50 +1644,50 @@ MCP-SEC-WIRE-13 | tests/test_security_address.nim | Given a last part, when it i
 MCP-SEC-WIRE-13 | tests/test_security_address.nim | Given brackets that do not enclose the whole host, when it is read, then it is no address
 MCP-SEC-WIRE-14 | tests/test_security_address.nim | Given hosts that stand for loopback, public and mixed addresses, when a destination is chosen, then it is loopback-only exactly when every address is loopback
 MCP-SEC-WIRE-14 | tests/test_security_address.nim | Given a host written as an address, when the system resolver is asked, then it answers with that address
-MCP-SEC-WIRE-g2g-hc-c-1 | tests/test_security_wire_headers.nim | Given a header name with digits, when a request is sent, then it is accepted and sent
-MCP-SEC-WIRE-g2g-hc-c-1 | tests/test_security_wire_headers.nim | Given a header with an empty name, when a request is sent, then it is refused and nothing is connected
-MCP-SEC-WIRE-g2g-hc-c-1 | tests/test_security_wire_headers.nim | Given a path with a NUL but no space, or a space but no control character, when a request is sent, then it is refused
-MCP-SEC-WIRE-g2g-hc-c-1 | tests/test_security_wire_headers.nim | Given a URL with neither path nor query, when a request is sent, then the request line asks for /
-MCP-SEC-WIRE-g2g-hc-c-1 | tests/test_security_wire_headers.nim | Given a URL with a path and a query, when a request is sent, then the request line carries both
-MCP-SEC-WIRE-g2g-hc-c-1 | tests/test_security_wire_headers.nim | Given a GET without a body, when it is sent, then there is no Content-Length
-MCP-SEC-WIRE-g2g-hc-c-1 | tests/test_security_wire_headers.nim | Given a POST without a body, when it is sent, then it says Content-Length: 0
-MCP-SEC-WIRE-g2g-hc-c-1 | tests/test_security_wire_headers.nim | Given a PUT with a body, when it is sent, then Content-Length is its size and the body follows the head
-MCP-SEC-WIRE-g2g-hc-c-1 | tests/test_security_wire_headers.nim | Given a Host header and a Content-Length of the caller, when a request is sent, then the SDK's own are the only ones
-MCP-SEC-WIRE-g2g-hc-c-1 | tests/test_security_wire_headers.nim | Given a URL with no port, when a request is sent, then the connection is attempted (the URL is not refused as malformed)
-MCP-SEC-WIRE-g2g-hc-c-1 | tests/test_security_wire_headers.nim | Given a host that does not resolve and a server on loopback, when a request is sent, then the host named in the URL is the one that is connected to
-MCP-SEC-WIRE-g2g-hc-c-1 | tests/test_http_wire_internals.nim | Given a URL without a port, when the request is written, then Host names the host alone; with a port, host and port
-MCP-SEC-WIRE-g2g-hc-c-2 | tests/test_security_wire_headers.nim | Given a status line without a reason phrase, when the head is read, then the status is taken
-MCP-SEC-WIRE-g2g-hc-c-2 | tests/test_security_wire_headers.nim | Given a status line that does not start with HTTP/, or has no status, when the head is read, then it is refused
-MCP-SEC-WIRE-g2g-hc-c-2 | tests/test_security_wire_headers.nim | Given a head of nothing but the blank line, when it is read, then it is refused as not HTTP
-MCP-SEC-WIRE-g2g-hc-c-2 | tests/test_security_wire_headers.nim | Given a header line that starts with a colon, when the head is read, then it is no header
-MCP-SEC-WIRE-g2g-hc-c-2 | tests/test_security_wire_headers.nim | Given a negative Content-Length, when the head is read, then the response is refused
-MCP-SEC-WIRE-g2g-hc-c-2 | tests/test_security_wire_headers.nim | Given a HEAD request, when the answer announces a Content-Length, then there is no body to wait for
-MCP-SEC-WIRE-g2g-hc-c-2 | tests/test_security_wire_headers.nim | Given an answer of 1xx, 204 or 304, when the head is read, then the response has no body and is finished
-MCP-SEC-WIRE-g2g-hc-c-2 | tests/test_security_wire_headers.nim | Given an answer that is not HTTP, when the request fails, then the connection is closed
-MCP-SEC-WIRE-g2g-hc-c-2 | tests/test_security_wire_headers.nim | Given a server that never answers, when the header timeout passes, then the connection is closed
-MCP-SEC-WIRE-g2g-hc-c-3 | tests/test_security_wire_headers.nim | Given a redirect within the server, when it is followed, then the connection that gave it is closed
-MCP-SEC-WIRE-g2g-hc-c-3 | tests/test_security_wire_headers.nim | Given a redirect to another server, when it is refused, then the connection that gave it is closed
-MCP-SEC-WIRE-g2g-hc-c-3 | tests/test_security_wire_headers.nim | Given a redirect to another host name on the same port, when a request is sent, then it is refused and nothing is sent there
-MCP-SEC-WIRE-g2g-hc-c-3 | tests/test_security_wire_headers.nim | Given a redirect to the same host and port under another scheme, when a request is sent, then it is refused
-MCP-SEC-WIRE-g2g-hc-c-4 | tests/test_security_wire_headers.nim | Given a connect timeout of 0, when a request is sent, then there is no limit and the server is reached
-MCP-SEC-WIRE-g2g-hc-c-4 | tests/test_security_wire_headers.nim | Given a head of exactly the limit before its end arrives, when the end arrives, then it is accepted
-MCP-SEC-WIRE-g2g-hc-c-4 | tests/test_security_wire_headers.nim | Given a head one byte over the limit without its end, when it has arrived, then it is refused as too long
-MCP-SEC-WIRE-g2g-hc-c-4 | tests/test_security_wire_headers.nim | Given a chunk size line of 64 bytes, when the body is read, then it is accepted; of 65, then it is refused
-MCP-SEC-WIRE-g2g-hc-c-4 | tests/test_security_wire_headers.nim | Given a chunked body that ends with the last chunk and a blank line, when it is read to the end, then it is returned whole
-MCP-SEC-WIRE-g2g-hc-c-4 | tests/test_security_wire_headers.nim | Given a chunked body whose last chunk has arrived but not the blank line, when it is read, then the body is not complete until the blank line
-MCP-SEC-WIRE-g2g-hc-c-4 | tests/test_security_wire_headers.nim | Given a chunked body with a trailer, when the trailer has arrived but not the blank line, then the body is not complete until the blank line
-MCP-SEC-WIRE-g2g-hc-c-4 | tests/test_security_wire_headers.nim | Given a chunk size line that arrives before its data, when the body is read, then the read goes on to the data
-MCP-SEC-WIRE-g2g-hc-c-4 | tests/test_security_wire_headers.nim | Given a chunked body that is complete, when the server keeps the connection open, then the body ends and the connection is closed
-MCP-SEC-WIRE-g2g-hc-c-4 | tests/test_security_wire_headers.nim | Given a body of exactly maxSize bytes, when it is read, then it is returned; one byte more, then it is refused
-MCP-SEC-WIRE-g2g-hc-c-4 | tests/test_security_wire_headers.nim | Given a body that grows past maxSize, when the read is refused, then the connection is closed
-MCP-SEC-WIRE-g2g-hc-c-4 | tests/test_security_wire_headers.nim | Given a Content-Length body cut short, when it is read, then it fails and the response is finished
-MCP-SEC-WIRE-g2g-hc-c-4 | tests/test_security_wire_headers.nim | Given a chunked body cut short, when it is read, then it fails and the response is finished
-MCP-SEC-WIRE-g2g-hc-c-5 | tests/test_security_wire_headers.nim | Given a response that is closed while its body is awaited, when the read wakes, then it returns the end of the body and does not fail
-MCP-SEC-WIRE-g2g-hc-c-5 | tests/test_security_wire_headers.nim | Given a response that is closed while its head is awaited, when the request wakes, then it fails as abandoned
-MCP-SEC-WIRE-g2g-hc-c-5 | tests/test_http_wire_internals.nim | Given a response that has been closed, when a read is started, then it ends as interrupted without reading
-MCP-SEC-WIRE-g2g-hc-c-6 | tests/test_security_wire_headers.nim | Given a build without -d:ssl, when https URLs are refused again and again, then no connection is left open
-MCP-SEC-WIRE-g2g-hc-c-6 | tests/test_security_wire_tls.nim | Given a certificate for another host, when requests are refused again and again, then no connection is left open
-MCP-SEC-WIRE-g2g-hc-c-6 | tests/test_security_wire_tls.nim | Given a handshake that ends after the connect timeout, when it ends, then the connection is closed by the client
+MCP-SEC-WIRE-15 | tests/test_security_wire_headers.nim | Given a header name with digits, when a request is sent, then it is accepted and sent
+MCP-SEC-WIRE-15 | tests/test_security_wire_headers.nim | Given a header with an empty name, when a request is sent, then it is refused and nothing is connected
+MCP-SEC-WIRE-15 | tests/test_security_wire_headers.nim | Given a path with a NUL but no space, or a space but no control character, when a request is sent, then it is refused
+MCP-SEC-WIRE-15 | tests/test_security_wire_headers.nim | Given a URL with neither path nor query, when a request is sent, then the request line asks for /
+MCP-SEC-WIRE-15 | tests/test_security_wire_headers.nim | Given a URL with a path and a query, when a request is sent, then the request line carries both
+MCP-SEC-WIRE-15 | tests/test_security_wire_headers.nim | Given a GET without a body, when it is sent, then there is no Content-Length
+MCP-SEC-WIRE-15 | tests/test_security_wire_headers.nim | Given a POST without a body, when it is sent, then it says Content-Length: 0
+MCP-SEC-WIRE-15 | tests/test_security_wire_headers.nim | Given a PUT with a body, when it is sent, then Content-Length is its size and the body follows the head
+MCP-SEC-WIRE-15 | tests/test_security_wire_headers.nim | Given a Host header and a Content-Length of the caller, when a request is sent, then the SDK's own are the only ones
+MCP-SEC-WIRE-15 | tests/test_security_wire_headers.nim | Given a URL with no port, when a request is sent, then the connection is attempted (the URL is not refused as malformed)
+MCP-SEC-WIRE-15 | tests/test_security_wire_headers.nim | Given a host that does not resolve and a server on loopback, when a request is sent, then the host named in the URL is the one that is connected to
+MCP-SEC-WIRE-15 | tests/test_http_wire_internals.nim | Given a URL without a port, when the request is written, then Host names the host alone; with a port, host and port
+MCP-SEC-WIRE-16 | tests/test_security_wire_headers.nim | Given a status line without a reason phrase, when the head is read, then the status is taken
+MCP-SEC-WIRE-16 | tests/test_security_wire_headers.nim | Given a status line that does not start with HTTP/, or has no status, when the head is read, then it is refused
+MCP-SEC-WIRE-16 | tests/test_security_wire_headers.nim | Given a head of nothing but the blank line, when it is read, then it is refused as not HTTP
+MCP-SEC-WIRE-16 | tests/test_security_wire_headers.nim | Given a header line that starts with a colon, when the head is read, then it is no header
+MCP-SEC-WIRE-16 | tests/test_security_wire_headers.nim | Given a negative Content-Length, when the head is read, then the response is refused
+MCP-SEC-WIRE-16 | tests/test_security_wire_headers.nim | Given a HEAD request, when the answer announces a Content-Length, then there is no body to wait for
+MCP-SEC-WIRE-16 | tests/test_security_wire_headers.nim | Given an answer of 1xx, 204 or 304, when the head is read, then the response has no body and is finished
+MCP-SEC-WIRE-16 | tests/test_security_wire_headers.nim | Given an answer that is not HTTP, when the request fails, then the connection is closed
+MCP-SEC-WIRE-16 | tests/test_security_wire_headers.nim | Given a server that never answers, when the header timeout passes, then the connection is closed
+MCP-SEC-WIRE-17 | tests/test_security_wire_headers.nim | Given a redirect within the server, when it is followed, then the connection that gave it is closed
+MCP-SEC-WIRE-17 | tests/test_security_wire_headers.nim | Given a redirect to another server, when it is refused, then the connection that gave it is closed
+MCP-SEC-WIRE-17 | tests/test_security_wire_headers.nim | Given a redirect to another host name on the same port, when a request is sent, then it is refused and nothing is sent there
+MCP-SEC-WIRE-17 | tests/test_security_wire_headers.nim | Given a redirect to the same host and port under another scheme, when a request is sent, then it is refused
+MCP-SEC-WIRE-18 | tests/test_security_wire_headers.nim | Given a connect timeout of 0, when a request is sent, then there is no limit and the server is reached
+MCP-SEC-WIRE-18 | tests/test_security_wire_headers.nim | Given a head of exactly the limit before its end arrives, when the end arrives, then it is accepted
+MCP-SEC-WIRE-18 | tests/test_security_wire_headers.nim | Given a head one byte over the limit without its end, when it has arrived, then it is refused as too long
+MCP-SEC-WIRE-18 | tests/test_security_wire_headers.nim | Given a chunk size line of 64 bytes, when the body is read, then it is accepted; of 65, then it is refused
+MCP-SEC-WIRE-18 | tests/test_security_wire_headers.nim | Given a chunked body that ends with the last chunk and a blank line, when it is read to the end, then it is returned whole
+MCP-SEC-WIRE-18 | tests/test_security_wire_headers.nim | Given a chunked body whose last chunk has arrived but not the blank line, when it is read, then the body is not complete until the blank line
+MCP-SEC-WIRE-18 | tests/test_security_wire_headers.nim | Given a chunked body with a trailer, when the trailer has arrived but not the blank line, then the body is not complete until the blank line
+MCP-SEC-WIRE-18 | tests/test_security_wire_headers.nim | Given a chunk size line that arrives before its data, when the body is read, then the read goes on to the data
+MCP-SEC-WIRE-18 | tests/test_security_wire_headers.nim | Given a chunked body that is complete, when the server keeps the connection open, then the body ends and the connection is closed
+MCP-SEC-WIRE-18 | tests/test_security_wire_headers.nim | Given a body of exactly maxSize bytes, when it is read, then it is returned; one byte more, then it is refused
+MCP-SEC-WIRE-18 | tests/test_security_wire_headers.nim | Given a body that grows past maxSize, when the read is refused, then the connection is closed
+MCP-SEC-WIRE-18 | tests/test_security_wire_headers.nim | Given a Content-Length body cut short, when it is read, then it fails and the response is finished
+MCP-SEC-WIRE-18 | tests/test_security_wire_headers.nim | Given a chunked body cut short, when it is read, then it fails and the response is finished
+MCP-SEC-WIRE-19 | tests/test_security_wire_headers.nim | Given a response that is closed while its body is awaited, when the read wakes, then it returns the end of the body and does not fail
+MCP-SEC-WIRE-19 | tests/test_security_wire_headers.nim | Given a response that is closed while its head is awaited, when the request wakes, then it fails as abandoned
+MCP-SEC-WIRE-19 | tests/test_http_wire_internals.nim | Given a response that has been closed, when a read is started, then it ends as interrupted without reading
+MCP-SEC-WIRE-20 | tests/test_security_wire_headers.nim | Given a build without -d:ssl, when https URLs are refused again and again, then no connection is left open
+MCP-SEC-WIRE-20 | tests/test_security_wire_tls.nim | Given a certificate for another host, when requests are refused again and again, then no connection is left open
+MCP-SEC-WIRE-20 | tests/test_security_wire_tls.nim | Given a handshake that ends after the connect timeout, when it ends, then the connection is closed by the client
 MCP-SEC-AUTH-1 | tests/test_security_auth.nim | Given a client secret without an issuer and version <version>, when the client is made, then it is refused and the message says how to fix it
 MCP-SEC-AUTH-1 | tests/test_security_auth.nim | Given a client secret for one issuer and version <version>, when the resource names another, then nothing but metadata reaches it and the error names both
 MCP-SEC-AUTH-1 | tests/test_security_auth.nim | Given a public pre-registered client for one issuer and version <version>, when the resource names another, then the user is not sent there

@@ -147,7 +147,7 @@ suite "fetching an icon":
     check port.fetch("data:image/png;base64," & encode(Png).strip(leading = false, chars = {'='})).kind == itPng
 
   test "Given a fetch without the server's origin, when asked for a URL, then it is refused":
-    let port = startServer(Seen())
+    discard startServer(Seen())
     var failed = false
     try:
       discard waitFor fetchIcon(McpIcon(src: Origin & "/icon.png"), "")
