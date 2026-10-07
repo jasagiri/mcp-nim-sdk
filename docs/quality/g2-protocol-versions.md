@@ -8,7 +8,6 @@
 | モジュール | 対応する外部仕様テスト | 追加・変更した日 |
 |---|---|---|
 | `tools/gen_docs.nim` | `tests/test_docs_version.nim` | 2026-10-06 |
-| `src/protocol/modern.nim` | `tests/test_modern_protocol.nim` | 2026-10-05 |
 | `src/protocol/lifecycle.nim` | `tests/test_legacy_handshake.nim` | 2026-10-05 |
 | `src/server/server.nim` | `tests/test_legacy_handshake.nim`, `tests/test_era_matrix.nim` | 2026-10-05 |
 | `src/client/client.nim` | `tests/test_legacy_handshake.nim`, `tests/test_era_matrix.nim` | 2026-10-05 |
@@ -33,7 +32,6 @@
 | `src/transport/http_compat.nim` | `tests/test_http_sse_legacy.nim` | 2026-10-06 |
 | `src/transport/event_stream.nim` (retry) | `tests/test_event_stream.nim` | 2026-10-06 |
 | `src/auth/oauth/*.nim` | `tests/test_auth_sha256.nim`, `tests/test_auth_oauth_basics.nim`, `tests/test_auth_client_flow.nim` | 2026-10-06 |
-| `src/auth/policy.nim`, `src/auth/client.nim` | `tests/test_auth_client_flow.nim` | 2026-10-06 |
 | `src/auth/resource_server.nim` | `tests/test_auth_resource_server.nim` | 2026-10-06 |
 | `src/transport/auth_hook.nim` | `tests/test_auth_client_flow.nim`, `tests/test_auth_resource_server.nim` | 2026-10-06 |
 | `src/jsonschema/json_schema.nim`, `src/jsonschema/json_schema_regex.nim` | `tests/test_json_schema.nim` | 2026-10-06 |
