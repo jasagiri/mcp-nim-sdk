@@ -204,3 +204,47 @@ suite "an HTTP server transport for a version outside the build (mutation review
       waitFor sleepAsync(50)
       check seen.methods == @["hang"]
       held.close()
+
+proc sendWithin(url: string, httpMethod: HttpMethod, body: string,
+                headers: openArray[(string, string)], ms = 2000): Reply =
+  ## Like `send`, but a server that never answers fails the check (code 0)
+  ## instead of hanging the test.
+  let http = newAsyncHttpClient()
+  defer: http.close()
+  let pending = http.request(url, httpMethod, body, newHttpHeaders(headers))
+  if waitFor withTimeout(pending, ms):
+    let response = pending.read()
+    (response.code, response.headers, waitFor response.body)
+  else:
+    (HttpCode(0), newHttpHeaders(), "")
+
+suite "a server that speaks 2026-07-28 alone, over HTTP (mutation review, g2f-hs-b)":
+  const SessionlessHeaders = {"Content-Type": "application/json",
+                              "Accept": "application/json, text/event-stream",
+                              "MCP-Protocol-Version": "2026-07-28"}
+
+  test "Given a batch whose first message is a 2026-07-28 request, when it is posted, then the answer is 400 invalid request":
+    # 2026-07-28 has no batches, and a batch is not answered as its first request.
+    if SpeaksModern and not SpeaksLegacy:
+      let request = %*{"jsonrpc": "2.0", "id": 1, "method": "server/discover", "params": {"_meta": {
+        "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+        "io.modelcontextprotocol/clientInfo": {"name": "c", "version": "1"},
+        "io.modelcontextprotocol/clientCapabilities": {}}}}
+      let reply = sendWithin(startServer() & "/mcp", HttpPost, $(%[request]),
+                       @SessionlessHeaders & @[("Mcp-Method", "server/discover")])
+      check reply.code == Http400
+      check parseJson(reply.body)["error"]["code"].getInt() == -32600
+
+  test "Given a notification that names 2026-07-28, when it is posted, then the answer is 202":
+    # A notification has no per-request fields to check; only a request is held to them.
+    if SpeaksModern and not SpeaksLegacy:
+      let reply = sendWithin(startServer() & "/mcp", HttpPost,
+        $(%*{"jsonrpc": "2.0", "method": "notifications/roots/list_changed"}), SessionlessHeaders)
+      check reply.code == Http202
+
+  test "Given a notification whose method is initialize, when it is posted, then the answer is 202 and not the legacy-client refusal":
+    # Only an initialize request tells a legacy client from a current one.
+    if SpeaksModern and not SpeaksLegacy:
+      let reply = sendWithin(startServer() & "/mcp", HttpPost,
+        $(%*{"jsonrpc": "2.0", "method": "initialize", "params": legacyInitialize()}), SessionlessHeaders)
+      check reply.code == Http202

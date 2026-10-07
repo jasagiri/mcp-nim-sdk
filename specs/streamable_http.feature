@@ -146,3 +146,10 @@ Feature: Streamable HTTP transport
     Given a POST that the server answers with a plain JSON body
     When the answer is complete
     Then the server closes the connection, so that nothing the client sends next is read by the watcher of a finished exchange
+
+  @spec:MCP-HTTP-g2f-hs-b-3 @feature:ftStreamableHttp
+  Scenario: A server that speaks 2026-07-28 alone refuses batches and accepts notifications
+    Given a server that speaks 2026-07-28 and nothing older
+    When a batch is posted, even one whose first message is a complete 2026-07-28 request
+    Then the answer is 400 invalid request
+    And a notification is answered 202, whatever its method is named and whichever version it names

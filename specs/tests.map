@@ -1052,6 +1052,9 @@ MCP-HTTP-15 | tests/test_version_floor.nim | Given a GET or DELETE that names 20
 MCP-HTTP-16 | tests/test_version_floor.nim | Given a request with Mcp-Session-Id and Last-Event-ID, when it is served, then both are ignored and no session id comes back
 MCP-HTTP-16 | tests/test_version_floor.nim | Given a legacy initialize, when it is posted, then the answer is 400 and names the versions the server speaks
 MCP-HTTP-16 | tests/test_version_floor.nim | Given the HTTP+SSE paths, when no spoken version has that transport, then they do not exist
+MCP-HTTP-g2f-hs-b-3 | tests/test_version_floor.nim | Given a batch whose first message is a 2026-07-28 request, when it is posted, then the answer is 400 invalid request
+MCP-HTTP-g2f-hs-b-3 | tests/test_version_floor.nim | Given a notification that names 2026-07-28, when it is posted, then the answer is 202
+MCP-HTTP-g2f-hs-b-3 | tests/test_version_floor.nim | Given a notification whose method is initialize, when it is posted, then the answer is 202 and not the legacy-client refusal
 MCP-HTTP-17 | tests/test_http_unresponsive.nim | Given a server that never answers, when a client connects, then the probe and the handshake time out instead of waiting forever
 MCP-HTTP-17 | tests/test_http_unresponsive.nim | Given a server that never answers, when a request has its own timeout, then McpTimeoutError is raised after it
 MCP-TASKS-1 | tests/test_tasks_server.nim | Given tasks enabled, when a 2025-11-25 client handshakes, then the server declares list, cancel and tools/call
