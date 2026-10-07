@@ -76,5 +76,11 @@ proc hangUp*(t: SessionedTransport) =
   while t.waiters.len > 0:
     t.waiters.popFirst().fail(newException(McpTransportClosedError, "peer hung up"))
 
+proc breakDown*(t: SessionedTransport) =
+  ## The connection fails with an error that is not a close: the server's
+  ## pending receive fails with it.
+  while t.waiters.len > 0:
+    t.waiters.popFirst().fail(newException(McpTransportError, "connection broke"))
+
 method close*(t: SessionedTransport): Future[void] {.async.} =
   t.hangUp()

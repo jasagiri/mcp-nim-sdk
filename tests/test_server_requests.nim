@@ -147,6 +147,18 @@ suite "requests of the server (before 2026-07-28)":
     expect McpTransportClosedError:
       discard waitFor pending
 
+  test "Given a transport that fails while the server waits, when it fails, then the wait fails with that error":
+    let server = requestServer()
+    let t = server.attach()
+    discard server.connect(t, Legacy, clientCapabilities = SamplingAndRoots)
+    let pending = server.createMessage("", Params)
+    discard t.awaitRequest("sampling/createMessage")
+    t.breakDown()
+    settle()
+    check pending.failed
+    expect McpTransportError:
+      discard waitFor pending
+
   test "Given requests to two clients, when they answer in the other order, then each request gets its own answer":
     let server = requestServer()
     let t = server.attach()

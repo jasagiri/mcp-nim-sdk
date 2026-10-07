@@ -246,6 +246,8 @@ MCP-CANCEL-2 | tests/test_server_progress_cancel.nim | Given cancelRequest calle
 MCP-CANCEL-3 | tests/test_server_progress_cancel.nim | Given the same request id on two sessions, when one client cancels it, then the other's request goes on
 MCP-CANCEL-3 | tests/test_server_progress_cancel.nim | Given a session that ends, when a request of it is in flight, then it is cancelled
 MCP-CANCEL-3 | tests/test_server_progress_cancel.nim | Given a request id used again while the first request runs, when the first finishes, then the second can still be cancelled
+MCP-CANCEL-3 | tests/test_server_progress_cancel.nim | Given a transport that closes, when a request is in flight, then it is cancelled
+MCP-CANCEL-3 | tests/test_server_progress_cancel.nim | Given a transport that ends a session, when a request of it is in flight, then it is cancelled and the client is forgotten
 MCP-CANCEL-4 | tests/test_client_requests.nim | Given a server that never answers, when a request has a timeout, then it raises McpTimeoutError
 MCP-CANCEL-4 | tests/test_client_requests.nim | Given a timed-out request, when it raises, then the server is told to cancel that request id
 MCP-CANCEL-4 | tests/test_client_requests.nim | Given a late response to a timed-out request, when it arrives, then it is ignored
@@ -273,6 +275,7 @@ MCP-SERVERREQ-5 | tests/test_server_requests.nim | Given a client that never ans
 MCP-SERVERREQ-5 | tests/test_server_requests.nim | Given a late answer after the timeout, when it arrives, then it is ignored and the server goes on
 MCP-SERVERREQ-6 | tests/test_server_requests.nim | Given a session that ends while the server waits, when it ends, then the wait fails
 MCP-SERVERREQ-6 | tests/test_server_requests.nim | Given a transport that closes while the server waits, when it closes, then the wait fails and in-flight requests are cancelled
+MCP-SERVERREQ-6 | tests/test_server_requests.nim | Given a transport that fails while the server waits, when it fails, then the wait fails with that error
 MCP-SERVERREQ-7 | tests/test_server_requests.nim | Given requests to two clients, when they answer in the other order, then each request gets its own answer
 MCP-SERVERREQ-7 | tests/test_server_requests.nim | Given a response to a request nobody sent, when it arrives, then the server ignores it
 MCP-SERVERREQ-8 | tests/test_server_requests.nim | Given a handler that asks the client, when a tool is called, then the request belongs to the tool call and its answer becomes the tool result

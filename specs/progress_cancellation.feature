@@ -57,7 +57,8 @@ Feature: Progress and cancellation
     Given two sessions with the same request id in flight
     When one client cancels it
     Then the other's request goes on
-    And a session that ends cancels its requests in flight
+    And a session that ends, whether the server is told or the transport ends it, cancels its requests in flight and is forgotten
+    And a transport that closes cancels every request in flight
     And a request id used again in a session stays cancellable after the first request with it finishes
 
   @spec:MCP-CANCEL-4 @feature:ftCancellation

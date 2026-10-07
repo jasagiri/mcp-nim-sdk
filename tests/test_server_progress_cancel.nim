@@ -322,6 +322,31 @@ suite "cancellation (every version)":
     slowInit.complete()
     check not t.responseTo("init-1").hasKey("error")
 
+  test "Given a transport that closes, when a request is in flight, then it is cancelled":
+    reset()
+    let server = progressServer()
+    let t = server.attach()
+    let peer = server.connect(t, DefaultProtocolVersion.min(mpv20251125))
+    peer.send(%freshId(), "tools/call", %*{"name": "slow"})
+    untilTrue("the handler to start", proc(): bool = started)
+    t.hangUp()
+    settle()
+    release()
+    check sawCancelled
+
+  test "Given a transport that ends a session, when a request of it is in flight, then it is cancelled and the client is forgotten":
+    reset()
+    let server = progressServer()
+    let t = server.attach()
+    let peer = server.connect(t, DefaultProtocolVersion.min(mpv20251125), session = "s")
+    peer.send(%"x", "tools/call", %*{"name": "slow"})
+    untilTrue("the handler to start", proc(): bool = started)
+    t.onSessionEnd("s")
+    release()
+    check sawCancelled
+    expect McpCapabilityError:
+      waitFor server.ping("s")
+
   test "Given a session that ends, when a request of it is in flight, then it is cancelled":
     reset()
     let server = progressServer()

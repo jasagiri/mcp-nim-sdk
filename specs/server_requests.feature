@@ -60,7 +60,7 @@ Feature: Requests the server makes of the client
   @spec:MCP-SERVERREQ-6 @feature:ftServerInitiatedRequests
   Scenario: A wait ends when the client's session or transport ends
     Given a server waiting for a client's answer
-    When the client's session ends, or the transport closes
+    When the client's session ends, or the transport closes or fails
     Then the wait fails, and requests the transport had in flight are cancelled
 
   @spec:MCP-SERVERREQ-7 @feature:ftServerInitiatedRequests
