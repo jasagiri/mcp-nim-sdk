@@ -568,11 +568,15 @@ suite "Requests of the OAuth client over a scripted server (mutation review, g2f
     check "must be https" in outcome.msg
     check server.requestLines.len == 0
 
-  test "Given a keep-alive answer that has been read, when the request is done, then the client has closed the connection":
-    let server = startHolding("HTTP/1.1 200 OK\c\LContent-Type: application/json\c\LContent-Length: 2\c\L\c\L{}")
-    let reply = waitFor httpExchange(HttpGet, "http://127.0.0.1:" & $server.port & "/x", policy, "metadata")
-    check reply.code == 200
-    check server.closedWithin(2000)
+  test "Given a keep-alive answer without a body, when the request is done, then the client has closed the connection":
+    # A body that ends the connection closes it by itself; one that has no
+    # body leaves it to the caller of the wire.
+    for answer in ["HTTP/1.1 204 No Content\c\L\c\L",
+                   "HTTP/1.1 200 OK\c\LContent-Length: 0\c\L\c\L"]:
+      let server = startHolding(answer)
+      let reply = waitFor httpExchange(HttpGet, "http://127.0.0.1:" & $server.port & "/x", policy, "metadata")
+      check reply.body == ""
+      check server.closedWithin(2000)
 
   test "Given an endpoint that never answers, when the time runs out, then the connection is closed as well as reported":
     let server = startHolding("")

@@ -617,6 +617,33 @@ MCP-AUTH-31 | tests/test_auth_failure.nim | Given a hook that fails, when a requ
 MCP-AUTH-31 | tests/test_auth_failure.nim | Given a hook that always says it improved things, when the server keeps refusing, then McpAuthorizationError ends the attempts
 MCP-AUTH-31 | tests/test_auth_failure.nim | Given a transport without authorization, when the server answers 403, then McpAuthorizationError carries the status
 MCP-AUTH-31 | tests/test_auth_failure.nim | Given a server that refuses the authorization for good, when a client connects, then it fails with McpAuthorizationError
+MCP-AUTH-g2f-oauth-a-1 | tests/test_auth_oauth_basics.nim | Given a Basic challenge with token68 padding before a Bearer one, when parsed, then the Bearer parameters are found
+MCP-AUTH-g2f-oauth-a-1 | tests/test_auth_oauth_basics.nim | Given a token68 whose padding ends the header, when parsed, then parsing ends with the challenge
+MCP-AUTH-g2f-oauth-a-1 | tests/test_auth_oauth_basics.nim | Given white space around the equals sign, when parsed, then the values are the same as without it (RFC 9110 11.2 BWS)
+MCP-AUTH-g2f-oauth-a-1 | tests/test_auth_oauth_basics.nim | Given a parameter that ends the header, when parsed, then its value is empty
+MCP-AUTH-g2f-oauth-a-1 | tests/test_auth_oauth_basics.nim | Given a quoted string that is cut off after a backslash, when parsed, then the backslash is kept
+MCP-AUTH-g2f-oauth-a-1 | tests/test_auth_oauth_basics.nim | Given a header that starts with a parameter and no scheme, when parsed, then no challenge carries it
+MCP-AUTH-g2f-oauth-a-2 | tests/test_auth_oauth_basics.nim | Given an issuer path that ends in a slash, when listing candidates, then the slash is dropped from every URL
+MCP-AUTH-g2f-oauth-a-2 | tests/test_auth_oauth_basics.nim | Given a 201 with a valid document, when discovering, then it is not used and every URL tried is named with its status
+MCP-AUTH-g2f-oauth-a-2 | tests/test_auth_oauth_basics.nim | Given a 200 whose body is not a JSON object, when discovering, then it is a failure of that URL
+MCP-AUTH-g2f-oauth-a-2 | tests/test_auth_oauth_basics.nim | Given a document that names another issuer, when discovering, then the failure is a security failure that says why
+MCP-AUTH-g2f-oauth-a-2 | tests/test_auth_oauth_basics.nim | Given a document without a token endpoint, when discovering, then the failure names the field and is not a security failure
+MCP-AUTH-g2f-oauth-a-2 | tests/test_auth_oauth_basics.nim | Given an issuer with a fragment, when discovering, then it is refused before any request is made
+MCP-AUTH-g2f-oauth-a-2 | tests/test_auth_oauth_basics.nim | Given a server URL on plain http to a remote host, when discovering with the 2025-03-26 rules, then the error names the authorization base URL
+MCP-AUTH-g2f-oauth-a-2 | tests/test_auth_oauth_basics.nim | Given the root of an origin that answers 201 or a non-object 200, when discovering with the 2025-03-26 rules, then it fails without defaults
+MCP-AUTH-g2f-oauth-a-2 | tests/test_auth_oauth_basics.nim | Given a 201 with a valid document or a non-object 200, when fetching, then it is refused
+MCP-AUTH-g2f-oauth-a-2 | tests/test_auth_oauth_basics.nim | Given no document at either well-known URL, when probing, then the failure lists both with their status
+MCP-AUTH-g2f-oauth-a-2 | tests/test_auth_oauth_basics.nim | Given a document for another resource at the first URL, when probing, then the failure is a security failure that says why
+MCP-AUTH-g2f-oauth-a-3 | tests/test_auth_oauth_basics.nim | Given an endpoint that answers 302, when requested, then the redirect is reported and its target is never requested
+MCP-AUTH-g2f-oauth-a-3 | tests/test_auth_oauth_basics.nim | Given an endpoint that answers 304 to a conditional request, when requested, then the 304 is the reply
+MCP-AUTH-g2f-oauth-a-3 | tests/test_auth_oauth_basics.nim | Given plain http to a host name that resolves to loopback, when requested, then it is refused and nothing is sent
+MCP-AUTH-g2f-oauth-a-3 | tests/test_auth_oauth_basics.nim | Given a keep-alive answer without a body, when the request is done, then the client has closed the connection
+MCP-AUTH-g2f-oauth-a-3 | tests/test_auth_oauth_basics.nim | Given an endpoint that never answers, when the time runs out, then the connection is closed as well as reported
+MCP-AUTH-g2f-oauth-a-4 | tests/test_auth_oauth_basics.nim | Given URLs that name no host or no scheme, when checked, then they are refused
+MCP-AUTH-g2f-oauth-a-4 | tests/test_auth_oauth_basics.nim | Given a user name alone or a password alone, when checked, then the URL is refused for its credentials
+MCP-AUTH-g2f-oauth-a-4 | tests/test_auth_oauth_basics.nim | Given a resource without a host or without a scheme, when canonicalized, then it is refused
+MCP-AUTH-g2f-oauth-a-4 | tests/test_auth_oauth_basics.nim | Given a resource with a query, when canonicalized, then the query is kept (RFC 8707 2)
+MCP-AUTH-g2f-oauth-a-4 | tests/test_auth_oauth_basics.nim | Given a field with a space, when form-encoded, then the space is %20
 MCP-HTTP-10 | tests/test_param_headers_http.nim | Given a tool with x-mcp-header, when a call carries the matching header, then the answer is 200
 MCP-HTTP-10 | tests/test_param_headers_http.nim | Given a tool with x-mcp-header, when the header differs from the body, then the answer is 400 header mismatch
 MCP-HTTP-10 | tests/test_param_headers_http.nim | Given a tool with x-mcp-header, when the call omits the header though the body has the value, then the answer is 400 header mismatch

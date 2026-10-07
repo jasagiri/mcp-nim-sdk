@@ -262,3 +262,30 @@ Feature: Authorization
     When a request is sent, or a client connects
     Then it fails with McpAuthorizationError carrying the HTTP status and, when the authorization failed, its error
     And a client that probes for the server's protocol version does not go on to the handshake of another version
+
+  @spec:MCP-AUTH-g2f-oauth-a-1 @feature:ftAuthorization
+  Scenario: A Bearer challenge is read whatever surrounds its parameters
+    Given WWW-Authenticate headers with token68 padding before a Bearer challenge, white space around the equals sign, a parameter that ends the header, a quoted string cut off after a backslash, or a parameter before any scheme
+    When the client parses them
+    Then the Bearer parameters are found, an empty value is empty, and a parameter without a scheme belongs to no challenge
+
+  @spec:MCP-AUTH-g2f-oauth-a-2 @feature:ftAuthorization
+  Scenario: Discovery uses only a 200 with a JSON object and says what each URL answered
+    Given an issuer or a resource whose well-known URLs answer 201, a 200 that is no JSON object, another issuer's document, a document without a token endpoint, or 404
+    When the client discovers
+    Then none of them is used, a document naming another issuer is a security failure and the others are not, and the error names every URL tried with what it answered
+    And an issuer with a fragment is refused before any request, and the candidate URLs of an issuer path that ends in a slash have the slash dropped
+
+  @spec:MCP-AUTH-g2f-oauth-a-3 @feature:ftAuthorization
+  Scenario: The OAuth client never follows a redirect and does not leave a connection open
+    Given an endpoint that answers 302, 304, a body-less keep-alive answer, or nothing at all
+    When the client requests it
+    Then the 302 is reported and its target is never requested, the 304 is the reply, and the connection is closed afterwards and after a timeout
+    And plain http to a host name is refused before anything is sent, even when the name resolves to loopback
+
+  @spec:MCP-AUTH-g2f-oauth-a-4 @feature:ftAuthorization
+  Scenario: A URL the client is sent to needs a scheme, a host and no credentials
+    Given URLs without a host or a scheme, with a user name alone or a password alone, and resources with a query
+    When the client checks or canonicalizes them
+    Then URLs without a host or a scheme and URLs with any credentials are refused
+    And a canonical resource keeps its query, and a form field with a space is encoded as %20
