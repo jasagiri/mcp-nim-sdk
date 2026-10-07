@@ -5,7 +5,7 @@
 ## (docs/quality/auth-requirements.md).
 
 import std/[unittest, asyncdispatch, httpclient, httpcore, json, options,
-            strutils, sequtils, tables, nativesockets]
+            strutils, sequtils, tables, nativesockets, os]
 import transport/http
 import transport/http_server
 import server/server
@@ -103,6 +103,19 @@ proc validVerdicts(): TableRef[string, TokenVerdict] =
   result["narrow"] = TokenVerdict(kind: tvInsufficientScope,
                                   requiredScopes: @["files:write", "files:read"])
 
+proc loggedWhile(body: proc()): string =
+  ## Everything the code under test wrote to stderr.
+  let path = getTempDir() / "mcp-auth-resource-server-" & $getCurrentProcessId() & ".log"
+  let saved = stderr
+  stderr = open(path, fmWrite)
+  try:
+    body()
+  finally:
+    stderr.close()
+    stderr = saved
+  result = readFile(path)
+  removeFile(path)
+
 const initializeBody = """{"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}}"""
 
 suite "Resource server, every version of the build":
@@ -178,6 +191,64 @@ suite "Resource server, every version of the build":
       check reply.code == Http500
       check "introspection" notin reply.body
 
+    test "Given a request without a token and version " & $v & ", when posted, then the challenge names no error: there was no credential to fault":
+      let env = startServer(v, validVerdicts())
+      let reply = send(env.url, HttpPost, initializeBody)
+      let bearer = bearerChallenge(reply.wwwAuthenticate).get
+      check bearer.error.isNone
+      check bearer.errorDescription.isNone
+      check "error" notin reply.wwwAuthenticate[0]
+
+    test "Given a token the verifier rejects and version " & $v & ", when posted, then the challenge explains the refusal":
+      let env = startServer(v, validVerdicts())
+      let reply = send(env.url, HttpPost, initializeBody, {"Authorization": "Bearer bogus"})
+      let bearer = bearerChallenge(reply.wwwAuthenticate).get
+      check bearer.errorDescription.isSome
+      check bearer.errorDescription.get.len > 0
+
+    test "Given a token that lacks scope and version " & $v & ", when posted, then the challenge carries no empty description":
+      let env = startServer(v, validVerdicts())
+      let reply = send(env.url, HttpPost, initializeBody, {"Authorization": "Bearer narrow"})
+      check "error_description" notin reply.wwwAuthenticate[0]
+
+    test "Given a token of 8192 characters and one of 8193 and version " & $v & ", when each arrives, then only the longer is refused before the verifier":
+      # The limit is MaxTokenLength of resource_server.nim: "longer than this".
+      let env = startServer(v, validVerdicts())
+      let atLimit = waitFor env.transport.auth.intercept("POST", "/mcp",
+                                                          some("Bearer " & "x".repeat(8192)))
+      check env.seen.calls.len == 1
+      check atLimit.get.code == 401   # the verifier does not know it
+      let over = waitFor env.transport.auth.intercept("POST", "/mcp",
+                                                       some("Bearer " & "x".repeat(8193)))
+      check over.get.code == 401
+      check env.seen.calls.len == 1
+
+    test "Given a verifier that fails and version " & $v & ", when a token arrives, then stderr names the failure and not the token":
+      let env = startServer(v, validVerdicts())
+      let auth = newResourceServerAuth(ResourceServerConfig(
+        resource: env.url, authorizationServers: @["https://auth.example.com"], version: v,
+        verify: proc(token, resource: string): Future[TokenVerdict] {.async.} =
+          raise newException(ValueError, "introspection endpoint is down")))
+      var code = 0
+      let logged = loggedWhile(proc() =
+        code = waitFor(auth.intercept("POST", "/mcp", some("Bearer secret-token"))).get.code)
+      check code == 500
+      check "ValueError" in logged
+      check "secret-token" notin logged
+      check "introspection" notin logged
+
+    test "Given a verifier that names a scope that cannot go in a header and version " & $v & ", when a token arrives, then the answer is 500 without a challenge and stderr says why":
+      let verdicts = validVerdicts()
+      verdicts["odd"] = TokenVerdict(kind: tvInsufficientScope, requiredScopes: @["a\r\nX-Forged: y"])
+      let env = startServer(v, verdicts)
+      let reply = send(env.url, HttpPost, initializeBody, {"Authorization": "Bearer odd"})
+      check reply.code == Http500
+      check not reply.headers.hasKey("WWW-Authenticate")
+      let logged = loggedWhile(proc() =
+        check waitFor(env.transport.auth.intercept("POST", "/mcp", some("Bearer odd"))).get.code == 500)
+      check "[mcp-auth]" in logged
+      check "scopes" in logged
+
     test "Given a delete or get on the endpoint without a token and version " & $v & ", when sent, then it is 401 too":
       let env = startServer(v, validVerdicts())
       check send(env.url, HttpDelete).code == Http401
@@ -207,6 +278,14 @@ suite "Resource server, protected resource metadata":
         let env = startServer(v, validVerdicts())
         let reply = send(env.origin & "/.well-known/oauth-protected-resource/mcp", HttpGet)
         check reply.code == Http404
+
+suite "Resource server, protected resource metadata without scopes":
+  test "Given a configuration that lists no scopes, when the metadata document is made, then it has no scopes_supported":
+    let document = resourceMetadataDocument(ResourceServerConfig(
+      resource: "https://mcp.example.com/mcp",
+      authorizationServers: @["https://auth.example.com"]))
+    check not document.hasKey("scopes_supported")
+    check document["resource"].getStr() == "https://mcp.example.com/mcp"
 
 suite "Resource server, scopes in the challenge":
   for v in authVersions:

@@ -432,6 +432,13 @@ MCP-AUTH-2 | tests/test_auth_resource_server.nim | Given the Bearer scheme in an
 MCP-AUTH-2 | tests/test_auth_resource_server.nim | Given Authorization headers that are not Bearer tokens and version <version>, when posted, then each is 401 and none reaches the verifier
 MCP-AUTH-2 | tests/test_auth_resource_server.nim | Given a token in the query string and version <version>, when posted, then it is not looked at
 MCP-AUTH-2 | tests/test_auth_resource_server.nim | Given a verifier that fails and version <version>, when posted, then the answer is 500 and the request does not go through
+MCP-AUTH-g2e-auth-diag-1 | tests/test_auth_resource_server.nim | Given a request without a token and version <version>, when posted, then the challenge names no error: there was no credential to fault
+MCP-AUTH-g2e-auth-diag-1 | tests/test_auth_resource_server.nim | Given a token the verifier rejects and version <version>, when posted, then the challenge explains the refusal
+MCP-AUTH-g2e-auth-diag-1 | tests/test_auth_resource_server.nim | Given a token that lacks scope and version <version>, when posted, then the challenge carries no empty description
+MCP-AUTH-g2e-auth-diag-1 | tests/test_auth_resource_server.nim | Given a configuration that lists no scopes, when the metadata document is made, then it has no scopes_supported
+MCP-AUTH-g2e-auth-diag-2 | tests/test_auth_resource_server.nim | Given a token of 8192 characters and one of 8193 and version <version>, when each arrives, then only the longer is refused before the verifier
+MCP-AUTH-g2e-auth-diag-2 | tests/test_auth_resource_server.nim | Given a verifier that fails and version <version>, when a token arrives, then stderr names the failure and not the token
+MCP-AUTH-g2e-auth-diag-2 | tests/test_auth_resource_server.nim | Given a verifier that names a scope that cannot go in a header and version <version>, when a token arrives, then the answer is 500 without a challenge and stderr says why
 MCP-AUTH-3 | tests/test_auth_resource_server.nim | Given the verifier is told the resource and version <version>, when a token arrives, then it gets the canonical URI of this server to check the audience against
 MCP-AUTH-4 | tests/test_auth_resource_server.nim | Given a token that lacks scope and version <version>, when posted, then the answer is 403 insufficient_scope with all needed scopes
 MCP-AUTH-5 | tests/test_auth_resource_server.nim | Given a delete or get on the endpoint without a token and version <version>, when sent, then it is 401 too

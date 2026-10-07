@@ -31,6 +31,23 @@ Feature: Authorization
     And a token in the query string is not looked at
     And a verifier that fails gives 500 and the request does not go through
 
+  @spec:MCP-AUTH-g2e-auth-diag-1 @feature:ftAuthorization
+  Scenario: The challenge says what is wrong and no more
+    Given a protected MCP endpoint
+    When a request has no token, a token the verifier rejects, or a token that lacks scope
+    Then a request without a token gets a challenge with no error code
+    And a rejected token gets invalid_token with a description
+    And a token that lacks scope gets insufficient_scope with no description
+    And the metadata document lists scopes_supported only when scopes are configured
+
+  @spec:MCP-AUTH-g2e-auth-diag-2 @feature:ftAuthorization
+  Scenario: A token of unreasonable length, a verifier that fails and an unwritable scope are refused and reported
+    Given a protected MCP endpoint
+    When a token is longer than 8192 characters, the verifier fails, or the verifier names a scope that cannot go in a header
+    Then a token of up to 8192 characters reaches the verifier and a longer one does not
+    And a failing verifier is named on stderr without the token, and the answer is 500
+    And an unwritable scope is 500 without a challenge, and stderr says so
+
   @spec:MCP-AUTH-3 @feature:ftAuthorization
   Scenario: The token is checked against this server as its audience
     Given a protected MCP endpoint
