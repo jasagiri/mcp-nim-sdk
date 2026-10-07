@@ -726,3 +726,192 @@ suite "Authorization flow, refreshing":
       let second = transportFor(newOAuthClient(env.config), env.resourceServer.url)
       check second.ping(){"result", "served"}.getBool()
       check env.consents[].len == 1
+
+proc silentAuthorizer(): UserAuthorizer =
+  result = proc(url: string): Future[seq[(string, string)]] {.async.} =
+    return @[]
+
+proc denyingAuthorizer(): UserAuthorizer =
+  result = proc(url: string): Future[seq[(string, string)]] {.async.} =
+    raise newException(OAuthError, "the user closed the consent page")
+
+proc resourceChallenge(env: Env): seq[string] =
+  @["Bearer resource_metadata=\"http://127.0.0.1:" & $env.resourceServer.port &
+    "/.well-known/oauth-protected-resource/mcp\""]
+
+proc tokenRequests(env: Env): int = env.authServer.log.requestsTo("/token").len
+
+suite "Authorization flow, the clock":
+  test "Given a configuration made with the defaults, when its clock is read, then it is the system clock":
+    let config = newOAuthClientConfig("https://mcp.example.com/mcp", RedirectUri, silentAuthorizer())
+    check abs((config.now() - getTime()).inSeconds) < 10
+
+suite "Authorization flow, when a stored token cannot be refreshed":
+  for v in authVersions:
+    test "Given an expired access token without a refresh token and version " & $v &
+         ", when the header is asked for, then there is none and nothing is sent":
+      var env = start(v)
+      defer: env.stop()
+      env.authServer.accessTokenLifetime = 60
+      let client = newOAuthClient(env.config)
+      discard transportFor(client, env.resourceServer.url).ping()
+      let key = canonicalResource(env.config.serverUrl)
+      var stored = env.config.tokenStore.load(key).get
+      stored.refreshToken = none(string)
+      env.config.tokenStore.save(key, stored)
+      env.clock[] = env.clock[] + initDuration(minutes = 5)
+      let sent = env.tokenRequests
+      check waitFor(client.authorizationHeader()).isNone
+      check env.tokenRequests == sent
+
+    test "Given an expired access token and a client that has not discovered the server yet and version " & $v &
+         ", when the header is asked for, then there is none and nothing is sent":
+      var env = start(v)
+      defer: env.stop()
+      env.authServer.accessTokenLifetime = 60
+      discard transportFor(newOAuthClient(env.config), env.resourceServer.url).ping()
+      env.clock[] = env.clock[] + initDuration(minutes = 5)
+      let sent = env.tokenRequests
+      check waitFor(newOAuthClient(env.config).authorizationHeader()).isNone
+      check env.tokenRequests == sent
+
+    test "Given credentials whose issuer is not the one that issued the token and version " & $v &
+         ", when the token has expired, then the refresh token is not sent":
+      var env = start(v)
+      defer: env.stop()
+      env.authServer.accessTokenLifetime = 60
+      let client = newOAuthClient(env.config)
+      discard transportFor(client, env.resourceServer.url).ping()
+      let issuer = env.config.tokenStore.load(canonicalResource(env.config.serverUrl)).get.issuer
+      var creds = env.config.credentialStore.load(issuer).get
+      creds.issuer = "https://other-as.example.com"
+      env.config.credentialStore.save(issuer, creds)
+      env.clock[] = env.clock[] + initDuration(minutes = 5)
+      let sent = env.tokenRequests
+      check waitFor(client.authorizationHeader()).isNone
+      check env.tokenRequests == sent
+
+    test "Given a refresh that succeeded and version " & $v &
+         ", when the next request is sent, then the refreshed token is the stored one and is not refreshed again":
+      var env = start(v)
+      defer: env.stop()
+      env.authServer.accessTokenLifetime = 3600
+      let transport = transportFor(newOAuthClient(env.config), env.resourceServer.url)
+      discard transport.ping()
+      env.clock[] = env.clock[] + initDuration(hours = 2)
+      discard transport.ping()
+      discard transport.ping()
+      check env.tokenRequests == 2
+      let posts = env.resourceServer.log.requestsTo("/mcp")
+      let key = canonicalResource(env.config.serverUrl)
+      check "Bearer " & env.config.tokenStore.load(key).get.accessToken == posts[^1].bearerOf
+
+    test "Given a refresh token the server rejects and version " & $v &
+         ", when the header is asked for, then there is none and the spent token is forgotten":
+      var env = start(v)
+      defer: env.stop()
+      env.authServer.accessTokenLifetime = 60
+      let client = newOAuthClient(env.config)
+      discard transportFor(client, env.resourceServer.url).ping()
+      env.authServer.refreshTokens.clear()
+      env.clock[] = env.clock[] + initDuration(minutes = 5)
+      check waitFor(client.authorizationHeader()).isNone
+      check env.config.tokenStore.load(canonicalResource(env.config.serverUrl)).isNone
+
+    test "Given a refresh token the server rejects and a user who then refuses and version " & $v &
+         ", when the server answers 401, then the spent token is forgotten":
+      var env = start(v)
+      defer: env.stop()
+      let client = newOAuthClient(env.config)
+      discard transportFor(client, env.resourceServer.url).ping()
+      env.authServer.refreshTokens.clear()
+      var refusing = env.config
+      refusing.authorize = denyingAuthorizer()
+      expect CatchableError:
+        discard waitFor newOAuthClient(refusing).handleChallenge(401, env.resourceChallenge)
+      check env.config.tokenStore.load(canonicalResource(env.config.serverUrl)).isNone
+
+suite "Authorization flow, answers that are not worth repeating":
+  for v in authVersions:
+    test "Given a status other than 401 or 403 and version " & $v &
+         ", when the client is handed the answer, then it does not authorize and the request is not repeated":
+      var env = start(v)
+      defer: env.stop()
+      let client = newOAuthClient(env.config)
+      for status in [200, 404, 500]:
+        check not waitFor client.handleChallenge(status, env.resourceChallenge)
+      check env.consents[].len == 0
+      check env.authServer.log.len == 0
+
+    test "Given a 403 that is not an insufficient_scope challenge and version " & $v &
+         ", when the client is handed the answer, then it does not authorize":
+      var env = start(v)
+      defer: env.stop()
+      let client = newOAuthClient(env.config)
+      check not waitFor client.handleChallenge(403, @[])
+      check not waitFor client.handleChallenge(403, @["Bearer error=\"invalid_token\""])
+      check env.consents[].len == 0
+      check env.authServer.log.len == 0
+
+    if not v.has(ftIncrementalScopeConsent):
+      test "Given an insufficient_scope 403 and version " & $v &
+           ", when the client is handed the answer, then the version has no step-up and it does not authorize":
+        var env = start(v)
+        defer: env.stop()
+        let client = newOAuthClient(env.config)
+        check not waitFor client.handleChallenge(403, @["Bearer error=\"insufficient_scope\""])
+        check env.consents[].len == 0
+        check env.authServer.log.len == 0
+
+suite "Authorization flow, attempt limit":
+  for v in authVersions:
+    test "Given a requirement the user keeps being asked for and version " & $v &
+         ", when the third answer arrives at the end of the window, then the failure is permanent and counts the attempts":
+      var env = start(v)
+      defer: env.stop()
+      let client = newOAuthClient(env.config)
+      check waitFor client.handleChallenge(401, env.resourceChallenge)
+      env.authServer.refreshTokens.clear()
+      env.clock[] = env.clock[] + initDuration(seconds = 60)
+      check waitFor client.handleChallenge(401, env.resourceChallenge)
+      env.authServer.refreshTokens.clear()
+      try:
+        discard waitFor client.handleChallenge(401, env.resourceChallenge)
+        fail()
+      except OAuthError as e:
+        check "attempted 2 times" in e.msg
+      check env.consents[].len == 2
+
+suite "Authorization flow, scope from the challenge by version":
+  for v in authVersions:
+    if not v.has(ftIncrementalScopeConsent):
+      test "Given a scope in the challenge and version " & $v &
+           ", when the client authorizes, then the version does not take the scope from the challenge":
+        var env = start(v)
+        defer: env.stop()
+        env.resourceServer.challengeScope = "files:read"
+        discard transportFor(newOAuthClient(env.config), env.resourceServer.url).ping()
+        check env.consents[][0].queryValue("scope").isNone
+    else:
+      test "Given a 401 with no WWW-Authenticate header and version " & $v &
+           ", when the client authorizes, then it falls back to the well-known URI and asks for the resource's scopes":
+        var env = start(v)
+        defer: env.stop()
+        env.resourceServer.resourceMetadata["scopes_supported"] = %["files:read"]
+        check waitFor newOAuthClient(env.config).handleChallenge(401, @[])
+        check env.consents[][0].scopeOf == "files:read"
+
+suite "Authorization flow, Client ID Metadata Document URL addresses":
+  for v in authVersions:
+    if v.has(ftClientIdMetadataDocuments):
+      test "Given a client_id URL that names a loopback or private address and version " & $v &
+           ", when the client authorizes, then it is refused before the user is asked":
+        var env = start(v)
+        defer: env.stop()
+        env.authServer.metadata["client_id_metadata_document_supported"] = %true
+        for url in ["https://127.0.0.1/c.json", "https://localhost/c.json", "https://10.0.0.5/c.json",
+                    "https://192.168.1.10/c.json", "https://169.254.169.254/c.json"]:
+          env.config.clientIdMetadataUrl = some(url)
+          expect OAuthSecurityError:
+            discard waitFor newOAuthClient(env.config).handleChallenge(401, env.resourceChallenge)
+        check env.consents[].len == 0
