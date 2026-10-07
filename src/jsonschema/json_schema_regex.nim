@@ -179,7 +179,11 @@ proc parseClass(p: var Parser): Node =
         inc p.pos
         result.ranges.add escaped
         continue
-      lo = (if char(p.peek) == 'b': (inc p.pos; 8'i32) else: p.parseEscapeChar())
+      if char(p.peek) == 'b':
+        inc p.pos
+        lo = 8'i32
+      else:
+        lo = p.parseEscapeChar()
     else:
       lo = p.peek
       inc p.pos
