@@ -818,6 +818,7 @@ MCP-ELICIT-URL-5 | tests/test_client_elicitation.nim | Given an error with anoth
 MCP-ELICIT-URL-5 | tests/test_client_elicitation.nim | Given a -32042 error with malformed data, when read, then McpProtocolError is raised
 MCP-ELICIT-g2e-elicit-b-5 | tests/test_server_elicitation.nim | Given a handler that asks in url mode, when a tool is called, then the request belongs to the tool call and the answer drives the result
 MCP-ELICIT-g2e-elicit-b-5 | tests/test_tasks_end_to_end.nim | Given a tool that elicits in form or url mode inside a task, when the client has answered, then the task is working again while the tool goes on
+MCP-ELICIT-g2e-elicit-b-5 | tests/test_client_elicitation.nim | Given an accepted URL request, when a completion arrives without a string id, then it is ignored and the real one still reaches the callback
 MCP-SAMPLING-TOOLS-1 | tests/test_sampling_tools_payload.nim | Given tools and a tool choice, when the request is checked in 2025-11-25 and later, then there is nothing to report
 MCP-SAMPLING-TOOLS-1 | tests/test_sampling_tools_payload.nim | Given a result that stops for tool use with tool_use blocks, when checked, then it is valid
 MCP-SAMPLING-TOOLS-1 | tests/test_sampling_tools_payload.nim | Given tool uses, when they are read from a result, then they come back as blocks in order

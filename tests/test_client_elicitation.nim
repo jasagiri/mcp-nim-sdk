@@ -198,6 +198,20 @@ if LegacyDefault >= mpv20251125:
       waitFor sleepAsync(10)
       check completed == @[id]
 
+    test "Given an accepted URL request, when a completion arrives without a string id, then it is ignored and the real one still reaches the callback":
+      var completed: seq[string]
+      let peer = startPeer(nil)
+      discard peer.connectedClient(mpv20251125, proc(client: McpClient) =
+        client.setElicitationHandler(urlHandler(eaAccept), {emForm, emUrl},
+          onComplete = proc(elicitationId: string) = completed.add elicitationId))
+      peer.ask(%"u1", "elicitation/create", urlParams)
+      discard peer.responseTo("u1")
+      peer.push("notifications/elicitation/complete", newJObject())
+      peer.push("notifications/elicitation/complete", %*{"elicitationId": 7})
+      peer.push("notifications/elicitation/complete", %*{"elicitationId": id})
+      waitFor sleepAsync(10)
+      check completed == @[id]
+
     test "Given a declined URL request, when its completion arrives, then the callback does not run":
       var completed: seq[string]
       let peer = startPeer(nil)

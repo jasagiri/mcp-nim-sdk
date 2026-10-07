@@ -133,4 +133,5 @@ Feature: Elicitation
     Given a tool handler that asks the client in url or form mode, in a task or not
     When the client answers
     Then the answer is the one the handler reads, the request belongs to the tool call, and the task needs input only while the answer is outstanding
+    And a completion notification without a string elicitationId is ignored
 
