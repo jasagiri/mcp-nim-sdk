@@ -216,3 +216,43 @@ Feature: Content of tools, resources and prompts
     When the decoded bytes are N bytes
     Then the icon is read
     And when they are N + 1 bytes it is refused
+
+  @spec:MCP-CONTENT-g2f-content-1
+  Scenario: Annotations and an Implementation that are not JSON objects are a protocol violation
+    Given annotations, a clientInfo or a serverInfo that is null, a string or an array
+    When the SDK reads it
+    Then McpShapeError is raised and no empty value is made of it
+
+  @spec:MCP-CONTENT-g2f-content-2
+  Scenario: A value that is not a JSON object passes the version filters as it is
+    Given a tool, a resource, a prompt, a content block, a tool result or a prompt result that is not a JSON object
+    When a version filters it for sending
+    Then it is sent as it is, in every version
+
+  @spec:MCP-CONTENT-g2f-content-3
+  Scenario: Structured content reaches a version that has no field for it as text
+    Given a result with structuredContent and an empty content list, or no content at all
+    When a version without structured output sends it
+    Then structuredContent is not sent and the content is one text block that holds the serialized JSON
+    And a result without content, or with content that is not a list, is otherwise sent as it is
+
+  @spec:MCP-CONTENT-g2f-content-4
+  Scenario: A prompt result is sent as it is where it has nothing to filter
+    Given a prompt result without messages, with messages that are not a list, or with a message that has no content or is not an object
+    When any version sends it
+    Then it is sent as it is
+
+  @spec:MCP-CONTENT-g2f-content-5
+  Scenario: A result with structuredContent and no usable content gains its serialized JSON as text
+    Given a result with structuredContent and an empty content list
+    When its serialized text is added
+    Then the content is one text block with the JSON
+    And a result without structuredContent is left unchanged
+
+  @spec:MCP-CONTENT-g2f-content-6
+  Scenario: A tool definition sends only the fields that were given
+    Given a tool defined with a name, a description and a schema only
+    When it is built
+    Then it has no title, icons, annotations or outputSchema
+    And a result built without isError is not an error
+    And schemas built without a description or a required list carry neither

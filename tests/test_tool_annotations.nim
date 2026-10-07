@@ -6,6 +6,7 @@ import ./server_harness
 import ./client_peer
 import client/tools
 import protocol/content
+import server/tools as serverTools
 
 proc annotatedServer(): McpServer =
   result = newServer(McpServerCapabilities(tools: some(McpToolsCapability())))
@@ -92,3 +93,46 @@ suite "tool annotations in the client":
     let annotations = tools[0].annotationsOf
     check annotations.isReadOnly
     check not annotations.isOpenWorld
+
+suite "tool definitions as a server builds them":
+
+  test "Given annotations that are not a JSON object, when they are parsed, then the protocol violation is raised":
+    for value in [newJNull(), %"x", %*[1]]:
+      expect McpShapeError:
+        discard parseToolAnnotations(value)
+    expect McpShapeError:
+      discard parseToolAnnotations(nil)
+
+  test "Given only a name, a description and a schema, when a tool is defined, then no optional field is sent":
+    check createToolInfo("t", "d", %*{"type": "object"}) ==
+      %*{"name": "t", "description": "d", "inputSchema": {"type": "object"}}
+
+  test "Given a title and an icon, when a tool is defined, then both are sent":
+    let tool = createToolInfo("t", "d", %*{"type": "object"}, title = "T",
+      icons = @[McpIcon(src: "https://example.com/i.png")])
+    check tool["title"].getStr() == "T"
+    check tool["icons"] == %*[{"src": "https://example.com/i.png"}]
+
+  test "Given a result built without isError, when it is read, then it is not an error":
+    check createToolResult(@[createTextToolContent("x")]) ==
+      %*{"content": [{"type": "text", "text": "x"}], "isError": false}
+
+  test "Given no description and no required list, when schemas are built, then only type and shape are sent":
+    check createInputSchema(%*{}) == %*{"type": "object", "properties": {}}
+    check createObjectProperty(%*{}) == %*{"type": "object", "properties": {}}
+    check createStringProperty() == %*{"type": "string"}
+    check createNumberProperty() == %*{"type": "number"}
+    check createBooleanProperty() == %*{"type": "boolean"}
+    check createArrayProperty(createStringProperty()) ==
+      %*{"type": "array", "items": {"type": "string"}}
+    check createEnumProperty(@["a"]) == %*{"type": "string", "enum": ["a"]}
+
+  test "Given a description and required names, when schemas are built, then they are sent":
+    check createInputSchema(%*{}, @["a"])["required"] == %*["a"]
+    check createObjectProperty(%*{}, @["a"], "o") ==
+      %*{"type": "object", "properties": {}, "required": ["a"], "description": "o"}
+    check createStringProperty("s")["description"].getStr() == "s"
+    check createNumberProperty("n")["description"].getStr() == "n"
+    check createBooleanProperty("b")["description"].getStr() == "b"
+    check createArrayProperty(createStringProperty(), "a")["description"].getStr() == "a"
+    check createEnumProperty(@["a"], "e")["description"].getStr() == "e"

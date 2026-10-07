@@ -7,6 +7,7 @@ import ./server_harness
 import ./client_peer
 import client/client
 import client/tools
+import protocol/content
 
 const WeatherSchema = """{"type": "object",
   "properties": {"temperature": {"type": "number"}, "conditions": {"type": "string"}},
@@ -237,3 +238,54 @@ suite "structured output in the client":
         message = e.msg
       check "https://example.com/own" in message
       check waitFor(client.callTool("odd", validateOutput = false)).structuredContent.isSome
+
+suite "results and prompts as a version sends them":
+
+  test "Given a version without structured output, when structuredContent comes with an empty content list, then a text block carries the data":
+    for version in versionsWithout(ftStructuredToolOutput):
+      let sent = version.toolResultFor(%*{"content": [], "structuredContent": {"a": 1}})
+      check not sent.hasKey("structuredContent")
+      check sent["content"].len == 1
+      check parseJson(sent["content"][0]["text"].getStr()) == %*{"a": 1}
+
+  test "Given a version without structured output, when structuredContent comes without content, then a text block carries the data":
+    for version in versionsWithout(ftStructuredToolOutput):
+      let sent = version.toolResultFor(%*{"structuredContent": {"a": 1}})
+      check not sent.hasKey("structuredContent")
+      check sent["content"].len == 1
+      check parseJson(sent["content"][0]["text"].getStr()) == %*{"a": 1}
+
+  test "Given a result without content or with content that is not a list, when any version sends it, then it is sent as it is":
+    for version in SupportedProtocolVersions:
+      check version.toolResultFor(%*{"isError": true}) == %*{"isError": true}
+      check version.toolResultFor(%*{"content": "x"}) == %*{"content": "x"}
+
+  test "Given a prompt result without messages or with messages that are not a list, when any version sends it, then it is sent as it is":
+    for version in SupportedProtocolVersions:
+      check version.promptResultFor(%*{"description": "d"}) == %*{"description": "d"}
+      check version.promptResultFor(%*{"messages": "x"}) == %*{"messages": "x"}
+
+  test "Given a message without content or that is not an object, when any version sends the prompt, then the message is sent as it is":
+    let prompt = %*{"messages": [{"role": "user"}, "x"]}
+    for version in SupportedProtocolVersions:
+      check version.promptResultFor(prompt) == prompt
+
+  test "Given a value that is not a JSON object, when any version filters it, then it comes back as it is":
+    for version in SupportedProtocolVersions:
+      for value in [%"x", %*[1, 2], %3]:
+        check version.toolFor(value) == value
+        check version.resourceFor(value) == value
+        check version.promptFor(value) == value
+        check version.contentBlockFor(value) == value
+        check version.toolResultFor(value) == value
+        check version.promptResultFor(value) == value
+        check value.withSerializedText == value
+
+  test "Given a result with structuredContent and an empty content list, when its text is serialized, then the content is that one text block":
+    let sent = withSerializedText(%*{"content": [], "structuredContent": {"a": 1}})
+    check sent["content"].len == 1
+    check parseJson(sent["content"][0]["text"].getStr()) == %*{"a": 1}
+
+  test "Given a result without structuredContent, when its text is serialized, then it is unchanged":
+    check withSerializedText(%*{"isError": false}) == %*{"isError": false}
+    check withSerializedText(%*{"content": []}) == %*{"content": []}

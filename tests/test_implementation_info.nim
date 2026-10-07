@@ -7,6 +7,7 @@ import ./server_harness
 import ./loopback_transport
 import client/client
 import transport/transport
+import protocol/content
 
 let DefaultLegacy = legacyVersions()[^1]
 const SpeaksModern = isModern(DefaultProtocolVersion)
@@ -165,3 +166,14 @@ suite "implementation info in the client":
       check info["description"].getStr() == "What the client is for"
       check info["title"].getStr() == "Client Title"
       check info["icons"].len == 1
+
+suite "implementation info read from a peer":
+
+  test "Given an Implementation that is not a JSON object, when it is parsed, then the protocol violation is raised":
+    for value in [newJNull(), %"x", %*[1]]:
+      expect McpShapeError:
+        discard parseClientInfo(value)
+      expect McpShapeError:
+        discard parseServerInfo(value)
+    expect McpShapeError:
+      discard parseClientInfo(nil)
