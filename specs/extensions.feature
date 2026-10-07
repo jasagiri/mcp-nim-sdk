@@ -88,3 +88,9 @@ Feature: Extensions (2026-07-28)
     Then the server serves it, and the client sends it without having declared the extension
     And the client still sends nothing to a server that did not declare the extension
 
+  @spec:MCP-EXT-15 @feature:ftExtensions
+  Scenario: A top-level capability the core does not define is kept for the extensions that read it
+    Given a server that declares a capability the core does not define next to core ones
+    When the client connects, in any version
+    Then serverCapability returns the settings of the one the core does not define, and nothing for core capabilities or non-object values
+    And a server whose capabilities are not an object is taken to have declared nothing

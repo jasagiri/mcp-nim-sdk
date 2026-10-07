@@ -1081,6 +1081,9 @@ MCP-EXT-11 | tests/test_extensions.nim | Given an extension declared with onLega
 MCP-EXT-12 | tests/test_extensions.nim | Given a legacy client that declared an extension in initialize, when a handler asks, then it sees the settings; without the declaration it does not
 MCP-EXT-13 | tests/test_extensions.nim | Given an extension registered with onLegacyHandshake, when a legacy client initializes, then the result announces it and only it
 MCP-EXT-14 | tests/test_extensions.nim | Given an extension the server alone declares, when a client that declared nothing calls its method, then the server serves it and the client sends it
+MCP-EXT-15 | tests/test_extensions.nim | Given a server that declares a capability the core does not define, when the client connects, then serverCapability returns its settings and only those
+MCP-EXT-15 | tests/test_extensions.nim | Given a server that declares only capabilities the core defines, when the client connects, then it has none of another kind
+MCP-EXT-15 | tests/test_extensions.nim | Given a server whose capabilities are not an object, when the client connects, then it connects and the server declared nothing
 MCP-HOOKS-1 | tests/test_request_hooks.nim | Given handlers that never read ctx.meta, when requests carry different _meta, then the results are identical
 MCP-HOOKS-1 | tests/test_request_hooks.nim | Given no response filter, when the standard methods are answered, then each result is what the handler returned
 MCP-HOOKS-1 | tests/test_request_hooks.nim | Given no list scope, or one that answers nil, when lists are asked and a tool is called, then the registered handlers serve and validate

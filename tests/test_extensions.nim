@@ -177,6 +177,30 @@ suite "extensions on the client":
       check client.serverExtension(Ext).get["flavours"][0].getStr() == "a"
       check client.serverExtension("com.example/other").isNone
 
+  test "Given a server that declares a capability the core does not define, when the client connects, then serverCapability returns its settings and only those":
+    for v in versionsWith(ftExtensions) & versionsWithout(ftExtensions):
+      let peer = startPeer(nil, modern = isModern(v), capabilities = %*{
+        "tools": {}, "logging": {}, "widgets": {"flavour": "a"}, "flag": true})
+      let client = peer.connectedClient(v)
+      check client.serverCapability("widgets").get["flavour"].getStr() == "a"
+      check client.serverCapability("flag").isNone
+      check client.serverCapability("tools").isNone
+      check client.serverCapability("logging").isNone
+
+  test "Given a server that declares only capabilities the core defines, when the client connects, then it has none of another kind":
+    for v in versionsWith(ftExtensions) & versionsWithout(ftExtensions):
+      let peer = startPeer(nil, modern = isModern(v), capabilities = %*{"tools": {}})
+      let client = peer.connectedClient(v)
+      check client.serverCapabilities.get.additional.isNone
+      check client.serverCapability("tools").isNone
+
+  test "Given a server whose capabilities are not an object, when the client connects, then it connects and the server declared nothing":
+    for v in versionsWith(ftExtensions) & versionsWithout(ftExtensions):
+      let peer = startPeer(nil, modern = isModern(v), capabilities = %*["tools"])
+      let client = peer.connectedClient(v)
+      check client.serverCapabilities.get.tools.isNone
+      check client.serverCapabilities.get.additional.isNone
+
   test "Given a server without the extension, when the client calls an extension method, then it raises McpUnsupportedError and sends nothing":
     for v in versionsWith(ftExtensions):
       let peer = startPeer(nil, modern = true)
