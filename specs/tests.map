@@ -1303,6 +1303,11 @@ MCP-SEC-HTTP-5 | tests/test_security_http.nim | Given a transport that listens o
 MCP-SEC-HTTP-7 | tests/test_security_diagnostic.nim | Given text with line breaks and escape characters, when made fit for a log, then none survives
 MCP-SEC-HTTP-7 | tests/test_security_diagnostic.nim | Given plain text including non-ASCII letters, when made fit for a log, then it is unchanged
 MCP-SEC-HTTP-7 | tests/test_security_diagnostic.nim | Given bytes that are not UTF-8, when made fit for a log, then each is shown as an escape
+MCP-SEC-HTTP-7 | tests/test_security_diagnostic.nim | Given a lone continuation byte, when made fit for a log, then it is shown as an escape
+MCP-SEC-HTTP-7 | tests/test_security_diagnostic.nim | Given tab and backslash, when made fit for a log, then each is shown as an escape
+MCP-SEC-HTTP-7 | tests/test_security_diagnostic.nim | Given characters of three and four bytes, when made fit for a log, then they are unchanged
+MCP-SEC-HTTP-7 | tests/test_security_diagnostic.nim | Given an overlong encoding of a control character, when made fit for a log, then its bytes are shown as escapes
+MCP-SEC-HTTP-7 | tests/test_security_diagnostic.nim | Given text of exactly the limit and one byte more, when made fit for a log, then only the longer one is cut
 MCP-SEC-HTTP-7 | tests/test_security_diagnostic.nim | Given text longer than the limit, when made fit for a log, then it is cut at a character and the rest is counted
 MCP-SEC-HTTP-7 | tests/test_security_diagnostic.nim | Given a message that is no JSON-RPC message, when the server logs it, then the log holds one line without the control characters
 MCP-SEC-HTTP-7 | tests/test_security_diagnostic.nim | Given a message that is no JSON-RPC message and very long, when the server logs it, then the log line is short

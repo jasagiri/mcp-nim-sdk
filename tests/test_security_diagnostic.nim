@@ -35,6 +35,28 @@ suite "peer text in diagnostics (MCP-SEC-HTTP-7)":
   test "Given bytes that are not UTF-8, when made fit for a log, then each is shown as an escape":
     check peerText("a\x9bb\xc3") == "a\\x9bb\\xc3"
 
+  test "Given a lone continuation byte, when made fit for a log, then it is shown as an escape":
+    # 0x80 is the first byte that is not ASCII; it starts no character.
+    check peerText("a\x80b") == "a\\x80b"
+
+  test "Given tab and backslash, when made fit for a log, then each is shown as an escape":
+    check peerText("a\tb") == "a\\tb"
+    check peerText("a\\nb") == "a\\\\nb"   # a typed backslash-n differs from a line break
+
+  test "Given characters of three and four bytes, when made fit for a log, then they are unchanged":
+    # E0 and F0 are the lowest lead bytes of three- and four-byte characters.
+    check peerText("\xe0\xa0\x80") == "\xe0\xa0\x80"
+    check peerText("\xf0\x9f\x98\x80") == "\xf0\x9f\x98\x80"
+
+  test "Given an overlong encoding of a control character, when made fit for a log, then its bytes are shown as escapes":
+    check peerText("\xc0\x80") == "\\xc0\\x80"
+    check peerText("\xc0") == "\\xc0"
+
+  test "Given text of exactly the limit and one byte more, when made fit for a log, then only the longer one is cut":
+    check peerText("x".repeat(10), maxLen = 10) == "x".repeat(10)
+    check peerText("x".repeat(11), maxLen = 10) == "x".repeat(10) & "...(1 more bytes)"
+    check peerText("x".repeat(25), maxLen = 10) == "x".repeat(10) & "...(15 more bytes)"
+
   test "Given text longer than the limit, when made fit for a log, then it is cut at a character and the rest is counted":
     let shown = peerText("あ".repeat(100), maxLen = 10)
     check shown.startsWith("あ".repeat(4))
