@@ -499,16 +499,9 @@ proc handleInitialize(server: McpServer, request: JsonRpcRequest): Future[JsonRp
   let requested = params["protocolVersion"].getStr()
   let supported = spokenVersionsUpTo(server.protocolVersion)
   let negotiated = negotiateLegacyVersion(requested, supported)
-  if negotiated.isNone:
-    var supportedJson = newJArray()
-    for v in supported:
-      supportedJson.add %($v)
-    return newJsonRpcErrorResponse(
-      request.id,
-      -32022,
-      "Unsupported protocol version",
-      %*{"supported": supportedJson, "requested": requested}
-    )
+  # A server that speaks no version with this handshake has answered
+  # `initialize` before it got here, so there is always one to agree on.
+  doAssert negotiated.isSome, "initialize reached a server that speaks no version with a handshake"
 
   let clientCapabilities =
     if params.hasKey("capabilities") and params["capabilities"].kind == JObject:
