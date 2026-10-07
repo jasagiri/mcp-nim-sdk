@@ -98,7 +98,7 @@ Feature: Streamable HTTP transport
     Then a token name on a string, integer or boolean property reachable through properties keys is valid
     And every other declaration makes the tool invalid
 
-  @spec:MCP-HTTP-g2f-params-1
+  @spec:MCP-HTTP-24
   Scenario: A schema keyword that holds schemas but no annotation does not invalidate a tool, and an invalid one is explained
     Given an input schema with items, additionalProperties, anyOf and a property named x-mcp-header, none of them annotated
     When declarations are read from it
@@ -106,7 +106,7 @@ Feature: Streamable HTTP transport
     And for an invalid declaration the reason names the property or the schema root it was found on
     And the reason for an empty name says the name must not be empty
 
-  @spec:MCP-HTTP-g2f-params-2
+  @spec:MCP-HTTP-25
   Scenario: Which argument values a header can mirror
     Given an integer property annotated with x-mcp-header
     When the argument is 2^53-1 or -(2^53-1), the header is built

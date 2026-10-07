@@ -11,7 +11,7 @@
 分類は、1 = 同値、3 = 穴 (新しい外部仕様テストを足した)、4 = 冗長なコード、6 = 受け入れ。
 クラス 3 の 8 件は、変異を手で当てて下に書いたテストが落ちることを確かめた (変異 1 件ごとにテスト 1 回、当てたあとファイルは戻した)。
 足したテストはすべて `tests/test_param_headers.nim` にあり、ジョブの `testCommand` に入っているので、ジョブの変更は要らない。
-Scenario は `MCP-HTTP-g2f-params-1` と `-2` (`specs/streamable_http.feature`、対応は `specs/tests.map`)。
+Scenario は `MCP-HTTP-24` と `-2` (`specs/streamable_http.feature`、対応は `specs/tests.map`)。
 `-d:mcpDefaultProtocolVersion=2024-11-05` と `=2025-11-25` でも `test_param_headers.nim` は 42 件とも通る (この部分は純関数で、版に依存しない)。
 
 | id | file:line | mutator | 変異 | class | 理由 / 検出するテスト |
@@ -36,3 +36,13 @@ Scenario は `MCP-HTTP-g2f-params-1` と `-2` (`specs/streamable_http.feature`�
 
 - 40 (`param_headers.nim:49`): `isToken` の空文字列の検査は、109 行目の検査と重なっている。コードは変えていない。リードの判断を待つ。
 - 20 (`param_headers.nim:181`): 診断の引用の長さの境界。受け入れ。
+
+## リードの判断
+
+- id 40 (`isToken` の空文字列の検査): 残す。今の唯一の呼び出し元は空の名前を先に退けるが、「空文字列は token ではない」は
+  RFC 9110 の token の定義そのもので、関数単体の意味を保つ。
+- id 2、34 のテストが診断文を見る点: そのままにする。見ているのは文面の全体ではなく、「どの引数か (名前、または schema の根)」
+  を名指しすること。tools/list から外したことを SDK が stderr に出すときの、作者が場所を探す唯一の手がかりになる。
+  仕様の規則ではなく SDK の振る舞いで、どこにも文書化はしていない。
+- id 20 (引用の 64 文字の境界): 許容のまま。
+

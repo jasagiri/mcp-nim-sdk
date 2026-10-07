@@ -673,12 +673,12 @@ MCP-HTTP-13 | tests/test_param_headers.nim | Given an annotation on the schema r
 MCP-HTTP-13 | tests/test_param_headers.nim | Given an annotation under items, when declarations are read, then the tool is invalid
 MCP-HTTP-13 | tests/test_param_headers.nim | Given an annotation under composition, conditional or $ref keywords, when declarations are read, then the tool is invalid
 MCP-HTTP-13 | tests/test_param_headers.nim | Given an invalid declaration, when declarations are read, then no bindings are offered
-MCP-HTTP-g2f-params-1 | tests/test_param_headers.nim | Given keywords that hold schemas but no annotation, when declarations are read, then the tool stays valid
-MCP-HTTP-g2f-params-1 | tests/test_param_headers.nim | Given an invalid declaration, when declarations are read, then the reason names where it was found
-MCP-HTTP-g2f-params-1 | tests/test_param_headers.nim | Given an empty name, when declarations are read, then the reason says the name must not be empty
-MCP-HTTP-g2f-params-2 | tests/test_param_headers.nim | Given an integer beyond the safe range, when headers are built, then the value is refused and no header is added
-MCP-HTTP-g2f-params-2 | tests/test_param_headers.nim | Given a body number written with a fraction part, when checked, then it agrees with the same integer in the header
-MCP-HTTP-g2f-params-2 | tests/test_param_headers.nim | Given an object or array argument, when checked, then no header value agrees with it
+MCP-HTTP-24 | tests/test_param_headers.nim | Given keywords that hold schemas but no annotation, when declarations are read, then the tool stays valid
+MCP-HTTP-24 | tests/test_param_headers.nim | Given an invalid declaration, when declarations are read, then the reason names where it was found
+MCP-HTTP-24 | tests/test_param_headers.nim | Given an empty name, when declarations are read, then the reason says the name must not be empty
+MCP-HTTP-25 | tests/test_param_headers.nim | Given an integer beyond the safe range, when headers are built, then the value is refused and no header is added
+MCP-HTTP-25 | tests/test_param_headers.nim | Given a body number written with a fraction part, when checked, then it agrees with the same integer in the header
+MCP-HTTP-25 | tests/test_param_headers.nim | Given an object or array argument, when checked, then no header value agrees with it
 MCP-HTTP-14 | tests/test_streamable_http.nim | Given a version header that names 2026-07-28 and a body without _meta, when posted, then the answer is 400 invalid params
 MCP-HTTP-14 | tests/test_streamable_http.nim | Given a version header that names 2026-07-28 and a _meta without the version, when posted, then the answer is 400 invalid params
 MCP-HTTP-14 | tests/test_streamable_http.nim | Given a version header that names an earlier version and a body without _meta, when posted, then the request is not taken for a 2026-07-28 one
