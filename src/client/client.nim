@@ -11,6 +11,7 @@ import ../protocol/trace_context
 import ../protocol/mrtr
 import ../protocol/subscriptions
 import ../transport/transport
+import ../transport/first_of
 
 type
   McpError* = object of CatchableError
@@ -447,14 +448,9 @@ proc startRequest*(client: McpClient, methodName: string, params: JsonNode,
   ## empty picks one. Raises what the transport raises when sending fails.
   let started = client.beginRequest(methodName, params, id)
   # Whichever comes first: the request is out, or sending failed and the
-  # response carries the error.
-  try:
-    await (started.sent or started.response)
-  except CatchableError:
-    # `or` took over the callback of `sent` that fails and unregisters the
-    # response, so a request nobody will hear about stays in the table.
-    client.pendingRequests.del(started.id)
-    raise
+  # response carries the error. `beginRequest` watches `sent` too, which is
+  # why this must not use `or`: that would take its callback away.
+  await firstOf(started.sent, started.response)
   if started.response.failed:
     raise started.response.readError()
   return (id: started.id, response: started.response)
@@ -524,7 +520,7 @@ proc sendOnce(client: McpClient, methodName: string, params: JsonNode,
                 else: newFuture[void]("McpClient.noTimeout")
     let cancelled = if options.cancel.isNil: newFuture[void]("McpClient.noCancel")
                     else: options.cancel.signal
-    await (started.response or timer or cancelled)
+    await firstOf(started.response, timer, cancelled)
     if started.response.finished:
       response = started.response.read
     elif cancelled.finished:

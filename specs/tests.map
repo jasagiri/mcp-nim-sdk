@@ -236,6 +236,8 @@ MCP-CANCEL-4 | tests/test_client_requests.nim | Given a server that never answer
 MCP-CANCEL-4 | tests/test_client_requests.nim | Given a pending request, when its token is cancelled, then it raises McpCancelledError and the server is told why
 MCP-CANCEL-4 | tests/test_client_requests.nim | Given a token cancelled before the call, when the request is made, then nothing is sent
 MCP-CANCEL-4 | tests/test_client_requests.nim | Given a request that already finished, when its token is cancelled later, then nothing is sent
+MCP-CANCEL-4 | tests/test_client_requests.nim | Given two requests that share one token, when it is cancelled, then both end at once with McpCancelledError
+MCP-CANCEL-4 | tests/test_client_requests.nim | Given a callback of the caller on a token, when a request is made with it, then the callback runs when the token is cancelled
 MCP-CANCEL-5 | tests/test_http_streams.nim | Given a request in progress, when the client closes the connection, then the server is told the request was cancelled
 MCP-CANCEL-5 | tests/test_http_streams.nim | Given a request in progress with nothing sent yet, when the client closes the connection, then the server is told the request was cancelled
 MCP-CANCEL-5 | tests/test_http_streams.nim | Given a cancelled request, when the server answers it anyway, then the answer is dropped without an error
@@ -867,6 +869,7 @@ MCP-SUBSCRIBE-10 | tests/test_subscriptions.nim | Given an open subscription ove
 MCP-SUBSCRIBE-10 | tests/test_subscriptions.nim | Given the transport fails while listening, when the stream breaks, then it ended lost
 MCP-SUBSCRIBE-11 | tests/test_subscriptions.nim | Given a server that rejects the listen request, when the client listens, then it raises McpRequestError
 MCP-SUBSCRIBE-11 | tests/test_subscriptions.nim | Given a server that never acknowledges, when the timeout passes, then the client raises McpTimeoutError and cancels
+MCP-SUBSCRIBE-11 | tests/test_subscriptions.nim | Given a listen and a request that share one token, when it is cancelled, then both end at once with McpCancelledError
 MCP-SUBSCRIBE-11 | tests/test_subscriptions.nim | Given an acknowledgment that is malformed, when it arrives, then the client raises McpProtocolError and cancels
 MCP-SUBSCRIBE-12 | tests/test_subscriptions.nim | Given a client and a server over stdio-style transport, when the tool list changes and the server shuts down, then the client is told and the stream ends gracefully
 MCP-SUBSCRIBE-12 | tests/test_subscriptions.nim | Given a client and a server over Streamable HTTP, when the tool list changes, then it arrives on the response stream, and cancelling closes the subscription

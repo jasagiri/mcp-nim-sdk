@@ -17,6 +17,7 @@
 import std/[asyncdispatch, json, options, tables]
 import uuids
 import ./client
+import ../transport/first_of
 import ../protocol/features
 import ../protocol/lifecycle
 import ../protocol/modern
@@ -103,7 +104,7 @@ proc listen*(client: McpClient, filter: SubscriptionFilter,
               else: newFuture[void]("McpClient.listen.noTimeout")
   let cancelled = if options.cancel.isNil: newFuture[void]("McpClient.listen.noCancel")
                   else: options.cancel.whenCancelled
-  await (subscription.acknowledgement or subscription.ended or timer or cancelled)
+  await firstOf(subscription.acknowledgement, subscription.ended, timer, cancelled)
   if subscription.acknowledgement.finished:
     if subscription.problem.isSome:
       await subscription.cancel("malformed acknowledgment")

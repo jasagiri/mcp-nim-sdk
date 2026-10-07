@@ -455,6 +455,26 @@ suite "subscriptions on the client":
       check peer.pair.client.cancelRequested == @[sub.id]
       check peer.requestsFor("notifications/cancelled").len == 0
 
+  test "Given a listen and a request that share one token, when it is cancelled, then both end at once with McpCancelledError":
+    for v in versionsWith(ftSubscriptionsListen):
+      let peer = listenPeer(proc(peer: client_peer.Peer, message: JsonNode) = discard)
+      let client = peer.connectedClient(v)
+      let token = newMcpCancelToken()
+      let options = McpRequestOptions(cancel: token, timeoutMs: some(1000))
+      let listening = client.listen(SubscriptionFilter(toolsListChanged: true), options)
+      let request = client.sendRequest("tools/list", newJObject(), options)
+      waitFor sleepAsync(5)
+      token.cancel("stop both")
+      # Well before the timeout: see the same test for two requests.
+      waitFor sleepAsync(50)
+      check listening.finished
+      check request.finished
+      expect McpCancelledError:
+        discard waitFor listening
+      expect McpCancelledError:
+        discard waitFor request
+      check client.subscriptions.len == 0
+
   test "Given a server that rejects the listen request, when the client listens, then it raises McpRequestError":
     for v in versionsWith(ftSubscriptionsListen):
       let peer = listenPeer(proc(peer: client_peer.Peer, message: JsonNode) =

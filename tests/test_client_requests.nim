@@ -166,6 +166,40 @@ suite "cancelling a request":
     waitFor sleepAsync(5)
     check peer.requestsFor("notifications/cancelled").len == 0
 
+  test "Given two requests that share one token, when it is cancelled, then both end at once with McpCancelledError":
+    let peer = silentPeer()
+    let client = peer.connectedClient(LegacyDefault)
+    let token = newMcpCancelToken()
+    let options = McpRequestOptions(cancel: token, timeoutMs: some(1000))
+    let first = client.sendRequest("tools/call", %*{"name": "slow"}, options)
+    let second = client.sendRequest("tools/list", newJObject(), options)
+    waitFor sleepAsync(5)
+    token.cancel("stop both")
+    # Well before the timeout: a request that only noticed the cancellation
+    # when its timer ran out was not cancelled.
+    waitFor sleepAsync(50)
+    check first.finished
+    check second.finished
+    expect McpCancelledError:
+      discard waitFor first
+    expect McpCancelledError:
+      discard waitFor second
+    check client.pendingRequests.len == 0
+
+  test "Given a callback of the caller on a token, when a request is made with it, then the callback runs when the token is cancelled":
+    let peer = silentPeer()
+    let client = peer.connectedClient(LegacyDefault)
+    let token = newMcpCancelToken()
+    var told = 0
+    token.whenCancelled.addCallback(proc() = inc told)
+    let pending = client.sendRequest("tools/call", %*{"name": "slow"},
+      McpRequestOptions(cancel: token, timeoutMs: some(400)))
+    waitFor sleepAsync(5)
+    token.cancel()
+    expect McpCancelledError:
+      discard waitFor pending
+    check told == 1
+
 suite "starting a request without waiting for its response":
 
   test "Given a request that is started, when the server has not answered, then it returns the id on the wire and a response that completes later":
