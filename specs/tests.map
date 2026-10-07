@@ -273,6 +273,14 @@ MCP-SERVERREQ-8 | tests/test_server_requests.nim | Given a handler that asks the
 MCP-SERVERREQ-9 | tests/test_server_requests.nim | Given a 2026-07-28 client, when the server asks for a message, then it raises and sends nothing
 MCP-SERVERREQ-9 | tests/test_server_requests.nim | Given a handler that asks the client, when a 2026-07-28 tool call arrives, then the call fails and no request is sent
 MCP-SERVERREQ-9 | tests/test_client_server_requests.nim | Given a 2026-07-28 connection, when the server sends a request, then the client answers method not found
+MCP-SERVERREQ-10 | tests/test_server_requests.nim | Given a request with no time limit, when the client answers after a while, then the answer is returned
+MCP-SERVERREQ-10 | tests/test_server_requests.nim | Given no hold hook, when a request names a task, then it is sent at once
+MCP-SERVERREQ-10 | tests/test_server_requests.nim | Given a hold hook that declines, when a request names a task, then it is sent at once
+MCP-SERVERREQ-10 | tests/test_server_requests.nim | Given a hold hook that keeps, when a request names a task and a request of the client, then it is sent at once on that request and the hook is not asked
+MCP-SERVERREQ-10 | tests/test_server_requests.nim | Given a hold hook that keeps, when a request names no task, then it is sent at once and the hook is not asked
+MCP-SERVERREQ-10 | tests/test_server_requests.nim | Given a hold hook that keeps, when a request names a task only, then it waits until sendHeld puts it on the stream of a tasks/result request
+MCP-SERVERREQ-10 | tests/test_server_requests.nim | Given a held request whose time ran out, when sendHeld is called for it, then nothing is sent
+MCP-SERVERREQ-10 | tests/test_server_requests.nim | Given a hold hook that refuses, when a request names a task, then the refusal is raised, nothing is sent, and sendHeld for it sends nothing
 MCP-CLIENTREQ-1 | tests/test_client_server_requests.nim | Given a sampling handler, when the server asks, then the request is parsed and the result is sent in wire form
 MCP-CLIENTREQ-1 | tests/test_client_server_requests.nim | Given a sampling handler, when the client connects, then initialize declares sampling
 MCP-CLIENTREQ-1 | tests/test_client_server_requests.nim | Given a handler that refuses, when the server asks, then the handler's error code is sent

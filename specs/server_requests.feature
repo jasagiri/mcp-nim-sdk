@@ -40,6 +40,15 @@ Feature: Requests the server makes of the client
     Then the error carries the client's code, or the wait raises a timeout and the request is cancelled
     And an answer that arrives after the timeout is ignored
 
+  @spec:MCP-SERVERREQ-10 @feature:ftServerInitiatedRequests
+  Scenario: A request of the server that belongs to a task may be held until a tasks/result request can carry it
+    Given a hold hook that keeps requests of a task and a request of the server that names that task and no request of the client
+    When the server sends it, with a time limit or with none
+    Then it is not sent until sendHeld puts it on the stream of a tasks/result request, and a request that ran out of time in the meantime is not sent at all
+    And a request with no task, or with a request of the client it belongs to, or whose hook declines or is absent, is sent at once
+    And a hook that refuses raises to the caller and nothing is sent
+    And a request with no time limit waits for the client as long as it takes
+
   @spec:MCP-SERVERREQ-6 @feature:ftServerInitiatedRequests
   Scenario: A wait ends when the client's session or transport ends
     Given a server waiting for a client's answer

@@ -183,6 +183,108 @@ suite "requests of the server (before 2026-07-28)":
       t.answer(asked, %*{"content": {"type": "text", "text": "a summary"}})
       check textOf(t.responseTo(callId)) == "a summary"
 
+suite "requests of the server that belong to a task":
+
+  proc connected(): tuple[server: McpServer, t: SessionedTransport] =
+    let server = requestServer()
+    let t = server.attach()
+    discard server.connect(t, Legacy, clientCapabilities = SamplingAndRoots)
+    (server, t)
+
+  test "Given a request with no time limit, when the client answers after a while, then the answer is returned":
+    let (server, t) = connected()
+    let pending = server.request("", "ping", newJObject(), timeoutMs = 0)
+    let asked = t.awaitRequest("ping")
+    settle()
+    check not pending.finished
+    t.answer(asked, newJObject())
+    check waitFor(pending).result.isSome
+
+  test "Given no hold hook, when a request names a task, then it is sent at once":
+    let (server, t) = connected()
+    let pending = server.request("", "ping", newJObject(), relatedTask = "t1", timeoutMs = 0)
+    let asked = t.awaitRequest("ping")
+    check asked.message["params"]["_meta"]["io.modelcontextprotocol/related-task"]["taskId"].getStr() == "t1"
+    t.answer(asked, newJObject())
+    discard waitFor pending
+
+  test "Given a hold hook that declines, when a request names a task, then it is sent at once":
+    let (server, t) = connected()
+    var asked: seq[string]
+    server.holdForTask = proc(taskId: string, request: JsonRpcRequest): bool =
+      asked.add taskId
+      false
+    let pending = server.request("", "ping", newJObject(), relatedTask = "t1", timeoutMs = 0)
+    let sent = t.awaitRequest("ping")
+    check asked == @["t1"]
+    t.answer(sent, newJObject())
+    discard waitFor pending
+
+  test "Given a hold hook that keeps, when a request names a task and a request of the client, then it is sent at once on that request and the hook is not asked":
+    let (server, t) = connected()
+    var asked = 0
+    server.holdForTask = proc(taskId: string, request: JsonRpcRequest): bool =
+      inc asked
+      true
+    let pending = server.request("", "ping", newJObject(), "call-1", timeoutMs = 0, relatedTask = "t1")
+    let sent = t.awaitRequest("ping")
+    check sent.related == "call-1"
+    check asked == 0
+    t.answer(sent, newJObject())
+    discard waitFor pending
+
+  test "Given a hold hook that keeps, when a request names no task, then it is sent at once and the hook is not asked":
+    let (server, t) = connected()
+    var asked = 0
+    server.holdForTask = proc(taskId: string, request: JsonRpcRequest): bool =
+      inc asked
+      true
+    let pending = server.request("", "ping", newJObject(), timeoutMs = 0)
+    let sent = t.awaitRequest("ping")
+    check asked == 0
+    t.answer(sent, newJObject())
+    discard waitFor pending
+
+  test "Given a hold hook that keeps, when a request names a task only, then it waits until sendHeld puts it on the stream of a tasks/result request":
+    let (server, t) = connected()
+    var held: JsonRpcRequest
+    server.holdForTask = proc(taskId: string, request: JsonRpcRequest): bool =
+      held = request
+      true
+    let pending = server.request("", "ping", newJObject(), relatedTask = "t1", timeoutMs = 0)
+    settle()
+    check t.messagesOf("ping").len == 0
+    check held.id.len > 0
+    waitFor server.sendHeld(held, "result-1")
+    let sent = t.awaitRequest("ping")
+    check sent.related == "result-1"
+    check sent.message["id"].getStr() == held.id
+    t.answer(sent, newJObject())
+    discard waitFor pending
+
+  test "Given a held request whose time ran out, when sendHeld is called for it, then nothing is sent":
+    let (server, t) = connected()
+    var held: JsonRpcRequest
+    server.holdForTask = proc(taskId: string, request: JsonRpcRequest): bool =
+      held = request
+      true
+    let pending = server.request("", "ping", newJObject(), relatedTask = "t1", timeoutMs = 30)
+    expect McpRequestTimeout:
+      discard waitFor pending
+    waitFor server.sendHeld(held, "result-1")
+    check t.messagesOf("ping").len == 0
+
+  test "Given a hold hook that refuses, when a request names a task, then the refusal is raised, nothing is sent, and sendHeld for it sends nothing":
+    let (server, t) = connected()
+    var held: JsonRpcRequest
+    server.holdForTask = proc(taskId: string, request: JsonRpcRequest): bool =
+      held = request
+      raise newException(McpCapabilityError, "the task cannot ask")
+    expect McpCapabilityError:
+      discard waitFor server.request("", "ping", newJObject(), relatedTask = "t1")
+    waitFor server.sendHeld(held, "result-1")
+    check t.messagesOf("ping").len == 0
+
 if isModern(DefaultProtocolVersion):
   suite "requests of the server in 2026-07-28":
 
