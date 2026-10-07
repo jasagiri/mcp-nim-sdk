@@ -13,6 +13,13 @@ type
     sent*: seq[JsonNode]  ## every message this side put on the wire
     closed: bool
     endOfStream: bool  ## the close was the peer's orderly end, as an EOF is
+    holdSendsOf*: string
+      ## The method of the requests whose sending stays unfinished until
+      ## `sendGate` completes (HTTP: until the server starts to answer) or
+      ## fails (the sending fails). Nothing reaches the peer before then.
+    sendGate*: Future[void]
+    brokenNotifications*: bool  ## sending a notification fails
+    cancelRequested*: seq[string]  ## the ids `cancelRequest` was called with
 
 proc deliver(t: LoopbackTransport, wire: string) =
   let message = parseJson(wire)
@@ -30,10 +37,17 @@ proc inject*(t: LoopbackTransport, message: JsonNode) =
   t.deliver($message)
 
 method sendRequest*(t: LoopbackTransport, request: JsonRpcRequest): Future[void] {.async.} =
+  if request.`method` == t.holdSendsOf and not t.sendGate.isNil:
+    await t.sendGate
   t.put(encodeMessage(request))
 
 method sendNotification*(t: LoopbackTransport, notification: JsonRpcNotification): Future[void] {.async.} =
+  if t.brokenNotifications:
+    raise newException(McpTransportError, "loopback notifications are broken")
   t.put(encodeMessage(notification))
+
+method cancelRequest*(t: LoopbackTransport, requestId: string) =
+  t.cancelRequested.add requestId
 
 method sendResponse*(t: LoopbackTransport, response: JsonRpcResponse): Future[void] {.async.} =
   t.put(encodeMessage(response))
@@ -66,10 +80,10 @@ proc endStream*(t: LoopbackTransport) =
   while t.waiters.len > 0:
     t.waiters.popFirst().fail(t.closedError())
 
-proc newLoopbackPair*(): tuple[client, server: LoopbackTransport] =
-  let a = LoopbackTransport(kind: mtkStdio, inbox: initDeque[JsonNode](),
+proc newLoopbackPair*(kind = mtkStdio): tuple[client, server: LoopbackTransport] =
+  let a = LoopbackTransport(kind: kind, inbox: initDeque[JsonNode](),
                             waiters: initDeque[Future[JsonNode]]())
-  let b = LoopbackTransport(kind: mtkStdio, inbox: initDeque[JsonNode](),
+  let b = LoopbackTransport(kind: kind, inbox: initDeque[JsonNode](),
                             waiters: initDeque[Future[JsonNode]]())
   a.peer = b
   b.peer = a

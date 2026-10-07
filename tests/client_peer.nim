@@ -53,10 +53,13 @@ proc serve(peer: Peer) {.async.} =
     discard  # the test is over
 
 proc startPeer*(handler: proc(peer: Peer, message: JsonNode), modern = false,
-                capabilities: JsonNode = %*{"tools": {}}): Peer =
+                capabilities: JsonNode = %*{"tools": {}},
+                kind = mtkStdio): Peer =
   ## A peer that speaks the 2026-07-28 protocol when `modern`, else a
-  ## legacy one. `handler` sees what follows the handshake.
-  let peer = Peer(pair: newLoopbackPair())
+  ## legacy one. `handler` sees what follows the handshake. `kind` is what
+  ## the client's transport says it is: the client cancels requests
+  ## differently over stdio and over HTTP.
+  let peer = Peer(pair: newLoopbackPair(kind))
   let served = capabilities
   peer.handler = proc(self: Peer, message: JsonNode) =
     case message{"method"}.getStr()

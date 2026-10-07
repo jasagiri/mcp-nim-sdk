@@ -1,14 +1,44 @@
 ## Request lifecycle of the client: timeouts, cancellation, progress, and
 ## what happens to waiting requests when the connection ends.
 
-import std/[unittest, asyncdispatch, json, options, strutils, tables]
+import std/[unittest, asyncdispatch, json, options, os, strutils, tables]
 import client/client
 import protocol/types
 import protocol/lifecycle
+import transport/transport
 import ./loopback_transport
 import ./client_peer
 
 proc silentPeer(): Peer = startPeer(nil)
+
+proc loggedWhile(body: proc()): string =
+  ## Everything the code under test wrote to stderr.
+  let path = getTempDir() / "mcp-client-requests-" & $getCurrentProcessId() & ".log"
+  let saved = stderr
+  stderr = open(path, fmWrite)
+  try:
+    body()
+  finally:
+    stderr.close()
+    stderr = saved
+  result = readFile(path)
+  removeFile(path)
+
+proc holdSending(peer: Peer, methodName: string): Future[void] =
+  ## The client's transport does not finish sending `methodName` requests
+  ## until the returned future is completed or failed, as an HTTP POST does
+  ## until the server starts to answer.
+  let gate = newFuture[void]("test.sendGate")
+  peer.pair.client.holdSendsOf = methodName
+  peer.pair.client.sendGate = gate
+  gate
+
+proc timesOut(client: McpClient) =
+  ## A tools/list that gets no answer within 30 ms.
+  expect McpTimeoutError:
+    discard waitFor client.sendRequest("tools/list", newJObject(),
+      McpRequestOptions(timeoutMs: some(30)))
+  waitFor sleepAsync(5)
 
 proc lastCancelled(peer: Peer): JsonNode =
   let all = peer.requestsFor("notifications/cancelled")
@@ -97,6 +127,22 @@ suite "cancelling a request":
     check cancelled["reason"].getStr() == "user stopped it"
     check client.pendingRequests.len == 0
 
+  test "Given a token cancelled without a reason, when the request raises, then the message names no reason":
+    let peer = silentPeer()
+    let client = peer.connectedClient(LegacyDefault)
+    let token = newMcpCancelToken()
+    let pending = client.sendRequest("tools/call", %*{"name": "slow"},
+      McpRequestOptions(cancel: token))
+    waitFor sleepAsync(5)
+    token.cancel()
+    try:
+      discard waitFor pending
+      check false
+    except McpCancelledError as e:
+      # Nim appends the async traceback to the message.
+      check e.msg.startsWith("tools/call: cancelled")
+      check "()" notin e.msg
+
   test "Given a token cancelled before the call, when the request is made, then nothing is sent":
     let peer = silentPeer()
     let client = peer.connectedClient(LegacyDefault)
@@ -118,6 +164,121 @@ suite "cancelling a request":
     token.cancel()
     waitFor sleepAsync(5)
     check peer.requestsFor("notifications/cancelled").len == 0
+
+suite "giving up a request over each transport":
+
+  test "Given a legacy connection over HTTP, when a request that was sent times out, then notifications/cancelled is sent and the transport is not asked to cancel":
+    let peer = startPeer(nil, kind = mtkStreamable)
+    let client = peer.connectedClient(LegacyDefault)
+    client.timesOut()
+    check peer.requestsFor("notifications/cancelled").len == 1
+    check peer.pair.client.cancelRequested.len == 0
+
+  test "Given a request whose sending has not finished, when it times out, then the transport is asked to give up sending and the server is told":
+    let peer = startPeer(nil, kind = mtkStreamable)
+    let client = peer.connectedClient(LegacyDefault)
+    let gate = peer.holdSending("tools/list")
+    client.timesOut()
+    check peer.pair.client.cancelRequested.len == 1
+    check peer.requestsFor("tools/list").len == 0
+    let told = peer.lastCancelled()
+    check not told.isNil
+    check told["requestId"].getStr() == peer.pair.client.cancelRequested[0]
+    gate.complete()
+
+  test "Given a request given up while it was being sent, when the sending fails afterwards, then the failure is reported":
+    let peer = silentPeer()
+    let client = peer.connectedClient(LegacyDefault)
+    let gate = peer.holdSending("tools/list")
+    let logged = loggedWhile(proc() =
+      client.timesOut()
+      gate.fail(newException(McpTransportError, "the connection broke"))
+      waitFor sleepAsync(20))
+    check "tools/list" in logged
+    check "the connection broke" in logged
+    check client.pendingRequests.len == 0
+
+  test "Given sending that fails while the request waits, when it fails, then the caller gets the transport's error and nothing stays pending":
+    let peer = silentPeer()
+    let client = peer.connectedClient(LegacyDefault)
+    let gate = peer.holdSending("tools/list")
+    let pending = client.sendRequest("tools/list", newJObject(),
+      McpRequestOptions(timeoutMs: some(0)))
+    waitFor sleepAsync(5)
+    check client.pendingRequests.len == 1
+    gate.fail(newException(McpTransportError, "the connection broke"))
+    expect McpTransportError:
+      discard waitFor pending
+    check client.pendingRequests.len == 0
+
+  test "Given a notification of cancellation that cannot be sent, when a request times out, then the caller still gets McpTimeoutError and the failure is reported":
+    let peer = silentPeer()
+    let client = peer.connectedClient(LegacyDefault)
+    peer.pair.client.brokenNotifications = true
+    let logged = loggedWhile(proc() = client.timesOut())
+    check "could not cancel request" in logged
+    check "loopback notifications are broken" in logged
+
+  test "Given a closed client, when a notification is sent, then it raises McpConnectionClosedError without sending":
+    let peer = silentPeer()
+    let client = peer.connectedClient(LegacyDefault)
+    waitFor client.close()
+    let before = peer.received.len
+    expect McpConnectionClosedError:
+      waitFor client.sendNotification("notifications/roots/list_changed", newJObject())
+    check peer.received.len == before
+
+  test "Given a client that never connected, when a notification is sent, then it raises McpConnectionClosedError":
+    let client = newMcpClient(McpClientInfo(name: "c", version: "0"), LegacyDefault)
+    expect McpConnectionClosedError:
+      waitFor client.sendNotification("notifications/roots/list_changed", newJObject())
+
+if SpeaksModern:
+  suite "giving up a request in 2026-07-28":
+
+    test "Given a connection over HTTP, when a request times out, then the transport is asked to cancel it and no notification is sent":
+      let peer = startPeer(nil, modern = true, kind = mtkStreamable)
+      let client = peer.connectedClient()
+      client.timesOut()
+      check peer.pair.client.cancelRequested ==
+        @[peer.requestsFor("tools/list")[0]["id"].getStr()]
+      check peer.requestsFor("notifications/cancelled").len == 0
+
+    test "Given a connection over stdio, when a request times out, then notifications/cancelled is sent and the transport is not asked to cancel":
+      let peer = startPeer(nil, modern = true)
+      let client = peer.connectedClient()
+      client.timesOut()
+      check peer.requestsFor("notifications/cancelled").len == 1
+      check peer.pair.client.cancelRequested.len == 0
+
+  suite "a tools/call is repeated only when refused as a header mismatch":
+
+    proc answeringWith(answer: proc(peer: Peer, id: JsonNode)): Peer =
+      startPeer(proc(peer: Peer, message: JsonNode) =
+        case message{"method"}.getStr()
+        of "tools/call": answer(peer, message["id"])
+        of "tools/list": peer.reply(message["id"], %*{"resultType": "complete", "tools": []})
+        else: discard, modern = true, kind = mtkStreamable)
+
+    test "Given a connection over HTTP, when a call is answered with a result, then it was sent once and the tools were not listed again":
+      let peer = answeringWith(proc(peer: Peer, id: JsonNode) =
+        peer.reply(id, %*{"resultType": "complete", "content": []}))
+      let client = peer.connectedClient()
+      client.requestTimeoutMs = 500
+      let response = waitFor client.sendRequest("tools/call", %*{"name": "t"})
+      check response.result.isSome
+      check peer.requestsFor("tools/call").len == 1
+      check peer.requestsFor("tools/list").len == 0
+
+    test "Given a connection over HTTP, when a call is refused for another reason, then the refusal is returned and nothing is repeated":
+      let peer = answeringWith(proc(peer: Peer, id: JsonNode) =
+        peer.replyError(id, -32602, "invalid params"))
+      let client = peer.connectedClient()
+      client.requestTimeoutMs = 500
+      let response = waitFor client.sendRequest("tools/call", %*{"name": "t"})
+      check response.error.get.code == -32602
+      check peer.requestsFor("tools/call").len == 1
+      check peer.requestsFor("tools/list").len == 0
 
 suite "progress":
 
@@ -152,6 +313,42 @@ suite "progress":
     check seen[0].message == "one"
     check seen[1].progress == 2.0
     check seen[1].total.isNone
+
+  test "Given two requests with progress callbacks in flight, when the server reports progress for each, then each callback sees only its own":
+    let peer = silentPeer()
+    let client = peer.connectedClient(LegacyDefault)
+    var first, second: seq[float]
+    let a = client.sendRequest("tools/call", %*{"name": "a"},
+      McpRequestOptions(timeoutMs: some(0),
+        onProgress: proc(update: McpProgress) = first.add update.progress))
+    let b = client.sendRequest("tools/call", %*{"name": "b"},
+      McpRequestOptions(timeoutMs: some(0),
+        onProgress: proc(update: McpProgress) = second.add update.progress))
+    waitFor sleepAsync(5)
+    let sent = peer.requestsFor("tools/call")
+    check sent.len == 2
+    peer.push("notifications/progress", %*{
+      "progressToken": sent[0]["params"]["_meta"]["progressToken"], "progress": 1})
+    peer.push("notifications/progress", %*{
+      "progressToken": sent[1]["params"]["_meta"]["progressToken"], "progress": 2})
+    waitFor sleepAsync(5)
+    check first == @[1.0]
+    check second == @[2.0]
+    peer.reply(sent[0]["id"], %*{"content": []})
+    peer.reply(sent[1]["id"], %*{"content": []})
+    discard waitFor a
+    discard waitFor b
+
+  test "Given a request without a progress callback, when progress arrives with an empty token, then the client carries on":
+    let peer = silentPeer()
+    let client = peer.connectedClient(LegacyDefault)
+    let pending = client.sendRequest("tools/list", newJObject(),
+      McpRequestOptions(timeoutMs: some(0)))
+    waitFor sleepAsync(5)
+    peer.push("notifications/progress", %*{"progressToken": "", "progress": 1})
+    waitFor sleepAsync(5)
+    peer.reply(peer.requestsFor("tools/list")[0]["id"], %*{"tools": []})
+    check (waitFor pending).result.isSome
 
   test "Given a finished request, when a late progress arrives, then the callback is not called":
     var calls = 0
