@@ -108,6 +108,8 @@
 
 | モジュール | 変えた内容 | 対応する外部仕様テスト |
 |---|---|---|
+| `src/server/server.nim` | `handleInitialize` の届かない枝を `doAssert` に | `tests/test_legacy_handshake.nim`、`tests/test_version_floor.nim` |
+| `src/server/resources.nim`、`src/server/prompts.nim` | 削除 (どこからも使われていなかった) | (なし) |
 | `src/client/client.nim` | 送信に失敗した要求を待ちの表から外す (`startRequest`)。到達しない文 2 つを削除、`discover` の末尾を `raiseAssert` に | `tests/test_client_requests.nim` |
 | `src/protocol/lifecycle.nim` | 呼び出し元の無い補助関数 4 つを削除 | `tests/test_legacy_handshake.nim` |
 | `src/transport/first_of.nim` | 新規。`firstOf`、`Doorbell`。future の既存コールバックを消さずに最初の 1 つを待つ | `tests/test_first_of.nim` (内部実装テスト)。外部仕様テストは下の各モジュールの行 |
