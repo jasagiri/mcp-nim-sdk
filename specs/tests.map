@@ -345,6 +345,8 @@ MCP-HTTPSTREAM-7 | tests/test_http_streams.nim | Given a stream of another sessi
 MCP-HTTPSTREAM-8 | tests/test_http_streams.nim | Given a Last-Event-ID of no stream the server knows, when asked to resume, then the answer is 400
 MCP-HTTPSTREAM-8 | tests/test_http_streams.nim | Given a Last-Event-ID that is not an event id at all, when asked to resume, then the answer is 400
 MCP-HTTPSTREAM-8 | tests/test_http_streams.nim | Given a stream that remembers one event, when more were sent after the client left, then resuming from an event it forgot is refused
+MCP-HTTPSTREAM-7 | tests/test_http_streams.nim | Given the GET stream of a session, when the client left after an event and asks for the rest by that event's id, then it gets the later events
+MCP-HTTPSTREAM-8 | tests/test_http_streams.nim | Given a GET stream that has sent events, when an event id of a stream the session never had is presented, then the answer is 400
 MCP-HTTPSTREAM-9 | tests/test_http_client_streams.nim | Given a stream cut before the response, when an event id was seen, then the client asks for the events after it and receives the response
 MCP-HTTPSTREAM-9 | tests/test_http_client_streams.nim | Given a stream cut before any event id, when the response is missing, then a local stream-closed error stands in for it and nothing is resumed
 MCP-HTTPSTREAM-9 | tests/test_http_client_streams.nim | Given a server that cuts every stream before saying anything, when the client has resumed as often as it may, then the stream-closed error stands in for the response
@@ -379,10 +381,12 @@ MCP-HTTPGET-3 | tests/test_http_streams.nim | Given a GET without a session id, 
 MCP-HTTPGET-3 | tests/test_http_streams.nim | Given a GET naming an unknown session, when sent, then the answer is 404
 MCP-HTTPGET-3 | tests/test_http_streams.nim | Given a GET that does not accept an event stream, when sent, then the answer is 406
 MCP-HTTPGET-3 | tests/test_http_streams.nim | Given a GET from a foreign Origin, when sent, then the answer is 403
+MCP-HTTPGET-3 | tests/test_http_streams.nim | Given a GET that names a version the server does not speak, when it arrives, then the answer is 400
 MCP-HTTPGET-4 | tests/test_http_streams.nim | Given a GET open on a session, when the client sends DELETE, then the stream ends
 MCP-HTTPGET-4 | tests/test_http_streams.nim | Given a session that expires, when a GET stream is open on it, then the stream ends
 MCP-HTTPGET-5 | tests/test_http_streams.nim | Given a 2026-07-28 endpoint, when GET is sent, then no stream opens and the answer is 400 or 405
 MCP-HTTPGET-5 | tests/test_http_streams.nim | Given a request of 2026-07-28, when the server tries to send a request of its own on its stream, then McpTransportError is raised
+MCP-HTTPGET-g2f-hs-b-1 | tests/test_http_streams.nim | Given a session negotiated at 2024-11-05, when it opens GET, then the answer is 405 naming POST and DELETE
 MCP-HTTPGET-6 | tests/test_http_client_streams.nim | Given an initialized session, when the server says something outside any request, then the client receives it
 MCP-HTTPGET-6 | tests/test_http_client_streams.nim | Given a request the server sends on the GET stream, when the client answers it, then the server receives the answer
 MCP-HTTPGET-6 | tests/test_http_client_streams.nim | Given a GET stream that is cut, when the client reconnects, then it names the last event id it saw
@@ -398,6 +402,8 @@ MCP-HTTPSESSION-2 | tests/test_http_streams.nim | Given a session in use, when i
 MCP-HTTPSESSION-2 | tests/test_http_streams.nim | Given a session with a GET stream open, when it has sent nothing for longer than the limit, then it stays
 MCP-HTTPSESSION-2 | tests/test_http_streams.nim | Given the session limit is reached by idle sessions, when another client initializes, then an idle one is dropped to make room
 MCP-HTTPSESSION-2 | tests/test_http_streams.nim | Given the transport is serving, when a session stays idle, then it expires without anyone asking
+MCP-HTTPSESSION-2 | tests/test_http_streams.nim | Given a session whose GET stream has ended, when it then stays unused, then it stays only for the limit counted from the end of the stream, and then expires
+MCP-HTTPSESSION-2 | tests/test_http_streams.nim | Given a session that has served a request, when it then stays unused beyond the limit, then it expires
 MCP-HTTPVER-1 | tests/test_http_streams.nim | Given a header naming the negotiated version, when a request is posted, then it is served
 MCP-HTTPVER-1 | tests/test_http_streams.nim | Given a header naming a version nobody released, when a request is posted, then the answer is 400
 MCP-HTTPVER-1 | tests/test_http_streams.nim | Given a header that is not a version, when a request is posted, then the answer is 400
@@ -409,6 +415,7 @@ MCP-HTTPBATCH-1 | tests/test_http_streams.nim | Given a batch of requests and no
 MCP-HTTPBATCH-1 | tests/test_http_streams.nim | Given a batch of notifications only, when posted, then the answer is 202 with no body
 MCP-HTTPBATCH-1 | tests/test_http_streams.nim | Given a batch of responses, when posted, then the answer is 202
 MCP-HTTPBATCH-1 | tests/test_http_streams.nim | Given a batch whose requests make the server send notifications, when posted, then the answer is a stream with one response per request
+MCP-HTTPBATCH-1 | tests/test_http_streams.nim | Given a batch of a request and a notification, when posted, then the server receives the notification
 MCP-HTTPBATCH-2 | tests/test_http_streams.nim | Given a batch holding initialize, when posted, then the answer is 400
 MCP-HTTPBATCH-2 | tests/test_http_streams.nim | Given an empty batch, when posted, then the answer is 400
 MCP-HTTPBATCH-2 | tests/test_http_streams.nim | Given a batch holding something that is not an object, when posted, then the answer is 400

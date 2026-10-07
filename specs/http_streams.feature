@@ -115,6 +115,12 @@ Feature: Event streams over Streamable HTTP
     Then no stream opens: the answer is 400 or 405
     And the server cannot send a request of its own on a request's stream
 
+  @spec:MCP-HTTPGET-g2f-hs-b-1 @feature:ftStreamableHttp
+  Scenario: A session negotiated at 2024-11-05 has no GET stream
+    Given a session that initialized at 2024-11-05 over the Streamable HTTP endpoint
+    When it sends GET
+    Then the answer is 405 and Allow names POST and DELETE
+
   @spec:MCP-HTTPGET-6 @feature:ftHttpGetStream
   Scenario: A client listens on the GET stream
     Given an initialized session from 2025-03-26 to 2025-11-25

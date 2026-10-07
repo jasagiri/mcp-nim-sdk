@@ -974,3 +974,110 @@ suite "the HTTP server transport's own rules (mutation review, g2f-hs-a)":
         check post(url, rpc(2, "ping"), @[("Mcp-Session-Id", session),
           ("MCP-Protocol-Version", "1999-01-01")]).code == Http400
         check post(url, rpc(3, "ping"), legacyHeaders(session, ceiling.get)).code == Http200
+
+proc openWithin(url: string, httpMethod: HttpMethod, headers: seq[(string, string)],
+                ms = 2000): Option[Events] =
+  ## The response, or none when the server has not answered within `ms`: a
+  ## transport that forgets to answer must fail a check, not hang the test.
+  let opening = openAsync(url, httpMethod, "", headers)
+  if waitFor withTimeout(opening, ms):
+    some(opening.read())
+  else:
+    none(Events)
+
+suite "GET stream and session lifetime (mutation review, g2f-hs-b)":
+  let version = min(DefaultProtocolVersion, mpv20251125)
+
+  if isSupported(mpv20241105) and mpv20250326 <= DefaultProtocolVersion:
+    test "Given a session negotiated at 2024-11-05, when it opens GET, then the answer is 405 naming POST and DELETE":
+      let (_, url, script) = startRaw(version)
+      script.version = mpv20241105
+      let session = initialize(url, mpv20241105)
+      let opened = openWithin(url, HttpGet, @[("Mcp-Session-Id", session)])
+      require opened.isSome
+      check opened.get.code == Http405
+      check $opened.get.response.headers["Allow"] == "POST, DELETE"
+      opened.get.close()
+
+  if version >= mpv20250618:
+    test "Given a GET that names a version the server does not speak, when it arrives, then the answer is 400":
+      let (_, url, _) = startRaw(version)
+      let session = initialize(url, version)
+      let opened = openWithin(url, HttpGet,
+        @[("Mcp-Session-Id", session), ("MCP-Protocol-Version", "1900-01-01")])
+      require opened.isSome
+      check opened.get.code == Http400
+      opened.get.close()
+
+  if version >= mpv20250326:
+    test "Given the GET stream of a session, when the client left after an event and asks for the rest by that event's id, then it gets the later events":
+      let (transport, url, _) = startRaw(version)
+      let session = initialize(url, version)
+      let listen = open(url, HttpGet, "", legacyHeaders(session, version))
+      waitFor transport.sendNotification(
+        newJsonRpcNotification("notifications/tools/list_changed", newJObject()),
+        MessageRoute(session: session))
+      var seen = listen.next().get
+      while seen.data.len == 0:
+        seen = listen.next().get
+      listen.close()
+      waitFor sleepAsync(50)
+      waitFor transport.sendNotification(
+        newJsonRpcNotification("notifications/prompts/list_changed", newJObject()),
+        MessageRoute(session: session))
+      let resumed = open(url, HttpGet, "",
+        legacyHeaders(session, version) & @[("Last-Event-ID", seen.id)])
+      check resumed.code == Http200
+      var event = resumed.next().get
+      while event.data.len == 0:
+        event = resumed.next().get
+      check parseJson(event.data).methodOf == "notifications/prompts/list_changed"
+      resumed.close()
+
+    test "Given a GET stream that has sent events, when an event id of a stream the session never had is presented, then the answer is 400":
+      let (transport, url, _) = startRaw(version)
+      let session = initialize(url, version)
+      let listen = open(url, HttpGet, "", legacyHeaders(session, version))
+      for name in ["notifications/a", "notifications/b"]:
+        waitFor transport.sendNotification(newJsonRpcNotification(name, newJObject()),
+                                           MessageRoute(session: session))
+      let resumed = openWithin(url, HttpGet,
+        legacyHeaders(session, version) & @[("Last-Event-ID", "nothing-1")])
+      require resumed.isSome
+      check resumed.get.code == Http400
+      resumed.get.close()
+      listen.close()
+
+    test "Given a session whose GET stream has ended, when it then stays unused, then it stays only for the limit counted from the end of the stream, and then expires":
+      let (transport, url, _) = startRaw(version)
+      transport.sessionIdleTimeoutMs = 300
+      let session = initialize(url, version)
+      let listen = open(url, HttpGet, "", legacyHeaders(session, version))
+      waitFor sleepAsync(350)
+      listen.close()
+      waitFor sleepAsync(60)
+      transport.expireIdleSessions()
+      check transport.sessionCount == 1
+      waitFor sleepAsync(350)
+      transport.expireIdleSessions()
+      check transport.sessionCount == 0
+
+    test "Given a session that has served a request, when it then stays unused beyond the limit, then it expires":
+      let (transport, url, _) = startRaw(version)
+      transport.sessionIdleTimeoutMs = 100
+      let session = initialize(url, version)
+      check post(url, rpc(2, "ping"), legacyHeaders(session, version)).code == Http200
+      waitFor sleepAsync(200)
+      transport.expireIdleSessions()
+      check transport.sessionCount == 0
+
+  if mpv20250326 <= DefaultProtocolVersion:
+    test "Given a batch of a request and a notification, when posted, then the server receives the notification":
+      let (_, url, script) = startRaw(mpv20250326)
+      let session = initialize(url, mpv20250326)
+      let reply = post(url, %*[rpc(10, "ping"),
+        {"jsonrpc": "2.0", "method": "notifications/a", "params": {}}],
+        [("Mcp-Session-Id", session)])
+      check reply.code == Http200
+      waitFor sleepAsync(20)
+      check script.notifications == @["notifications/a"]
