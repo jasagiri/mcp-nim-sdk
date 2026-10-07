@@ -70,6 +70,38 @@ suite "legacy handshake: server":
     let reply = replyTo(pair, initializeRequest(%*{"major": 1, "minor": 0, "patch": 0}))
     check reply["error"]["code"].getInt() == -32602
 
+  test "Given a server, when initialize has no params or params that are no object, then it answers invalid params":
+    for params in [newJNull(), %*["2024-11-05"], %"2024-11-05"]:
+      let pair = newLoopbackPair()
+      let server = newMcpServer(info())
+      waitFor server.attachTransport(pair.server)
+      var request = %*{"jsonrpc": "2.0", "id": "1", "method": "initialize"}
+      if params.kind != JNull:
+        request["params"] = params
+      let reply = replyTo(pair, request)
+      check reply["error"]["code"].getInt() == -32602
+      check server.state == mlsUninitialized
+
+  test "Given a server, when initialize carries a clientInfo that is no Implementation, then it answers invalid params naming clientInfo":
+    let pair = newLoopbackPair()
+    let server = newMcpServer(info())
+    waitFor server.attachTransport(pair.server)
+    let reply = replyTo(pair, %*{"jsonrpc": "2.0", "id": "1", "method": "initialize",
+      "params": {"protocolVersion": $LegacyDefault, "capabilities": {}, "clientInfo": "peer"}})
+    check reply["error"]["code"].getInt() == -32602
+    check "clientInfo" in reply["error"]["message"].getStr()
+    check server.state == mlsUninitialized
+
+  test "Given a session that has sent initialize, when it sends initialize again, then the answer is invalid request and the first handshake stands":
+    let pair = newLoopbackPair()
+    let server = newMcpServer(info())
+    waitFor server.attachTransport(pair.server)
+    check replyTo(pair, initializeRequest(%($LegacyDefault))).hasKey("result")
+    let negotiated = server.negotiatedVersion
+    let reply = replyTo(pair, initializeRequest(%"2024-11-05"))
+    check reply["error"]["code"].getInt() == -32600
+    check server.negotiatedVersion == negotiated
+
   test "Given a server, when initialize omits capabilities, then it still answers with a result":
     let pair = newLoopbackPair()
     let server = newMcpServer(info())

@@ -10,8 +10,8 @@ Feature: Starting a conversation
   @spec:MCP-LIFECYCLE-1 @feature:ftInitializeHandshake
   Scenario: initialize without a usable protocol version is invalid params
     Given a server
-    When initialize arrives without protocolVersion, or with one that is not a string
-    Then the answer is the invalid params error
+    When initialize arrives without protocolVersion, or with one that is not a string, or with params that are no object, or with a clientInfo that is no Implementation
+    Then the answer is the invalid params error, and the handshake has not begun
 
   @spec:MCP-LIFECYCLE-2 @feature:ftInitializeHandshake
   Scenario: The initialize answer states only the capabilities the server has
@@ -118,3 +118,9 @@ Feature: Starting a conversation
     And when it names no versions, or names no other than it already refused, connect fails saying no version is shared
     And a probe whose sending never finishes is cancelled on the transport and not left pending once the client has timed out
     And a refusal of initialize by any other error is a failed connect even when it names a modern version
+
+  @spec:MCP-LIFECYCLE-15 @feature:ftInitializeHandshake
+  Scenario: A session that has sent initialize cannot send it again
+    Given a session whose initialize has been answered
+    When the same session sends initialize again
+    Then the answer is the invalid request error and the first handshake stands
