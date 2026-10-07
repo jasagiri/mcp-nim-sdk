@@ -171,35 +171,5 @@ proc createInitializeResponse*(
 
   return newJsonRpcResponse(requestId, initializeResult)
 
-proc createInitializedNotification*(): JsonRpcNotification =
-  return newJsonRpcNotification("notifications/initialized", newJObject())
-
-proc isPingRequest*(request: JsonRpcRequest): bool =
-  return request.method == "ping"
-
 proc createPingResponse*(requestId: string): JsonRpcResponse =
   return newJsonRpcResponse(requestId, newJObject())
-
-proc createCancelledNotification*(requestId: string, reason: string = ""): JsonRpcNotification =
-  let params = %*{
-    "requestId": requestId
-  }
-  
-  if reason.len > 0:
-    params["reason"] = %reason
-  
-  return newJsonRpcNotification("notifications/cancelled", params)
-
-proc createProgressNotification*(token: string, progress: float, total: Option[float] = none(float), message: string = ""): JsonRpcNotification =
-  var params = %*{
-    "progressToken": token,
-    "progress": progress
-  }
-  
-  if total.isSome:
-    params["total"] = %total.get()
-  
-  if message.len > 0:
-    params["message"] = %message
-  
-  return newJsonRpcNotification("notifications/progress", params)

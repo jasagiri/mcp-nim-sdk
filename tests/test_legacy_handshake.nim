@@ -223,31 +223,3 @@ suite "lifecycle messages: wire forms":
 
   test "Given a tasks capability that supports a request type, when written, then it names that type under requests":
     check McpTasksCapability(toolsCall: true).toJson() == %*{"requests": {"tools": {"call": {}}}}
-
-  test "Given the end of the handshake, when the initialized notification is made, then it is notifications/initialized with an empty object":
-    let notification = createInitializedNotification()
-    check notification.jsonrpc == "2.0"
-    check notification.`method` == "notifications/initialized"
-    check notification.params == newJObject()
-
-  test "Given requests, when asked whether they are pings, then only ping is":
-    check isPingRequest(newJsonRpcRequest("1", "ping", newJObject()))
-    check not isPingRequest(newJsonRpcRequest("1", "tools/list", newJObject()))
-
-  test "Given a cancellation without a reason, when made, then it names the request and carries no reason":
-    let notification = createCancelledNotification("7")
-    check notification.`method` == "notifications/cancelled"
-    check notification.params == %*{"requestId": "7"}
-
-  test "Given a cancellation with a reason, when made, then the reason is carried":
-    check createCancelledNotification("7", "too slow").params ==
-      %*{"requestId": "7", "reason": "too slow"}
-
-  test "Given progress with only a token and a value, when made, then it carries neither total nor message":
-    let notification = createProgressNotification("tok", 0.5)
-    check notification.`method` == "notifications/progress"
-    check notification.params == %*{"progressToken": "tok", "progress": 0.5}
-
-  test "Given progress with a total and a message, when made, then both are carried":
-    check createProgressNotification("tok", 3.0, some(10.0), "working").params ==
-      %*{"progressToken": "tok", "progress": 3.0, "total": 10.0, "message": "working"}

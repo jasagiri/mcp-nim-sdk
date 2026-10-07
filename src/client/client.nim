@@ -401,8 +401,8 @@ proc processMessages*(client: McpClient): Future[void] {.async.} =
     client.failPending("the transport was closed")
   except CatchableError as e:
     if client.state == mlsShutdown:
-      # close() ends the loop on purpose; that is not an error.
-      client.failPending("the client was closed")
+      # close() ends the loop on purpose; that is not an error. It has
+      # already failed what was pending, and nothing is accepted after it.
       return
     client.lastTransportError = e
     stderr.writeLine("[mcp-client] transport loop ended with " &
@@ -482,13 +482,9 @@ proc abandon*(client: McpClient, id, methodName, reason: string,
   # Not awaited: over HTTP a notification is sent only when the server
   # answers the POST, and a server that has stopped answering is a common
   # reason to be here.
-  var cancelling: Future[void]
-  try:
-    cancelling = client.sendNotification("notifications/cancelled",
-      %*{"requestId": id, "reason": reason})
-  except CatchableError as e:
-    stderr.writeLine("[mcp-client] could not cancel request " & id & ": " & peerText(e.msg))
-    return
+  # An async procedure raises nothing here: its failure is in the future.
+  let cancelling = client.sendNotification("notifications/cancelled",
+    %*{"requestId": id, "reason": reason})
   cancelling.addCallback(proc() =
     if cancelling.failed:
       stderr.writeLine("[mcp-client] could not cancel request " & id & ": " &
@@ -917,7 +913,8 @@ proc discover(client: McpClient, timeoutMs: int): Future[ProbeVerdict] {.async.}
       client.serverInfo = some(client.parseServerIdentity(identity, DiscoverMethod))
     client.state = mlsOperational
     return pvModern
-  return pvLegacy
+  # The second pass ends in a return or an error whatever the server says.
+  raiseAssert "server/discover was probed twice without a verdict"
 
 proc connect*(client: McpClient, transport: McpTransport): Future[void] {.async.} =
   ## Attach `transport` and establish the connection: with server/discover

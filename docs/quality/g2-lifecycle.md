@@ -17,13 +17,13 @@
 | 2 | lifecycle.nim:29 | ROR | `requests.len > 0` → `>= 0` | 3 | 要求の種類を何も支えない tasks capability に、空の `requests` が付く。`Given a tasks capability that supports list only, when written, then it declares no requests` |
 | 24 | lifecycle.nim:36 | RVR | `return none(McpTasksCapability)` → 既定値 | 1 | `Option` の既定値は none で、元の戻り値と同じ。 |
 | 25 | lifecycle.nim:109 | RVR | `return none(JsonNode)` → 既定値 | 1 | 同上。 |
-| 27 | lifecycle.nim:175 | RVR | `createInitializedNotification` の戻り値 → 既定値 | 3 | method が空になる。`Given the end of the handshake, when the initialized notification is made, then it is notifications/initialized with an empty object` |
-| 28 | lifecycle.nim:178 | RVR | `isPingRequest` → 既定値 (false) | 3 | `Given requests, when asked whether they are pings, then only ping is` |
-| 10 | lifecycle.nim:178 | ROR | `== "ping"` → `!= "ping"` | 3 | 同上。 |
-| 11 | lifecycle.nim:188 | ROR | `reason.len > 0` → `>= 0` | 3 | 理由がないのに空の `reason` が付く。`Given a cancellation without a reason, when made, then it names the request and carries no reason` |
-| 30 | lifecycle.nim:191 | RVR | `createCancelledNotification` の戻り値 → 既定値 | 3 | `Given a cancellation with a reason, ...` ほか |
-| 12 | lifecycle.nim:202 | ROR | `message.len > 0` → `>= 0` | 3 | メッセージがないのに空の `message` が付く。`Given progress with only a token and a value, when made, then it carries neither total nor message` |
-| 31 | lifecycle.nim:205 | RVR | `createProgressNotification` の戻り値 → 既定値 | 3 | `Given progress with a total and a message, ...` ほか |
+| 27 | lifecycle.nim:175 | RVR | `createInitializedNotification` の戻り値 → 既定値 | 4 | 呼び出し元の無い補助関数だった。関数ごと削除した (下記)。 |
+| 28 | lifecycle.nim:178 | RVR | `isPingRequest` → 既定値 (false) | 4 | 呼び出し元の無い補助関数だった。関数ごと削除した (下記)。 |
+| 10 | lifecycle.nim:178 | ROR | `== "ping"` → `!= "ping"` | 4 | 呼び出し元の無い補助関数だった。関数ごと削除した (下記)。 |
+| 11 | lifecycle.nim:188 | ROR | `reason.len > 0` → `>= 0` | 4 | 呼び出し元の無い補助関数だった。関数ごと削除した (下記)。 |
+| 30 | lifecycle.nim:191 | RVR | `createCancelledNotification` の戻り値 → 既定値 | 4 | 呼び出し元の無い補助関数だった。関数ごと削除した (下記)。 |
+| 12 | lifecycle.nim:202 | ROR | `message.len > 0` → `>= 0` | 4 | 呼び出し元の無い補助関数だった。関数ごと削除した (下記)。 |
+| 31 | lifecycle.nim:205 | RVR | `createProgressNotification` の戻り値 → 既定値 | 4 | 呼び出し元の無い補助関数だった。関数ごと削除した (下記)。 |
 
 ## 追加したテストと仕様
 
@@ -34,6 +34,5 @@
 ## 残っているもの
 
 - 同値 (id 24, 25) は上表の理由のとおり。
-- クラス 4 の指摘 (リードの判断): `createInitializedNotification`、`isPingRequest`、`createCancelledNotification`、`createProgressNotification` (lifecycle.nim:174-205) は公開 API だが、`src/` に呼び出し元がない (client と server は通知を自分で組み立てている。`createPingResponse` だけが server.nim:282 から使われる)。
-  テストでワイヤ形式は固定したが、使われない補助関数として削除するかどうかはリードが決める。
+- クラス 4: `createInitializedNotification`、`isPingRequest`、`createCancelledNotification`、`createProgressNotification` は公開されていたが、SDK、examples、相互接続の道具、下流のどこからも呼ばれていなかった (client と server は通知を自分で組み立てる)。使われないコードをテストで支えるのをやめ、関数と、そのためだけに足したテスト 6 件を削除した (id 27, 28, 10, 11, 30, 12, 31)。
 - 他に未決のものはない。
