@@ -50,6 +50,13 @@ Feature: Requests the server makes of the client
     And a hook that refuses raises to the caller and nothing is sent
     And a request with no time limit waits for the client as long as it takes
 
+  @spec:MCP-SERVERREQ-11 @feature:ftServerInitiatedRequests
+  Scenario: What a handler asks of the client belongs to its request, or to its task
+    Given a handler of a request that runs as no task, or as a task
+    When it asks the client for a ping or for the roots, one ask at a time or several at once
+    Then the ask belongs to the request, or to the task and to the tasks/result request waiting on it
+    And the task is told it needs input when the first ask goes out and no longer when the last one is answered, by a result or by an error
+
   @spec:MCP-SERVERREQ-6 @feature:ftServerInitiatedRequests
   Scenario: A wait ends when the client's session or transport ends
     Given a server waiting for a client's answer

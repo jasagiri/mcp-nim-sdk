@@ -295,6 +295,64 @@ suite "requests of the server that belong to a task":
     waitFor server.sendHeld(held, "result-1")
     check t.messagesOf("ping").len == 0
 
+suite "what a handler asks of the client, as a task or not":
+
+  proc keepingServer(): tuple[server: McpServer, t: SessionedTransport, ctx: proc(): McpRequestContext] =
+    let server = requestServer()
+    var kept: McpRequestContext
+    server.onToolCall(proc(ctx: McpRequestContext, name: string,
+                           arguments: JsonNode): Future[JsonNode] {.async.} =
+      kept = ctx
+      return %*{"content": []})
+    let t = server.attach()
+    let peer = server.connect(t, Legacy, clientCapabilities = SamplingAndRoots)
+    discard peer.ask("tools/call", %*{"name": "keep"})
+    (server, t, proc(): McpRequestContext = kept)
+
+  proc aTask(told: ref seq[bool]): TaskScope =
+    result = TaskScope(taskId: "t1")
+    result.awaitingInput = proc(waiting: bool) = told[].add waiting
+    result.resultStream = proc(): string = "result-1"
+
+  test "Given a request that runs as a task, when it asks the client twice at once, then the task is told it needs input at the first request and no longer at the last answer":
+    let (_, t, ctx) = keepingServer()
+    let told = new seq[bool]
+    ctx().taskScope = aTask(told)
+    let pinging = ctx().ping()
+    let ping = t.awaitRequest("ping")
+    check ping.related == "result-1"
+    check ping.message["params"]["_meta"]["io.modelcontextprotocol/related-task"]["taskId"].getStr() == "t1"
+    check told[] == @[true]
+    let listing = ctx().listRoots()
+    let roots = t.awaitRequest("roots/list")
+    check roots.related == "result-1"
+    check told[] == @[true]
+    t.answer(ping, newJObject())
+    waitFor pinging
+    check told[] == @[true]
+    t.answer(roots, %*{"roots": [{"uri": "file:///home", "name": "Home"}]})
+    check waitFor(listing).len == 1
+    check told[] == @[true, false]
+
+  test "Given a request that runs as a task, when the client answers its ask with an error, then the task is told it needs input no longer":
+    let (_, t, ctx) = keepingServer()
+    let told = new seq[bool]
+    ctx().taskScope = aTask(told)
+    let pinging = ctx().ping()
+    t.fail(t.awaitRequest("ping"), -1, "no")
+    expect McpRemoteError:
+      waitFor pinging
+    check told[] == @[true, false]
+
+  test "Given a request that runs as no task, when it asks the client, then the ask belongs to the request itself":
+    let (_, t, ctx) = keepingServer()
+    let pinging = ctx().ping()
+    let ping = t.awaitRequest("ping")
+    check ping.related == ctx().requestId
+    check not ping.message["params"].hasKey("_meta")
+    t.answer(ping, newJObject())
+    waitFor pinging
+
 if isModern(DefaultProtocolVersion):
   suite "requests of the server in 2026-07-28":
 
