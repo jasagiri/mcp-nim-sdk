@@ -903,6 +903,8 @@ MCP-MRTR-1 | tests/test_mrtr.nim | Given the specification's input requests, whe
 MCP-MRTR-1 | tests/test_mrtr.nim | Given results that are not an InputRequiredResult, when parsed, then each is rejected
 MCP-MRTR-1 | tests/test_mrtr.nim | Given input requests, when compared with a client's capabilities, then the undeclared ones are named
 MCP-MRTR-1 | tests/test_mrtr.nim | Given original params, when a retry is built, then the responses are added, the state is echoed exactly and the original stays
+MCP-MRTR-1 | tests/test_mrtr.nim | Given params that are nil or not an object, when the input fields are read, checked or a retry is built, then nothing is carried, nothing is rejected and the retry holds only what was added
+MCP-MRTR-1 | tests/test_mrtr.nim | Given something that is not an InputRequests map, when validated, then each reason is given
 MCP-MRTR-2 | tests/test_mrtr.nim | Given a tool that needs input, when it is called, then the answer is input_required with the request and the state
 MCP-MRTR-2 | tests/test_mrtr.nim | Given a retry with the answers and the state, when the tool runs again, then it sees both and completes
 MCP-MRTR-3 | tests/test_mrtr.nim | Given a retry that answers only some requests, when the tool runs, then only the missing ones are asked again
@@ -918,6 +920,11 @@ MCP-MRTR-10 | tests/test_mrtr.nim | Given a sealed state, when opened for the sa
 MCP-MRTR-10 | tests/test_mrtr.nim | Given a state, when it is tampered with, signed by another key, expired or presented elsewhere, then each is rejected with its reason
 MCP-MRTR-10 | tests/test_mrtr.nim | Given a state that is not acceptable, when a handler opens it, then the peer gets invalid params without the reason
 MCP-MRTR-10 | tests/test_mrtr.nim | Given a key shorter than the minimum, when sealing, then it raises ValueError
+MCP-MRTR-10 | tests/test_mrtr.nim | Given a state that is not acceptable, when a handler opens it, then the method and the reason go to stderr
+MCP-MRTR-10 | tests/test_mrtr.nim | Given payloads that make plain base64 use + and /, when sealed, then the state holds only URL-safe characters
+MCP-MRTR-10 | tests/test_mrtr.nim | Given a state that has no signature part, an empty body or a body that is not what the server seals, when verified, then it is malformed and never accepted
+MCP-MRTR-10 | tests/test_mrtr.nim | Given a state sealed at a time with a lifetime, when verified at the last second of it and the second after, then the first is accepted and the second expired
+MCP-MRTR-10 | tests/test_mrtr.nim | Given a key of exactly the minimum length, when a state is sealed and verified, then it works, and one byte less is refused by both
 MCP-MRTR-11 | tests/test_mrtr.nim | Given an input_required answer, when the client has the handler, then it answers and retries with a new id until the request completes
 MCP-MRTR-11 | tests/test_mrtr.nim | Given a result with requests only, when the client retries, then no requestState is sent
 MCP-MRTR-11 | tests/test_mrtr.nim | Given a result with only a state, when the client retries, then it retries at once echoing the state

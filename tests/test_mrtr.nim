@@ -6,7 +6,7 @@
 ## (tests/fixtures/2026-07-28). The elicitation and sampling payloads obey
 ## the rules of their own methods (protocol/elicitation, protocol/sampling_tools).
 
-import std/[unittest, asyncdispatch, json, options, os, sequtils, strutils, tables]
+import std/[unittest, asyncdispatch, base64, json, options, os, sequtils, strutils, tables]
 import ./server_harness
 import ./client_peer
 import client/client
@@ -19,6 +19,7 @@ import protocol/elicitation as elicitationRules
 import server/mrtr
 import server/request_state
 import protocol/mrtr
+import protocol/hmac
 
 const
   Fixtures = currentSourcePath().parentDir / "fixtures" / "2026-07-28"
@@ -27,6 +28,24 @@ const
 
 proc fixture(name: string): JsonNode =
   parseJson(readFile(Fixtures / name))
+
+proc signedBy(key, body: string): string =
+  ## A state with an arbitrary body and a valid signature, as only the key's
+  ## holder could make it.
+  body & "." & base64.encode(hmacSha256(key, body), safe = true)
+
+proc loggedWhile(body: proc()): string =
+  ## Everything the code under test wrote to stderr.
+  let path = getTempDir() / "mcp-mrtr-" & $getCurrentProcessId() & ".log"
+  let saved = stderr
+  stderr = open(path, fmWrite)
+  try:
+    body()
+  finally:
+    stderr.close()
+    stderr = saved
+  result = readFile(path)
+  removeFile(path)
 
 proc caps(capabilities: JsonNode): JsonNode =
   %*{"io.modelcontextprotocol/clientCapabilities": capabilities}
@@ -165,6 +184,26 @@ suite "input required: the types of the specification":
     check retry["requestState"].getStr() == " opaque=="
     check original["requestState"].getStr() == "stale"
     check not retryParams(original, nil, none(string)).hasKey("requestState")
+
+  test "Given something that is not an InputRequests map, when validated, then each reason is given":
+    check validateInputRequests(%*[1]).isSome
+    check validateInputRequests(%*"x").isSome
+    check validateInputRequests(%*{"a": {"params": {}}}).isSome
+    check validateInputRequests(%*{"a": {"method": 3}}).isSome
+    check validateInputRequests(%*{"a": {"method": "roots/list"}}).isNone
+
+  test "Given params that are nil or not an object, when the input fields are read, checked or a retry is built, then nothing is carried, nothing is rejected and the retry holds only what was added":
+    check inputResponsesOf(nil) == newJObject()
+    check inputResponsesOf(%*[1]) == newJObject()
+    check inputResponsesOf(%*{"inputResponses": 3}) == newJObject()
+    check requestStateOf(nil).isNone
+    check requestStateOf(%*[1]).isNone
+    check requestStateOf(%*{"requestState": 3}).isNone
+    check rejectInvalidInputParams(nil).isNone
+    check rejectInvalidInputParams(%*[1]).isNone
+    check retryParams(nil, %*{"a": {}}, some("s")) ==
+      %*{"inputResponses": {"a": {}}, "requestState": "s"}
+    check retryParams(%*[1], nil, none(string)) == newJObject()
 
 suite "input required on the server (2026-07-28 only)":
 
@@ -350,6 +389,44 @@ suite "sealed request state":
   test "Given a key shorter than the minimum, when sealing, then it raises ValueError":
     expect ValueError:
       discard sealRequestState("short", newJObject(), "tools/call")
+
+  test "Given a key of exactly the minimum length, when a state is sealed and verified, then it works, and one byte less is refused by both":
+    let exact = "0123456789abcdef"
+    let short = "0123456789abcde"
+    check exact.len == MinKeyBytes
+    let state = sealRequestState(exact, %*{"step": 1}, "tools/call", now = 1000.0)
+    check verifyRequestState(exact, state, "tools/call", now = 1000.0).payload["step"].getInt() == 1
+    expect ValueError:
+      discard sealRequestState(short, newJObject(), "tools/call")
+    check verifyRequestState(short, state, "tools/call", now = 1000.0).problem == some("malformed")
+
+  test "Given a state sealed at a time with a lifetime, when verified at the last second of it and the second after, then the first is accepted and the second expired":
+    let state = sealRequestState(Key, %*{"step": 1}, "tools/call", ttlSeconds = 60, now = 1000.0)
+    check verifyRequestState(Key, state, "tools/call", now = 1060.0).problem.isNone
+    check verifyRequestState(Key, state, "tools/call", now = 1061.0).problem == some("expired")
+
+  test "Given a state that has no signature part, an empty body or a body that is not what the server seals, when verified, then it is malformed and never accepted":
+    for state in ["", "nodot", ".abc", signedBy(Key, "@@@@"),
+                  signedBy(Key, base64.encode("not json", safe = true)),
+                  signedBy(Key, base64.encode("[1]", safe = true))]:
+      check verifyRequestState(Key, state, "tools/call").problem == some("malformed")
+
+  test "Given payloads that make plain base64 use + and /, when sealed, then the state holds only URL-safe characters":
+    let urlSafe = {'a'..'z', 'A'..'Z', '0'..'9', '-', '_', '=', '.'}
+    var payloads = @["???", "a???", "aa???", "~~~~~~", "a~~~~~~", "aa~~~~~~"]
+    for i in 0 ..< 64:
+      payloads.add $i
+    for payload in payloads:
+      check sealRequestState(Key, %payload, "tools/call", now = 1000.0).allCharsInSet(urlSafe)
+
+  test "Given a state that is not acceptable, when a handler opens it, then the method and the reason go to stderr":
+    let state = sealRequestState(Key, newJObject(), "tools/call", now = 1000.0)
+    let log = loggedWhile(proc() =
+      expect serverErrors.McpRequestError:
+        discard openRequestState(Key, "x" & state, "tools/call", now = 1000.0))
+    check "tools/call" in log
+    check "requestState rejected" in log
+    check "signature does not verify" in log
 
 suite "input required on the client":
 
