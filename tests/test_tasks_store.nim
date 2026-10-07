@@ -2,7 +2,7 @@
 ## what a receiver keeps for a task, independent of whether the receiver is a
 ## server or a client. The clock is a variable, so no test sleeps.
 
-import std/[asyncdispatch, json, math, options, os, sequtils, sets, strutils, times, unittest]
+import std/[asyncdispatch, json, options, os, sequtils, sets, strutils, times, unittest]
 import protocol/tasks
 import protocol/task_methods
 import protocol/types

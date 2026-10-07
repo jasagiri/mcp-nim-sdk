@@ -27,7 +27,7 @@ Feature: Protocol versions
     When a server or a client is created for a version outside O to V
     Then ValueError is raised naming the version and both ends of the range
 
-  @spec:MCP-VERSION-g2d-proto-1
+  @spec:MCP-VERSION-10
   Scenario: A build whose version settings are not a range of released versions does not compile
     Given the build settings for the default version and the oldest version
     When one names a version that was never released, or the oldest is newer than the default

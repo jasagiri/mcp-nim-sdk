@@ -99,6 +99,9 @@
 
 | モジュール | 変えた内容 | 対応する外部仕様テスト |
 |---|---|---|
+| `src/protocol/trace_context.nim` | `tracestate` の空の値を拒否 (W3C: 1 文字以上) | `tests/test_trace_context.nim` |
+| `src/server/tasks.nim` | `listClientTasks` が `nextCursor` の無い最後のページで落ちていたのを修正 | `tests/test_tasks_server.nim` |
+| `src/protocol/features.nim` | `ftHttpSse` の `specPage` の冗長な枝を削除 | `tests/test_features.nim` |
 | `src/server/server.nim` | `handleInitialize` の届かない枝を `doAssert` に | `tests/test_legacy_handshake.nim`、`tests/test_version_floor.nim` |
 | `src/server/resources.nim`、`src/server/prompts.nim` | 削除 (どこからも使われていなかった) | (なし) |
 | `src/client/client.nim` | 送信に失敗した要求を待ちの表から外す (`startRequest`)。到達しない文 2 つを削除、`discover` の末尾を `raiseAssert` に | `tests/test_client_requests.nim` |

@@ -9,7 +9,7 @@
 ジョブは既定版 2024-11-05 / 2025-03-26 / 2025-06-18 / 2025-11-25 と `-d:mcpOldestProtocolVersion=2026-07-28` でテストを流す。
 生き残りは、どの版の組み合わせでも落ちない (下の表の理由) ものだけで、別の既定版・下限版でだけ検出される変異は無かった。
 
-追加したテスト: `tests/test_version_build_config.nim` (仕様 ID `MCP-VERSION-g2d-proto-1`、リードが採番し直す)。
+追加したテスト: `tests/test_version_build_config.nim` (仕様 ID `MCP-VERSION-10`、リードが採番し直す)。
 一行のプログラムを `nim check` で検査し、未公開の版や、下限が既定より新しい組み合わせでビルドが止まり、どの設定が誤りかを名指すことを確かめる。ジョブの `testCommand` に追記した。
 
 | id | file:line | 変異 | 元 → 変異後 | 分類 | 理由 / 検出するテスト |
