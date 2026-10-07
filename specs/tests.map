@@ -1400,6 +1400,26 @@ MCP-SEC-WIRE-g2f-ap-a-2 | tests/test_security_address.nim | Given an answer that
 MCP-SEC-WIRE-8 | tests/test_security_icons.nim | Given a server whose name resolves to a loopback address, when its icon is fetched, then the fetch is refused
 MCP-SEC-WIRE-8 | tests/test_security_icons.nim | Given a server whose name resolves to a metadata service address, when its icon is fetched, then the fetch is refused
 MCP-SEC-WIRE-8 | tests/test_security_icons.nim | Given a server whose name resolves to a private address, when its icon is fetched, then it is refused unless private networks are allowed
+MCP-SEC-WIRE-g2f-ap-b-1 | tests/test_security_address.nim | Given an IPv6 address inside NAT64 64:ff9b::/96, when classified, then the IPv4 address inside it decides
+MCP-SEC-WIRE-g2f-ap-b-1 | tests/test_security_address.nim | Given an address in 64:ff9b:1::/48 or one that merely shares some bytes with NAT64, when classified, then only the first is reserved
+MCP-SEC-WIRE-g2f-ap-b-1 | tests/test_security_address.nim | Given a 6to4 address 2002::/16, when classified, then the IPv4 address in bits 16 to 47 decides
+MCP-SEC-WIRE-g2f-ap-b-1 | tests/test_security_address.nim | Given an IPv4-mapped address whose IPv4 part is in a documentation /24, when classified, then the third octet counts
+MCP-SEC-WIRE-g2f-ap-b-1 | tests/test_security_address.nim | Given an address that has ff in bytes 10 or 11 but is not in ::ffff:0:0/96, when classified, then it is not read as IPv4-mapped
+MCP-SEC-WIRE-g2f-ap-b-1 | tests/test_security_address.nim | Given an address in ::/96 other than ::1, when classified, then it is reserved
+MCP-SEC-WIRE-g2f-ap-b-1 | tests/test_security_address.nim | Given the discard-only prefix 100::/64, when classified, then its edge is the 64th bit
+MCP-SEC-WIRE-g2f-ap-b-1 | tests/test_security_address.nim | Given the IETF protocol assignments 2001::/23, when classified, then the whole block is reserved and its neighbours are not
+MCP-SEC-WIRE-g2f-ap-b-1 | tests/test_security_address.nim | Given the documentation prefix 2001:db8::/32, when classified, then it is reserved and its neighbours are not
+MCP-SEC-WIRE-g2f-ap-b-1 | tests/test_security_address.nim | Given the documentation prefix 3fff::/20, when classified, then it is reserved and its neighbours are not
+MCP-SEC-WIRE-g2f-ap-b-1 | tests/test_security_address.nim | Given the link-local prefix fe80::/10, when classified, then its first and last address are link-local and a lookalike is not
+MCP-SEC-WIRE-g2f-ap-b-1 | tests/test_security_address.nim | Given addresses of every class, when asked whether they are globally routable, then only the public ones are
+MCP-SEC-WIRE-g2f-ap-b-2 | tests/test_security_address.nim | Given a literal at the top of the 32-bit range, when classified, then it is read, and one above it is a name
+MCP-SEC-WIRE-g2f-ap-b-2 | tests/test_security_address.nim | Given hex digits in capitals, when classified, then they have their value
+MCP-SEC-WIRE-g2f-ap-b-2 | tests/test_security_address.nim | Given a digit that its base does not have, when classified, then the text is a name
+MCP-SEC-WIRE-g2f-ap-b-2 | tests/test_security_address.nim | Given an empty part, when classified, then the text is a name
+MCP-SEC-WIRE-g2f-ap-b-2 | tests/test_security_address.nim | Given a last part, when it is one more than the bytes left for it hold, then the text is a name
+MCP-SEC-WIRE-g2f-ap-b-2 | tests/test_security_address.nim | Given brackets that do not enclose the whole host, when it is read, then it is no address
+MCP-SEC-WIRE-g2f-ap-b-3 | tests/test_security_address.nim | Given hosts that stand for loopback, public and mixed addresses, when a destination is chosen, then it is loopback-only exactly when every address is loopback
+MCP-SEC-WIRE-g2f-ap-b-3 | tests/test_security_address.nim | Given a host written as an address, when the system resolver is asked, then it answers with that address
 MCP-SEC-AUTH-1 | tests/test_security_auth.nim | Given a client secret without an issuer and version <version>, when the client is made, then it is refused and the message says how to fix it
 MCP-SEC-AUTH-1 | tests/test_security_auth.nim | Given a client secret for one issuer and version <version>, when the resource names another, then nothing but metadata reaches it and the error names both
 MCP-SEC-AUTH-1 | tests/test_security_auth.nim | Given a public pre-registered client for one issuer and version <version>, when the resource names another, then the user is not sent there

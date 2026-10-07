@@ -203,3 +203,149 @@ suite "a guarded request (mutation review, g2f-ap-a)":
     let followed = waitFor guardedRequest(url, HttpGet, policy, followRedirects = true)
     check followed.code == Http200
     followed.close()
+
+proc classOfAddress(text: string): string =
+  $classifyAddress(parseIpAddress(text))
+
+suite "the edges of the address blocks (mutation review, g2f-ap-b)":
+
+  test "Given an IPv6 address inside NAT64 64:ff9b::/96, when classified, then the IPv4 address inside it decides":
+    check classOfAddress("64:ff9b::7f00:1") == "acLoopback"
+    check classOfAddress("64:ff9b::a00:1") == "acPrivate"
+    check classOfAddress("64:ff9b::808:808") == "acPublic"
+
+  test "Given an address in 64:ff9b:1::/48 or one that merely shares some bytes with NAT64, when classified, then only the first is reserved":
+    # RFC 8215 sets 64:ff9b:1::/48 aside; the address inside it is not looked at.
+    check classOfAddress("64:ff9b:1::808:808") == "acReserved"
+    check classOfAddress("64:ff9b::1:808:808") == "acReserved"
+    # The four bytes 00 64 ff 9b must all match, in place.
+    check classOfAddress("2064:ff9b::1") == "acPublic"
+    check classOfAddress("2606:ff9b::1") == "acPublic"
+    check classOfAddress("2400:cb9b::1") == "acPublic"
+
+  test "Given a 6to4 address 2002::/16, when classified, then the IPv4 address in bits 16 to 47 decides":
+    check classOfAddress("2002:7f00:1::") == "acLoopback"
+    check classOfAddress("2002:a00:1::") == "acPrivate"
+    check classOfAddress("2002:808:808::") == "acPublic"
+    check classOfAddress("2002:c000:200::") == "acReserved"
+
+  test "Given an IPv4-mapped address whose IPv4 part is in a documentation /24, when classified, then the third octet counts":
+    check classOfAddress("::ffff:192.0.2.1") == "acReserved"
+    check classOfAddress("::ffff:198.51.100.1") == "acReserved"
+    check classOfAddress("::ffff:203.0.113.1") == "acReserved"
+    check classOfAddress("::ffff:192.0.3.1") == "acPublic"
+
+  test "Given an address that has ff in bytes 10 or 11 but is not in ::ffff:0:0/96, when classified, then it is not read as IPv4-mapped":
+    check classOfAddress("fd00::ffff:7f00:1") == "acPrivate"
+    check classOfAddress("fd00::ff:7f00:1") == "acPrivate"
+
+  test "Given an address in ::/96 other than ::1, when classified, then it is reserved":
+    check classOfAddress("::1") == "acLoopback"
+    check classOfAddress("::100:1") == "acReserved"
+    check classOfAddress("::1:1") == "acReserved"
+    check classOfAddress("::101") == "acReserved"
+    check classOfAddress("::2") == "acReserved"
+
+  test "Given the discard-only prefix 100::/64, when classified, then its edge is the 64th bit":
+    check classOfAddress("100::") == "acReserved"
+    check classOfAddress("100::1") == "acReserved"
+    check classOfAddress("100::ffff:ffff:ffff:ffff") == "acReserved"
+    # RFC 6666 sets aside 100::/64 only.
+    check classOfAddress("100:0:0:1::") == "acPublic"
+
+  test "Given the IETF protocol assignments 2001::/23, when classified, then the whole block is reserved and its neighbours are not":
+    check classOfAddress("2001::1") == "acReserved"
+    check classOfAddress("2001:2::1") == "acReserved"
+    check classOfAddress("2001:1ff:ffff:ffff:ffff:ffff:ffff:ffff") == "acReserved"
+    check classOfAddress("2001:200::1") == "acPublic"
+    check classOfAddress("2000::1") == "acPublic"
+    check classOfAddress("2601::1") == "acPublic"
+
+  test "Given the documentation prefix 2001:db8::/32, when classified, then it is reserved and its neighbours are not":
+    check classOfAddress("2001:db8::1") == "acReserved"
+    check classOfAddress("2001:db8:ffff:ffff:ffff:ffff:ffff:ffff") == "acReserved"
+    check classOfAddress("2001:db7::1") == "acPublic"
+    check classOfAddress("2001:db9::1") == "acPublic"
+    check classOfAddress("2a01:db8::1") == "acPublic"
+    check classOfAddress("2400:db8::1") == "acPublic"
+    check classOfAddress("2400:1b8::1") == "acPublic"
+
+  test "Given the documentation prefix 3fff::/20, when classified, then it is reserved and its neighbours are not":
+    check classOfAddress("3fff::") == "acReserved"
+    check classOfAddress("3fff:fff:ffff:ffff:ffff:ffff:ffff:ffff") == "acReserved"
+    check classOfAddress("3fff:1000::") == "acPublic"
+    check classOfAddress("3ffe::1") == "acPublic"
+    check classOfAddress("3f00::1") == "acPublic"
+    check classOfAddress("26ff::1") == "acPublic"
+
+  test "Given the link-local prefix fe80::/10, when classified, then its first and last address are link-local and a lookalike is not":
+    check classOfAddress("fe80::") == "acLinkLocal"
+    check classOfAddress("febf:ffff:ffff:ffff:ffff:ffff:ffff:ffff") == "acLinkLocal"
+    check classOfAddress("2680::1") == "acPublic"
+
+  test "Given addresses of every class, when asked whether they are globally routable, then only the public ones are":
+    check isGloballyRoutable(parseIpAddress("8.8.8.8"))
+    check isGloballyRoutable(parseIpAddress("2606:4700:4700::1111"))
+    for text in ["10.0.0.1", "127.0.0.1", "169.254.169.254", "192.0.2.1", "fd00::1", "::1"]:
+      check not isGloballyRoutable(parseIpAddress(text))
+
+suite "the notations of an IPv4 literal (mutation review, g2f-ap-b)":
+
+  test "Given a literal at the top of the 32-bit range, when classified, then it is read, and one above it is a name":
+    check classOf("4294967295") == "acReserved"
+    check classOf("4294967296") == "name"
+
+  test "Given hex digits in capitals, when classified, then they have their value":
+    check classOf("0XA9FEA9FE") == "acLinkLocal"
+    check classOf("0x7F.1") == "acLoopback"
+    check classOf("0xAbCdEf01") == "acPublic"
+
+  test "Given a digit that its base does not have, when classified, then the text is a name":
+    check classOf("08.1.1.1") == "name"
+    check classOf("1a.1.1.1") == "name"
+    check classOf("0x1g.1.1.1") == "name"
+
+  test "Given an empty part, when classified, then the text is a name":
+    check classOf("1..2") == "name"
+    check classOf("1.2.3.") == "name"
+    check classOf("0x") == "name"
+    check classOf("0x.1") == "name"
+
+  test "Given a last part, when it is one more than the bytes left for it hold, then the text is a name":
+    check classOf("127.16777215") == "acLoopback"
+    check classOf("127.16777216") == "name"
+    check classOf("1.2.65535") == "acPublic"
+    check classOf("1.2.65536") == "name"
+    check classOf("1.2.3.255") == "acPublic"
+    check classOf("1.2.3.256") == "name"
+
+  test "Given brackets that do not enclose the whole host, when it is read, then it is no address":
+    check parseHostLiteral("[::1]").get == parseIpAddress("::1")
+    check parseHostLiteral("[::1").isNone
+    check parseHostLiteral("x::1]").isNone
+    check classOf("x::1]") == "acReserved"
+
+suite "what a destination is (mutation review, g2f-ap-b)":
+
+  test "Given hosts that stand for loopback, public and mixed addresses, when a destination is chosen, then it is loopback-only exactly when every address is loopback":
+    let policy = DestinationPolicy(allowLoopback: true, allowPrivateNetworks: true)
+    let resolver = resolving({
+      "both.example.test": @["127.0.0.1", "8.8.8.8"],
+      "reversed.example.test": @["8.8.8.8", "127.0.0.1"],
+      "loops.example.test": @["127.0.0.1", "::1"],
+      "inside.example.test": @["10.0.0.5"]})
+    check chooseDestination("127.0.0.1", policy).loopbackOnly
+    check not chooseDestination("8.8.8.8", policy).loopbackOnly
+    check chooseDestination("loops.example.test", policy, resolver).loopbackOnly
+    check not chooseDestination("both.example.test", policy, resolver).loopbackOnly
+    check not chooseDestination("reversed.example.test", policy, resolver).loopbackOnly
+    check not chooseDestination("inside.example.test", policy, resolver).loopbackOnly
+    check chooseDestination("both.example.test", policy, resolver).address ==
+      parseIpAddress("127.0.0.1")
+
+  # Addresses are written as numbers, which the system resolver reads without
+  # asking any server.
+  test "Given a host written as an address, when the system resolver is asked, then it answers with that address":
+    check "127.0.0.1" in systemAddresses("127.0.0.1")
+    check parseIpAddress("127.0.0.1") in resolveHost("127.0.0.1")
+    check parseIpAddress("::1") in resolveHost("::1")
