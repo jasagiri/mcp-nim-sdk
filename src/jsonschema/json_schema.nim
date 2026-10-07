@@ -249,7 +249,9 @@ proc resolveRef(v: Validator, reference: string): JsonNode =
     if result.kind == JObject and result.hasKey(part):
       result = result[part]
     elif result.kind == JArray and part.len > 0 and part.len <= 9 and
-         part.allCharsInSet(Digits) and parseInt(part) < result.len:
+         part.allCharsInSet(Digits) and (part == "0" or part[0] != '0') and
+         parseInt(part) < result.len:
+      # RFC 6901: an array index has no leading zero.
       result = result[parseInt(part)]
     else:
       invalid("$ref '" & reference & "' points at nothing")

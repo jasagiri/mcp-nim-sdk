@@ -423,3 +423,8 @@ suite "JSON Schema keywords (mutation review, g2h-js-a)":
     check conforms(schema, """{"a": 1, "b": 2}""")
     check not conforms(schema, """{"a": 1}""")
     check "requires property 'b'" in describe(violations(schema, """{"a": 1}"""))
+
+  test "Given a $ref whose array index has a leading zero, when validated, then the schema is invalid (RFC 6901)":
+    check conforms("""{"$defs": {"a": [{"type": "integer"}]}, "$ref": "#/$defs/a/0"}""", "5")
+    for index in ["00", "01", "000000000"]:
+      check invalidSchemaOf("{\"$defs\": {\"a\": [true, true]}, \"$ref\": \"#/$defs/a/" & index & "\"}", "5") != nil
