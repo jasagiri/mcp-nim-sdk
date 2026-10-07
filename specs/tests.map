@@ -25,8 +25,10 @@ MCP-LIFECYCLE-2 | tests/test_legacy_handshake.nim | Given a server, when initial
 MCP-LIFECYCLE-3 | tests/test_legacy_handshake.nim | Given a client limited to a legacy version, when it connects, then initialize offers that version as a string
 MCP-LIFECYCLE-3 | tests/test_legacy_handshake.nim | Given a client that declares only roots, when it connects, then initialize carries no other capability key
 MCP-LIFECYCLE-3 | tests/test_legacy_handshake.nim | Given a legacy client, when the handshake completes, then it sends notifications/initialized
+MCP-LIFECYCLE-3 | tests/test_legacy_handshake.nim | Given the end of the handshake, when the initialized notification is made, then it is notifications/initialized with an empty object
 MCP-LIFECYCLE-4 | tests/test_era_matrix.nim | Given a legacy client, when it pings, then it gets an empty result
 MCP-LIFECYCLE-4 | tests/test_legacy_handshake.nim | Given a legacy client, when it pings with a string id or an integer id, then the answer is an empty result of JSON-RPC 2.0 under the same id
+MCP-LIFECYCLE-4 | tests/test_legacy_handshake.nim | Given requests, when asked whether they are pings, then only ping is
 MCP-LIFECYCLE-5 | tests/test_era_matrix.nim | Given the specification's discover request, when it is answered, then the result describes the server
 MCP-LIFECYCLE-5 | tests/test_modern_protocol.nim | Given a server's versions and capabilities, when the discover result is built, then it matches the specification's example
 MCP-LIFECYCLE-5 | tests/test_modern_protocol.nim | Given a server that also speaks legacy versions, when the discover result is built, then versions are listed newest first
@@ -208,6 +210,8 @@ MCP-LOGGING-9 | tests/test_client_server_requests.nim | Given a log callback, wh
 MCP-PROGRESS-1 | tests/test_server_progress_cancel.nim | Given a progress token, when a handler reports progress, then the client gets the token, progress, total and related request
 MCP-PROGRESS-1 | tests/test_server_progress_cancel.nim | Given an integer progress token, when progress is reported, then the token comes back as an integer
 MCP-PROGRESS-1 | tests/test_server_progress_cancel.nim | Given no progress token, when a handler reports progress, then nothing is sent
+MCP-PROGRESS-1 | tests/test_legacy_handshake.nim | Given progress with only a token and a value, when made, then it carries neither total nor message
+MCP-PROGRESS-1 | tests/test_legacy_handshake.nim | Given progress with a total and a message, when made, then both are carried
 MCP-PROGRESS-2 | tests/test_server_progress_cancel.nim | Given a progress message, when a handler reports it, then the client gets it from 2025-03-26 on
 MCP-PROGRESS-3 | tests/test_server_progress_cancel.nim | Given progress that does not increase, when a handler reports it again, then it is refused
 MCP-PROGRESS-3 | tests/test_server_progress_cancel.nim | Given a request that was answered, when its context reports progress, then no notification is sent
@@ -232,6 +236,8 @@ MCP-CANCEL-4 | tests/test_client_requests.nim | Given a server that never answer
 MCP-CANCEL-4 | tests/test_client_requests.nim | Given a pending request, when its token is cancelled, then it raises McpCancelledError and the server is told why
 MCP-CANCEL-4 | tests/test_client_requests.nim | Given a token cancelled before the call, when the request is made, then nothing is sent
 MCP-CANCEL-4 | tests/test_client_requests.nim | Given a request that already finished, when its token is cancelled later, then nothing is sent
+MCP-CANCEL-4 | tests/test_legacy_handshake.nim | Given a cancellation without a reason, when made, then it names the request and carries no reason
+MCP-CANCEL-4 | tests/test_legacy_handshake.nim | Given a cancellation with a reason, when made, then the reason is carried
 MCP-CANCEL-5 | tests/test_http_streams.nim | Given a request in progress, when the client closes the connection, then the server is told the request was cancelled
 MCP-CANCEL-5 | tests/test_http_streams.nim | Given a request in progress with nothing sent yet, when the client closes the connection, then the server is told the request was cancelled
 MCP-CANCEL-5 | tests/test_http_streams.nim | Given a cancelled request, when the server answers it anyway, then the answer is dropped without an error
@@ -876,6 +882,8 @@ MCP-HTTP-17 | tests/test_http_unresponsive.nim | Given a server that never answe
 MCP-TASKS-1 | tests/test_tasks_server.nim | Given tasks enabled, when a 2025-11-25 client handshakes, then the server declares list, cancel and tools/call
 MCP-TASKS-1 | tests/test_tasks_server.nim | Given a config without list and cancel, when a client handshakes, then they are not declared
 MCP-TASKS-1 | tests/test_tasks_end_to_end.nim | Given a server with tasks, when a client calls a tool as a task, then it learns the task and gets the result
+MCP-TASKS-1 | tests/test_legacy_handshake.nim | Given a tasks capability that supports list only, when written, then it declares no requests
+MCP-TASKS-1 | tests/test_legacy_handshake.nim | Given a tasks capability that supports a request type, when written, then it names that type under requests
 MCP-TASKS-2 | tests/test_tasks_server.nim | Given a client of a version before 2025-11-25, when it handshakes, then no tasks capability is declared
 MCP-TASKS-2 | tests/test_tasks_server.nim | Given a 2026-07-28 request, when the server describes itself, then tasks are not declared
 MCP-TASKS-2 | tests/test_tasks_server.nim | Given a 2026-07-28 request, when it calls tasks/get, tasks/result, tasks/list or tasks/cancel, then the method is unknown
