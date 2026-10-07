@@ -54,3 +54,11 @@ func peerText*(text: string, maxLen = DefaultPeerTextLength): string {.raises: [
     else:
       result.add text[i ..< i + width]
     i += width
+
+func plainMessage*(e: ref CatchableError): string =
+  ## The message the raiser wrote. A debug build of asyncdispatch appends
+  ## "Async traceback:" to the message of an exception that passed through a
+  ## future. That text is for the log, never for the peer, and it would
+  ## swallow every failure joined after it.
+  e.msg.split("\nAsync traceback:")[0]
+

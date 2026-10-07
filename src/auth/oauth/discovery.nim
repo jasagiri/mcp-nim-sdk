@@ -6,6 +6,7 @@ import ./errors
 import ./fetch
 import ./metadata
 import ./urls
+import ../../protocol/diagnostic
 
 type
   AsDiscoveryStyle* = enum

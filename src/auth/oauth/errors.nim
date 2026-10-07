@@ -3,8 +3,6 @@
 ## Messages never contain tokens, authorization codes, code verifiers or
 ## client secrets: they end up in logs.
 
-import std/strutils
-
 type
   OAuthError* = object of CatchableError
     ## Something failed during an OAuth exchange (network, malformed
@@ -21,9 +19,3 @@ type
     error*: string
       ## e.g. "invalid_grant"
     description*: string
-
-func plainMessage*(e: ref CatchableError): string =
-  ## The message the raiser wrote. A debug build of asyncdispatch appends
-  ## "Async traceback:" to the message of an exception that passed through a
-  ## future, and that text would swallow every failure joined after it.
-  e.msg.split("\nAsync traceback:")[0]

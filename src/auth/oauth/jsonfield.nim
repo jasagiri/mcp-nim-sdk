@@ -11,11 +11,3 @@ func strField*(node: JsonNode, key: string): Option[string] {.raises: [].} =
   if value.isNil or value.kind != JString:
     return none(string)
   some(value.getStr())
-
-func intField*(node: JsonNode, key: string): Option[int] {.raises: [].} =
-  if node.isNil or node.kind != JObject:
-    return none(int)
-  let value = node{key}
-  if value.isNil or value.kind != JInt:
-    return none(int)
-  some(value.getInt())

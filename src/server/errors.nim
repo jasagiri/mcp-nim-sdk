@@ -2,8 +2,11 @@
 ## result, the peer gets. Any other exception a handler raises is a defect of
 ## the server: the peer is told "Internal error" and the cause goes to stderr.
 
-import std/[json, options, strutils]
+import std/[json, options]
 import ../protocol/modern
+import ../protocol/diagnostic
+
+export diagnostic.plainMessage
 
 const
   ErrInvalidRequest* = -32600
@@ -46,12 +49,6 @@ type
 
   McpRequestTimeout* = object of CatchableError
     ## The peer did not answer a request of this server in time.
-
-func plainMessage*(e: ref CatchableError): string =
-  ## The message the raiser wrote. A debug build of asyncdispatch appends
-  ## "Async traceback:" to the message of an exception that passed through a
-  ## future; that is for the log, never for the peer.
-  e.msg.split("\nAsync traceback:")[0]
 
 func newRequestError*(code: int, message: string,
                       data: JsonNode = nil): ref McpRequestError =
