@@ -2,8 +2,9 @@
 ## what a receiver keeps for a task, independent of whether the receiver is a
 ## server or a client. The clock is a variable, so no test sleeps.
 
-import std/[asyncdispatch, json, options, sequtils, sets, strutils, unittest]
+import std/[asyncdispatch, json, math, options, os, sequtils, sets, strutils, times, unittest]
 import protocol/tasks
+import protocol/task_methods
 import protocol/types
 
 type FakeTime = ref object
@@ -19,6 +20,19 @@ proc failure(code: int, message: string): TaskOutcome =
 
 proc success(node: JsonNode): TaskOutcome =
   TaskOutcome(result: some(node))
+
+proc loggedWhile(body: proc()): string =
+  ## Everything the code under test wrote to stderr.
+  let path = getTempDir() / "mcp-tasks-store-" & $getCurrentProcessId() & ".log"
+  let saved = stderr
+  stderr = open(path, fmWrite)
+  try:
+    body()
+  finally:
+    stderr.close()
+    stderr = saved
+  result = readFile(path)
+  removeFile(path)
 
 suite "tasks: creation":
   test "Given a new task, when created, then it works, has the requested ttl and a receiver-made id":
@@ -376,3 +390,194 @@ suite "tasks: reading a task from the wire":
     check taskFromJson(badTime).isNone
     check taskFromJson(%*[1, 2]).isNone
     check taskFromJson(nil).isNone
+
+suite "tasks: the exact values of the rules":
+  test "Given a terminal status, when asked about a move from it, then no status is allowed":
+    for terminal in [tsCompleted, tsFailed, tsCancelled]:
+      for next in TaskStatus:
+        check not canTransition(terminal, next)
+
+  test "Given the system clock, when read, then it counts milliseconds since the epoch":
+    let seconds = epochTime()
+    let ms = systemClock()
+    check ms >= int64(seconds * 1000) - 1
+    check ms <= int64(seconds * 1000) + 5_000
+
+  test "Given a time whose fraction ends the text, when read, then it is not a time":
+    check parseIsoTimestamp("2025-11-25T10:30:00.123").isNone
+
+  test "Given a task without statusMessage, when read, then it has none":
+    let read = taskFromJson(%*{
+      "taskId": "t", "status": "working", "createdAt": "2025-11-25T09:15:00Z",
+      "lastUpdatedAt": "2025-11-25T09:15:00Z", "ttl": 1})
+    check read.get.statusMessage.isNone
+    let said = taskFromJson(%*{
+      "taskId": "t", "status": "working", "createdAt": "2025-11-25T09:15:00Z",
+      "lastUpdatedAt": "2025-11-25T09:15:00Z", "ttl": 1, "statusMessage": "halfway"})
+    check said.get.statusMessage == some("halfway")
+
+  test "Given no immediate response, when a CreateTaskResult is made, then it has no _meta":
+    let store = storeAt(FakeTime())
+    let task = store.create("a", none(int64))
+    check not createTaskResult(task).hasKey("_meta")
+    check createTaskResult(task, "On it.")["_meta"][ModelImmediateResponseKey].getStr() == "On it."
+
+  test "Given a ttl of 0, when the params are parsed, then the task is asked for with that ttl":
+    check parseTaskParam(%*{"task": {"ttl": 0}}) == some(some(0'i64))
+    check parseTaskParam(parseJson("""{"task": {"ttl": 0.0}}""")) == some(some(0'i64))
+
+  test "Given a ttl that is not a non-negative whole number, when the params are parsed, then it is Invalid params":
+    for ttl in [parseJson("-2.0"), parseJson("-1.5"), parseJson("1.5"), %Inf, %NaN]:
+      try:
+        discard parseTaskParam(%*{"task": {"ttl": ttl}})
+        fail()
+      except McpTaskError as e:
+        check e.code == -32602
+
+  test "Given a ttl of 2^63 milliseconds, when the params are parsed, then it is read as the largest":
+    check parseTaskParam(%*{"task": {"ttl": 9223372036854775808.0}}) == some(some(high(int64)))
+
+  test "Given a ttl of 0, when a task is created, then it has ttl 0":
+    let store = storeAt(FakeTime())
+    check store.create("a", some(0'i64)).ttlMs == some(0'i64)
+
+  test "Given a hook for result streams, when a stream is set and then cleared, then the hook hears only of the set":
+    let store = storeAt(FakeTime())
+    var heard: seq[string]
+    store.onResultStream = proc(owner, taskId, requestId: string) = heard.add requestId
+    let task = store.create("a", none(int64))
+    store.setResultStream(task.taskId, "r1")
+    check store.resultStream(task.taskId) == "r1"
+    store.setResultStream(task.taskId, "")
+    check store.resultStream(task.taskId) == ""
+    check heard == @["r1"]
+
+  test "Given an id the store does not hold, when a status is set or the request finished, then nothing happens":
+    let store = storeAt(FakeTime())
+    check not store.transition("nope", tsCompleted)
+    check not store.finish("nope", success(%*{}))
+
+  test "Given a working task, when working is set again with a message, then only the message changes":
+    let store = storeAt(FakeTime())
+    let task = store.create("a", none(int64))
+    check store.transition(task.taskId, tsWorking, some("halfway"))
+    let now = store.get("a", task.taskId)
+    check now.status == tsWorking
+    check now.statusMessage == some("halfway")
+
+  test "Given a tool result with isError and no text, when finished, then the task failed without a message":
+    for payload in [%*{"isError": true}, %*{"isError": true, "content": "text"},
+                    %*{"isError": true, "content": [{"type": "image"}]}]:
+      let store = storeAt(FakeTime())
+      let task = store.create("a", none(int64))
+      check store.finish(task.taskId, success(payload))
+      let now = store.get("a", task.taskId)
+      check now.status == tsFailed
+      check now.statusMessage.isNone
+
+suite "tasks: waiting and expiry in time":
+  test "Given a task with unlimited ttl, when its result is awaited, then the wait ends when the task does":
+    let store = storeAt(FakeTime(), defaultTtlMs = none(int64))
+    let task = store.create("a", none(int64))
+    let waiting = store.awaitOutcome("a", task.taskId)
+    waitFor sleepAsync(20)
+    check not waiting.finished
+    check store.finish(task.taskId, success(%*{"ok": true}))
+    check waitFor(waiting).result.get["ok"].getBool()
+
+  test "Given a result awaited on a task that expires, when another operation sweeps it, then the wait fails at once":
+    let time = FakeTime(nowMs: 0)
+    let store = storeAt(time, defaultTtlMs = some(600_000'i64))
+    let task = store.create("a", none(int64))
+    let waiting = store.awaitOutcome("a", task.taskId)
+    time.nowMs = 600_000
+    check store.list("a").len == 0
+    waitFor sleepAsync(50)
+    check waiting.finished
+    check waiting.failed
+
+  test "Given a result awaited on a task with a short ttl, when the ttl elapses, then the wait fails by itself":
+    let store = newTaskStore(defaultTtlMs = some(150'i64))
+    let task = store.create("a", none(int64))
+    let waiting = store.awaitOutcome("a", task.taskId)
+    for _ in 1 .. 150:
+      if waiting.finished: break
+      waitFor sleepAsync(20)
+    check waiting.finished
+    check waiting.failed
+
+  test "Given work that cannot be stopped, when its task expires, then the others are swept too and the failure is logged":
+    let time = FakeTime(nowMs: 0)
+    let store = storeAt(time)
+    let first = store.create("a", some(1_000'i64))
+    let second = store.create("a", some(1_000'i64))
+    store.attachWork(first.taskId, proc(reason: string) = raise newException(ValueError, "cannot stop"))
+    var expired: seq[string]
+    store.onExpire = proc(owner: string, task: McpTask) = expired.add task.taskId
+    time.nowMs = 2_000
+    let log = loggedWhile(proc() = discard store.sweep())
+    check "stopping the work of expired task " & first.taskId in log
+    check "cannot stop" in log
+    check store.list("a").len == 0
+    check expired.len == 2
+    check second.taskId in expired
+
+  test "Given an expiry hook that raises, when a task expires, then the sweep goes on and the failure is logged":
+    let time = FakeTime(nowMs: 0)
+    let store = storeAt(time)
+    let task = store.create("a", some(1_000'i64))
+    store.onExpire = proc(owner: string, task: McpTask) = raise newException(ValueError, "hook broke")
+    time.nowMs = 2_000
+    let log = loggedWhile(proc() = check store.sweep() == @[task.taskId])
+    check "the expiry hook for task " & task.taskId in log
+    check "hook broke" in log
+
+suite "tasks: running the request a task stands for":
+  proc ending(store: TaskStore, work: Future[JsonRpcResponse]): McpTask =
+    runAsTask(store, "a", none(int64), proc(id: string): TaskWork =
+      (response: work, cancel: nil))
+
+  test "Given work that raises, when it ends, then the task failed with a bare internal error and the cause is logged":
+    let store = storeAt(FakeTime())
+    let work = newFuture[JsonRpcResponse]("work")
+    let task = store.ending(work)
+    let log = loggedWhile(proc() =
+      work.fail(newException(ValueError, "disk full"))
+      waitFor sleepAsync(20))
+    check "task " & task.taskId & " raised disk full" in log
+    check store.get("a", task.taskId).status == tsFailed
+    let outcome = waitFor store.awaitOutcome("a", task.taskId)
+    check outcome.error.get.message == "Internal error"
+
+  test "Given work that succeeds, when it ends, then nothing is logged":
+    let store = storeAt(FakeTime())
+    let work = newFuture[JsonRpcResponse]("work")
+    let task = store.ending(work)
+    let log = loggedWhile(proc() =
+      work.complete(newJsonRpcResponse("1", %*{"ok": true}))
+      waitFor sleepAsync(20))
+    check log == ""
+    check store.get("a", task.taskId).status == tsCompleted
+
+  test "Given work that raises after its task was cancelled, when it ends, then nothing is logged and the task stays cancelled":
+    let store = storeAt(FakeTime())
+    let work = newFuture[JsonRpcResponse]("work")
+    let task = store.ending(work)
+    discard store.cancel("a", task.taskId)
+    let log = loggedWhile(proc() =
+      work.fail(newException(ValueError, "stopped"))
+      waitFor sleepAsync(20))
+    check log == ""
+    check store.get("a", task.taskId).status == tsCancelled
+
+  test "Given tasks/list with a cursor that is not a string, when answered, then it is Invalid params":
+    let store = storeAt(FakeTime())
+    let request = newJsonRpcRequest("1", "tasks/list", %*{"cursor": 5})
+    let response = waitFor handleTaskMethod(store, "a", McpTasksCapability(list: true, cancel: true), 50, request)
+    check response.error.get.code == -32602
+
+  test "Given a method that is no task method, when answered, then it is not found":
+    let store = storeAt(FakeTime())
+    let request = newJsonRpcRequest("1", "tasks/other", newJObject())
+    let response = waitFor handleTaskMethod(store, "a", McpTasksCapability(list: true, cancel: true), 50, request)
+    check response.error.get.code == -32601
