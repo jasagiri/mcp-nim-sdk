@@ -231,3 +231,45 @@ Feature: Streamable HTTP transport
     When a tools/call is sent whose _meta lacks the version or names another, or that names no tool
     Then it is posted without Mcp-Param headers, and without failing
     And an answer to anything but a tools/list that was sent is not read as a tool list
+
+  @spec:MCP-HTTP-g2g-hc-a-1
+  Scenario: The client mirrors the x-mcp-header declarations of the latest tools/list answer
+    Given a client that listed a tool declaring x-mcp-header
+    When a later listing declares the tool invalid, or without the header, a call no longer carries Mcp-Param-Region
+    And a second answer under the same id, or a request of the server with that id, is not the answer to the listing
+    And a tool left out of a listing is named in the log
+    And an answer that has no tools array is handed over as it is
+
+  @spec:MCP-HTTP-g2g-hc-a-2
+  Scenario: A response is accepted up to the limit, and an HTTP error is a JSON-RPC answer only if its body is one
+    Given a client with a limit on the size of a response
+    When a response is exactly as long as the limit, it is delivered
+    And an HTTP error whose body has no jsonrpc version, or is no object, is a transport error carrying the status
+
+  @spec:MCP-HTTP-g2g-hc-a-3
+  Scenario: A request whose stream ends without its response is answered by a local error, and only then
+    Given a request answered on an event stream
+    When the stream carries the response and ends, nothing else is delivered
+    And when it ends without it, the stream-closed error follows, whatever else it carried, even a request of the server with the same id
+    And a transport that was closed delivers none, and a cancelled id can be used again
+
+  @spec:MCP-HTTP-g2g-hc-a-4
+  Scenario: The client closes the connection of a stream that ends and says why a stream failed
+    Given event streams of a request and of the GET
+    When an event is no JSON, the connection is closed and one log line names the failure
+    And a GET answered other than by an event stream is closed, logged unless it is 405, and not asked again
+    And closing the transport closes the connection of an open GET stream
+
+  @spec:MCP-HTTP-g2g-hc-a-5
+  Scenario: A POST stream is resumed from the last event id, however often it breaks while the server is working
+    Given a stream broken before the response
+    When a resumed stream carries no ids, the next resumption names the last id that was sent
+    And a stream that delivers something resets the count of attempts
+    And a resumed stream that carries the response ends the resumption
+
+  @spec:MCP-HTTP-g2g-hc-a-6
+  Scenario: The GET stream is opened once, reopened after a delay, and given up after the reconnect limit
+    Given a session that has a GET stream
+    When every stream ends at once, the client asks once and as often again as it may reconnect
+    And it waits for the reconnect delay, and names the last id that was sent
+    And a second initialization opens no second stream while one is open, and asks again after one ended

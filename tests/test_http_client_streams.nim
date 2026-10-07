@@ -6,7 +6,7 @@
 ## The servers here are written byte by byte, so that each test controls
 ## exactly when events are sent and when connections are cut.
 
-import std/[unittest, asyncdispatch, asyncnet, httpcore, json, options,
+import std/[unittest, asyncdispatch, asyncnet, httpcore, json, options, os,
             strutils, times]
 import transport/transport
 import transport/http
@@ -783,3 +783,384 @@ if speaks >= mpv20250326:
       transport.protocolVersionNegotiated(speaks)
       waitFor transport.close()
       check waitFor withTimeout(hangedUp, 2000)
+
+proc accepted(socket: AsyncSocket): Future[void] =
+  socket.send("HTTP/1.1 202 Accepted\c\LContent-Length: 0\c\L\c\L")
+
+proc initialized(transport: StreamableHttpTransport) =
+  transport.protocolVersionNegotiated(speaks)
+  waitFor transport.sendNotification(
+    newJsonRpcNotification("notifications/initialized", newJObject()))
+
+proc nothingMoreWithin(transport: StreamableHttpTransport, ms: int): bool =
+  let waiting = transport.receiveMessage()
+  waitFor sleepAsync(ms)
+  not waiting.finished
+
+proc errorStatusOf(status: string, body: string): int =
+  ## The status a client reports when the server answers its request with
+  ## `status` and `body`; 0 when it reports none.
+  let url = startRawServer(proc(request: RawRequest, socket: AsyncSocket) {.async.} =
+    await socket.send("HTTP/1.1 " & status & "\c\LContent-Type: application/json\c\L" &
+                      "Content-Length: " & $body.len & "\c\L\c\L" & body))
+  let transport = newStreamableHttpTransport(url)
+  try:
+    transport.ask()
+  except McpTransportError as e:
+    result = e.code
+  waitFor transport.close()
+
+suite "client: limits, errors and the end of a stream (mutation review, g2g-hc-a)":
+
+  test "Given a body exactly as long as the limit, when a request is sent, then the response is delivered":
+    let body = $(%*{"jsonrpc": "2.0", "id": "r1", "result": {}})
+    let url = startRawServer(proc(request: RawRequest, socket: AsyncSocket) {.async.} =
+      await socket.send("HTTP/1.1 200 OK\c\LContent-Type: application/json\c\L" &
+                        "Content-Length: " & $body.len & "\c\L\c\L" & body))
+    let transport = newStreamableHttpTransport(url)
+    transport.maxResponseSize = body.len
+    transport.ask()
+    check transport.received()["id"].getStr() == "r1"
+    waitFor transport.close()
+
+  test "Given an HTTP error whose JSON body has an error but no jsonrpc version, when a request is sent, then it is a transport error with the status":
+    check errorStatusOf("500 Internal Server Error", $(%*{"error": {"code": -1, "message": "x"}})) == 500
+
+  test "Given an HTTP error whose JSON body is no object, when a request is sent, then it is a transport error with the status":
+    check errorStatusOf("502 Bad Gateway", "[\"upstream\"]") == 502
+
+  test "Given a stream that carries the response and then ends, when the response was read, then nothing else is delivered":
+    let url = startRawServer(proc(request: RawRequest, socket: AsyncSocket) {.async.} =
+      let id = parseJson(request.body)["id"]
+      await eventStreamHead(socket)
+      await socket.send(formatSseEvent($(%*{"jsonrpc": "2.0", "id": id, "result": {}}))))
+    let transport = newStreamableHttpTransport(url)
+    transport.ask()
+    check transport.received()["id"].getStr() == "r1"
+    check transport.nothingMoreWithin(200)
+    waitFor transport.close()
+
+  test "Given a stream that carries the response to another request, when it ends without its own, then the stream-closed error is delivered":
+    let url = startRawServer(proc(request: RawRequest, socket: AsyncSocket) {.async.} =
+      await eventStreamHead(socket)
+      await socket.send(formatSseEvent($(%*{"jsonrpc": "2.0", "id": "other", "result": {}}))))
+    let transport = newStreamableHttpTransport(url)
+    transport.ask()
+    check transport.received()["id"].getStr() == "other"
+    check transport.received().isLocalStreamClosed
+    waitFor transport.close()
+
+  test "Given a stream with a request of the server that has the id of the posted request, when it ends without the response, then the stream-closed error is delivered":
+    let url = startRawServer(proc(request: RawRequest, socket: AsyncSocket) {.async.} =
+      await eventStreamHead(socket)
+      await socket.send(formatSseEvent($(%*{"jsonrpc": "2.0", "id": "r1", "method": "ping"}))))
+    let transport = newStreamableHttpTransport(url)
+    transport.ask()
+    check transport.received()["method"].getStr() == "ping"
+    check transport.received().isLocalStreamClosed
+    waitFor transport.close()
+
+  test "Given a request whose event stream is open, when the client closes, then no stream-closed error is delivered":
+    let url = startRawServer(proc(request: RawRequest, socket: AsyncSocket) {.async.} =
+      await eventStreamHead(socket)
+      await socket.send(formatSseEvent($notification(1)))
+      discard await socket.recv(1))
+    let transport = newStreamableHttpTransport(url)
+    transport.ask()
+    discard transport.received()
+    waitFor transport.close()
+    waitFor sleepAsync(100)
+    expect McpTransportError:
+      discard waitFor transport.receiveMessage()
+
+  test "Given an event that is no JSON, when it arrives on the stream of a request, then the client says the stream failed and closes the connection":
+    let hangedUp = newFuture[void]("hangedUp")
+    let url = startRawServer(proc(request: RawRequest, socket: AsyncSocket) {.async.} =
+      await eventStreamHead(socket)
+      await socket.send(formatSseEvent("not json"))
+      let gone = await socket.recv(1)
+      if gone.len == 0:
+        hangedUp.complete())
+    let transport = newStreamableHttpTransport(url)
+    let logged = loggedWhile(proc() =
+      transport.ask()
+      check waitFor withTimeout(hangedUp, 2000))
+    check "[mcp-http] event stream from " & url & " failed with McpTransportError" in logged
+    check logged.count('\n') == 1
+    waitFor transport.close()
+
+  test "Given an id that was cancelled while its stream was open, when the id is used again and its stream breaks, then the stream-closed error is delivered":
+    var posts = 0
+    let url = startRawServer(proc(request: RawRequest, socket: AsyncSocket) {.async.} =
+      inc posts
+      await eventStreamHead(socket)
+      await socket.send(formatSseEvent($notification(posts)))
+      if posts == 1:
+        discard await socket.recv(1))
+    let transport = newStreamableHttpTransport(url)
+    transport.ask()
+    check transport.received()["params"]["progress"].getInt() == 1
+    transport.cancelRequest("r1")
+    waitFor sleepAsync(100)
+    transport.ask()
+    check transport.received()["params"]["progress"].getInt() == 2
+    check transport.received().isLocalStreamClosed
+    waitFor transport.close()
+
+if speaks >= mpv20250326:
+  suite "client: resuming and the GET stream (mutation review, g2g-hc-a)":
+
+    proc resumingTransport(url: string): StreamableHttpTransport =
+      result = newStreamableHttpTransport(url)
+      result.sessionId = some("s-1")
+      result.reconnectDelayMs = 5
+      result.protocolVersionNegotiated(speaks)
+
+    test "Given a resumed stream whose events carry no id, when it is cut too, then the next resumption still names the last id that was sent":
+      var lastIds: seq[string] = @[]
+      var postedId: JsonNode = nil
+      let url = startRawServer(proc(request: RawRequest, socket: AsyncSocket) {.async.} =
+        await eventStreamHead(socket)
+        if request.httpMethod == "POST":
+          postedId = parseJson(request.body)["id"]
+          await socket.send(formatSseEvent($notification(1), id = "a-1"))
+        else:
+          lastIds.add request.header("Last-Event-ID")
+          if lastIds.len == 1:
+            await socket.send(formatSseEvent($notification(2)))
+          else:
+            await socket.send(formatSseEvent($(%*{"jsonrpc": "2.0", "id": postedId, "result": {}}))))
+      let transport = resumingTransport(url)
+      transport.ask()
+      discard transport.received()
+      discard transport.received()
+      check transport.received()["id"].getStr() == "r1"
+      check lastIds == @["a-1", "a-1"]
+      waitFor transport.close()
+
+    test "Given a server that says something on every resumed stream, when the stream is cut more often than the limit, then the response still arrives":
+      var gets = 0
+      var postedId: JsonNode = nil
+      let url = startRawServer(proc(request: RawRequest, socket: AsyncSocket) {.async.} =
+        await eventStreamHead(socket)
+        if request.httpMethod == "POST":
+          postedId = parseJson(request.body)["id"]
+          await socket.send(formatSseEvent($notification(0), id = "a-0"))
+        else:
+          inc gets
+          if gets < 5:
+            await socket.send(formatSseEvent($notification(gets), id = "a-" & $gets))
+          else:
+            await socket.send(formatSseEvent($(%*{"jsonrpc": "2.0", "id": postedId, "result": {}}))))
+      let transport = resumingTransport(url)
+      transport.maxReconnects = 2
+      transport.ask()
+      for n in 0 .. 4:
+        check transport.received()["method"].getStr() == "notifications/progress"
+      check transport.received()["id"].getStr() == "r1"
+      check gets == 5
+      waitFor transport.close()
+
+    test "Given a resumed stream that carries the response, when it ends, then the client neither asks again nor delivers a stream-closed error":
+      var gets = 0
+      var postedId: JsonNode = nil
+      let url = startRawServer(proc(request: RawRequest, socket: AsyncSocket) {.async.} =
+        await eventStreamHead(socket)
+        if request.httpMethod == "POST":
+          postedId = parseJson(request.body)["id"]
+          await socket.send(formatSseEvent($notification(1), id = "a-1"))
+        else:
+          inc gets
+          await socket.send(formatSseEvent($(%*{"jsonrpc": "2.0", "id": postedId, "result": {}}), id = "a-2")))
+      let transport = resumingTransport(url)
+      transport.ask()
+      discard transport.received()
+      check transport.received()["id"].getStr() == "r1"
+      check transport.nothingMoreWithin(200)
+      check gets == 1
+      waitFor transport.close()
+
+    test "Given a server that ends every GET stream at once, when the session is initialized, then the client asks once and as often again as it may reconnect":
+      var gets = 0
+      let url = startRawServer(proc(request: RawRequest, socket: AsyncSocket) {.async.} =
+        if request.httpMethod == "GET":
+          inc gets
+          await eventStreamHead(socket)
+        else:
+          await socket.accepted())
+      let transport = newStreamableHttpTransport(url)
+      transport.reconnectDelayMs = 5
+      transport.maxReconnects = 2
+      transport.initialized()
+      waitFor sleepAsync(400)
+      check gets == 3
+      waitFor transport.close()
+
+    test "Given a GET stream cut after a message, when the client reconnects, then it waits for the reconnect delay":
+      var asked: seq[float] = @[]
+      let url = startRawServer(proc(request: RawRequest, socket: AsyncSocket) {.async.} =
+        if request.httpMethod == "GET":
+          asked.add epochTime()
+          await eventStreamHead(socket)
+          await socket.send(formatSseEvent($notification(asked.len), id = "g-" & $asked.len))
+          if asked.len > 1:
+            discard await socket.recv(1)
+        else:
+          await socket.accepted())
+      let transport = newStreamableHttpTransport(url)
+      transport.reconnectDelayMs = 150
+      transport.initialized()
+      check transport.received()["params"]["progress"].getInt() == 1
+      check transport.received()["params"]["progress"].getInt() == 2
+      check (asked[1] - asked[0]) * 1000 >= 140
+      waitFor transport.close()
+
+    test "Given GET streams whose later events carry no id, when each is cut, then every reconnection names the last id that was sent":
+      var lastIds: seq[string] = @[]
+      let url = startRawServer(proc(request: RawRequest, socket: AsyncSocket) {.async.} =
+        if request.httpMethod == "GET":
+          lastIds.add request.header("Last-Event-ID")
+          await eventStreamHead(socket)
+          case lastIds.len
+          of 1:
+            await socket.send(formatSseEvent($notification(1), id = "g-1"))
+          of 2:
+            await socket.send(formatSseEvent($notification(2)))
+          else:
+            discard await socket.recv(1)
+        else:
+          await socket.accepted())
+      let transport = newStreamableHttpTransport(url)
+      transport.reconnectDelayMs = 5
+      transport.initialized()
+      discard transport.received()
+      discard transport.received()
+      waitFor sleepAsync(100)
+      check lastIds == @["", "g-1", "g-1"]
+      waitFor transport.close()
+
+    test "Given a server that answers the GET with 200 and no event stream, when the session is initialized, then the client asks once, says so and closes the connection":
+      var gets = 0
+      let hangedUp = newFuture[void]("hangedUp")
+      let url = startRawServer(proc(request: RawRequest, socket: AsyncSocket) {.async.} =
+        if request.httpMethod == "GET":
+          inc gets
+          await socket.send("HTTP/1.1 200 OK\c\LContent-Type: application/json\c\L" &
+                            "Content-Length: 2\c\L\c\L{}")
+          let gone = await socket.recv(1)
+          if gone.len == 0:
+            hangedUp.complete()
+        else:
+          await socket.accepted())
+      let transport = newStreamableHttpTransport(url)
+      transport.reconnectDelayMs = 5
+      let logged = loggedWhile(proc() =
+        transport.initialized()
+        waitFor sleepAsync(300))
+      check gets == 1
+      check "[mcp-http] GET " & url & " answered HTTP 200" in logged
+      check "; not resuming" in logged
+      check logged.count('\n') == 1
+      check waitFor withTimeout(hangedUp, 2000)
+      waitFor transport.close()
+
+    test "Given a server that answers the GET with 405, when the session is initialized, then the client closes the connection and logs nothing":
+      let hangedUp = newFuture[void]("hangedUp")
+      let url = startRawServer(proc(request: RawRequest, socket: AsyncSocket) {.async.} =
+        if request.httpMethod == "GET":
+          await socket.send("HTTP/1.1 405 Method Not Allowed\c\LContent-Length: 0\c\L\c\L")
+          let gone = await socket.recv(1)
+          if gone.len == 0:
+            hangedUp.complete()
+        else:
+          await socket.accepted())
+      let transport = newStreamableHttpTransport(url)
+      let logged = loggedWhile(proc() =
+        transport.initialized()
+        waitFor sleepAsync(200))
+      check logged == ""
+      check waitFor withTimeout(hangedUp, 2000)
+      waitFor transport.close()
+
+    test "Given a server that hangs up on the GET, when the session is initialized, then the client logs the failure once and does not ask again":
+      var gets = 0
+      let url = startRawServer(proc(request: RawRequest, socket: AsyncSocket) {.async.} =
+        if request.httpMethod == "GET":
+          inc gets
+        else:
+          await socket.accepted())
+      let transport = newStreamableHttpTransport(url)
+      transport.reconnectDelayMs = 5
+      let logged = loggedWhile(proc() =
+        transport.initialized()
+        waitFor sleepAsync(300))
+      check gets == 1
+      check "[mcp-http] GET " & url & " failed: " in logged
+      check logged.count('\n') == 1
+      waitFor transport.close()
+
+    test "Given an event that is no JSON on the GET stream, when it arrives, then the client says the stream failed":
+      let url = startRawServer(proc(request: RawRequest, socket: AsyncSocket) {.async.} =
+        if request.httpMethod == "GET":
+          await eventStreamHead(socket)
+          await socket.send(formatSseEvent("not json"))
+          discard await socket.recv(1)
+        else:
+          await socket.accepted())
+      let transport = newStreamableHttpTransport(url)
+      let logged = loggedWhile(proc() =
+        transport.initialized()
+        waitFor sleepAsync(200))
+      check "[mcp-http] event stream from " & url & " failed with McpTransportError" in logged
+      check logged.count('\n') == 1
+      waitFor transport.close()
+
+    test "Given a GET stream that is open, when the client closes, then the connection of the stream is closed":
+      let hangedUp = newFuture[void]("hangedUp")
+      let url = startRawServer(proc(request: RawRequest, socket: AsyncSocket) {.async.} =
+        if request.httpMethod == "GET":
+          await eventStreamHead(socket)
+          await socket.send(formatSseEvent($notification(1)))
+          let gone = await socket.recv(1)
+          if gone.len == 0:
+            hangedUp.complete()
+        else:
+          await socket.accepted())
+      let transport = newStreamableHttpTransport(url)
+      transport.initialized()
+      discard transport.received()
+      waitFor transport.close()
+      check waitFor withTimeout(hangedUp, 2000)
+
+    test "Given a GET stream that is open, when the client is initialized again, then it does not open a second stream":
+      var gets = 0
+      let url = startRawServer(proc(request: RawRequest, socket: AsyncSocket) {.async.} =
+        if request.httpMethod == "GET":
+          inc gets
+          await eventStreamHead(socket)
+          discard await socket.recv(1)
+        else:
+          await socket.accepted())
+      let transport = newStreamableHttpTransport(url)
+      transport.initialized()
+      waitFor sleepAsync(100)
+      transport.initialized()
+      waitFor sleepAsync(100)
+      check gets == 1
+      waitFor transport.close()
+
+    test "Given a GET stream that ended because the server offers none, when the client is initialized again, then it asks again":
+      var gets = 0
+      let url = startRawServer(proc(request: RawRequest, socket: AsyncSocket) {.async.} =
+        if request.httpMethod == "GET":
+          inc gets
+          await socket.send("HTTP/1.1 405 Method Not Allowed\c\LContent-Length: 0\c\L\c\L")
+        else:
+          await socket.accepted())
+      let transport = newStreamableHttpTransport(url)
+      transport.initialized()
+      waitFor sleepAsync(100)
+      transport.initialized()
+      waitFor sleepAsync(100)
+      check gets == 2
+      waitFor transport.close()

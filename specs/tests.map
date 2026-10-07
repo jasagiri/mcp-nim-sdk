@@ -1471,6 +1471,35 @@ MCP-HTTP-g2g-hc-b-7 | tests/test_auth_failure.nim | Given a hook that always say
 MCP-HTTP-g2g-hc-b-8 | tests/test_param_headers_http.nim | Given a call that does not name 2026-07-28, when it is sent after the tool was listed, then it carries no Mcp-Param header
 MCP-HTTP-g2g-hc-b-8 | tests/test_param_headers_http.nim | Given a 2026-07-28 tools/call without a tool name, when it is sent, then it is posted without Mcp-Param headers
 MCP-HTTP-g2g-hc-b-8 | tests/test_param_headers_http.nim | Given a tools/list that failed, when its id is used again by another request, then that answer is not read as a tool list
+MCP-HTTP-g2g-hc-a-1 | tests/test_param_headers_http.nim | Given a tools/list answer without a tools member, when the client reads it, then the answer is handed over as it is
+MCP-HTTP-g2g-hc-a-1 | tests/test_param_headers_http.nim | Given a tools/list answer whose tools member is no array, when the client reads it, then the answer is handed over as it is
+MCP-HTTP-g2g-hc-a-1 | tests/test_param_headers_http.nim | Given a tool listed with x-mcp-header, when the next listing declares it invalid, then a call no longer carries the header
+MCP-HTTP-g2g-hc-a-1 | tests/test_param_headers_http.nim | Given a tool listed with x-mcp-header, when the next listing no longer declares it, then a call no longer carries the header
+MCP-HTTP-g2g-hc-a-1 | tests/test_param_headers_http.nim | Given a tools/list answered twice with the same id, when the second answer drops the header, then the first answer is what counts
+MCP-HTTP-g2g-hc-a-1 | tests/test_param_headers_http.nim | Given a request of the server whose id equals that of a pending tools/list, when the answer follows, then the answer is what counts
+MCP-HTTP-g2g-hc-a-1 | tests/test_param_headers_http.nim | Given a tool listed with an invalid x-mcp-header, when the client reads the listing, then it says which tool it left out
+MCP-HTTP-g2g-hc-a-2 | tests/test_http_client_streams.nim | Given a body exactly as long as the limit, when a request is sent, then the response is delivered
+MCP-HTTP-g2g-hc-a-2 | tests/test_http_client_streams.nim | Given an HTTP error whose JSON body has an error but no jsonrpc version, when a request is sent, then it is a transport error with the status
+MCP-HTTP-g2g-hc-a-2 | tests/test_http_client_streams.nim | Given an HTTP error whose JSON body is no object, when a request is sent, then it is a transport error with the status
+MCP-HTTP-g2g-hc-a-3 | tests/test_http_client_streams.nim | Given a stream that carries the response and then ends, when the response was read, then nothing else is delivered
+MCP-HTTP-g2g-hc-a-3 | tests/test_http_client_streams.nim | Given a stream that carries the response to another request, when it ends without its own, then the stream-closed error is delivered
+MCP-HTTP-g2g-hc-a-3 | tests/test_http_client_streams.nim | Given a stream with a request of the server that has the id of the posted request, when it ends without the response, then the stream-closed error is delivered
+MCP-HTTP-g2g-hc-a-3 | tests/test_http_client_streams.nim | Given a request whose event stream is open, when the client closes, then no stream-closed error is delivered
+MCP-HTTP-g2g-hc-a-3 | tests/test_http_client_streams.nim | Given an id that was cancelled while its stream was open, when the id is used again and its stream breaks, then the stream-closed error is delivered
+MCP-HTTP-g2g-hc-a-3 | tests/test_http_client_streams.nim | Given a resumed stream that carries the response, when it ends, then the client neither asks again nor delivers a stream-closed error
+MCP-HTTP-g2g-hc-a-4 | tests/test_http_client_streams.nim | Given an event that is no JSON, when it arrives on the stream of a request, then the client says the stream failed and closes the connection
+MCP-HTTP-g2g-hc-a-4 | tests/test_http_client_streams.nim | Given a server that answers the GET with 200 and no event stream, when the session is initialized, then the client asks once, says so and closes the connection
+MCP-HTTP-g2g-hc-a-4 | tests/test_http_client_streams.nim | Given a server that answers the GET with 405, when the session is initialized, then the client closes the connection and logs nothing
+MCP-HTTP-g2g-hc-a-4 | tests/test_http_client_streams.nim | Given a server that hangs up on the GET, when the session is initialized, then the client logs the failure once and does not ask again
+MCP-HTTP-g2g-hc-a-4 | tests/test_http_client_streams.nim | Given an event that is no JSON on the GET stream, when it arrives, then the client says the stream failed
+MCP-HTTP-g2g-hc-a-4 | tests/test_http_client_streams.nim | Given a GET stream that is open, when the client closes, then the connection of the stream is closed
+MCP-HTTP-g2g-hc-a-5 | tests/test_http_client_streams.nim | Given a resumed stream whose events carry no id, when it is cut too, then the next resumption still names the last id that was sent
+MCP-HTTP-g2g-hc-a-5 | tests/test_http_client_streams.nim | Given a server that says something on every resumed stream, when the stream is cut more often than the limit, then the response still arrives
+MCP-HTTP-g2g-hc-a-6 | tests/test_http_client_streams.nim | Given a server that ends every GET stream at once, when the session is initialized, then the client asks once and as often again as it may reconnect
+MCP-HTTP-g2g-hc-a-6 | tests/test_http_client_streams.nim | Given a GET stream cut after a message, when the client reconnects, then it waits for the reconnect delay
+MCP-HTTP-g2g-hc-a-6 | tests/test_http_client_streams.nim | Given GET streams whose later events carry no id, when each is cut, then every reconnection names the last id that was sent
+MCP-HTTP-g2g-hc-a-6 | tests/test_http_client_streams.nim | Given a GET stream that is open, when the client is initialized again, then it does not open a second stream
+MCP-HTTP-g2g-hc-a-6 | tests/test_http_client_streams.nim | Given a GET stream that ended because the server offers none, when the client is initialized again, then it asks again
 MCP-SEC-SCHEMA-1 | tests/test_security_schema.nim | Given a plain pattern, when 4 MiB of text is matched, then the process survives and answers
 MCP-SEC-SCHEMA-1 | tests/test_security_schema.nim | Given a lookahead, when long text is matched, then it is answered
 MCP-SEC-SCHEMA-2 | tests/test_security_schema.nim | Given patterns that backtrack exponentially, when matched, then each answers at once
