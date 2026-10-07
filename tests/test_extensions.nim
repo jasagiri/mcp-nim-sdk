@@ -49,6 +49,10 @@ suite "extension identifiers and capability wire form":
                 "com.example/-x", "com.example/x-", "com example/x", "com.example/a b"]:
       check validateExtensionId(bad).isSome
 
+  test "Given labels and names with digits and hyphens in every position the rules allow, when validated, then they are accepted":
+    check validateExtensionId("com.a1-b2.example/x").isNone
+    check validateExtensionId("com.example/2fa-v1_x.y").isNone
+
   test "Given the specification's client and server capability examples, when parsed and written, then they round-trip":
     let clientJson = fixture("ClientCapabilities_extensions-ui-mime-types.json")
     let serverJson = fixture("ServerCapabilities_extensions-tasks.json")
@@ -62,6 +66,15 @@ suite "extension identifiers and capability wire form":
   test "Given capabilities with no extensions or a non-object value, when read, then no extensions are declared":
     check extensionsOf(%*{"tools": {}}).kind == JNull
     check extensionsOf(%*{"extensions": 3}).kind == JNull
+
+  test "Given capabilities that are nil, lack the extension or hold settings that are not an object, when read, then nothing is declared":
+    check extensionsOf(nil).kind == JNull
+    check extensionsOf(%*[1]).kind == JNull
+    check settingsOf(nil, Ext).isNone
+    check settingsOf(%*{"extensions": {"com.example/other": {}}}, Ext).isNone
+    check settingsOf(%*{"extensions": {Ext: 3}}, Ext).isNone
+    check settingsOf(%*{"extensions": {Ext: {"flavour": "blue"}}}, Ext).get ==
+      %*{"flavour": "blue"}
 
 suite "extensions on the server":
 
@@ -177,6 +190,40 @@ suite "extensions on the server":
     expect ValueError: server.registerExtensionMethod(Ext, "widgets/make",
       proc(ctx: McpRequestContext, params: JsonNode): Future[JsonNode] {.async.} = return newJObject())
 
+  test "Given a result type that one extension registered, when another extension registers it, then it raises ValueError, and the owner may register it again":
+    let server = newServer(McpServerCapabilities(tools: some(McpToolsCapability())))
+    server.registerExtension(Ext, resultTypes = ["widget_job"])
+    server.registerExtension(Ext, resultTypes = ["widget_job"])
+    expect ValueError: server.registerExtension("com.example/other", resultTypes = ["widget_job"])
+
+  test "Given the tasks extension and another one, when each registers tasks/get, tasks/cancel and other core methods, then only the tasks extension may take over those two":
+    let server = newServer(McpServerCapabilities(tools: some(McpToolsCapability())))
+    server.registerExtension(TasksExtensionId)
+    server.registerExtension(Ext)
+    proc noop(ctx: McpRequestContext, params: JsonNode): Future[JsonNode] {.async.} =
+      return newJObject()
+    expect ValueError: server.registerExtensionMethod(Ext, "tasks/get", noop)
+    expect ValueError: server.registerExtensionMethod(Ext, "tasks/cancel", noop)
+    expect ValueError: server.registerExtensionMethod(TasksExtensionId, "tools/call", noop)
+    expect ValueError: server.registerExtensionMethod(TasksExtensionId, "tasks/list", noop)
+    server.registerExtensionMethod(TasksExtensionId, "tasks/get", noop)
+    server.registerExtensionMethod(TasksExtensionId, "tasks/cancel", noop)
+    check takesOver(TasksExtensionId, "tasks/get")
+    check not takesOver(Ext, "tasks/get")
+
+  test "Given a top-level capability registered with settings, with none and with settings that are not an object, when registered, then the first two are declared to a 2026-07-28 client and the last raises":
+    for v in versionsWith(ftExtensions):
+      let server = newServer(McpServerCapabilities(tools: some(McpToolsCapability())))
+      server.registerTopLevelCapability("widgets", %*{"flavour": "a"})
+      server.registerTopLevelCapability("gadgets")
+      expect ValueError: server.registerTopLevelCapability("tools")
+      expect ValueError: server.registerTopLevelCapability("flag", %*[1])
+      let answer = server.connect(server.attach(), v).ask("server/discover")
+      let caps = answer["result"]["capabilities"]
+      check caps["widgets"] == %*{"flavour": "a"}
+      check caps["gadgets"] == newJObject()
+      check not caps.hasKey("flag")
+
 suite "extensions on the client":
 
   test "Given a declared extension, when a request is sent, then clientCapabilities carries it":
@@ -241,6 +288,18 @@ suite "extensions on the client":
       let client = peer.connectedClient(v, proc(c: McpClient) = c.declareExtension(Ext))
       expect McpUnsupportedError:
         discard waitFor client.callExtension(Ext, "widgets/make", %*{"kind": "gear"})
+      check peer.requestsFor("widgets/make").len == 0
+
+  test "Given a legacy connection on which both sides declared the extension, when the client calls an extension method, then it raises McpUnsupportedError and sends nothing":
+    for v in versionsWithout(ftExtensions):
+      let peer = startPeer(proc(peer: client_peer.Peer, message: JsonNode) =
+        if message{"method"}.getStr() == "widgets/make":
+          peer.reply(message["id"], %*{"made": true}),
+        capabilities = %*{"extensions": {Ext: {}}})
+      let client = peer.connectedClient(v, proc(c: McpClient) =
+        c.declareExtension(Ext, onLegacyHandshake = true))
+      expect McpUnsupportedError:
+        discard waitFor client.callExtension(Ext, "widgets/make", newJObject())
       check peer.requestsFor("widgets/make").len == 0
 
   test "Given an extension the server alone declares, when a client that declared nothing calls its method, then the server serves it and the client sends it":

@@ -875,6 +875,8 @@ MCP-EXT-1 | tests/test_extensions.nim | Given identifiers with a reverse-DNS pre
 MCP-EXT-1 | tests/test_extensions.nim | Given identifiers without a prefix or with a malformed one, when validated, then they are rejected
 MCP-EXT-1 | tests/test_extensions.nim | Given the specification's client and server capability examples, when parsed and written, then they round-trip
 MCP-EXT-1 | tests/test_extensions.nim | Given capabilities with no extensions or a non-object value, when read, then no extensions are declared
+MCP-EXT-1 | tests/test_extensions.nim | Given labels and names with digits and hyphens in every position the rules allow, when validated, then they are accepted
+MCP-EXT-1 | tests/test_extensions.nim | Given capabilities that are nil, lack the extension or hold settings that are not an object, when read, then nothing is declared
 MCP-EXT-2 | tests/test_extensions.nim | Given a registered extension, when a 2026-07-28 client discovers the server, then the capabilities list it with its settings
 MCP-EXT-2 | tests/test_extensions.nim | Given a registered extension, when a legacy client initializes, then the capabilities do not mention extensions
 MCP-EXT-3 | tests/test_extensions.nim | Given a client that declares the extension, when it calls an extension method, then the handler runs and sees the settings
@@ -886,12 +888,14 @@ MCP-EXT-5 | tests/test_extensions.nim | Given a handler that returns a resultTyp
 MCP-EXT-5 | tests/test_extensions.nim | Given a tool whose result carries an extension's resultType, when the client did not declare that extension, then the answer is the missing-capability error naming it
 MCP-EXT-5 | tests/test_extensions.nim | Given a tool whose result has a resultType that is not a string, when it answers, then it is an internal error
 MCP-EXT-6 | tests/test_extensions.nim | Given bad registrations, when made, then each raises ValueError
+MCP-EXT-6 | tests/test_extensions.nim | Given a result type that one extension registered, when another extension registers it, then it raises ValueError, and the owner may register it again
 MCP-EXT-7 | tests/test_extensions.nim | Given a declared extension, when a request is sent, then clientCapabilities carries it
 MCP-EXT-7 | tests/test_extensions.nim | Given a declared extension, when the client initializes in a legacy version, then the capabilities do not mention extensions
 MCP-EXT-7 | tests/test_extensions.nim | Given a connected client, when it declares an extension, then it raises because capabilities are fixed at connect
 MCP-EXT-7 | tests/test_extensions.nim | Given a server that declares an extension, when the client connects, then it can read the server's settings
 MCP-EXT-8 | tests/test_extensions.nim | Given a server without the extension, when the client calls an extension method, then it raises McpUnsupportedError and sends nothing
 MCP-EXT-8 | tests/test_extensions.nim | Given a client that did not declare the extension, when it calls an extension method, then it raises McpUnsupportedError
+MCP-EXT-8 | tests/test_extensions.nim | Given a legacy connection on which both sides declared the extension, when the client calls an extension method, then it raises McpUnsupportedError and sends nothing
 MCP-EXT-9 | tests/test_extensions.nim | Given both sides support the extension, when the server answers with the extension's resultType, then the client returns the result
 MCP-EXT-9 | tests/test_extensions.nim | Given a resultType the client's extensions do not define, when the server answers with it, then the client raises
 MCP-MRTR-1 | tests/test_mrtr.nim | Given the specification's InputRequiredResult examples, when parsed, then requests and state are read
@@ -1230,8 +1234,10 @@ MCP-EXT-14 | tests/test_extensions.nim | Given an extension the server alone dec
 MCP-EXT-15 | tests/test_extensions.nim | Given a server that declares a capability the core does not define, when the client connects, then serverCapability returns its settings and only those
 MCP-EXT-15 | tests/test_extensions.nim | Given a server that declares only capabilities the core defines, when the client connects, then it has none of another kind
 MCP-EXT-15 | tests/test_extensions.nim | Given a server whose capabilities are not an object, when the client connects, then it connects and the server declared nothing
+MCP-EXT-15 | tests/test_extensions.nim | Given a top-level capability registered with settings, with none and with settings that are not an object, when registered, then the first two are declared to a 2026-07-28 client and the last raises
 MCP-EXT-16 | tests/test_extensions.nim | Given a method of a specification that asks nothing of the client, when a client that declared nothing calls it, then the server serves it
 MCP-EXT-17 | tests/test_extensions.nim | Given an extension method whose handler returns something that is not an object, when it answers, then it is an internal error
+MCP-EXT-g2e-ext-mrtr-1 | tests/test_extensions.nim | Given the tasks extension and another one, when each registers tasks/get, tasks/cancel and other core methods, then only the tasks extension may take over those two
 MCP-HOOKS-1 | tests/test_request_hooks.nim | Given handlers that never read ctx.meta, when requests carry different _meta, then the results are identical
 MCP-HOOKS-1 | tests/test_request_hooks.nim | Given no response filter, when the standard methods are answered, then each result is what the handler returned
 MCP-HOOKS-1 | tests/test_request_hooks.nim | Given no list scope, or one that answers nil, when lists are asked and a tool is called, then the registered handlers serve and validate
