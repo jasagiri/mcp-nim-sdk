@@ -3,8 +3,8 @@
 ## taken from RFC 7636 (appendix B), RFC 8414 (3.1), RFC 9728 (3.1, 5.1) and
 ## the MCP authorization specification.
 
-import std/[unittest, json, options, strutils]
-import auth/oauth/[pkce, challenge, urls, metadata, discovery, errors]
+import std/[unittest, json, options, strutils, asyncdispatch, asyncnet, httpcore, net, nativesockets]
+import auth/oauth/[pkce, challenge, urls, metadata, discovery, errors, fetch]
 
 suite "PKCE":
   test "Given the RFC 7636 appendix B verifier, when challenged with S256, then it is the appendix B challenge":
@@ -254,3 +254,67 @@ suite "Metadata validation":
     check m.authorizationEndpoint == "https://api.example.com/authorize"
     check m.tokenEndpoint == "https://api.example.com/token"
     check m.registrationEndpoint.get == "https://api.example.com/register"
+
+suite "WWW-Authenticate edges (mutation review, g2f-oauth-a)":
+  test "Given a Basic challenge with token68 padding before a Bearer one, when parsed, then the Bearer parameters are found":
+    # RFC 9110 11.2: token68 may end in any number of "=".
+    let header = "Basic YWJj==, Bearer resource_metadata=\"https://mcp.example.com/prm\", scope=\"read\""
+    let challenges = parseChallenges(header)
+    check challenges.len == 2
+    check challenges[0].scheme == "Basic"
+    check challenges[0].params.len == 0
+    let bearer = bearerChallenge([header]).get
+    check bearer.resourceMetadata == some("https://mcp.example.com/prm")
+    check bearer.scope == some("read")
+
+  test "Given a token68 whose padding ends the header, when parsed, then parsing ends with the challenge":
+    let challenges = parseChallenges("Basic YWJj==")
+    check challenges.len == 1
+    check challenges[0].scheme == "Basic"
+    check challenges[0].params.len == 0
+
+  test "Given white space around the equals sign, when parsed, then the values are the same as without it (RFC 9110 11.2 BWS)":
+    let bearer = bearerChallenge(["Bearer realm = \"a b\" , scope =  read"]).get
+    check bearer.realm == some("a b")
+    check bearer.scope == some("read")
+
+  test "Given a parameter that ends the header, when parsed, then its value is empty":
+    check bearerChallenge(["Bearer realm="]).get.realm == some("")
+    check bearerChallenge(["Bearer realm=  "]).get.realm == some("")
+
+  test "Given a quoted string that is cut off after a backslash, when parsed, then the backslash is kept":
+    check bearerChallenge(["Bearer realm=\"a\\"]).get.realm == some("a\\")
+
+  test "Given a header that starts with a parameter and no scheme, when parsed, then no challenge carries it":
+    for c in parseChallenges("realm=\"x\""):
+      check c.params.len == 0
+    check bearerChallenge(["realm=\"x\", Bearer scope=\"s\""]).get.scope == some("s")
+
+suite "Candidate URLs of an issuer with a trailing slash (mutation review, g2f-oauth-a)":
+  test "Given an issuer path that ends in a slash, when listing candidates, then the slash is dropped from every URL":
+    check authorizationServerMetadataUrls("https://auth.example.com/tenant1/", adsOAuthThenOidc) == @[
+      "https://auth.example.com/.well-known/oauth-authorization-server/tenant1",
+      "https://auth.example.com/.well-known/openid-configuration/tenant1",
+      "https://auth.example.com/tenant1/.well-known/openid-configuration"]
+
+suite "URL rules (mutation review, g2f-oauth-a)":
+  let policy = defaultFetchPolicy()
+
+  test "Given URLs that name no host or no scheme, when checked, then they are refused":
+    expect OAuthSecurityError: checkFetchUrl("https:///x", policy, "t")
+    expect OAuthSecurityError: checkFetchUrl("//auth.example.com/x", policy, "t")
+
+  test "Given a user name alone or a password alone, when checked, then the URL is refused for its credentials":
+    expect OAuthSecurityError: checkFetchUrl("https://user@auth.example.com/x", policy, "t")
+    expect OAuthSecurityError: checkFetchUrl("https://:secret@auth.example.com/x", policy, "t")
+
+  test "Given a resource without a host or without a scheme, when canonicalized, then it is refused":
+    expect OAuthError: discard canonicalResource("https:///mcp")
+    expect OAuthError: discard canonicalResource("//mcp.example.com/mcp")
+
+  test "Given a resource with a query, when canonicalized, then the query is kept (RFC 8707 2)":
+    check canonicalResource("HTTPS://MCP.example.com/api?tenant=a%20b") ==
+      "https://mcp.example.com/api?tenant=a%20b"
+
+  test "Given a field with a space, when form-encoded, then the space is %20":
+    check formEncode([("scope", "read write")]) == "scope=read%20write"
