@@ -302,6 +302,7 @@ MCP-SERVERREQ-10 | tests/test_server_requests.nim | Given a hold hook that refus
 MCP-SERVERREQ-11 | tests/test_server_requests.nim | Given a request that runs as a task, when it asks the client twice at once, then the task is told it needs input at the first request and no longer at the last answer
 MCP-SERVERREQ-11 | tests/test_server_requests.nim | Given a request that runs as a task, when the client answers its ask with an error, then the task is told it needs input no longer
 MCP-SERVERREQ-11 | tests/test_server_requests.nim | Given a request that runs as no task, when it asks the client, then the ask belongs to the request itself
+MCP-SERVERREQ-10 | tests/test_server_requests.nim | Given an answer that arrives twice, when the second arrives, then it is ignored and the first answer stands
 MCP-CLIENTREQ-1 | tests/test_client_server_requests.nim | Given a sampling handler, when the server asks, then the request is parsed and the result is sent in wire form
 MCP-CLIENTREQ-1 | tests/test_client_server_requests.nim | Given a sampling handler, when the client connects, then initialize declares sampling
 MCP-CLIENTREQ-1 | tests/test_client_server_requests.nim | Given a handler that refuses, when the server asks, then the handler's error code is sent
@@ -1050,6 +1051,7 @@ MCP-TASKS-14 | tests/test_tasks_server.nim | Given a task that needs input and a
 MCP-TASKS-14 | tests/test_tasks_client.nim | Given a task that needs input, when waited for, then polling stops so that tasks/result can be called
 MCP-TASKS-14 | tests/test_tasks_client.nim | Given a tool that needs input mid-way, when called with a task and waited for, then the client asks for the result at once
 MCP-TASKS-14 | tests/test_tasks_end_to_end.nim | Given a tool that asks the client for sampling, when called with a task, then the client answers and the task completes
+MCP-TASKS-14 | tests/test_tasks_end_to_end.nim | Given a tool that asks the client for sampling or roots inside a task, when the client has answered, then the task is working again while the tool goes on
 MCP-TASKS-15 | tests/test_tasks_server.nim | Given a limit of active tasks, when it is reached, then the call fails with an internal error until one ends
 MCP-TASKS-15 | tests/test_tasks_store.nim | Given a limit of active tasks per owner, when it is reached, then a new task is refused until one ends
 MCP-TASKS-16 | tests/test_tasks_client.nim | Given an optional tool, when called with a task and waited for, then the tool's result is returned

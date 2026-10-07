@@ -116,3 +116,9 @@ Feature: Requests the server makes of the client
     Given a connected client
     When the server pings it, with a string or an integer id
     Then the client answers with an empty result and the same id of the same JSON type
+
+  @spec:MCP-SERVERREQ-10 @feature:ftServerInitiatedRequests
+  Scenario: A second answer to the same request is ignored
+    Given a request of the server that the client has answered
+    When the client answers the same id again
+    Then the first answer stands and the server goes on

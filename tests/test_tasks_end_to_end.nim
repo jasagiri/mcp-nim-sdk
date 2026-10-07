@@ -9,6 +9,7 @@ import client/client
 import client/content
 import client/sampling
 import client/elicitation
+import client/roots
 import server/elicit
 import client/tools
 import client/tasks
@@ -153,6 +154,46 @@ if isSupported(TaskVersion):
       let payload = waitFor fetching
       check toolContentOf(payload).contentItems[0].text == "the user said Ada"
       check waitFor(client.getTask(taskId)).status == tsCompleted
+
+    test "Given a tool that asks the client for sampling or roots inside a task, when the client has answered, then the task is working again while the tool goes on":
+      for asked in ["sample", "roots"]:
+        let answered = newFuture[void]("answered")
+        let hold = newFuture[void]("hold")
+        let server = newMcpServer(McpServerInfo(name: "s", version: "1"),
+          capabilities = McpServerCapabilities(tools: some(McpToolsCapability())))
+        server.onToolsList(proc(cursor: Option[string]): Future[McpPage] {.async.} =
+          return McpPage(items: @[
+            %*{"name": "sample", "inputSchema": {"type": "object"},
+               "execution": {"taskSupport": "optional"}},
+            %*{"name": "roots", "inputSchema": {"type": "object"},
+               "execution": {"taskSupport": "optional"}}]))
+        server.onToolCall(proc(ctx: McpRequestContext, name: string,
+                               arguments: JsonNode): Future[JsonNode] {.async.} =
+          if name == "sample":
+            discard await ctx.createMessage(%*{
+              "messages": [{"role": "user", "content": {"type": "text", "text": "name?"}}],
+              "maxTokens": 5})
+          else:
+            discard await ctx.listRoots()
+          answered.complete()
+          await hold
+          return textOf("done"))
+        discard server.enableTasks(store = quickStore())
+        let client = server.connected(proc(client: McpClient) =
+          client.setSamplingHandler(proc(request: McpSamplingRequest): Future[McpSamplingResult] {.async.} =
+            return McpSamplingResult(role: "assistant", model: "m",
+              content: McpContentItem(kind: mckText, text: "Ada")))
+          client.setRootsProvider(proc(): Future[seq[McpRoot]] {.async.} =
+            return @[McpRoot(uri: "file:///project")]))
+        let tools = waitFor client.listAllTools()
+        let created = waitFor client.callToolAsTask(tools[if asked == "sample": 0 else: 1])
+        # the question reaches the client on the stream of tasks/result
+        let fetching = client.taskResult(created.task.taskId)
+        waitFor answered
+        check waitFor(client.getTask(created.task.taskId)).status == tsWorking
+        hold.complete()
+        discard waitFor fetching
+        check waitFor(client.getTask(created.task.taskId)).status == tsCompleted
 
     test "Given a client that receives tasks, when the server asks for elicitation as a task, then the answer is the handler's":
       let server = taskServer(quickStore())

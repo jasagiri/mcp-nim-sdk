@@ -127,6 +127,18 @@ suite "requests of the server (before 2026-07-28)":
     settle()
     check peer.ask("ping").hasKey("result")
 
+  test "Given an answer that arrives twice, when the second arrives, then it is ignored and the first answer stands":
+    let server = requestServer()
+    let t = server.attach()
+    let peer = server.connect(t, Legacy, clientCapabilities = SamplingAndRoots)
+    let pending = server.listRoots()
+    let asked = t.awaitRequest("roots/list")
+    t.answer(asked, %*{"roots": [{"uri": "file:///first", "name": "First"}]})
+    check waitFor(pending)[0]["uri"].getStr() == "file:///first"
+    t.answer(asked, %*{"roots": [{"uri": "file:///second", "name": "Second"}]})
+    settle()
+    check peer.ask("ping").hasKey("result")
+
   test "Given a session that ends while the server waits, when it ends, then the wait fails":
     let server = requestServer()
     let t = server.attach()
