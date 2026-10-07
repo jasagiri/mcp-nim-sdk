@@ -61,7 +61,6 @@ type
     of nkRepeat:
       body: Node
       min, max: int
-      lazy: bool
     of nkLookahead, nkNotLookahead: look: Node
     else: discard
 
@@ -253,7 +252,8 @@ proc parseQuantifier(p: var Parser, atom: Node): Node =
     return atom
   result = Node(kind: nkRepeat, body: atom, min: min, max: max)
   if not p.atEnd and p.peek == int32('?'):
-    result.lazy = true
+    # A lazy quantifier. Whether a string matches does not depend on which
+    # of the possible matches is preferred, so there is nothing to remember.
     inc p.pos
 
 proc parseAtom(p: var Parser): Node =
