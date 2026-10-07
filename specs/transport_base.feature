@@ -1,0 +1,21 @@
+Feature: What every transport shares
+  As someone who writes a transport for the SDK
+  I want the defaults of the base and the classification of messages to be fixed
+  So that a transport with one peer needs only the plain sends
+
+  Specification: JSON-RPC 2.0, "Request object", "Response object" and
+  "Notification": a request carries an id and a method, a notification a
+  method and no id, a response an id and a result or an error. The route of a
+  send is the SDK's own (Streamable HTTP uses it to pick a stream).
+
+  @spec:MCP-TRANSPORT-g2f-small-1
+  Scenario: A transport that ignores routes receives a routed send as a plain send
+    Given a transport that implements only the sends without a route
+    When the server sends a request or a notification naming a route
+    Then the plain send is called with it
+
+  @spec:MCP-TRANSPORT-g2f-small-2
+  Scenario: A message is a request, a notification or a response by its members
+    Given a JSON-RPC message
+    When it is classified
+    Then an object with an id and a method is a request, one with a method and no id is a notification, one with an id and a result or an error is a response, and anything else, including a value that is not an object, is none of them
