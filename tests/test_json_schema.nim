@@ -215,3 +215,211 @@ suite "regular expressions of patterns":
   test "Given Unicode property escapes, when compiled, then they are rejected":
     expect RegexError:
       discard compileRegex("\\p{L}")
+
+proc invalidSchemaOf(schema, instance: string): ref InvalidSchemaError =
+  ## The error that validating raises, nil when it raises none.
+  try:
+    discard violations(schema, instance)
+  except InvalidSchemaError as e:
+    return e
+
+proc constOf(value: JsonNode): JsonNode =
+  result = newJObject()
+  result["const"] = value
+
+proc areDistinct(a, b: string): bool =
+  ## Whether `uniqueItems` accepts the two values as different.
+  conforms("""{"uniqueItems": true}""", "[" & a & ", " & b & "]")
+
+const draft07 = """"$schema": "http://json-schema.org/draft-07/schema#" """
+
+suite "JSON Schema keywords (mutation review, g2h-js-a)":
+
+  test "Given a $schema that only contains a name after a leading #, when validated, then the dialect is unsupported":
+    expect UnsupportedDialectError:
+      discard violations("""{"$schema": "#https://json-schema.org/draft/2020-12/schema"}""", "{}")
+
+  test "Given a keyword of the wrong JSON type, when validated, then the schema is invalid":
+    for (keyword, bad, instance) in [("minimum", "\"1\"", "1"), ("exclusiveMaximum", "true", "1"),
+                                     ("pattern", "5", "\"a\""), ("uniqueItems", "1", "[]"),
+                                     ("properties", "[]", "{}"), ("allOf", "{}", "1")]:
+      check invalidSchemaOf("{\"" & keyword & "\": " & bad & "}", instance) != nil
+
+  test "Given a type list with a member that is not a string, when a matching instance is validated, then the schema is invalid":
+    check invalidSchemaOf("""{"type": ["string", 5]}""", "\"x\"") != nil
+
+  test "Given an infinite number, when validated against integer and number, then it is a number but no integer":
+    check validate(parseJson("""{"type": "integer"}"""), newJFloat(Inf)).len == 1
+    check validate(parseJson("""{"type": "number"}"""), newJFloat(Inf)).len == 0
+
+  test "Given a count keyword, when it is 0, 2.0, 2.5 or negative, then 0 and 2.0 are read and the others are invalid":
+    check conforms("""{"minLength": 0}""", "\"\"")
+    check conforms("""{"maxLength": 2.0}""", "\"ab\"")
+    check not conforms("""{"maxLength": 2.0}""", "\"abc\"")
+    check invalidSchemaOf("""{"minLength": -1}""", "\"\"") != nil
+    check invalidSchemaOf("""{"minLength": 2.5}""", "\"\"") != nil
+    check invalidSchemaOf("""{"maxLength": -1.0}""", "\"\"") != nil
+
+  test "Given const arrays, when the instance differs in length or in an item, then it does not conform":
+    check conforms("""{"const": [1, 2]}""", "[1, 2]")
+    check not conforms("""{"const": [1]}""", "[1, 2]")
+    check not conforms("""{"const": [1, 2]}""", "[1]")
+    check not conforms("""{"const": [1, 2]}""", "[1, 3]")
+
+  test "Given const objects, when the instance differs in size, in a key or in a value, then it does not conform":
+    check conforms("""{"const": {"a": 1, "b": 2}}""", """{"b": 2, "a": 1}""")
+    check not conforms("""{"const": {"a": 1}}""", """{"a": 1, "b": 2}""")
+    check not conforms("""{"const": {"a": 1, "b": 2}}""", """{"a": 1}""")
+    check not conforms("""{"const": {"a": 1}}""", """{"b": 1}""")
+    check not conforms("""{"const": {"a": 1}}""", """{"a": 2}""")
+
+  test "Given 1 and 1.0, when compared by const and enum in either direction, then they are the same number":
+    check conforms("""{"const": 1.0}""", "1")
+    check conforms("""{"const": 1}""", "1.0")
+    check conforms("""{"const": [1.0]}""", "[1]")
+    check conforms("""{"enum": [2, 1.0]}""", "1")
+    check not conforms("""{"const": 1.0}""", "2")
+    check not conforms("""{"const": 1}""", "1.5")
+
+  test "Given integers at the edge of 64 bits, when compared with doubles, then equal values match and neighbours do not":
+    check validate(constOf(newJInt(low(int64))), newJFloat(-9223372036854775808.0)).len == 0
+    check validate(constOf(newJFloat(-9223372036854775808.0)), newJInt(low(int64))).len == 0
+    check validate(constOf(newJInt(high(int64))), newJFloat(9223372036854775808.0)).len == 1
+    check validate(constOf(newJFloat(9223372036854775808.0)), newJInt(high(int64))).len == 1
+    check validate(constOf(newJFloat(9223372036854775808.0)), newJFloat(9223372036854775808.0)).len == 0
+
+  test "Given uniqueItems, when two items are the same value however spelled, then the array does not conform":
+    check not conforms("""{"uniqueItems": true}""", "[1, 1.0]")
+    check not conforms("""{"uniqueItems": true}""", """[{"a": 1, "b": 2}, {"b": 2, "a": 1}]""")
+    check not conforms("""{"uniqueItems": true}""", "[[1, [true]], [1, [true]]]")
+    check conforms("""{"uniqueItems": true}""", """[1, "1", true, null, [1], {"1": 1}]""")
+    check conforms("""{"uniqueItems": true}""", "[[1, 2], [2, 1]]")
+    check conforms("""{"uniqueItems": false}""", "[1, 1]")
+
+  test "Given uniqueItems, when items of different type or content could be told apart only by a part of their text, then they are distinct":
+    # Each pair is two different values; a comparison that leaves one part of the
+    # value out of its key would find them equal.
+    check areDistinct("[null]", "[]")
+    check areDistinct("true", "false")
+    check areDistinct("\"a\"", "\"b\"")
+    check areDistinct("""["x", "y"]""", """["xs:y"]""")
+    check areDistinct("""["2", 1234567890]""", """["d1234567890;"]""")
+    check areDistinct("[[], []]", "[[[]]]")
+    check areDistinct("""{"a": 1}""", """{"b": 1}""")
+    check areDistinct("""{"a": {"b": 1}, "c": 2}""", """{"a": {"b": 1, "c": 2}}""")
+    check areDistinct("""{"a": 1, "b": 2}""", """{"ad1;:b": 2}""")
+    check areDistinct("""{"a": 1, "ks9:0123456": 2}""", """{"a": 11, "k": "0123456d2"}""")
+    check areDistinct("""{"1": null, "b": "abcden"}""", """{"n1bs6:abcde": null}""")
+
+  test "Given a $ref into an array, when validated, then the element is the target":
+    let schema = """{"$defs": {"list": [{"type": "string"}, {"type": "integer"}]}, "$ref": "#/$defs/list/1"}"""
+    check conforms(schema, "5")
+    check not conforms(schema, "\"x\"")
+    check conforms("""{"$defs": {"a": {"0": {"type": "integer"}}}, "$ref": "#/$defs/a/0"}""", "5")
+
+  test "Given a $ref whose index step names nothing, when validated, then the schema is invalid":
+    check invalidSchemaOf("""{"$defs": {"a": {"x": 1}}, "$ref": "#/$defs/a/0"}""", "5") != nil
+    check invalidSchemaOf("""{"$defs": {"a": [true]}, "$ref": "#/$defs/a/"}""", "5") != nil
+    check invalidSchemaOf("""{"$defs": {"a": [true]}, "$ref": "#/$defs/a/x"}""", "5") != nil
+
+  test "Given a $ref that points at nothing inside a property, when an instance is validated, then the schema is invalid":
+    check invalidSchemaOf("""{"properties": {"a": {"$ref": "#/nothing"}}}""", """{"a": {}}""") != nil
+    check invalidSchemaOf("""{"properties": {"a": {"$ref": "#/$defs/nothing"}}, "$defs": {}}""", """{"a": {}}""") != nil
+
+  test "Given a $ref that comes back to itself, when validated, then the schema is invalid and no limit is reported":
+    for schema in ["""{"$ref": "#"}""", """{"$defs": {"a": {"$ref": "#/$defs/a"}}, "$ref": "#/$defs/a"}"""]:
+      let error = invalidSchemaOf(schema, "1")
+      check error != nil
+      check not (error of SchemaLimitError)
+
+  test "Given a $ref with sibling keywords, when validated, then 2020-12 applies them and draft-07 ignores them":
+    check not conforms("""{"$defs": {"any": {}}, "$ref": "#/$defs/any", "type": "string"}""", "5")
+    check conforms("""{"$defs": {"any": {}}, "$ref": "#/$defs/any", "type": "string"}""", "\"x\"")
+    check conforms("{" & draft07 & """, "definitions": {"any": {}}, "$ref": "#/definitions/any", "type": "string"}""", "5")
+
+  test "Given multipleOf, when the divisor is not above zero, then the schema is invalid and no limit is reported":
+    for divisor in ["0", "-2", "0.0"]:
+      let error = invalidSchemaOf("{\"multipleOf\": " & divisor & "}", "0")
+      check error != nil
+      check not (error of SchemaLimitError)
+    check invalidSchemaOf("""{"multipleOf": -2}""", "4") != nil
+
+  test "Given multipleOf with a decimal divisor, when the quotient carries rounding error, then the decimal multiples still conform":
+    check conforms("""{"multipleOf": 0.01}""", "1234.56")
+    check conforms("""{"multipleOf": 0.0001}""", "0.0075")
+    check not conforms("""{"multipleOf": 0.0001}""", "0.00751")
+    check conforms("""{"multipleOf": 2}""", "6")
+    check not conforms("""{"multipleOf": 2}""", "7")
+    check conforms("""{"multipleOf": 1.5}""", "4.5")
+
+  test "Given minLength and maxLength, when the length is at, below or above the bound, then the bound itself conforms":
+    check conforms("""{"minLength": 3}""", "\"abc\"")
+    check not conforms("""{"minLength": 3}""", "\"ab\"")
+    check conforms("""{"maxLength": 3}""", "\"abc\"")
+    check not conforms("""{"maxLength": 3}""", "\"abcd\"")
+    check conforms("""{"maxLength": 0}""", "\"\"")
+    check not conforms("""{"maxLength": 0}""", "\"a\"")
+    check not conforms("""{"minLength": 0, "maxLength": 0}""", "\"a\"")
+
+  test "Given a string of multibyte characters, when its length is bounded, then characters are counted, not bytes":
+    check conforms("""{"minLength": 3, "maxLength": 3}""", "\"日本語\"")
+    check not conforms("""{"maxLength": 2}""", "\"日本語\"")
+    check conforms("""{"maxLength": 1}""", "\"😀\"")
+
+  test "Given minItems and maxItems, when the size is at the bound, then it conforms and one beyond does not":
+    check conforms("""{"minItems": 2}""", "[1, 2]")
+    check not conforms("""{"minItems": 2}""", "[1]")
+    check conforms("""{"minItems": 0}""", "[]")
+    check conforms("""{"maxItems": 2}""", "[1, 2]")
+    check not conforms("""{"maxItems": 2}""", "[1, 2, 3]")
+    check conforms("""{"maxItems": 0}""", "[]")
+    check not conforms("""{"maxItems": 0}""", "[1]")
+
+  test "Given contains with minContains and maxContains, when the number of matches is at or beyond a bound, then the bounds are inclusive":
+    let one = """{"const": 1}"""
+    check conforms("{\"contains\": " & one & ", \"minContains\": 0}", "[]")
+    check conforms("{\"contains\": " & one & ", \"minContains\": 0}", "[2]")
+    check not conforms("{\"contains\": " & one & "}", "[2]")
+    check conforms("{\"contains\": " & one & ", \"minContains\": 2}", "[1, 1]")
+    check not conforms("{\"contains\": " & one & ", \"minContains\": 2}", "[1, 2]")
+    check conforms("{\"contains\": " & one & ", \"maxContains\": 2}", "[1, 1, 2]")
+    check not conforms("{\"contains\": " & one & ", \"maxContains\": 2}", "[1, 1, 1]")
+    check not conforms("{\"contains\": " & one & ", \"maxContains\": 0}", "[1]")
+    check not conforms("{\"contains\": " & one & ", \"maxContains\": 0}", "[2]")
+
+  test "Given minContains or maxContains without contains, or in draft-07, when validated, then they assert nothing":
+    check conforms("""{"maxContains": 0}""", "[1]")
+    check conforms("""{"minContains": 5}""", "[1]")
+    check conforms("{" & draft07 & """, "contains": {"const": 1}, "minContains": 2}""", "[1]")
+    check conforms("{" & draft07 & """, "contains": {"const": 1}, "maxContains": 1}""", "[1, 1]")
+
+  test "Given minProperties and maxProperties, when the size is at the bound, then it conforms and one beyond does not":
+    check conforms("""{"minProperties": 1}""", """{"a": 1}""")
+    check conforms("""{"minProperties": 1}""", """{"a": 1, "b": 2}""")
+    check not conforms("""{"minProperties": 1}""", "{}")
+    check conforms("""{"minProperties": 0}""", "{}")
+    check conforms("""{"maxProperties": 1}""", """{"a": 1}""")
+    check not conforms("""{"maxProperties": 1}""", """{"a": 1, "b": 2}""")
+    check conforms("""{"maxProperties": 0}""", "{}")
+    check not conforms("""{"maxProperties": 0}""", """{"a": 1}""")
+
+  test "Given required with a member that is not a string, when validated, then the schema is invalid":
+    check invalidSchemaOf("""{"required": [5]}""", "{}") != nil
+    check invalidSchemaOf("""{"required": ["a", 5]}""", """{"a": 1}""") != nil
+
+  test "Given patternProperties, when a property matches a pattern, then additionalProperties does not apply to it":
+    let schema = """{"patternProperties": {"^a": {"type": "integer"}}, "additionalProperties": false}"""
+    check conforms(schema, """{"ab": 1}""")
+    check not conforms(schema, """{"ab": "x"}""")
+    check not conforms(schema, """{"b": 1}""")
+
+  test "Given dependencies in 2020-12, when validated, then they assert nothing":
+    check conforms("""{"dependencies": {"a": ["b"]}}""", """{"a": 1}""")
+
+  test "Given draft-07 dependencies as a list of names, when validated, then a present key demands the others":
+    let schema = "{" & draft07 & """, "dependencies": {"a": ["b"]}}"""
+    check conforms(schema, "{}")
+    check conforms(schema, """{"b": 1}""")
+    check conforms(schema, """{"a": 1, "b": 2}""")
+    check not conforms(schema, """{"a": 1}""")
+    check "requires property 'b'" in describe(violations(schema, """{"a": 1}"""))

@@ -300,3 +300,49 @@ suite "malformed keywords that were skipped or crashed":
       discard validate(parseJson("""{"multipleOf": 1e-308}"""), parseJson("1e308"))
     check validate(parseJson("""{"multipleOf": 0.5}"""), parseJson("2.5")).len == 0
     check validate(parseJson("""{"multipleOf": 0.5}"""), parseJson("2.6")).len == 1
+
+proc limitsOf(maxDepth = DefaultSchemaLimits.maxDepth, maxChecks = DefaultSchemaLimits.maxChecks): SchemaLimits =
+  SchemaLimits(maxDepth: maxDepth, maxChecks: maxChecks,
+               maxRegexSteps: DefaultSchemaLimits.maxRegexSteps, regex: DefaultSchemaLimits.regex)
+
+proc conformsWithin(schema, instance: string, limits: SchemaLimits): bool =
+  validate(parseJson(schema), parseJson(instance), limits).len == 0
+
+suite "JSON Schema limits (mutation review, g2h-js-a)":
+
+  test "Given maxDepth, when the schema nests exactly that deep, then it is validated and one level more is reported":
+    let schema = """{"properties": {"a": {"type": "integer"}}}"""
+    check conformsWithin("""{"type": "integer"}""", "5", limitsOf(maxDepth = 1))
+    check conformsWithin(schema, """{"a": 1}""", limitsOf(maxDepth = 2))
+    expect SchemaLimitError:
+      discard conformsWithin(schema, """{"a": 1}""", limitsOf(maxDepth = 1))
+
+  test "Given maxDepth, when many sibling schemas are applied one after another, then only the nesting counts":
+    check conformsWithin("""{"allOf": [{"type": "integer"}, {"type": "integer"}, {"type": "integer"}]}""",
+                         "5", limitsOf(maxDepth = 2))
+    check conformsWithin("""{"items": {"type": "integer"}}""", "[1, 2, 3, 4]", limitsOf(maxDepth = 2))
+
+  test "Given maxChecks, when the validation needs exactly that many schema applications, then it is validated and one more is reported":
+    let schema = """{"properties": {"a": {}}}"""
+    check conformsWithin("""{"type": "integer"}""", "5", limitsOf(maxChecks = 1))
+    check conformsWithin(schema, """{"a": 1}""", limitsOf(maxChecks = 2))
+    expect SchemaLimitError:
+      discard conformsWithin(schema, """{"a": 1}""", limitsOf(maxChecks = 1))
+    expect SchemaLimitError:
+      discard conformsWithin("true", "5", limitsOf(maxChecks = 0))
+
+  test "Given uniqueItems, when an item nests as deep as maxDepth, then comparing it is reported and one level less is compared":
+    let unique = """{"uniqueItems": true}"""
+    check conformsWithin(unique, "[[1], [2]]", limitsOf(maxDepth = 2))
+    expect SchemaLimitError:
+      discard conformsWithin(unique, "[[[1]]]", limitsOf(maxDepth = 2))
+    check conformsWithin(unique, """[{"a": 1}, {"a": 2}]""", limitsOf(maxDepth = 2))
+    expect SchemaLimitError:
+      discard conformsWithin(unique, """[{"a": {"b": 1}}]""", limitsOf(maxDepth = 2))
+
+  test "Given uniqueItems, when items nest far deeper than maxDepth, then comparing them is reported, however the nesting is built":
+    let unique = """{"uniqueItems": true}"""
+    expect SchemaLimitError:
+      discard conformsWithin(unique, "[" & "[".repeat(40) & "1" & "]".repeat(40) & "]", limitsOf(maxDepth = 8))
+    expect SchemaLimitError:
+      discard conformsWithin(unique, "[" & """{"a":""".repeat(40) & "1" & "}".repeat(40) & "]", limitsOf(maxDepth = 8))
