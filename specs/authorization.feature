@@ -289,3 +289,33 @@ Feature: Authorization
     When the client checks or canonicalizes them
     Then URLs without a host or a scheme and URLs with any credentials are refused
     And a canonical resource keeps its query, and a form field with a space is encoded as %20
+
+  @spec:MCP-AUTH-g2f-oauth-b-1
+  Scenario: The metadata of an authorization server is read for what it states, and its endpoints are HTTPS
+    Given an authorization server metadata document
+    When its authorization_endpoint or registration_endpoint is plain http to a remote host, or the registration_endpoint is missing or null
+    Then the document is rejected in the first case and offers no registration in the second
+
+  @spec:MCP-AUTH-g2f-oauth-b-2
+  Scenario: A redirect URI is absolute, without a fragment, and https or loopback
+    Given a redirect URI with a fragment, without a host, with another scheme, or plain http to a remote host
+    When it is checked, or an authorization request is made with it
+    Then it is refused with OAuthSecurityError and no request is made
+
+  @spec:MCP-AUTH-g2f-oauth-b-3
+  Scenario: An authorization response answers the request only by its exact state, and carries a code
+    Given an authorization response
+    When its state differs from the request's in one character, or it has no code or an empty one
+    Then it is refused
+
+  @spec:MCP-AUTH-g2f-oauth-b-4
+  Scenario: A token response is kept only when it has an access token, and its lifetime is read exactly
+    Given a token response
+    When it has no or an empty access_token, an expires_in of zero, at the bound, as digits with leading zeros, or not made of digits
+    Then the first is refused, the others are read by their value or refused, and a token inside the skew of its expiry counts as expired
+
+  @spec:MCP-AUTH-g2f-oauth-b-5
+  Scenario: A registration answer names a client, and an OAuth error answer is reported as such
+    Given a registration response or an error answer
+    When the response has no or an empty client_id, or the error answer has a description, none, or is not JSON
+    Then registration fails, or the error names the status, the code and the description only when given
