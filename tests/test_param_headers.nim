@@ -112,6 +112,33 @@ suite "x-mcp-header: invalid declarations":
                     "$defs": {"p": {"type": "string", "x-mcp-header": "A"}}}
     check declaredParamHeaders(viaRef).invalid.isSome
 
+  test "Given keywords that hold schemas but no annotation, when declarations are read, then the tool stays valid":
+    let declared = declaredParamHeaders(schema(%*{
+      "list": {"type": "array", "items": {"type": "string"}},
+      "free": {"type": "object", "additionalProperties": {"type": "integer"}},
+      "pick": {"anyOf": [{"type": "string"}, {"type": "integer"}]},
+      "inner": {"type": "object", "properties": {"x-mcp-header": {"type": "string"}}},
+      "id": {"type": "string", "x-mcp-header": "Id"}}))
+    check declared.invalid.isNone
+    check declared.bindings.len == 1
+
+  test "Given an invalid declaration, when declarations are read, then the reason names where it was found":
+    let nested = declaredParamHeaders(schema(%*{
+      "target": {"type": "object", "properties": {
+        "zone": {"type": "number", "x-mcp-header": "Zone"}}}}))
+    check "'target.zone'" in nested.invalid.get
+    let root = declaredParamHeaders(%*{"type": "object", "x-mcp-header": "A"})
+    check "the schema root" in root.invalid.get
+    let stray = declaredParamHeaders(%*{"type": "object", "not": {"x-mcp-header": "A"}})
+    check "the schema root" in stray.invalid.get
+    let strayBelow = declaredParamHeaders(schema(%*{
+      "a": {"type": "string", "not": {"x-mcp-header": "A"}}}))
+    check "'a'" in strayBelow.invalid.get
+
+  test "Given an empty name, when declarations are read, then the reason says the name must not be empty":
+    let declared = declaredParamHeaders(schema(%*{"a": {"type": "string", "x-mcp-header": ""}}))
+    check "non-empty" in declared.invalid.get
+
   test "Given an invalid declaration, when declarations are read, then no bindings are offered":
     let declared = declaredParamHeaders(schema(%*{
       "a": {"type": "string", "x-mcp-header": "A"},
@@ -169,6 +196,9 @@ suite "x-mcp-header: client headers":
     check paramHeadersFor(declared.bindings, %*{"n": -9_007_199_254_740_992'i64}, headers).isSome
     check headers == @[("Existing", "1")]
     check paramHeadersFor(declared.bindings, %*{"n": 9_007_199_254_740_991'i64}, headers).isNone
+    check paramHeadersFor(declared.bindings, %*{"n": -9_007_199_254_740_991'i64}, headers).isNone
+    check headers == @[("Existing", "1"), ("Mcp-Param-N", "9007199254740991"),
+                       ("Mcp-Param-N", "-9007199254740991")]
 
   test "Given an argument of the wrong type, when headers are built, then the value is refused":
     let declared = declaredParamHeaders(schema(%*{
@@ -232,6 +262,16 @@ suite "x-mcp-header: server validation":
     check mismatchOf(declared, %*{"n": 42}, [("Mcp-Param-N", "42.0")]).isNone
     check mismatchOf(declared, %*{"n": 42}, [("Mcp-Param-N", "43")]).isSome
     check mismatchOf(declared, %*{"n": 42}, [("Mcp-Param-N", "forty-two")]).isSome
+
+  test "Given a body number written with a fraction part, when checked, then it agrees with the same integer in the header":
+    let declared = declaredParamHeaders(schema(%*{"n": {"type": "integer", "x-mcp-header": "N"}}))
+    check mismatchOf(declared, parseJson("""{"n": 42.0}"""), [("Mcp-Param-N", "42")]).isNone
+    check mismatchOf(declared, parseJson("""{"n": 42.0}"""), [("Mcp-Param-N", "43")]).isSome
+
+  test "Given an object or array argument, when checked, then no header value agrees with it":
+    let declared = declaredParamHeaders(sqlSchema)
+    for body in [%*{"region": ["x"]}, %*{"region": {"x": 1}}]:
+      check mismatchOf(declared, body, [("Mcp-Param-Region", "x")]).get.code == ErrHeaderMismatch
 
   test "Given a boolean header, when checked, then only true and false in lowercase agree":
     let declared = declaredParamHeaders(schema(%*{"b": {"type": "boolean", "x-mcp-header": "B"}}))
