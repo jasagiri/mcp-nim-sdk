@@ -94,6 +94,29 @@ suite "response filters":
     check peer.ask("tools/call", %*{"arguments": {}}).errorCode == -32602
     check asked == 0
 
+suite "request interceptors":
+
+  test "Given interceptors, when a request is served, then they run in the order added, the first answer ends the matter and none lets the server carry on":
+    for v in SupportedProtocolVersions:
+      let server = toolServer()
+      var seen: seq[string]
+      server.addRequestInterceptor(proc(ctx: McpRequestContext,
+                                        request: JsonRpcRequest): Future[Option[JsonRpcResponse]] {.async.} =
+        seen.add "first:" & request.`method`
+        if request.`method` == "tools/list":
+          return some(newJsonRpcResponse(request.id, %*{"tools": [], "by": "first"}))
+        return none(JsonRpcResponse))
+      server.addRequestInterceptor(proc(ctx: McpRequestContext,
+                                        request: JsonRpcRequest): Future[Option[JsonRpcResponse]] {.async.} =
+        seen.add "second:" & request.`method`
+        return none(JsonRpcResponse))
+      let peer = server.connect(server.attach(), v)
+      check peer.ask("tools/list"){"result", "by"}.getStr() == "first"
+      check seen == @["first:tools/list"]
+      let called = peer.ask("tools/call", %*{"name": "plain", "arguments": {"n": 1}})
+      check called{"result", "content"}[0]{"text"}.getStr() == "plain"
+      check seen == @["first:tools/list", "first:tools/call", "second:tools/call"]
+
 suite "list scope":
 
   test "Given a scope that picks another list, when tools/list is asked, then that list is served":

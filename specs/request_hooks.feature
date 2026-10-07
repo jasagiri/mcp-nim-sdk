@@ -24,3 +24,9 @@ Feature: Hooks for extensions in the server's request handling
     Given a response filter that replaces the result of a request with a value that is not a JSON object
     When a 2026-07-28 client makes that request
     Then the answer is an internal error
+
+  @spec:MCP-HOOKS-2
+  Scenario: A request interceptor answers a request or lets the server carry on
+    Given interceptors added to a server
+    When a request of a standard method is served
+    Then they run in the order added, the first answer ends the matter and none lets the server's own handling answer

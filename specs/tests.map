@@ -1146,6 +1146,7 @@ MCP-HOOKS-2 | tests/test_request_hooks.nim | Given two tool list transforms, whe
 MCP-HOOKS-2 | tests/test_request_hooks.nim | Given two listen filter hooks, when subscriptions/listen is asked, then each sees what the earlier ones agreed to and the acknowledgment carries the result
 MCP-HOOKS-2 | tests/test_request_hooks.nim | Given a listen filter hook that raises a request error, when subscriptions/listen is asked, then the client gets that error and nothing is subscribed
 MCP-HOOKS-2 | tests/test_request_hooks.nim | Given a filter that turns a 2026-07-28 result into something that is not an object, when the request is answered, then it is an internal error
+MCP-HOOKS-2 | tests/test_request_hooks.nim | Given interceptors, when a request is served, then they run in the order added, the first answer ends the matter and none lets the server carry on
 MCP-HTTP-6 | tests/test_streamable_http.nim | Given a server without the extension that defines it, when tasks/get is posted without Mcp-Name, then the answer is method not found and not a header mismatch
 MCP-SEC-SCHEMA-1 | tests/test_security_schema.nim | Given a plain pattern, when 4 MiB of text is matched, then the process survives and answers
 MCP-SEC-SCHEMA-1 | tests/test_security_schema.nim | Given a lookahead, when long text is matched, then it is answered
