@@ -261,9 +261,7 @@ func specPage*(feature: McpFeature, version: McpProtocolVersion): string {.raise
   of ftStdio:
     if modern: "basic/transports/stdio" else: "basic/transports"
   of ftHttpSse:
-    if version == mpv20241105: "basic/transports"
-    elif modern: "basic/transports/streamable-http"
-    else: "basic/transports"
+    if modern: "basic/transports/streamable-http" else: "basic/transports"
   of ftStreamableHttp, ftHttpSessions, ftHttpGetStream, ftHttpResumability,
      ftJsonRpcBatch, ftProtocolVersionHeader, ftSsePolling, ftMirroredHeaders,
      ftParameterHeaders:

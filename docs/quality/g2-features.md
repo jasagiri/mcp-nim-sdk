@@ -15,6 +15,6 @@ compileError の 49 件は、機能表 (`McpFeature` の列挙、`span`・`displ
 
 ## 残っているもの
 
-- 分類 4 の疑い (リードの判断を待つ): `ftHttpSse` の `specPage` の最初の枝 (`if version == mpv20241105: "basic/transports"`) は、最後の `else` と同じ値を返すので、消しても何も変わらない。
+- 分類 4 (リードの判断、2026-10-07): `ftHttpSse` の `specPage` の最初の枝 (`if version == mpv20241105: "basic/transports"`) は最後の `else` と同じ値を返す冗長な枝だったので削除した。
   旧版の分岐をそのまま残したのか、2025-03-26 以降で別のページを想定していたのかは、コードからは分からないので消していない。
   消すなら `if modern: … else: "basic/transports"` になり、この枝の変異は次の測定から無くなる。
