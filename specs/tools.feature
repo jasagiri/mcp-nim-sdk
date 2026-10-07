@@ -34,3 +34,8 @@ Feature: Tools
     When the tool is called
     Then the answer is an internal error and the handler does not run
 
+  @spec:MCP-TOOLS-6 @feature:ftTools
+  Scenario: A tools method needs the capability and a handler
+    Given a server with tool handlers and no tools capability, or the tools capability and no call handler
+    When a client sends tools/list or tools/call
+    Then the answer is method not found

@@ -34,6 +34,25 @@ proc errorServer(): McpServer =
 
 suite "tools/call failures (every version)":
 
+  test "Given tool handlers but no tools capability, when a tool is listed or called, then the method is not found":
+    for v in SupportedProtocolVersions:
+      let server = newServer(McpServerCapabilities(prompts: some(McpPromptsCapability())))
+      server.onToolsList(proc(cursor: Option[string]): Future[McpPage] {.async.} =
+        return McpPage(items: @[%*{"name": "ok", "inputSchema": {"type": "object"}}]))
+      server.onToolCall(proc(ctx: McpRequestContext, name: string,
+                             arguments: JsonNode): Future[JsonNode] {.async.} =
+        return %*{"content": [{"type": "text", "text": "fine"}]})
+      let peer = server.connect(server.attach(), v)
+      check peer.ask("tools/list").errorCode == -32601
+      check peer.ask("tools/call", %*{"name": "ok"}).errorCode == -32601
+
+  test "Given the tools capability but no call handler, when a tool is called, then the method is not found":
+    for v in SupportedProtocolVersions:
+      let server = newServer(McpServerCapabilities(tools: some(McpToolsCapability())))
+      let peer = server.connect(server.attach(), v)
+      check peer.ask("tools/list").errorCode == -32601
+      check peer.ask("tools/call", %*{"name": "ok"}).errorCode == -32601
+
   test "Given a tool that does not exist, when it is called, then the answer is a JSON-RPC error and not a result":
     for v in SupportedProtocolVersions:
       let server = errorServer()

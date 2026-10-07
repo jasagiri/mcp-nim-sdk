@@ -101,3 +101,9 @@ Feature: Resources
     Given a connected client with a callback for each list
     When the server reports that its tools, prompts or resources changed
     Then each callback fires once, a callback that raises does not stop later notifications, and without callbacks they are ignored
+
+  @spec:MCP-RESOURCES-13 @feature:ftResources
+  Scenario: A resources or prompts method needs a handler as well as the capability
+    Given a server that declared the resources and prompts capabilities and registered no handlers
+    When a client sends resources/list, resources/read, prompts/list or prompts/get
+    Then the answer is method not found

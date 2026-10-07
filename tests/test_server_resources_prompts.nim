@@ -63,6 +63,32 @@ suite "resources and prompts on the wire (every version)":
       check peer.ask("resources/list").errorCode == -32601
       check peer.ask("resources/read", %*{"uri": "file:///a"}).errorCode == -32601
 
+  test "Given handlers for resources and prompts but no capability declared, when a client calls them, then the method is not found":
+    for v in SupportedProtocolVersions:
+      let server = newServer(McpServerCapabilities(tools: some(McpToolsCapability())))
+      server.onResourcesList(fixedList(@[%*{"uri": "file:///a.txt", "name": "a.txt"}]))
+      server.onResourceRead(proc(ctx: McpRequestContext, uri: string): Future[seq[JsonNode]] {.async.} =
+        return @[%*{"uri": uri, "text": "hello"}])
+      server.onPromptsList(fixedList(@[%*{"name": "greet"}]))
+      server.onPromptGet(proc(ctx: McpRequestContext, name: string,
+                              arguments: JsonNode): Future[JsonNode] {.async.} =
+        return %*{"messages": []})
+      let peer = server.connect(server.attach(), v)
+      check peer.ask("resources/list").errorCode == -32601
+      check peer.ask("resources/read", %*{"uri": "file:///a.txt"}).errorCode == -32601
+      check peer.ask("prompts/list").errorCode == -32601
+      check peer.ask("prompts/get", %*{"name": "greet"}).errorCode == -32601
+
+  test "Given the capabilities declared but no handlers, when a client calls the methods, then the method is not found":
+    for v in SupportedProtocolVersions:
+      let server = newServer(McpServerCapabilities(
+        resources: some(McpResourcesCapability()), prompts: some(McpPromptsCapability())))
+      let peer = server.connect(server.attach(), v)
+      check peer.ask("resources/list").errorCode == -32601
+      check peer.ask("resources/read", %*{"uri": "file:///a.txt"}).errorCode == -32601
+      check peer.ask("prompts/list").errorCode == -32601
+      check peer.ask("prompts/get", %*{"name": "greet"}).errorCode == -32601
+
   test "Given a prompt, when a client lists and gets it, then the name is listed and the messages the handler built come back":
     for v in SupportedProtocolVersions:
       let server = contentServer()
