@@ -1022,11 +1022,21 @@ MCP-TASKS-4 | tests/test_tasks_store.nim | Given params with a task and a ttl, w
 MCP-TASKS-4 | tests/test_tasks_store.nim | Given params with an empty task object, when parsed, then a task is asked for without ttl
 MCP-TASKS-4 | tests/test_tasks_store.nim | Given params without a task, when parsed, then none is asked for
 MCP-TASKS-4 | tests/test_tasks_store.nim | Given a task that is not an object or a ttl that is not a number, when parsed, then it is Invalid params
+MCP-TASKS-4 | tests/test_tasks_store.nim | Given the system clock, when read, then it counts milliseconds since the epoch
+MCP-TASKS-4 | tests/test_tasks_store.nim | Given no immediate response, when a CreateTaskResult is made, then it has no _meta
+MCP-TASKS-4 | tests/test_tasks_store.nim | Given a ttl of 0, when the params are parsed, then the task is asked for with that ttl
+MCP-TASKS-4 | tests/test_tasks_store.nim | Given a ttl that is not a non-negative whole number, when the params are parsed, then it is Invalid params
+MCP-TASKS-4 | tests/test_tasks_store.nim | Given a ttl of 2^63 milliseconds, when the params are parsed, then it is read as the largest
+MCP-TASKS-4 | tests/test_tasks_store.nim | Given a ttl of 0, when a task is created, then it has ttl 0
+MCP-TASKS-4 | tests/test_tasks_server.nim | Given a call that carries a task but no name, when it arrives, then it is Invalid params, as for a plain call
 MCP-TASKS-5 | tests/test_tasks_store.nim | Given many tasks, when created, then every id differs and none can be guessed from a counter
 MCP-TASKS-6 | tests/test_tasks_store.nim | Given a working task, when it moves to each status the specification allows, then it does
 MCP-TASKS-6 | tests/test_tasks_store.nim | Given an input_required task, when it moves on, then working, completed, failed and cancelled are allowed
 MCP-TASKS-6 | tests/test_tasks_store.nim | Given a terminal task, when another status is set, then it stays and the change is refused
 MCP-TASKS-6 | tests/test_tasks_store.nim | Given a task that changes, when it does, then lastUpdatedAt moves and createdAt does not
+MCP-TASKS-6 | tests/test_tasks_store.nim | Given a terminal status, when asked about a move from it, then no status is allowed
+MCP-TASKS-6 | tests/test_tasks_store.nim | Given an id the store does not hold, when a status is set or the request finished, then nothing happens
+MCP-TASKS-6 | tests/test_tasks_store.nim | Given a working task, when working is set again with a message, then only the message changes
 MCP-TASKS-7 | tests/test_tasks_server.nim | Given a working task, when polled, then it is working, has no related-task meta and the same id
 MCP-TASKS-7 | tests/test_tasks_server.nim | Given a task, when polled with related-task meta naming another task, then the taskId param wins
 MCP-TASKS-7 | tests/test_tasks_server.nim | Given an unknown or missing taskId, when polled, then it is Invalid params
@@ -1039,6 +1049,8 @@ MCP-TASKS-7 | tests/test_tasks_store.nim | Given a rendered task, when read back
 MCP-TASKS-7 | tests/test_tasks_store.nim | Given the example of the specification, when read, then times without milliseconds and a missing pollInterval are accepted
 MCP-TASKS-7 | tests/test_tasks_store.nim | Given a time with an offset, when read, then it is the same instant in UTC
 MCP-TASKS-7 | tests/test_tasks_store.nim | Given something that is not a task, when read, then none is returned
+MCP-TASKS-7 | tests/test_tasks_store.nim | Given a time whose fraction ends the text, when read, then it is not a time
+MCP-TASKS-7 | tests/test_tasks_store.nim | Given a task without statusMessage, when read, then it has none
 MCP-TASKS-8 | tests/test_tasks_server.nim | Given a working task, when its result is requested, then the answer comes when the tool is done, tagged with the task
 MCP-TASKS-8 | tests/test_tasks_server.nim | Given a completed task, when its result is requested twice, then both answers are the result
 MCP-TASKS-8 | tests/test_tasks_server.nim | Given a tool that failed with isError, when polled, then the task failed with the tool's message, and the result is the tool result
@@ -1054,6 +1066,10 @@ MCP-TASKS-8 | tests/test_tasks_store.nim | Given a result, when tagged for a tas
 MCP-TASKS-8 | tests/test_tasks_store.nim | Given params without _meta, when tagged, then _meta is created and the original is untouched
 MCP-TASKS-8 | tests/test_tasks_client.nim | Given a completed task, when its result is fetched, then it is the raw result with the related-task meta
 MCP-TASKS-8 | tests/test_tasks_client.nim | Given a task whose request failed, when its result is fetched, then the JSON-RPC error is raised
+MCP-TASKS-8 | tests/test_tasks_store.nim | Given a tool result with isError and no text, when finished, then the task failed without a message
+MCP-TASKS-8 | tests/test_tasks_store.nim | Given a task with unlimited ttl, when its result is awaited, then the wait ends when the task does
+MCP-TASKS-8 | tests/test_tasks_store.nim | Given work that raises, when it ends, then the task failed with a bare internal error and the cause is logged
+MCP-TASKS-8 | tests/test_tasks_store.nim | Given work that succeeds, when it ends, then nothing is logged
 MCP-TASKS-9 | tests/test_tasks_server.nim | Given more tasks than a page, when listed page by page, then every task appears once and the last page has no cursor
 MCP-TASKS-9 | tests/test_tasks_server.nim | Given a cursor nobody issued, when listed, then it is Invalid params
 MCP-TASKS-9 | tests/test_tasks_server.nim | Given a task that tasks/get returns, when listed, then it is in the list
@@ -1061,6 +1077,7 @@ MCP-TASKS-9 | tests/test_tasks_server.nim | Given a server without the list capa
 MCP-TASKS-9 | tests/test_tasks_store.nim | Given tasks of two owners, when one lists, then it sees its own in creation order
 MCP-TASKS-9 | tests/test_tasks_store.nim | Given a task that get returns, when listed, then it is in the list too
 MCP-TASKS-9 | tests/test_tasks_client.nim | Given a server with list, when listing page by page, then every task is returned
+MCP-TASKS-9 | tests/test_tasks_store.nim | Given tasks/list with a cursor that is not a string, when answered, then it is Invalid params
 MCP-TASKS-10 | tests/test_tasks_server.nim | Given a working task, when cancelled, then the answer is the cancelled task and the tool is told
 MCP-TASKS-10 | tests/test_tasks_server.nim | Given a cancelled task, when its tool finishes anyway, then the task stays cancelled
 MCP-TASKS-10 | tests/test_tasks_server.nim | Given a task that is over, when cancelled, then it is Invalid params
@@ -1073,16 +1090,24 @@ MCP-TASKS-10 | tests/test_tasks_store.nim | Given a cancelled task, when its exe
 MCP-TASKS-10 | tests/test_tasks_client.nim | Given a working task, when cancelled, then the cancelled task is returned
 MCP-TASKS-10 | tests/test_tasks_client.nim | Given a server without list or cancel, when listing or cancelling, then nothing is sent
 MCP-TASKS-10 | tests/test_tasks_end_to_end.nim | Given a task that cancels, when the client cancels it, then it is cancelled for both
+MCP-TASKS-10 | tests/test_tasks_store.nim | Given work that raises after its task was cancelled, when it ends, then nothing is logged and the task stays cancelled
 MCP-TASKS-11 | tests/test_tasks_server.nim | Given a task, when its status changes, then the owning session is sent the whole task
 MCP-TASKS-11 | tests/test_tasks_server.nim | Given a task of one session, when its status changes, then only that session is notified
 MCP-TASKS-11 | tests/test_tasks_store.nim | Given a status change, when it happens, then the store reports the full task to its owner
 MCP-TASKS-11 | tests/test_tasks_client.nim | Given a callback, when the server pushes a task status, then the callback gets the whole task
+MCP-TASKS-11 | tests/test_tasks_server.nim | Given a session that cannot be reached, when its task changes status, then the failure is logged and the task goes on
+MCP-TASKS-11 | tests/test_tasks_client.nim | Given a status notification that is no task, when it arrives, then the callback is not called and it is logged
+MCP-TASKS-11 | tests/test_tasks_client.nim | Given a transport that cannot send notifications, when a task of the client ends, then the failure is logged and the task still completes
 MCP-TASKS-12 | tests/test_tasks_server.nim | Given a task whose ttl has passed, when polled, then it is gone and tasks/result agrees
 MCP-TASKS-12 | tests/test_tasks_server.nim | Given a working task that expires, when the time passes, then its tool is told to stop
 MCP-TASKS-12 | tests/test_tasks_store.nim | Given a task whose ttl has elapsed, when looked up, then it is gone, whatever its status
 MCP-TASKS-12 | tests/test_tasks_store.nim | Given a task that expires while working, when swept, then its work is told to stop
 MCP-TASKS-12 | tests/test_tasks_store.nim | Given a result awaited on a task that then expires, when the time comes, then the wait fails as not found
 MCP-TASKS-12 | tests/test_tasks_store.nim | Given a task with unlimited ttl, when much time passes, then it stays
+MCP-TASKS-12 | tests/test_tasks_store.nim | Given a result awaited on a task that expires, when another operation sweeps it, then the wait fails at once
+MCP-TASKS-12 | tests/test_tasks_store.nim | Given a result awaited on a task with a short ttl, when the ttl elapses, then the wait fails by itself
+MCP-TASKS-12 | tests/test_tasks_store.nim | Given work that cannot be stopped, when its task expires, then the others are swept too and the failure is logged
+MCP-TASKS-12 | tests/test_tasks_store.nim | Given an expiry hook that raises, when a task expires, then the sweep goes on and the failure is logged
 MCP-TASKS-13 | tests/test_tasks_server.nim | Given a task of one session, when another session asks for it, then it is not found, whatever the operation
 MCP-TASKS-13 | tests/test_tasks_server.nim | Given tasks of two sessions, when each lists, then it sees only its own
 MCP-TASKS-13 | tests/test_tasks_store.nim | Given a task of one owner, when another asks for it, then it is not found, as if it did not exist
@@ -1094,6 +1119,7 @@ MCP-TASKS-14 | tests/test_tasks_end_to_end.nim | Given a tool that asks the clie
 MCP-TASKS-14 | tests/test_tasks_end_to_end.nim | Given a tool that asks the client for sampling or roots inside a task, when the client has answered, then the task is working again while the tool goes on
 MCP-TASKS-15 | tests/test_tasks_server.nim | Given a limit of active tasks, when it is reached, then the call fails with an internal error until one ends
 MCP-TASKS-15 | tests/test_tasks_store.nim | Given a limit of active tasks per owner, when it is reached, then a new task is refused until one ends
+MCP-TASKS-15 | tests/test_tasks_client.nim | Given a store that holds one task at most, when a second request carries a task, then it is refused with an internal error
 MCP-TASKS-16 | tests/test_tasks_client.nim | Given an optional tool, when called with a task and waited for, then the tool's result is returned
 MCP-TASKS-16 | tests/test_tasks_client.nim | Given a task that works twice and then completes, when waited for, then it polls at the suggested interval and stops at the end
 MCP-TASKS-16 | tests/test_tasks_client.nim | Given a task without a suggested interval, when waited for, then the default is used
@@ -1108,6 +1134,7 @@ MCP-TASKS-16 | tests/test_tasks_client.nim | Given sampling asked for but no sam
 MCP-TASKS-16 | tests/test_tasks_end_to_end.nim | Given a server with tasks, when a client calls a tool as a task, then it learns the task and gets the result
 MCP-TASKS-16 | tests/test_tasks_end_to_end.nim | Given a tool, when called with callToolWithTask, then the result is the same as a plain call
 MCP-TASKS-16 | tests/test_tasks_end_to_end.nim | Given a task that cancels, when the client cancels it, then it is cancelled for both
+MCP-TASKS-16 | tests/test_tasks_client.nim | Given a server that declared no tasks, when a task is asked for, then nothing is sent
 MCP-TASKS-17 | tests/test_tasks_client.nim | Given a sampling request with a task, when it arrives, then a working task is answered at once and the result follows by tasks/result
 MCP-TASKS-17 | tests/test_tasks_client.nim | Given a sampling request without a task, when it arrives, then the result comes directly
 MCP-TASKS-17 | tests/test_tasks_client.nim | Given a handler that rejects the request, when the task's result is fetched, then it is that error and the task failed
@@ -1115,18 +1142,25 @@ MCP-TASKS-17 | tests/test_tasks_client.nim | Given tasks of the client, when the
 MCP-TASKS-17 | tests/test_tasks_client.nim | Given a task of the client, when its status changes, then the server is told
 MCP-TASKS-17 | tests/test_tasks_client.nim | Given a client that receives tasks, when it connects, then initialize declares list, cancel and the sampling request
 MCP-TASKS-17 | tests/test_tasks_end_to_end.nim | Given a client that receives tasks, when the server asks for sampling as a task, then the answer is the handler's
+MCP-TASKS-17 | tests/test_tasks_client.nim | Given a connected client, when tasks are enabled or a request is augmented, then it is refused: capabilities are declared in the handshake
+MCP-TASKS-17 | tests/test_tasks_client.nim | Given a sampling request whose task is not an object, when it arrives, then it is Invalid params
+MCP-TASKS-17 | tests/test_tasks_client.nim | Given a handler that is called with a task, when the request runs as the task, then the handler sees the request without the task
 MCP-TASKS-18 | tests/test_tasks_server.nim | Given a client that allows tasks on sampling, when the server asks as a task, then it creates, polls and fetches the result
 MCP-TASKS-18 | tests/test_tasks_server.nim | Given a client that did not allow tasks on sampling, when the server asks as a task, then nothing is sent
 MCP-TASKS-18 | tests/test_tasks_server.nim | Given a client of an older version, when the server asks as a task, then nothing is sent
 MCP-TASKS-18 | tests/test_tasks_server.nim | Given a task of the client that failed with an error, when its result is fetched, then the error is raised
 MCP-TASKS-18 | tests/test_tasks_server.nim | Given a client without the cancel capability, when the server cancels one of its tasks, then nothing is sent
 MCP-TASKS-18 | tests/test_tasks_end_to_end.nim | Given a client that receives tasks, when the server asks for sampling as a task, then the answer is the handler's
+MCP-TASKS-18 | tests/test_tasks_server.nim | Given a client that declared no tasks, when the server asks as a task, then nothing is sent
+MCP-TASKS-18 | tests/test_tasks_server.nim | Given a client that declared tasks for sampling only, when the server asks for another request as a task, then nothing is sent
+MCP-TASKS-18 | tests/test_tasks_server.nim | Given a client with tasks.list, when the server lists its tasks, then it gets the tasks and the cursor of the page
 MCP-TASKS-19 | tests/test_tasks_end_to_end.nim | Given a server with tasks, when a client calls a tool as a task, then it learns the task and gets the result
 MCP-TASKS-19 | tests/test_tasks_end_to_end.nim | Given a tool, when called with callToolWithTask, then the result is the same as a plain call
 MCP-TASKS-19 | tests/test_tasks_end_to_end.nim | Given a task that cancels, when the client cancels it, then it is cancelled for both
 MCP-TASKS-19 | tests/test_tasks_end_to_end.nim | Given a tool that asks the client for sampling, when called with a task, then the client answers and the task completes
 MCP-TASKS-19 | tests/test_tasks_end_to_end.nim | Given a client that receives tasks, when the server asks for sampling as a task, then the answer is the handler's
 MCP-TASKS-3 | tests/test_tasks_server.nim | Given a server that did not declare tools/call tasks, when a call carries a task, then it runs normally
+MCP-TASKS-3 | tests/test_tasks_server.nim | Given a tool listed on the second page, when called with a task, then the first page was asked for without a cursor and the task is made
 MCP-TOOLS-3 | tests/test_tool_input_validation.nim | Given arguments that fit the tool's inputSchema, when the tool is called, then the handler runs
 MCP-TOOLS-3 | tests/test_tool_input_validation.nim | Given arguments that break the inputSchema, when the answer is read, then it names the argument at fault
 MCP-TOOLS-3 | tests/test_tool_input_validation.nim | Given a call without arguments, when the inputSchema requires one, then it is checked as an empty object
@@ -1149,10 +1183,14 @@ MCP-TASKS-22 | tests/test_tasks_http.nim | Given a task and a waiting tasks/resu
 MCP-TASKS-22 | tests/test_tasks_http.nim | Given a task and no tasks/result, when the tool reports progress and logs, then they are on the GET stream and the task goes on
 MCP-TASKS-23 | tests/test_tasks_http.nim | Given a task that asks and no tasks/result, when tasks/result arrives, then the question is on its stream and not before
 MCP-TASKS-23 | tests/test_tasks_http.nim | Given a task whose held questions are limited, when the tool asks beyond the limit, then the question is refused and the task fails
+MCP-TASKS-23 | tests/test_tasks_store.nim | Given a hook for result streams, when a stream is set and then cleared, then the hook hears only of the set
+MCP-TASKS-23 | tests/test_tasks_server.nim | Given a tasks/result that waits on a task, when the task ends, then the task no longer names that request as its stream
+MCP-TASKS-23 | tests/test_tasks_server.nim | Given a question waiting for tasks/result, when the task is cancelled, then a later tasks/result does not send it
 MCP-TASKS-24 | tests/test_tasks_principal.nim | Given a task made by one principal, when another with the same session id asks for it, then it is unknown to them
 MCP-TASKS-24 | tests/test_tasks_principal.nim | Given a task made by one principal, when another asks for it by its id in a session of their own, then the task store does not show it
 MCP-TASKS-24 | tests/test_tasks_principal.nim | Given an authorized request, when a tool runs, then ctx.principal is the subject of the token
 MCP-TASKS-24 | tests/test_tasks_principal.nim | Given an endpoint without authorization, when a tool runs, then ctx.principal is none and tasks belong to the session
+MCP-TASKS-g2d-tasks-1 | tests/test_tasks_store.nim | Given a method that is no task method, when answered, then it is not found
 MCP-CONTENT-FIELDS-1 | tests/test_client_field_types.nim | Given a tool whose title is a number, when tools are listed, then it is a protocol error naming the field
 MCP-CONTENT-FIELDS-1 | tests/test_client_field_types.nim | Given a resource whose mimeType is an object, when resources are listed, then it is a protocol error
 MCP-CONTENT-FIELDS-1 | tests/test_client_field_types.nim | Given a nextCursor that is a number, when tools are listed, then it is a protocol error

@@ -164,3 +164,9 @@ Feature: Tasks
     Given an HTTP endpoint whose authorization names the principal of each access token
     When a principal makes a task and another principal, with the same session id, asks for it, cancels it or lists tasks
     Then the task is unknown to the other principal, handlers see ctx.principal, and without authorization the task belongs to the session
+
+  @spec:MCP-TASKS-g2d-tasks-1 @feature:ftTasks
+  Scenario: A method that is not one of the task methods is unknown
+    Given a receiver of tasks
+    When it is asked for a method of the tasks family that it does not have
+    Then the answer is Method not found

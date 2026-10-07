@@ -4,7 +4,7 @@
 ## server is a hand-written peer; waiting uses a replaceable sleep, so nothing
 ## here waits for real.
 
-import std/[asyncdispatch, json, options, sequtils, strutils, unittest]
+import std/[asyncdispatch, json, options, os, sequtils, strutils, unittest]
 import client/client
 import client/sampling
 import client/content
@@ -45,6 +45,19 @@ proc answerOf(peer: Peer, id: string): JsonNode =
         return message
     waitFor sleepAsync(2)
   raise newException(AssertionDefect, "no answer to " & id)
+
+proc loggedWhile(body: proc()): string =
+  ## Everything the code under test wrote to stderr.
+  let path = getTempDir() / "mcp-tasks-client-" & $getCurrentProcessId() & ".log"
+  let saved = stderr
+  stderr = open(path, fmWrite)
+  try:
+    body()
+  finally:
+    stderr.close()
+    stderr = saved
+  result = readFile(path)
+  removeFile(path)
 
 proc connect(peer: Peer, version = TaskVersion): McpClient =
   peer.connectedClient(version)
@@ -174,6 +187,13 @@ if isSupported(TaskVersion):
       check all.len == 2
       check all[1].status == tsCompleted
       check peer.requestsFor("tasks/list")[1]["params"]["cursor"].getStr() == "c2"
+
+    test "Given a server that declared no tasks, when a task is asked for, then nothing is sent":
+      let peer = startPeer(nil, capabilities = %*{"tools": {}})
+      let client = peer.connect()
+      expect McpUnsupportedError:
+        discard waitFor client.getTask("t")
+      check peer.requestsFor("tasks/get").len == 0
 
     test "Given a server without list or cancel, when listing or cancelling, then nothing is sent":
       let peer = startPeer(nil, capabilities = %*{"tools": {}, "tasks": {"requests": {"tools": {"call": {}}}}})
@@ -335,6 +355,17 @@ if isSupported(TaskVersion):
       check seen[0].taskId == "t-1"
       check seen[0].status == tsCompleted
 
+    test "Given a status notification that is no task, when it arrives, then the callback is not called and it is logged":
+      let peer = startPeer(nil, capabilities = ServerWithTasks)
+      let client = peer.connect()
+      var seen: seq[McpTask]
+      client.onTaskStatus(proc(task: McpTask) = seen.add task)
+      let log = loggedWhile(proc() =
+        peer.push("notifications/tasks/status", %*{"taskId": "t-1"})
+        waitFor sleepAsync(20))
+      check seen.len == 0
+      check "notifications/tasks/status without a task" in log
+
   suite "tasks client: capabilities":
     test "Given a client that receives tasks, when it connects, then initialize declares list, cancel and the sampling request":
       let peer = startPeer(nil, capabilities = ServerWithTasks)
@@ -345,6 +376,23 @@ if isSupported(TaskVersion):
         discard client.enableClientTasks())
       let declared = peer.requestsFor("initialize")[0]["params"]["capabilities"]
       check declared["tasks"] == %*{"list": {}, "cancel": {}, "requests": {"sampling": {"createMessage": {}}}}
+
+    test "Given a connected client, when tasks are enabled or a request is augmented, then it is refused: capabilities are declared in the handshake":
+      let peer = startPeer(nil, capabilities = ServerWithTasks)
+      let client = peer.connectedClient(TaskVersion, proc(client: McpClient) =
+        client.registerRequestHandler("sampling/createMessage",
+          proc(request: JsonRpcRequest): Future[JsonRpcResponse] {.async.} =
+            return newJsonRpcResponse(request.id, newJObject())))
+      try:
+        discard client.enableClientTasks(ClientTaskConfig(sampling: false))
+        fail()
+      except McpError as e:
+        check "must be set before connect()" in e.msg
+      try:
+        client.augmentWithTasks(newTaskStore(), "sampling/createMessage")
+        fail()
+      except McpError as e:
+        check "must be set before connect()" in e.msg
 
     test "Given sampling asked for but no sampling handler, when tasks are enabled, then it is an error":
       let peer = startPeer(nil, capabilities = ServerWithTasks)
@@ -368,8 +416,8 @@ if isSupported(TaskVersion):
       if not task.isNil:
         result["task"] = task
 
-    proc receiving(): tuple[peer: Peer, client: McpClient, store: TaskStore] =
-      let store = newTaskStore(pollIntervalMs = some(500))
+    proc receiving(store = newTaskStore(pollIntervalMs = some(500))
+                  ): tuple[peer: Peer, client: McpClient, store: TaskStore] =
       let peer = startPeer(nil, capabilities = ServerWithTasks)
       let client = peer.connectedClient(TaskVersion, proc(client: McpClient) =
         client.setSamplingHandler(sampler)
@@ -431,6 +479,49 @@ if isSupported(TaskVersion):
       let notice = r.peer.requestsFor("notifications/tasks/status")[0]["params"]
       check notice["taskId"].getStr() == id
       check notice["status"].getStr() == "completed"
+
+    test "Given a sampling request whose task is not an object, when it arrives, then it is Invalid params":
+      let r = receiving()
+      r.peer.ask(%"s1", "sampling/createMessage", samplingParams(%"yes"))
+      check r.peer.answerOf("s1")["error"]["code"].getInt() == -32602
+
+    test "Given a store that holds one task at most, when a second request carries a task, then it is refused with an internal error":
+      let r = receiving(newTaskStore(maxTasksPerOwner = 1))
+      r.peer.ask(%"s1", "sampling/createMessage", samplingParams(%*{}))
+      check r.peer.answerOf("s1")["result"]["task"]["status"].getStr() == "working"
+      r.peer.ask(%"s2", "sampling/createMessage", samplingParams(%*{}))
+      check r.peer.answerOf("s2")["error"]["code"].getInt() == -32603
+
+    test "Given a handler that is called with a task, when the request runs as the task, then the handler sees the request without the task":
+      var seen: JsonNode
+      let store = newTaskStore()
+      let peer = startPeer(nil, capabilities = ServerWithTasks)
+      discard peer.connectedClient(TaskVersion, proc(client: McpClient) =
+        client.capabilities.sampling = some(McpSamplingCapability())
+        client.registerRequestHandler("sampling/createMessage",
+          proc(request: JsonRpcRequest): Future[JsonRpcResponse] {.async.} =
+            seen = request.params
+            return newJsonRpcResponse(request.id, newJObject()))
+        discard client.enableClientTasks(ClientTaskConfig(sampling: false), store)
+        client.augmentWithTasks(store, "sampling/createMessage"))
+      peer.ask(%"s1", "sampling/createMessage", samplingParams(%*{"ttl": 1_000}))
+      let id = peer.answerOf("s1")["result"]["task"]["taskId"].getStr()
+      peer.ask(%"r1", "tasks/result", %*{"taskId": id})
+      discard peer.answerOf("r1")
+      check not seen.isNil
+      check not seen.hasKey("task")
+      check seen["maxTokens"].getInt() == 10
+
+    test "Given a transport that cannot send notifications, when a task of the client ends, then the failure is logged and the task still completes":
+      let r = receiving()
+      r.peer.pair.client.brokenNotifications = true
+      let log = loggedWhile(proc() =
+        r.peer.ask(%"s1", "sampling/createMessage", samplingParams(%*{}))
+        let id = r.peer.answerOf("s1")["result"]["task"]["taskId"].getStr()
+        r.peer.ask(%"r1", "tasks/result", %*{"taskId": id})
+        check r.peer.answerOf("r1")["result"]["content"]["text"].getStr() == "echo:hi"
+        waitFor sleepAsync(20))
+      check "could not send the status of task" in log
 
     test "Given a connection of an older version, when a sampling request carries a task, then it is answered directly":
       let store = newTaskStore()

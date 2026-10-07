@@ -3,7 +3,7 @@
 ## cancels. Only 2025-11-25 has tasks in the core; 2026-07-28 and the versions
 ## before 2025-11-25 must behave as if the feature did not exist.
 
-import std/[asyncdispatch, json, options, strutils, unittest]
+import std/[asyncdispatch, json, options, os, strutils, unittest]
 import ./server_harness
 import protocol/tasks
 import server/tasks
@@ -33,6 +33,19 @@ proc tool(name, taskSupport: string): JsonNode =
 
 proc textResult(text: string): JsonNode =
   %*{"content": [{"type": "text", "text": text}]}
+
+proc loggedWhile(body: proc()): string =
+  ## Everything the code under test wrote to stderr.
+  let path = getTempDir() / "mcp-tasks-server-" & $getCurrentProcessId() & ".log"
+  let saved = stderr
+  stderr = open(path, fmWrite)
+  try:
+    body()
+  finally:
+    stderr.close()
+    stderr = saved
+  result = readFile(path)
+  removeFile(path)
 
 proc fixture(config = TaskConfig(), withCapability = true, maxActive = 0): Fixture =
   let fx = Fixture(time: FakeTime(nowMs: 1_764_067_800_000), gate: newFuture[void]("gate"))
@@ -198,6 +211,31 @@ if isSupported(TaskVersion):
       let peer = fx.connectTo()
       check peer.ask("tools/call", %*{"name": "slow", "task": "yes"}).errorCode == -32602
 
+  suite "tasks server: finding the tool of a task-augmented call":
+    test "Given a call that carries a task but no name, when it arrives, then it is Invalid params, as for a plain call":
+      let fx = fixture()
+      let peer = fx.connectTo()
+      check peer.ask("tools/call", %*{"task": {}}).errorCode == -32602
+      check peer.ask("tools/call", %*{"name": 5, "task": {}}).errorCode == -32602
+
+    test "Given a tool listed on the second page, when called with a task, then the first page was asked for without a cursor and the task is made":
+      var cursors: seq[Option[string]]
+      let server = newServer(McpServerCapabilities(tools: some(McpToolsCapability())))
+      server.onToolsList(proc(cursor: Option[string]): Future[McpPage] {.async.} =
+        cursors.add cursor
+        if cursor.isNone:
+          return McpPage(items: @[tool("first", "optional")], nextCursor: some("page-2"))
+        return McpPage(items: @[tool("second", "optional")]))
+      server.onToolCall(proc(ctx: McpRequestContext, name: string,
+                             arguments: JsonNode): Future[JsonNode] {.async.} =
+        return textResult(name))
+      discard server.enableTasks()
+      let peer = server.connect(server.attach(), TaskVersion)
+      let created = peer.createTask("second")
+      check created["status"].getStr() == "working"
+      check cursors[0].isNone
+      check some("page-2") in cursors
+
   suite "tasks server: tasks/get and tasks/result":
     test "Given a working task, when polled, then it is working, has no related-task meta and the same id":
       let fx = fixture()
@@ -248,6 +286,17 @@ if isSupported(TaskVersion):
       let response = fx.transport.responseTo(waiting)
       check response["result"]["content"][0]["text"].getStr() == "slow done"
       check response["result"]["_meta"][RelatedTask]["taskId"].getStr() == id
+
+    test "Given a tasks/result that waits on a task, when the task ends, then the task no longer names that request as its stream":
+      let fx = fixture()
+      let peer = fx.connectTo()
+      let id = peer.createTask("slow")["taskId"].getStr()
+      let waiting = freshId()
+      peer.send(%waiting, "tasks/result", taskParams(id))
+      untilTrue("tasks/result to wait on the task", proc(): bool = fx.store.resultStream(id) == waiting)
+      fx.gate.complete()
+      discard fx.transport.responseTo(waiting)
+      check fx.store.resultStream(id) == ""
 
     test "Given a completed task, when its result is requested twice, then both answers are the result":
       let fx = fixture()
@@ -384,6 +433,18 @@ if isSupported(TaskVersion):
       check last.message["params"].hasKey("ttl")
       check not last.message["params"].hasKey("_meta")
 
+    test "Given a session that cannot be reached, when its task changes status, then the failure is logged and the task goes on":
+      let fx = fixture()
+      let peer = fx.connectTo(session = "alice")
+      let id = peer.createTask("slow")["taskId"].getStr()
+      fx.transport.failFor = "alice"
+      let log = loggedWhile(proc() =
+        fx.gate.complete()
+        peer.untilStatus(id, "completed")
+        settle())
+      check "could not send the status of task " & id & " to session 'alice'" in log
+      check "no stream for session alice" in log
+
   suite "tasks server: expiry":
     test "Given a task whose ttl has passed, when polled, then it is gone and tasks/result agrees":
       let fx = fixture()
@@ -461,6 +522,17 @@ if isSupported(TaskVersion):
       fx.transport.inject("", %*{"jsonrpc": "2.0", "id": request["id"],
         "result": {"role": "assistant", "content": {"type": "text", "text": "hi"}, "model": "m"}})
       peer.untilStatus(id, "completed")
+
+    test "Given a question waiting for tasks/result, when the task is cancelled, then a later tasks/result does not send it":
+      let fx = fixture()
+      let peer = fx.connectTo(clientCapabilities = %*{"sampling": {}})
+      let id = peer.createTask("asks")["taskId"].getStr()
+      fx.gate.complete()
+      peer.untilStatus(id, "input_required")
+      discard peer.ask("tasks/cancel", taskParams(id))
+      check peer.ask("tasks/result", taskParams(id)).hasKey("error")
+      settle()
+      check fx.transport.messagesOf("sampling/createMessage").len == 0
 
     test "Given a task that needs input and a waiting tasks/result, when the tool asks, then the request is sent for that tasks/result":
       let fx = fixture()
@@ -544,6 +616,39 @@ if isSupported(TaskVersion):
         fail()
       except McpRemoteError as e:
         check e.code == -1
+
+    test "Given a client that declared no tasks, when the server asks as a task, then nothing is sent":
+      let fx = fixture()
+      let peer = fx.connectTo(clientCapabilities = %*{"sampling": {}})
+      expect McpCapabilityError:
+        discard waitFor fx.server.createMessageAsTask(peer.session, samplingParams)
+      check fx.transport.messagesOf("sampling/createMessage").len == 0
+
+    test "Given a client that declared tasks for sampling only, when the server asks for another request as a task, then nothing is sent":
+      let fx = fixture()
+      let peer = fx.connectTo(clientCapabilities = samplingTasks)
+      expect McpCapabilityError:
+        discard waitFor fx.server.requestAsTask(peer.session, "roots/list", newJObject())
+      check fx.transport.messagesOf("roots/list").len == 0
+
+    test "Given a client with tasks.list, when the server lists its tasks, then it gets the tasks and the cursor of the page":
+      let fx = fixture()
+      let peer = fx.connectTo(clientCapabilities = samplingTasks)
+      let first = fx.server.listClientTasks(peer.session)
+      fx.answerNext("", "tasks/list", 0, %*{
+        "tasks": [clientTask("c-1", "working"), clientTask("c-2", "completed")],
+        "nextCursor": "more"})
+      let page = waitFor first
+      check page.tasks.len == 2
+      check page.tasks[0].taskId == "c-1"
+      check page.tasks[1].status == tsCompleted
+      check page.nextCursor == some("more")
+      let last = fx.server.listClientTasks(peer.session, some("more"))
+      fx.answerNext("", "tasks/list", 1, %*{"tasks": [clientTask("c-3", "working")]})
+      let rest = waitFor last
+      check rest.tasks.len == 1
+      check rest.nextCursor.isNone
+      check fx.transport.messagesOf("tasks/list")[1].message["params"]["cursor"].getStr() == "more"
 
     test "Given a client without the cancel capability, when the server cancels one of its tasks, then nothing is sent":
       let fx = fixture()
