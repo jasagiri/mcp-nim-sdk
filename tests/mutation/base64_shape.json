@@ -1,0 +1,23 @@
+{
+  "sources": [
+    "src/protocol/base64_shape.nim"
+  ],
+  "testCommand": "nim c -r --hints:off tests/test_base64_shape.nim && nim c -r --hints:off tests/test_server_pagination.nim && nim c -r --hints:off tests/test_icon_fetch.nim && nim c -r --hints:off tests/test_modern_protocol.nim",
+  "mutators": [
+    "AOR",
+    "ROR",
+    "LOR",
+    "BLR",
+    "SDL",
+    "RVR"
+  ],
+  "parallelism": 0,
+  "timeoutMs": 0,
+  "minScore": 0.0,
+  "reports": [
+    "console",
+    "json"
+  ],
+  "outputDir": ".nim-muter/base64_shape",
+  "incremental": false
+}

@@ -43,6 +43,14 @@ jobs:
           ../nim-muter/bin/nim-muter run --config tests/mutation/auth_resource_server.json || status=$?
           cp .nim-muter/auth_resource_server/report.json "$KURATSUGI_RESULT_DIR/auth_resource_server.report.json" || exit 1
           exit $status
+  base64_shape:
+    steps:
+      - name: nim-muter base64_shape
+        run: |
+          status=0
+          ../nim-muter/bin/nim-muter run --config tests/mutation/base64_shape.json || status=$?
+          cp .nim-muter/base64_shape/report.json "$KURATSUGI_RESULT_DIR/base64_shape.report.json" || exit 1
+          exit $status
   client:
     steps:
       - name: nim-muter client

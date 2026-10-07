@@ -112,6 +112,11 @@
 | `src/transport/http_wire.nim` | 読み取りと `close`、接続と応答ヘッダーのタイムアウトの待ちを `firstOf` に。`leftOpen` を読み取りごとの `interrupt` に | `tests/test_http_unresponsive.nim`、`tests/test_http_client_streams.nim`、`tests/test_http_sse_legacy.nim`、`tests/test_security_wire_limits.nim` |
 | `src/transport/sse_stream.nim` | `serveStream` の待ちを `Doorbell` に。`gone` と `idle` は 1 回だけ監視 | `tests/test_http_streams.nim`、`tests/test_streamable_http.nim` |
 | `src/transport/http_server.nim` | 交換の完了と切断の待ちを `firstOf` に | `tests/test_streamable_http.nim`、`tests/test_security_http.nim` |
+| `src/protocol/base64_shape.nim` | 新規。base64 の形 (`isPaddedBase64`、`isBase64Text`) を復号の前に確かめる。ジョブ `base64_shape` を新設、未測定 | `tests/test_base64_shape.nim` (MCP-SEC-WIRE-9) |
+| `src/server/pagination.nim` | 形が base64 でない cursor を復号の前に断る (Nim 2.2.8 までの `base64.decode` が `IndexDefect` を出す。nim-lang/Nim#25530) | `tests/test_server_pagination.nim` (MCP-SEC-WIRE-9) |
+| `src/client/icons.nim` | data URI の中身が base64 でなければ復号の前に断る | `tests/test_icon_fetch.nim` (MCP-SEC-WIRE-9) |
+| `src/protocol/modern.nim` | 自前の `isPaddedBase64` を消し、`base64_shape` のものを使う (内容は同じ) | `tests/test_modern_protocol.nim`、`tests/test_param_headers.nim` |
+| `src/jsonschema/json_schema_regex.nim` | U+00FF を超える文字を文字クラスの外に持つパターンが `RangeDefect` になっていたのを修正 (ファジングで発見)。`\b` の読み取りを普通の `if` に (nim-muter の書き直しがコンパイル不能にしていた。36a4c8a5 の測定ではこのジョブは 1 件も試せていない) | `tests/test_security_schema.nim` (MCP-SEC-SCHEMA-9)、`tests/test_fuzz_regressions.nim` (MCP-SEC-SWEEP-6) |
 
 ## 未測定 (HTTP サーバーのセキュリティ修正。本線向け)
 
