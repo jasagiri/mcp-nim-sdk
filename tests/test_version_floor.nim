@@ -159,3 +159,13 @@ suite "a server that speaks 2026-07-28 alone, over HTTP":
       let base = startServer()
       check send(base & "/sse", HttpGet).code == Http404
       check send(base & "/messages", HttpPost, "{}").code == Http404
+
+suite "an HTTP server transport for a version outside the build (mutation review, g2f-hs-a)":
+  test "Given a version the build does not speak, when a transport is made for it, then ValueError is raised":
+    # With every version spoken (the default build) nothing is outside the
+    # range; the floor build (-d:mcpOldestProtocolVersion=2026-07-28) is the
+    # one in which this test has something to refuse.
+    for v in McpProtocolVersion:
+      if not isSupported(v):
+        expect ValueError:
+          discard newHttpServerTransport(port = 0, protocolVersion = v)
