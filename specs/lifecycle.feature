@@ -26,6 +26,7 @@ Feature: Starting a conversation
     When it connects
     Then initialize offers that version as a string and carries only the capabilities the client declared
     And the client then sends notifications/initialized
+    And initialize returns the capabilities the server declared
 
   @spec:MCP-LIFECYCLE-4 @feature:ftPing
   Scenario: A legacy client's ping gets an empty result
@@ -108,3 +109,12 @@ Feature: Starting a conversation
     Then the result carries ttlMs and cacheScope from the policy
     And without a policy the result is marked not reusable and private
     And values the handler already set are kept
+
+  @spec:MCP-LIFECYCLE-14 @feature:ftDiscover
+  Scenario: A client probes again once with the versions a modern server names, and otherwise follows what the versions say
+    Given a server that refuses the probe with an unsupported-version error
+    When it names a modern version the client speaks, the client probes again once and connects, or fails when refused a second time
+    And when it names only legacy versions, or its discover result lists only legacy versions, the client sends initialize
+    And when it names no versions, or names no other than it already refused, connect fails saying no version is shared
+    And a probe whose sending never finishes is cancelled on the transport and not left pending once the client has timed out
+    And a refusal of initialize by any other error is a failed connect even when it names a modern version

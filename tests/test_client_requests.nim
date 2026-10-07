@@ -8,6 +8,7 @@ import protocol/lifecycle
 import transport/transport
 import ./loopback_transport
 import ./client_peer
+import ./stuck_transport
 
 proc silentPeer(): Peer = startPeer(nil)
 
@@ -426,6 +427,18 @@ suite "the end of a connection":
     waitFor client.close()
     expect McpConnectionClosedError:
       discard waitFor pending
+
+  test "Given a transport whose receive loop close() does not end, when the client is closed, then the pending request fails at once and the transport is closed":
+    let transport = newStuckTransport()
+    let client = newMcpClient(McpClientInfo(name: "c", version: "0"), LegacyDefault)
+    client.transport = transport
+    client.state = mlsOperational
+    let pending = client.sendRequest("tools/list", newJObject(),
+      McpRequestOptions(timeoutMs: some(0)))
+    waitFor client.close()
+    expect McpConnectionClosedError:
+      require waitFor withTimeout(pending, 1000)
+    check transport.closeCalls == 1
 
   test "Given a pending request, when the transport fails, then it fails with McpConnectionClosedError and the cause is recorded":
     let peer = silentPeer()

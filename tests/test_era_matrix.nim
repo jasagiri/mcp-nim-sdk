@@ -6,17 +6,24 @@
 ## a legacy version must behave like a server that has never heard of
 ## 2026-07-28.
 
-import std/[unittest, asyncdispatch, json, options, strutils]
+import std/[unittest, asyncdispatch, json, options, strutils, tables]
 import server/server
 import client/client
 import protocol/types
 import protocol/lifecycle
 import protocol/modern
 import ./loopback_transport
+import ./stuck_transport
 
 const
   SpeaksModern = isModern(DefaultProtocolVersion)
   LegacyDefault = min(DefaultProtocolVersion, mpv20251125)
+
+proc nextSent(pair: tuple[client, server: LoopbackTransport]): JsonNode =
+  ## What the client sends next; the test ends when nothing comes.
+  let next = pair.server.receiveMessage()
+  require waitFor withTimeout(next, 1000)
+  next.read
 
 proc serverInfo(): McpServerInfo = McpServerInfo(name: "ExampleServer", version: "1.0.0")
 proc clientInfo(): McpClientInfo = McpClientInfo(name: "ExampleClient", version: "1.0.0")
@@ -320,6 +327,114 @@ if SpeaksModern:
         "capabilities": {}, "ttlMs": 0, "cacheScope": "private"}})
       expect ValueError:
         waitFor connecting
+
+    test "Given a peer that refuses the probe naming a modern version the client speaks, when the client connects, then it probes again and connects in the modern era":
+      let pair = newLoopbackPair()
+      let client = newMcpClient(clientInfo())
+      let connecting = client.connect(pair.client)
+      let probe = pair.nextSent()
+      pair.client.inject(%*{"jsonrpc": "2.0", "id": probe["id"], "error": {
+        "code": -32022, "message": "Unsupported protocol version",
+        "data": {"supported": ["2026-07-28"], "requested": "2026-07-28"}}})
+      let again = pair.nextSent()
+      check again["method"].getStr() == "server/discover"
+      pair.client.inject(%*{"jsonrpc": "2.0", "id": again["id"], "result": {
+        "resultType": "complete", "supportedVersions": ["2026-07-28"], "capabilities": {}}})
+      waitFor connecting
+      check client.negotiatedVersion == some(mpv20260728)
+      check pair.client.sent.len == 2
+
+    test "Given a peer that refuses the probe twice naming a modern version, when the client connects, then connect fails and no initialize is sent":
+      let pair = newLoopbackPair()
+      let client = newMcpClient(clientInfo())
+      let connecting = client.connect(pair.client)
+      for _ in 1 .. 2:
+        let probe = pair.nextSent()
+        check probe["method"].getStr() == "server/discover"
+        pair.client.inject(%*{"jsonrpc": "2.0", "id": probe["id"], "error": {
+          "code": -32022, "message": "Unsupported protocol version",
+          "data": {"supported": ["2026-07-28"], "requested": "2026-07-28"}}})
+      expect ValueError:
+        waitFor connecting
+      check pair.client.sent.len == 2
+
+    test "Given a peer that refuses the probe naming only legacy versions, when the client connects, then it sends initialize and does not probe again":
+      let pair = newLoopbackPair()
+      let client = newMcpClient(clientInfo())
+      let connecting = client.connect(pair.client)
+      let probe = pair.nextSent()
+      pair.client.inject(%*{"jsonrpc": "2.0", "id": probe["id"], "error": {
+        "code": -32022, "message": "Unsupported protocol version",
+        "data": {"supported": ["2025-06-18"], "requested": "2026-07-28"}}})
+      let init = pair.nextSent()
+      check init["method"].getStr() == "initialize"
+      pair.client.inject(%*{"jsonrpc": "2.0", "id": init["id"], "result": {
+        "protocolVersion": "2025-06-18", "capabilities": {},
+        "serverInfo": {"name": "peer", "version": "0"}}})
+      waitFor connecting
+      check client.negotiatedVersion == some(mpv20250618)
+
+    test "Given a discover result that lists only legacy versions, when the client connects, then it sends initialize":
+      let pair = newLoopbackPair()
+      let client = newMcpClient(clientInfo())
+      let connecting = client.connect(pair.client)
+      let probe = pair.nextSent()
+      pair.client.inject(%*{"jsonrpc": "2.0", "id": probe["id"], "result": {
+        "resultType": "complete", "supportedVersions": ["2025-06-18"], "capabilities": {}}})
+      let init = pair.nextSent()
+      check init["method"].getStr() == "initialize"
+      pair.client.inject(%*{"jsonrpc": "2.0", "id": init["id"], "result": {
+        "protocolVersion": "2025-06-18", "capabilities": {},
+        "serverInfo": {"name": "peer", "version": "0"}}})
+      waitFor connecting
+      check client.negotiatedVersion == some(mpv20250618)
+
+    test "Given a peer that refuses the probe as unsupported without naming versions, when the client connects, then connect fails saying no version is shared":
+      let pair = newLoopbackPair()
+      let client = newMcpClient(clientInfo())
+      let connecting = client.connect(pair.client)
+      let probe = pair.nextSent()
+      pair.client.inject(%*{"jsonrpc": "2.0", "id": probe["id"], "error": {
+        "code": -32022, "message": "Unsupported protocol version"}})
+      var message = ""
+      try:
+        waitFor connecting
+      except ValueError as e:
+        message = e.msg
+      check "No protocol version in common" in message
+      check pair.client.sent.len == 1
+
+    test "Given a peer silent to the probe that refuses initialize with another error naming a modern version, when the client connects, then connect fails without discovering again":
+      let pair = newLoopbackPair()
+      let client = newMcpClient(clientInfo())
+      client.probeTimeoutMs = 20
+      let connecting = client.connect(pair.client)
+      discard pair.nextSent()
+      let init = pair.nextSent()
+      check init["method"].getStr() == "initialize"
+      pair.client.inject(%*{"jsonrpc": "2.0", "id": init["id"], "error": {
+        "code": -32603, "message": "Internal error",
+        "data": {"supported": ["2026-07-28"]}}})
+      expect ValueError:
+        require waitFor withTimeout(connecting, 1000)
+      check pair.client.sent.len == 2
+
+    test "Given a transport that never finishes sending the probe, when the probe times out, then the client cancels it, leaves nothing pending and sends initialize":
+      let transport = newStuckTransport(holdSend = "server/discover")
+      let client = newMcpClient(clientInfo())
+      client.probeTimeoutMs = 20
+      let connecting = client.connect(transport)
+      var waited = 0
+      while "initialize" notin transport.sentMethods and waited < 200:
+        waitFor sleepAsync(10)
+        inc waited
+      require "initialize" in transport.sentMethods
+      transport.inject(%*{"jsonrpc": "2.0", "id": transport.sentIds[1], "result": {
+        "protocolVersion": "2025-06-18", "capabilities": {},
+        "serverInfo": {"name": "peer", "version": "0"}}})
+      waitFor connecting
+      check transport.cancelled == @[transport.sentIds[0]]
+      check client.pendingRequests.len == 0
 
     test "Given a result with a resultType the client does not know, when a request completes, then the client raises instead of returning it":
       let pair = newLoopbackPair()

@@ -161,6 +161,21 @@ suite "legacy handshake: client":
       waitFor client.connect(pair.client)
       check client.negotiatedVersion == some(mpv20241105)
 
+  test "Given a client attached to a transport, when initialize is called, then it returns the capabilities the server declared":
+    let pair = newLoopbackPair()
+    let client = newMcpClient(clientInfo(), protocolVersion = LegacyDefault)
+    client.transport = pair.client
+    asyncCheck client.processMessages()
+    let initializing = client.initialize()
+    let request = waitFor pair.server.receiveMessage()
+    pair.client.inject(%*{"jsonrpc": "2.0", "id": request["id"],
+                          "result": {"protocolVersion": $LegacyDefault,
+                                     "serverInfo": {"name": "peer", "version": "0"},
+                                     "capabilities": {"tools": {"listChanged": true}}}})
+    let declared = waitFor initializing
+    check declared.tools.get.listChanged
+    check client.serverCapabilities == some(declared)
+
   test "Given a client limited to 2024-11-05, when the server answers with a newer version, then connect fails naming that version":
     let pair = newLoopbackPair()
     let client = newMcpClient(clientInfo(), protocolVersion = mpv20241105)
