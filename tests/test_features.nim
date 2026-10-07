@@ -78,3 +78,9 @@ suite "protocol features by version":
     check specPage(ftStdio, mpv20260728) == "basic/transports/stdio"
     check specPage(ftAuthorization, mpv20251125) == "basic/authorization"
     check specPage(ftAuthorization, mpv20260728) == "basic/authorization/index"
+
+  test "Given HTTP+SSE, when the page of each version is asked, then 2026-07-28 names the Streamable HTTP page and the earlier versions the transports page":
+    # From 2026-07-28 the page that mentions HTTP+SSE (how to probe for it) is the Streamable HTTP one.
+    for v in McpProtocolVersion:
+      check specPage(ftHttpSse, v) ==
+        (if v == mpv20260728: "basic/transports/streamable-http" else: "basic/transports")
