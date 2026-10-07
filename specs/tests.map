@@ -466,6 +466,21 @@ MCP-HTTPSSE-10 | tests/test_http_sse_legacy.nim | Given a server that is down, w
 MCP-HTTPSSE-10 | tests/test_http_sse_legacy.nim | Given a full client and server, when the client connects through the wrapper to the old transport, then initialize and tools/list work
 MCP-HTTPSSE-11 | tests/test_http_sse_legacy.nim | Given the SSE endpoint switched off, when a client posts to the messages path, then the answer is 404
 MCP-HTTPSSE-11 | tests/test_http_sse_legacy.nim | Given the messages path, when a client sends GET, then the answer is 405 naming POST
+MCP-HTTPSSE-g2g-hc-d-1 | tests/test_http_sse_legacy.nim | Given an endpoint on the same host and port under another scheme, when the client connects, then it refuses it as another origin
+MCP-HTTPSSE-g2g-hc-d-1 | tests/test_http_sse_legacy.nim | Given an endpoint on another host at the same port, when the client connects, then it refuses it as another origin
+MCP-HTTPSSE-g2g-hc-d-1 | tests/test_http_sse_legacy.nim | Given an endpoint on the same host at another port, when the client connects, then it refuses it as another origin
+MCP-HTTPSSE-g2g-hc-d-1 | tests/test_http_sse_legacy.nim | Given an endpoint on another origin while the stream stays open, when the client connects, then it fails at once and says why
+MCP-HTTPSSE-g2g-hc-d-2 | tests/test_http_sse_legacy.nim | Given a stream that ends before it names an endpoint, when the client connects, then it fails at once and says so
+MCP-HTTPSSE-g2g-hc-d-3 | tests/test_http_sse_legacy.nim | Given events that are not messages, when the client reads the stream, then it skips them and delivers the next message
+MCP-HTTPSSE-g2g-hc-d-3 | tests/test_http_sse_legacy.nim | Given message events without data, when the client reads the stream, then it skips them and delivers the next message
+MCP-HTTPSSE-g2g-hc-d-4 | tests/test_http_sse_legacy.nim | Given a stream that ended some time ago, when the client then waits for a message, then McpTransportClosedError is raised at once
+MCP-HTTPSSE-g2g-hc-d-5 | tests/test_http_sse_legacy.nim | Given a stream that fails on a message that is not JSON, when the client has read it, then it closes its end of the connection
+MCP-HTTPSSE-g2g-hc-d-5 | tests/test_http_sse_legacy.nim | Given a server answering the stream request with 404, when the client gives up, then it closes its end of the connection
+MCP-HTTPSSE-g2g-hc-d-5 | tests/test_http_sse_legacy.nim | Given a server answering the stream request with something that is no event stream, when the client gives up, then it closes its end of the connection
+MCP-HTTPSSE-g2g-hc-d-5 | tests/test_http_sse_legacy.nim | Given a server that names no endpoint in time, when the client gives up, then it closes its end of the stream before it is closed itself
+MCP-HTTPSSE-g2g-hc-d-5 | tests/test_http_sse_legacy.nim | Given a POST the server answered, when the client has read the answer, then it closes its end of the POST connection
+MCP-HTTPSSE-g2g-hc-d-5 | tests/test_http_sse_legacy.nim | Given a connected client, when it is closed, then it closes its end of the stream
+MCP-HTTPSSE-g2g-hc-d-6 | tests/test_http_sse_legacy.nim | Given a stream that fails on a message that is not JSON, when the client reads it, then it says so on stderr
 MCP-SSE-1 | tests/test_event_stream.nim | Given a byte order mark after the first line, when read, then it stays part of that line's field name
 MCP-SSE-2 | tests/test_event_stream.nim | Given blank lines after an event, when read, then they dispatch nothing more
 MCP-SSE-3 | tests/test_event_stream.nim | Given a line of exactly the limit, when read, then it is accepted and one byte more raises SseLimitError

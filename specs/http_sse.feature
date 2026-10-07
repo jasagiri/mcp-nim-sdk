@@ -84,3 +84,39 @@ Feature: HTTP with Server-Sent Events (2024-11-05)
     When a client POSTs to the messages path, or GETs the messages path while the transport is on
     Then the first answer is 404, as the path does not exist
     And the second is 405 naming POST
+
+  @spec:MCP-HTTPSSE-g2g-hc-d-1 @feature:ftHttpSse
+  Scenario: A client takes an endpoint only from the origin it asked
+    Given a client that connects
+    When the endpoint event names another scheme, another host or another port
+    Then the client refuses it with a transport error naming the endpoint, as soon as it is read
+
+  @spec:MCP-HTTPSSE-g2g-hc-d-2 @feature:ftHttpSse
+  Scenario: A stream that ends before it names an endpoint fails the connection at once
+    Given a client that connects
+    When the stream ends without an endpoint event
+    Then the client raises a transport error saying so, without waiting out its connect timeout
+
+  @spec:MCP-HTTPSSE-g2g-hc-d-3 @feature:ftHttpSse
+  Scenario: Only message events with data are messages
+    Given a client reading a stream
+    When an event of another type, or a message event without data, arrives
+    Then the client skips it and delivers the next message
+
+  @spec:MCP-HTTPSSE-g2g-hc-d-4 @feature:ftHttpSse
+  Scenario: A client that waits after the stream ended is told so
+    Given a stream that ended some time ago
+    When the client waits for a message
+    Then waiting raises a transport-closed error at once
+
+  @spec:MCP-HTTPSSE-g2g-hc-d-5 @feature:ftHttpSse
+  Scenario: A client lets go of every connection it is done with
+    Given a client and a server that leaves closing to it
+    When the stream fails, the stream request is refused or is no event stream, no endpoint comes in time, a POST is answered, or the client is closed
+    Then the client closes its end of that connection
+
+  @spec:MCP-HTTPSSE-g2g-hc-d-6 @feature:ftHttpSse
+  Scenario: A stream that fails is reported on stderr
+    Given a client reading a stream
+    When the stream fails on a message that is not JSON
+    Then a line naming the stream and the failure goes to stderr

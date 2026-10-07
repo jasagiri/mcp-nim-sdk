@@ -482,3 +482,264 @@ suite "HTTP+SSE server paths (mutation review, g2f-hs-c)":
     let answer = status(base, "/messages", HttpGet)
     check answer.code == Http405
     check answer.allow == "POST"
+
+import std/[times, os]
+
+const StreamHead = "HTTP/1.1 200 OK\c\LContent-Type: text/event-stream\c\L" &
+  "Connection: close\c\L\c\L"
+
+proc listenLocal(): tuple[listener: AsyncSocket, port: int] =
+  let listener = newAsyncSocket()
+  listener.setSockOpt(OptReuseAddr, true)
+  listener.bindAddr(Port(0), "127.0.0.1")
+  listener.listen()
+  (listener, listener.getLocalAddr()[1].int)
+
+proc peerClosed(socket: AsyncSocket, ms: int): Future[bool] {.async.} =
+  ## True when the peer closes its end within `ms`.
+  let read = socket.recv(1)
+  if not await withTimeout(read, ms):
+    return false
+  return read.read().len == 0
+
+proc readHead(socket: AsyncSocket): Future[string] {.async.} =
+  ## The request head, lower-cased, and the body read past.
+  var head = ""
+  while true:
+    let line = await socket.recvLine()
+    if line.strip().len == 0:
+      break
+    head.add line.toLowerAscii() & "\n"
+  var length = 0
+  for line in head.splitLines():
+    if line.startsWith("content-length:"):
+      length = parseInt(line.split(':')[1].strip())
+  if length > 0:
+    discard await socket.recv(length)
+  return head
+
+proc answerFirstWith(listener: AsyncSocket, reply: string): Future[bool] =
+  ## Answers the first connection with `reply`; the future says whether the
+  ## client closed its end of it within two seconds.
+  let observed = newFuture[bool]("answerFirstWith")
+  proc serveOne(socket: AsyncSocket) {.async.} =
+    discard await socket.readHead()
+    await socket.send(reply)
+    observed.complete(await socket.peerClosed(2000))
+    socket.close()
+  proc acceptOne() {.async.} =
+    asyncCheck serveOne(await listener.accept())
+  asyncCheck acceptOne()
+  observed
+
+type Held = ref object
+  stream, post: Future[bool]
+    ## Whether the client closed its end of the stream, of the POST, within
+    ## two seconds of the server's answer.
+
+proc serveHeld(listener: AsyncSocket, afterEndpoint = ""): Held =
+  ## A server of the old transport that names `/post` and then sends
+  ## `afterEndpoint` on the stream, answers each POST 202, and leaves
+  ## closing to the client.
+  let held = Held(stream: newFuture[bool]("held.stream"), post: newFuture[bool]("held.post"))
+  proc serveOne(socket: AsyncSocket) {.async.} =
+    let head = await socket.readHead()
+    if head.startsWith("get "):
+      await socket.send(StreamHead & formatSseEvent("/post", event = "endpoint") & afterEndpoint)
+      held.stream.complete(await socket.peerClosed(2000))
+    else:
+      await socket.send("HTTP/1.1 202 Accepted\c\LContent-Length: 0\c\L\c\L")
+      held.post.complete(await socket.peerClosed(2000))
+    socket.close()
+  proc acceptLoop() {.async.} =
+    while true:
+      asyncCheck serveOne(await listener.accept())
+  asyncCheck acceptLoop()
+  held
+
+proc loggedWhile(body: proc()): string =
+  ## Everything the code under test wrote to stderr.
+  let path = getTempDir() / "mcp-sse-legacy-" & $getCurrentProcessId() & ".log"
+  let saved = stderr
+  stderr = open(path, fmWrite)
+  try:
+    body()
+  finally:
+    stderr.close()
+    stderr = saved
+  result = readFile(path)
+  removeFile(path)
+
+proc refusalFor(endpointOf: proc(port: int): string): string =
+  ## The message of the error the client raises when the stream names the
+  ## endpoint `endpointOf` builds; empty when it raised nothing.
+  let (listener, port) = listenLocal()
+  discard answerFirstWith(listener,
+    StreamHead & formatSseEvent(endpointOf(port), event = "endpoint"))
+  let transport = newSseLegacyTransport("http://127.0.0.1:" & $port & "/sse")
+  proc connectError(): Future[string] {.async.} =
+    try:
+      await transport.sendNotification(newJsonRpcNotification("x", newJObject()))
+    except McpTransportError as e:
+      return e.msg
+  let outcome = connectError()
+  # A client that took the endpoint posts to a server that never answers.
+  if waitFor withTimeout(outcome, 5000):
+    result = outcome.read()
+  waitFor transport.close()
+
+suite "HTTP+SSE client, what the stream tells it (mutation review, g2g-hc-d)":
+
+  test "Given an endpoint on the same host and port under another scheme, when the client connects, then it refuses it as another origin":
+    check "is not on the server" in refusalFor(proc(port: int): string =
+      "https://127.0.0.1:" & $port & "/post")
+
+  test "Given an endpoint on another host at the same port, when the client connects, then it refuses it as another origin":
+    check "is not on the server" in refusalFor(proc(port: int): string =
+      "http://localhost:" & $port & "/post")
+
+  test "Given an endpoint on the same host at another port, when the client connects, then it refuses it as another origin":
+    check "is not on the server" in refusalFor(proc(port: int): string =
+      "http://127.0.0.1:" & $(port + 1) & "/post")
+
+  test "Given an endpoint on another origin while the stream stays open, when the client connects, then it fails at once and says why":
+    let (listener, port) = listenLocal()
+    discard answerFirstWith(listener,
+      StreamHead & formatSseEvent("http://evil.example/steal", event = "endpoint"))
+    let transport = newSseLegacyTransport("http://127.0.0.1:" & $port & "/sse")
+    transport.connectTimeoutMs = 10_000
+    let started = epochTime()
+    var message = ""
+    try:
+      waitFor transport.sendNotification(newJsonRpcNotification("x", newJObject()))
+    except McpTransportError as e:
+      message = e.msg
+    check epochTime() - started < 1.5
+    check "is not on the server" in message
+    waitFor transport.close()
+
+  test "Given a stream that ends before it names an endpoint, when the client connects, then it fails at once and says so":
+    let (listener, port) = listenLocal()
+    proc serveOne(socket: AsyncSocket) {.async.} =
+      discard await socket.readHead()
+      await socket.send(StreamHead & formatSseComment("hello"))
+      socket.close()
+    proc acceptLoop() {.async.} =
+      while true:
+        asyncCheck serveOne(await listener.accept())
+    asyncCheck acceptLoop()
+    let transport = newSseLegacyTransport("http://127.0.0.1:" & $port & "/sse")
+    transport.connectTimeoutMs = 10_000
+    let started = epochTime()
+    var message = ""
+    try:
+      waitFor transport.sendNotification(newJsonRpcNotification("x", newJObject()))
+    except McpTransportError as e:
+      message = e.msg
+    check epochTime() - started < 3.0
+    check "ended before it named an endpoint" in message
+    waitFor transport.close()
+
+  test "Given events that are not messages, when the client reads the stream, then it skips them and delivers the next message":
+    let (listener, port) = listenLocal()
+    discard serveHeld(listener,
+      formatSseEvent("keepalive, not JSON", event = "ping") &
+      formatSseEvent("{\"jsonrpc\":\"2.0\",\"method\":\"notifications/after-ping\"}", event = "message"))
+    let transport = newSseLegacyTransport("http://127.0.0.1:" & $port & "/sse")
+    waitFor transport.sendNotification(newJsonRpcNotification("x", newJObject()))
+    check waitFor(transport.receiveMessage())["method"].getStr() == "notifications/after-ping"
+    waitFor transport.close()
+
+  test "Given message events without data, when the client reads the stream, then it skips them and delivers the next message":
+    let (listener, port) = listenLocal()
+    discard serveHeld(listener,
+      "data:\n\n" & "event: message\ndata:\n\n" &
+      formatSseEvent("{\"jsonrpc\":\"2.0\",\"method\":\"notifications/after-empty\"}", event = "message"))
+    let transport = newSseLegacyTransport("http://127.0.0.1:" & $port & "/sse")
+    waitFor transport.sendNotification(newJsonRpcNotification("x", newJObject()))
+    check waitFor(transport.receiveMessage())["method"].getStr() == "notifications/after-empty"
+    waitFor transport.close()
+
+  test "Given a stream that ended some time ago, when the client then waits for a message, then McpTransportClosedError is raised at once":
+    let (server, base, _) = startLegacy()
+    let client = newSseLegacyTransport(base & "/sse")
+    waitFor client.sendRequest(newJsonRpcRequest("r1", "ping", newJObject()))
+    discard waitFor client.receiveMessage()
+    waitFor server.close()
+    waitFor sleepAsync(300)
+    let pending = client.receiveMessage()
+    var closedError = false
+    try:
+      discard waitFor withTimeout(pending, 3000)  # false when it hangs
+    except McpTransportClosedError:
+      closedError = true
+    check closedError
+    waitFor client.close()
+
+suite "HTTP+SSE client, what it closes and reports (mutation review, g2g-hc-d)":
+
+  test "Given a stream that fails on a message that is not JSON, when the client reads it, then it says so on stderr":
+    let (listener, port) = listenLocal()
+    discard serveHeld(listener, formatSseEvent("{not json", event = "message"))
+    let transport = newSseLegacyTransport("http://127.0.0.1:" & $port & "/sse")
+    let logged = loggedWhile(proc() =
+      waitFor transport.sendNotification(newJsonRpcNotification("x", newJObject()))
+      waitFor sleepAsync(100))
+    check "[mcp-sse] event stream from " in logged
+    check "failed with" in logged
+    waitFor transport.close()
+
+  test "Given a stream that fails on a message that is not JSON, when the client has read it, then it closes its end of the connection":
+    let (listener, port) = listenLocal()
+    let held = serveHeld(listener, formatSseEvent("{not json", event = "message"))
+    let transport = newSseLegacyTransport("http://127.0.0.1:" & $port & "/sse")
+    discard loggedWhile(proc() =
+      waitFor transport.sendNotification(newJsonRpcNotification("x", newJObject()))
+      check waitFor held.stream)
+    waitFor transport.close()
+
+  test "Given a server answering the stream request with 404, when the client gives up, then it closes its end of the connection":
+    let (listener, port) = listenLocal()
+    let closed = answerFirstWith(listener,
+      "HTTP/1.1 404 Not Found\c\LContent-Length: 0\c\L\c\L")
+    let transport = newSseLegacyTransport("http://127.0.0.1:" & $port & "/sse")
+    expect McpTransportError:
+      waitFor transport.sendNotification(newJsonRpcNotification("x", newJObject()))
+    check waitFor closed
+    waitFor transport.close()
+
+  test "Given a server answering the stream request with something that is no event stream, when the client gives up, then it closes its end of the connection":
+    let (listener, port) = listenLocal()
+    let closed = answerFirstWith(listener,
+      "HTTP/1.1 200 OK\c\LContent-Type: text/plain\c\LContent-Length: 2\c\L\c\Lno")
+    let transport = newSseLegacyTransport("http://127.0.0.1:" & $port & "/sse")
+    expect McpTransportError:
+      waitFor transport.sendNotification(newJsonRpcNotification("x", newJObject()))
+    check waitFor closed
+    waitFor transport.close()
+
+  test "Given a server that names no endpoint in time, when the client gives up, then it closes its end of the stream before it is closed itself":
+    let (listener, port) = listenLocal()
+    let closed = answerFirstWith(listener, StreamHead & formatSseComment("hello"))
+    let transport = newSseLegacyTransport("http://127.0.0.1:" & $port & "/sse")
+    transport.connectTimeoutMs = 200
+    expect McpTransportError:
+      waitFor transport.sendNotification(newJsonRpcNotification("x", newJObject()))
+    check waitFor closed
+    waitFor transport.close()
+
+  test "Given a POST the server answered, when the client has read the answer, then it closes its end of the POST connection":
+    let (listener, port) = listenLocal()
+    let held = serveHeld(listener)
+    let transport = newSseLegacyTransport("http://127.0.0.1:" & $port & "/sse")
+    waitFor transport.sendNotification(newJsonRpcNotification("x", newJObject()))
+    check waitFor held.post
+    waitFor transport.close()
+
+  test "Given a connected client, when it is closed, then it closes its end of the stream":
+    let (listener, port) = listenLocal()
+    let held = serveHeld(listener)
+    let transport = newSseLegacyTransport("http://127.0.0.1:" & $port & "/sse")
+    waitFor transport.sendNotification(newJsonRpcNotification("x", newJObject()))
+    waitFor transport.close()
+    check waitFor held.stream
