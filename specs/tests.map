@@ -820,6 +820,16 @@ MCP-TRACE-1 | tests/test_trace_context.nim | Given params whose _meta carries tr
 MCP-TRACE-1 | tests/test_trace_context.nim | Given params without trace context, when read, then it is empty
 MCP-TRACE-1 | tests/test_trace_context.nim | Given a malformed or non-string value, when params are checked, then the rejection names the key as invalid params
 MCP-TRACE-1 | tests/test_trace_context.nim | Given a trace context, when added to params, then the other _meta keys stay and the original is untouched
+MCP-TRACE-1 | tests/test_trace_context.nim | Given traceparent fields of the wrong length or alphabet, when validated, then each is rejected
+MCP-TRACE-1 | tests/test_trace_context.nim | Given tracestate keys outside the simple-key and multi-tenant grammars, when validated, then each is rejected
+MCP-TRACE-1 | tests/test_trace_context.nim | Given tracestate keys at the edge of the grammars, when validated, then they are accepted
+MCP-TRACE-1 | tests/test_trace_context.nim | Given a tracestate value, when its length is checked, then 256 characters are accepted and 257 characters or none are not
+MCP-TRACE-1 | tests/test_trace_context.nim | Given a tracestate of 32 members, when validated, then it is accepted
+MCP-TRACE-1 | tests/test_trace_context.nim | Given a baggage at the size limits, when validated, then 8192 bytes and 64 members are accepted and one more of either is not
+MCP-TRACE-1 | tests/test_trace_context.nim | Given blanks around the equals signs of baggage members and properties, when validated, then they are accepted
+MCP-TRACE-1 | tests/test_trace_context.nim | Given a baggage property that is not a token or a token=value, when validated, then it is rejected
+MCP-TRACE-1 | tests/test_trace_context.nim | Given a malformed tracestate or baggage, when a context or params are checked, then each is reported
+MCP-TRACE-1 | tests/test_trace_context.nim | Given params that are absent or not an object, when a trace context is added, then params with only the context's _meta result
 MCP-TRACE-2 | tests/test_trace_context.nim | Given a modern server and a trace context in the options, when a request is sent, then its _meta carries it
 MCP-TRACE-2 | tests/test_trace_context.nim | Given a malformed trace context in the options, when a request is sent, then it raises and nothing is sent
 MCP-TRACE-3 | tests/test_trace_context.nim | Given a request with trace context, when the handler runs, then ctx.traceContext holds what the client sent

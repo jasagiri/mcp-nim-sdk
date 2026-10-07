@@ -97,12 +97,12 @@ suite "trace context values (W3C Trace Context and Baggage)":
                  "a".repeat(241) & "@" & "b".repeat(14) & "=1"]:
       check validateTracestate(good).isNone
 
-  test "Given a tracestate value, when its length or last character is checked, then 256 characters are accepted and 257, an empty value or a trailing blank are not":
+  test "Given a tracestate value, when its length is checked, then 256 characters are accepted and 257 characters or none are not":
     # W3C Trace Context 3.3.1.3.2: value = 0*255(chr) nblk-chr, so at least one character, the last not blank.
     check validateTracestate("a=" & "v".repeat(256)).isNone
     check validateTracestate("a=" & "v".repeat(257)).isSome
     check validateTracestate("a=").isSome
-    check validateTracestate("a=b c").isNone
+    check validateTracestate("a=b c").isNone  # blanks inside a value are characters of it
 
   test "Given a tracestate of 32 members, when validated, then it is accepted":
     # W3C Trace Context 3.3.1.1: at most 32 list-members.
