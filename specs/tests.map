@@ -745,6 +745,7 @@ MCP-ELICIT-3 | tests/test_elicitation_payload.nim | Given strings outside the le
 MCP-ELICIT-3 | tests/test_elicitation_payload.nim | Given numbers outside the bounds, when checked, then they are reported
 MCP-ELICIT-3 | tests/test_elicitation_payload.nim | Given a value outside the enum, when checked, then it is reported
 MCP-ELICIT-3 | tests/test_elicitation_payload.nim | Given values that break the format, when checked, then they are reported
+MCP-ELICIT-3 | tests/test_elicitation_payload.nim | Given edge values of each string format, when checked, then exactly the valid ones pass
 MCP-ELICIT-3 | tests/test_server_elicitation.nim | Given an answer that does not match the schema, when it arrives, then McpPayloadError is raised
 MCP-ELICIT-3 | tests/test_client_elicitation.nim | Given a handler whose content does not match the schema, when the server asks, then the server gets an internal error and not the content
 MCP-ELICIT-4 | tests/test_server_elicitation.nim | Given a client without the elicitation capability, when the server asks, then it raises and sends nothing

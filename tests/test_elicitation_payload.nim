@@ -303,6 +303,40 @@ suite "elicitation: a response":
       "mail": "a@b.c", "site": "https://example.com/x", "day": "2026-02-28",
       "moment": "2026-10-06T12:00:00Z"}}, ask).len == 0
 
+  test "Given edge values of each string format, when checked, then exactly the valid ones pass":
+    # The schema lists the formats by name only; the value rules are those of
+    # RFC 5322 (an address needs a local part and a domain), RFC 3986 (scheme
+    # characters), ISO 8601 / RFC 3339 (a real day; hour 0-23, minute 0-59,
+    # second 0-60 for a leap second; Z or an offset; a fraction has digits).
+    func accepts(format, value: string): bool =
+      let ask = %*{"message": "m", "requestedSchema": {"type": "object",
+        "properties": {"x": {"type": "string", "format": format}}}}
+      elicitationResultProblems(%*{"action": "accept", "content": {"x": value}},
+                                ask).len == 0
+    for value in ["a@b", "x@y.z"]:
+      check accepts("email", value)
+    for value in ["@b.c", "a@", "a@b@c", "a @b.c"]:
+      check not accepts("email", value)
+    for value in ["a:b", "a1:x", "a+b:x", "a-b:x", "a.b:x", "https://example.com"]:
+      check accepts("uri", value)
+    for value in ["abc", "a:", ":x", "a:b c", "1a:x", "+a:x", "a_b:x"]:
+      check not accepts("uri", value)
+    check accepts("date", "2024-02-29")
+    for value in ["2026/10/07", "2026-1a-07", "2026-10-077", "2026-10-0", "2026-02-29"]:
+      check not accepts("date", value)
+    for value in ["2026-10-07T00:00:00Z", "2026-10-07t23:59:59z",
+                  "2026-10-07T12:59:00Z", "2026-10-07T12:00:60Z",
+                  "2026-10-07T12:00:00.5Z", "2026-10-07T12:00:00.123456+09:30",
+                  "2026-10-07T12:00:00-23:59"]:
+      check accepts("date-time", value)
+    for value in ["2026-13-40T12:00:00Z", "2026-10-07T12:00", "2026-10-07T1a:00:00Z",
+                  "2026-10-07T12-00:00Z", "2026-10-07T12:00-00Z",
+                  "2026-10-07T24:00:00Z", "2026-10-07T12:60:00Z",
+                  "2026-10-07T12:00:61Z", "2026-10-07T12:00:00.Z",
+                  "2026-10-07T12:00:00.123", "2026-10-07T12:00:00",
+                  "2026-10-07T12:00:00+24:00", "2026-10-07T12:00:00+09:60"]:
+      check not accepts("date-time", value)
+
   test "Given a result built from an action, when rendered, then content appears only with accept":
     check elicitationResultJson(McpElicitResult(action: eaDecline)) == %*{"action": "decline"}
     check elicitationResultJson(McpElicitResult(action: eaAccept,
