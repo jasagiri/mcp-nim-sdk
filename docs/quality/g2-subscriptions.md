@@ -81,7 +81,7 @@
 ## 確認したこと
 
 - `nim c -r tests/test_subscriptions.nim` は、既定版 2026-07-28 と `-d:mcpDefaultProtocolVersion=2024-11-05`、`=2025-11-25` のどれでも 55 件が合格。コンパイラの警告は 0。
-- `tests/test_spec_coverage.nim` は合格。新しい Scenario は `MCP-SUBSCRIBE-g2f-subs-1` と `-2` (`specs/subscriptions.feature`、`specs/tests.map`)。
+- `tests/test_spec_coverage.nim` は合格。新しい Scenario は `MCP-SUBSCRIBE-14` と `-2` (`specs/subscriptions.feature`、`specs/tests.map`)。
 
 ## 残っているもの
 

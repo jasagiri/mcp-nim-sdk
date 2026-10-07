@@ -82,13 +82,13 @@ Feature: Subscriptions (2026-07-28)
     When a client listens
     Then each hook runs in the order added, sees what was asked, and the acknowledgment carries what they leave in the filter
 
-  @spec:MCP-SUBSCRIBE-g2f-subs-1 @feature:ftSubscriptionsListen
+  @spec:MCP-SUBSCRIBE-14 @feature:ftSubscriptionsListen
   Scenario: A filter is written, read and matched exactly as it names things
     Given filters naming types, resource uris and task ids, and notifications with well-formed and malformed params
     When they are written, parsed, tested for emptiness and matched, and a subscription id is added to params that carry a _meta
     Then every named type is written as true, a filter naming anything is not empty, only named uris and tasks are wanted and the other _meta keys stay
 
-  @spec:MCP-SUBSCRIBE-g2f-subs-2 @feature:ftSubscriptionsListen
+  @spec:MCP-SUBSCRIBE-15 @feature:ftSubscriptionsListen
   Scenario: A client says what the server did not agree to, and waits without limit when told to
     Given a server that honors all or part of a filter, a request that cannot be sent, and a zero timeout
     When the client listens
