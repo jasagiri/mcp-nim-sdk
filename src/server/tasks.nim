@@ -229,8 +229,9 @@ proc listClientTasks*(server: McpServer, session: string,
     if cursor.isSome: %*{"cursor": cursor.get} else: newJObject()), "tasks/list")
   for item in answer{"tasks"}.getElems():
     result.tasks.add taskOf(item, "tasks/list")
-  if answer{"nextCursor"}.kind == JString:
-    result.nextCursor = some(answer["nextCursor"].getStr())
+  let next = answer{"nextCursor"}
+  if not next.isNil and next.kind == JString:
+    result.nextCursor = some(next.getStr())
 
 proc cancelClientTask*(server: McpServer, session, taskId: string): Future[McpTask] {.async.} =
   ## Needs the client's `tasks.cancel`.
