@@ -241,3 +241,159 @@ suite "sampling with tools: the result":
     check toolResultBlock("a", @[], isError = true, structuredContent = %*{"t": 1}) ==
       %*{"type": "tool_result", "toolUseId": "a", "content": [], "isError": true,
          "structuredContent": {"t": 1}}
+
+# One fault per message sequence: each test below breaks exactly one rule, so
+# the number of problems says whether that rule was checked at all.
+
+let
+  oneUse = %*{"role": "assistant", "content": {"type": "tool_use", "id": "a", "name": "t", "input": {}}}
+
+func answeredBy(resultBlock: JsonNode): JsonNode =
+  %*{"role": "user", "content": [resultBlock]}
+
+func textResultOf(blockOfContent: JsonNode): JsonNode =
+  %*{"role": "assistant", "content": blockOfContent, "model": "m", "stopReason": "endTurn"}
+
+suite "sampling with tools: absent and non-object values":
+
+  test "Given no params, no answer or an answer without content, when asked for tool uses, then there are none":
+    check not usesTools(nil)
+    check toolUsesOf(nil).len == 0
+    check toolUsesOf(%*"x").len == 0
+    check toolUsesOf(%*{"role": "assistant", "model": "m"}).len == 0
+
+  test "Given params that are not an object, when checked, then that is the only problem":
+    for bad in [newJNull(), %*[1]]:
+      for v in WithTools:
+        let problems = createMessageParamsProblems(bad, v)
+        check problems.len == 1
+        check problems.mentions("params")
+    check createMessageParamsProblems(nil, mpv20251125).mentions("params")
+
+  test "Given a result that is not an object, when checked, then that is the only problem":
+    for bad in [%*[1], %*"x"]:
+      let problems = createMessageResultProblems(bad, request(@[question]), mpv20251125)
+      check problems.len == 1
+      check problems.mentions("object")
+    check createMessageResultProblems(nil, request(@[question]), mpv20251125).mentions("object")
+
+  test "Given a message that is not an object or has no content, when checked, then that message is the only problem":
+    for v in WithTools:
+      let notObject = createMessageParamsProblems(request(@[%*"x"]), v)
+      check notObject.len == 1
+      check notObject.mentions("messages[0]")
+      let noContent = createMessageParamsProblems(request(@[%*{"role": "user"}]), v)
+      check noContent.len == 1
+      check noContent.mentions("content")
+
+  test "Given an array of content whose entry is not a content block, when checked, then that entry is the only problem":
+    for entry in [%*"x", %*{"text": "x"}, %*{"type": 5}]:
+      let problems = createMessageParamsProblems(
+        request(@[%*{"role": "user", "content": [entry]}]), mpv20251125)
+      check problems.len == 1
+      check problems.mentions("content[0]")
+    let loose = createMessageParamsProblems(
+      request(@[%*{"role": "user", "content": {"text": "x"}}]), mpv20251125)
+    check loose.len == 1
+    check loose.mentions("content[0]")
+
+  test "Given a tool choice that is not an object, when checked, then it is the only problem":
+    for v in WithTools:
+      let problems = createMessageParamsProblems(
+        request(@[question], %*{"tools": [weather], "toolChoice": "required"}), v)
+      check problems.len == 1
+      check problems.mentions("toolChoice")
+
+suite "sampling with tools: the fields of a tool_use and a tool_result":
+
+  let toolsRequest = request(@[question], %*{"tools": [weather]})
+
+  test "Given a tool_use without an id, with an empty id, without a name or without an input object, when a result holds it, then that field is the only problem":
+    for (field, block0) in [
+        ("id", %*{"type": "tool_use", "name": "t", "input": {}}),
+        ("id", %*{"type": "tool_use", "id": "", "name": "t", "input": {}}),
+        ("name", %*{"type": "tool_use", "id": "a", "input": {}}),
+        ("input", %*{"type": "tool_use", "id": "a", "name": "t"}),
+        ("input", %*{"type": "tool_use", "id": "a", "name": "t", "input": "x"})]:
+      let problems = createMessageResultProblems(
+        %*{"role": "assistant", "content": [block0], "model": "m", "stopReason": "toolUse"},
+        toolsRequest, mpv20251125)
+      check problems.len == 1
+      check problems.mentions(field)
+
+  test "Given a tool_result without a toolUseId, when checked, then the field is reported":
+    let problems = createMessageParamsProblems(request(@[question, oneUse,
+      answeredBy(%*{"type": "tool_result", "content": []})]), mpv20251125)
+    check problems.mentions("toolUseId")
+
+  test "Given a tool_result whose content is missing, not an array or not content blocks, when checked, then that is the only problem":
+    for broken in [%*{"type": "tool_result", "toolUseId": "a"},
+                   %*{"type": "tool_result", "toolUseId": "a", "content": "x"},
+                   %*{"type": "tool_result", "toolUseId": "a", "content": [1]},
+                   %*{"type": "tool_result", "toolUseId": "a", "content": [{"text": "x"}]}]:
+      let problems = createMessageParamsProblems(
+        request(@[question, oneUse, answeredBy(broken)]), mpv20251125)
+      check problems.len == 1
+      check problems.mentions("content")
+
+  test "Given a tool_result with structuredContent or isError of the wrong kind, when checked, then that field is the only problem":
+    let wrongStructured = createMessageParamsProblems(request(@[question, oneUse, answeredBy(
+      %*{"type": "tool_result", "toolUseId": "a", "content": [], "structuredContent": "x"})]),
+      mpv20251125)
+    check wrongStructured.len == 1
+    check wrongStructured.mentions("structuredContent")
+    let wrongError = createMessageParamsProblems(request(@[question, oneUse, answeredBy(
+      %*{"type": "tool_result", "toolUseId": "a", "content": [], "isError": "yes"})]),
+      mpv20251125)
+    check wrongError.len == 1
+    check wrongError.mentions("isError")
+
+  test "Given a tool_result with structuredContent as an object and isError as a boolean, when checked, then there is nothing to report":
+    for flag in [true, false]:
+      check createMessageParamsProblems(request(@[question, oneUse, answeredBy(
+        %*{"type": "tool_result", "toolUseId": "a", "content": [{"type": "text", "text": "ok"}],
+           "structuredContent": {"t": 1}, "isError": flag})]), mpv20251125).len == 0
+
+suite "sampling with tools: pairing reports each violation once":
+
+  test "Given tool uses followed by a message that is not their results, when checked, then that message is the only problem":
+    let problems = createMessageParamsProblems(request(@[question, twoUses, question]), mpv20251125)
+    check problems.len == 1
+    check problems.mentions("messages[2]")
+
+  test "Given two tool results for one id, when checked, then the repeat is the only problem":
+    let repeated = %*{"role": "user", "content": [
+      {"type": "tool_result", "toolUseId": "a", "content": []},
+      {"type": "tool_result", "toolUseId": "a", "content": []},
+      {"type": "tool_result", "toolUseId": "b", "content": []}]}
+    let problems = createMessageParamsProblems(request(@[question, twoUses, repeated]), mpv20251125)
+    check problems.len == 1
+    check problems.mentions("'a'")
+
+suite "sampling with tools: the content of a result":
+
+  test "Given array content or an unknown content type in a result, when checked, then the version and the block decide":
+    for v in [mpv20241105, mpv20250326, mpv20250618, mpv20251125, mpv20260728]:
+      let plain = request(@[question])
+      check createMessageResultProblems(textResultOf(%*{"type": "text", "text": "x"}), plain, v).len == 0
+      let asArray = createMessageResultProblems(textResultOf(%*[{"type": "text", "text": "x"}]), plain, v)
+      if v.has(ftSamplingTools):
+        check asArray.len == 0
+      else:
+        check asArray.len == 1
+        check asArray.mentions("array")
+      let unknown = createMessageResultProblems(textResultOf(%*{"type": "hologram"}), plain, v)
+      check unknown.len == 1
+      check unknown.mentions("content[0]")
+
+  test "Given a result that completes without a tool use, when the tool choice is not required, then it is valid":
+    let text = textResultOf(%*{"type": "text", "text": "x"})
+    for extra in [%*{}, %*{"tools": [weather]}, %*{"tools": [weather], "toolChoice": {"mode": "auto"}},
+                  %*{"tools": [weather], "toolChoice": {"mode": "none"}}]:
+      check createMessageResultProblems(text, request(@[question], extra), mpv20251125).len == 0
+    check createMessageResultProblems(text, nil, mpv20251125).len == 0
+
+  test "Given tool choice required and a message without content, when a result completes without a tool use, then the absence of a tool use is reported":
+    let required = request(@[%*{"role": "user"}], %*{"tools": [weather], "toolChoice": {"mode": "required"}})
+    check createMessageResultProblems(textResultOf(%*{"type": "text", "text": "x"}),
+                                      required, mpv20251125).mentions("required")
