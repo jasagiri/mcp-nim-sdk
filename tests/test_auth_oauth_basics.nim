@@ -318,3 +318,256 @@ suite "URL rules (mutation review, g2f-oauth-a)":
 
   test "Given a field with a space, when form-encoded, then the space is %20":
     check formEncode([("scope", "read write")]) == "scope=read%20write"
+
+type
+  ScriptedServer = ref object
+    ## A listener on 127.0.0.1 that reads one request head per connection,
+    ## answers it with what `answer` makes of the request line, and closes.
+    listener: AsyncSocket
+    port: int
+    origin: string
+    requestLines: seq[string]
+    closed: bool
+
+  HoldingServer = ref object
+    ## Reads one request head, sends `answer` (nothing when empty) and then
+    ## waits for the client to close the connection.
+    listener: AsyncSocket
+    port: int
+    peerClosed: bool
+
+  Outcome = object
+    kind: string  ## "none", "security" or "oauth"
+    msg: string
+
+proc requestHead(client: AsyncSocket): Future[string] {.async.} =
+  while not result.endsWith("\c\L\c\L"):
+    let chunk = await client.recv(1)
+    if chunk.len == 0:
+      break
+    result.add chunk
+
+proc jsonReply(code: int, reason, body: string, extra = ""): string =
+  "HTTP/1.1 " & $code & " " & reason & "\c\LContent-Type: application/json\c\LContent-Length: " &
+    $body.len & "\c\LConnection: close\c\L" & extra & "\c\L" & body
+
+proc startScripted(answer: proc(origin, requestLine: string): string): ScriptedServer =
+  let server = ScriptedServer(listener: newAsyncSocket(buffered = false))
+  server.listener.setSockOpt(OptReuseAddr, true)
+  server.listener.bindAddr(Port(0), "127.0.0.1")
+  server.listener.listen()
+  server.port = server.listener.getLocalAddr()[1].int
+  server.origin = "http://127.0.0.1:" & $server.port
+  proc serveOne(client: AsyncSocket) {.async.} =
+    let line = (await requestHead(client)).splitLines()[0]
+    server.requestLines.add line
+    await client.send(answer(server.origin, line))
+    client.close()
+  proc acceptLoop() {.async.} =
+    while not server.closed:
+      let client =
+        try:
+          await server.listener.accept()
+        except CatchableError:
+          if server.closed:
+            return
+          raise
+      asyncCheck serveOne(client)
+  asyncCheck acceptLoop()
+  server
+
+proc stop(server: ScriptedServer) =
+  server.closed = true
+  server.listener.close()
+
+proc startHolding(answer: string): HoldingServer =
+  let server = HoldingServer(listener: newAsyncSocket(buffered = false))
+  server.listener.setSockOpt(OptReuseAddr, true)
+  server.listener.bindAddr(Port(0), "127.0.0.1")
+  server.listener.listen()
+  server.port = server.listener.getLocalAddr()[1].int
+  proc serveOne() {.async.} =
+    let client = await server.listener.accept()
+    discard await requestHead(client)
+    if answer.len > 0:
+      await client.send(answer)
+    try:
+      # recv answers "" when the peer closed the connection.
+      let rest = await client.recv(1)
+      server.peerClosed = rest.len == 0
+    except OSError:
+      # a connection that is reset is a connection the peer is done with
+      server.peerClosed = true
+    client.close()
+  asyncCheck serveOne()
+  server
+
+proc closedWithin(server: HoldingServer, ms: int): bool =
+  var waited = 0
+  while not server.peerClosed and waited < ms:
+    waitFor sleepAsync(20)
+    waited += 20
+  server.peerClosed
+
+proc outcomeOf[T](action: Future[T]): Outcome =
+  try:
+    discard waitFor action
+  except OAuthSecurityError as e:
+    return Outcome(kind: "security", msg: e.msg)
+  except OAuthError as e:
+    return Outcome(kind: "oauth", msg: e.msg)
+  Outcome(kind: "none")
+
+proc resolvingTo(name, address: string): HostResolver =
+  let parsed = parseIpAddress(address)
+  result = proc(host: string): seq[IpAddress] {.closure, gcsafe, raises: [CatchableError].} =
+    if host == name:
+      return @[parsed]
+    raise newException(OSError, "cannot resolve " & host)
+
+proc asDocument(origin, issuer: string): string =
+  $(%*{"issuer": issuer, "authorization_endpoint": origin & "/authorize",
+       "token_endpoint": origin & "/token"})
+
+proc prmDocument(origin, resource: string): string =
+  $(%*{"resource": resource, "authorization_servers": [origin]})
+
+suite "Authorization server discovery over a scripted server (mutation review, g2f-oauth-a)":
+  let policy = defaultFetchPolicy()
+  const
+    oauthPath = "/.well-known/oauth-authorization-server/tenant1"
+    oidcPath = "/.well-known/openid-configuration/tenant1"
+    appendedPath = "/tenant1/.well-known/openid-configuration"
+
+  test "Given a 201 with a valid document, when discovering, then it is not used and every URL tried is named with its status":
+    # RFC 8414 3.2: a successful response uses 200.
+    let server = startScripted(proc(origin, line: string): string =
+      if oauthPath in line: jsonReply(201, "Created", asDocument(origin, origin & "/tenant1"))
+      else: jsonReply(404, "Not Found", "{}"))
+    defer: server.stop()
+    let outcome = outcomeOf(discoverAuthorizationServer(server.origin & "/tenant1", adsOAuthThenOidc, policy))
+    check outcome.kind == "oauth"
+    check (server.origin & oauthPath & ": HTTP 201") in outcome.msg
+    check (server.origin & oidcPath & ": HTTP 404") in outcome.msg
+    check (server.origin & appendedPath & ": HTTP 404") in outcome.msg
+
+  test "Given a 200 whose body is not a JSON object, when discovering, then it is a failure of that URL":
+    let server = startScripted(proc(origin, line: string): string = jsonReply(200, "OK", "[1]"))
+    defer: server.stop()
+    let outcome = outcomeOf(discoverAuthorizationServer(server.origin & "/tenant1", adsOAuthThenOidc, policy))
+    check outcome.kind == "oauth"
+    check (server.origin & oauthPath & ": HTTP 200") in outcome.msg
+
+  test "Given a document that names another issuer, when discovering, then the failure is a security failure that says why":
+    let server = startScripted(proc(origin, line: string): string =
+      if oauthPath in line: jsonReply(200, "OK", asDocument(origin, "https://elsewhere.example"))
+      else: jsonReply(404, "Not Found", "{}"))
+    defer: server.stop()
+    let outcome = outcomeOf(discoverAuthorizationServer(server.origin & "/tenant1", adsOAuthThenOidc, policy))
+    check outcome.kind == "security"
+    check (server.origin & oauthPath & ": authorization server metadata names issuer https://elsewhere.example") in
+      outcome.msg
+    check (server.origin & oidcPath & ": HTTP 404") in outcome.msg
+
+  test "Given a document without a token endpoint, when discovering, then the failure names the field and is not a security failure":
+    let server = startScripted(proc(origin, line: string): string =
+      if oauthPath in line: jsonReply(200, "OK", $(%*{"issuer": origin & "/tenant1",
+                                                       "authorization_endpoint": origin & "/authorize"}))
+      else: jsonReply(404, "Not Found", "{}"))
+    defer: server.stop()
+    let outcome = outcomeOf(discoverAuthorizationServer(server.origin & "/tenant1", adsOAuthThenOidc, policy))
+    check outcome.kind == "oauth"
+    check (server.origin & oauthPath & ": metadata field token_endpoint is missing") in outcome.msg
+
+  test "Given an issuer with a fragment, when discovering, then it is refused before any request is made":
+    let server = startScripted(proc(origin, line: string): string = jsonReply(404, "Not Found", "{}"))
+    defer: server.stop()
+    let outcome = outcomeOf(discoverAuthorizationServer(server.origin & "/tenant1#frag", adsOAuthThenOidc, policy))
+    check outcome.kind == "security"
+    check "authorization server issuer has a fragment" in outcome.msg
+    check server.requestLines.len == 0
+
+  test "Given a server URL on plain http to a remote host, when discovering with the 2025-03-26 rules, then the error names the authorization base URL":
+    let outcome = outcomeOf(discoverOrDefault("http://remote.example.test/mcp", policy, @[]))
+    check outcome.kind == "security"
+    check "authorization base URL must be https" in outcome.msg
+
+  test "Given the root of an origin that answers 201 or a non-object 200, when discovering with the 2025-03-26 rules, then it fails without defaults":
+    for (code, reason, body) in [(201, "Created", ""), (200, "OK", "[1]")]:
+      let server = startScripted(proc(origin, line: string): string =
+        jsonReply(code, reason, if body.len > 0: body else: asDocument(origin, origin)))
+      defer: server.stop()
+      let outcome = outcomeOf(discoverOrDefault(server.origin & "/mcp", policy, @[]))
+      check outcome.kind == "oauth"
+      check ("(HTTP " & $code & ")") in outcome.msg
+
+suite "Protected resource metadata over a scripted server (mutation review, g2f-oauth-a)":
+  let policy = defaultFetchPolicy()
+
+  test "Given a 201 with a valid document or a non-object 200, when fetching, then it is refused":
+    for (code, reason, useDocument) in [(201, "Created", true), (200, "OK", false)]:
+      let server = startScripted(proc(origin, line: string): string =
+        jsonReply(code, reason, if useDocument: prmDocument(origin, origin & "/mcp") else: "[1]"))
+      defer: server.stop()
+      let outcome = outcomeOf(fetchProtectedResourceMetadata(
+        server.origin & "/x", server.origin & "/mcp", policy))
+      check outcome.kind == "oauth"
+      check ("(HTTP " & $code & ")") in outcome.msg
+
+  test "Given a document for another resource at the first URL, when probing, then the failure is a security failure that says why":
+    let server = startScripted(proc(origin, line: string): string =
+      if "/oauth-protected-resource/mcp" in line:
+        jsonReply(200, "OK", prmDocument(origin, "https://other.example/mcp"))
+      else: jsonReply(404, "Not Found", "{}"))
+    defer: server.stop()
+    let outcome = outcomeOf(discoverProtectedResource(server.origin & "/mcp", none(string), true, policy))
+    check outcome.kind == "security"
+    check outcome.msg.startsWith("no usable protected resource metadata: ")
+    check "describes https://other.example/mcp, not " & server.origin & "/mcp" in outcome.msg
+
+suite "Requests of the OAuth client over a scripted server (mutation review, g2f-oauth-a)":
+  let policy = defaultFetchPolicy()
+
+  test "Given an endpoint that answers 302, when requested, then the redirect is reported and its target is never requested":
+    let server = startScripted(proc(origin, line: string): string =
+      if "/moved" in line: jsonReply(302, "Found", "", "Location: " & origin & "/target\c\L")
+      else: jsonReply(200, "OK", "{}"))
+    defer: server.stop()
+    let outcome = outcomeOf(httpExchange(HttpGet, server.origin & "/moved", policy, "metadata"))
+    check outcome.kind == "oauth"
+    check "redirected (HTTP 302)" in outcome.msg
+    check server.requestLines.len == 1
+
+  test "Given an endpoint that answers 304 to a conditional request, when requested, then the 304 is the reply":
+    let server = startScripted(proc(origin, line: string): string =
+      "HTTP/1.1 304 Not Modified\c\LConnection: close\c\L\c\L")
+    defer: server.stop()
+    let reply = waitFor httpExchange(HttpGet, server.origin & "/x", policy, "metadata",
+                                     headers = @[("If-None-Match", "\"v1\"")])
+    check reply.code == 304
+
+  test "Given plain http to a host name that resolves to loopback, when requested, then it is refused and nothing is sent":
+    # The text of the URL decides the scheme rule: a name is not "loopback".
+    let server = startScripted(proc(origin, line: string): string = jsonReply(200, "OK", "{}"))
+    defer: server.stop()
+    var named = policy
+    named.resolver = resolvingTo("auth.example.test", "127.0.0.1")
+    let outcome = outcomeOf(httpExchange(HttpGet, "http://auth.example.test:" & $server.port & "/x", named, "metadata"))
+    check outcome.kind == "security"
+    check "must be https" in outcome.msg
+    check server.requestLines.len == 0
+
+  test "Given a keep-alive answer that has been read, when the request is done, then the client has closed the connection":
+    let server = startHolding("HTTP/1.1 200 OK\c\LContent-Type: application/json\c\LContent-Length: 2\c\L\c\L{}")
+    let reply = waitFor httpExchange(HttpGet, "http://127.0.0.1:" & $server.port & "/x", policy, "metadata")
+    check reply.code == 200
+    check server.closedWithin(2000)
+
+  test "Given an endpoint that never answers, when the time runs out, then the connection is closed as well as reported":
+    let server = startHolding("")
+    var quick = policy
+    quick.timeoutMs = 300
+    let outcome = outcomeOf(httpExchange(HttpGet, "http://127.0.0.1:" & $server.port & "/x", quick, "metadata"))
+    check outcome.kind == "oauth"
+    check "timed out after 300 ms" in outcome.msg
+    check server.closedWithin(2000)
