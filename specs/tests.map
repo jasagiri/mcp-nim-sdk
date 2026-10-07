@@ -130,6 +130,7 @@ MCP-RESOURCES-7 | tests/test_client_operations.nim | Given templates, when liste
 MCP-RESOURCES-8 | tests/test_server_notifications.nim | Given a subscription, when the resource is updated, then the subscriber is told with the uri
 MCP-RESOURCES-8 | tests/test_server_notifications.nim | Given a subscription to one resource, when another is updated, then nothing is sent
 MCP-RESOURCES-8 | tests/test_server_notifications.nim | Given two clients and one subscription, when the resource is updated, then only the subscriber is told
+MCP-RESOURCES-8 | tests/test_server_errors.nim | Given the earlier API's subscribe and unsubscribe handlers, when a client subscribes and unsubscribes, then each handler is called with the uri
 MCP-RESOURCES-9 | tests/test_server_notifications.nim | Given an unsubscribe, when the resource is updated, then nothing is sent
 MCP-RESOURCES-9 | tests/test_server_notifications.nim | Given a client that ends its session, when the resource is updated, then it is not told
 MCP-RESOURCES-10 | tests/test_server_notifications.nim | Given a server without the subscribe capability, when a client subscribes, then the method is not found
@@ -154,6 +155,7 @@ MCP-LISTCHANGED-2 | tests/test_client_server_requests.nim | Given list-changed c
 MCP-LISTCHANGED-2 | tests/test_client_server_requests.nim | Given a callback that raises, when a notification arrives, then the client keeps receiving
 MCP-LISTCHANGED-2 | tests/test_client_server_requests.nim | Given no callbacks, when notifications arrive, then they are ignored
 MCP-PROMPTS-1 | tests/test_server_resources_prompts.nim | Given a prompt, when a client lists and gets it, then the name is listed and the messages the handler built come back
+MCP-PROMPTS-1 | tests/test_server_errors.nim | Given the earlier API's get handler, when a prompt is requested, then the messages it built come back
 MCP-PROMPTS-2 | tests/test_client_operations.nim | Given prompts, when listed, then arguments are read
 MCP-PROMPTS-2 | tests/test_client_operations.nim | Given a prompt, when it is fetched with arguments, then they are sent as strings and messages are read
 MCP-PROMPTS-2 | tests/test_client_operations.nim | Given no arguments, when a prompt is fetched, then no arguments key is sent

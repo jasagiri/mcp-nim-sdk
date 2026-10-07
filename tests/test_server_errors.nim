@@ -107,3 +107,29 @@ suite "resources/read and prompts/get failures (every version)":
     let reply = server.connect(server.attach(), DefaultProtocolVersion).ask(
       "resources/read", %*{"uri": "file:///a"})
     check reply["result"]["contents"][0]["text"].getStr() == "x"
+
+  test "Given the earlier API's subscribe and unsubscribe handlers, when a client subscribes and unsubscribes, then each handler is called with the uri":
+    for v in versionsWith(ftResourceSubscribe):
+      let server = newServer(McpServerCapabilities(
+        resources: some(McpResourcesCapability(subscribe: true))))
+      var calls: seq[string]
+      let subscribe: typeof(McpResourceHandlers().subscribeHandler.get) =
+        proc(uri: string): Future[void] {.async.} = calls.add "subscribe " & uri
+      let unsubscribe: typeof(McpResourceHandlers().unsubscribeHandler.get) =
+        proc(uri: string): Future[void] {.async.} = calls.add "unsubscribe " & uri
+      server.setResourceHandlers(McpResourceHandlers(
+        subscribeHandler: some(subscribe), unsubscribeHandler: some(unsubscribe)))
+      let peer = server.connect(server.attach(), v)
+      check not peer.ask("resources/subscribe", %*{"uri": "file:///a"}).hasKey("error")
+      check not peer.ask("resources/unsubscribe", %*{"uri": "file:///a"}).hasKey("error")
+      check calls == @["subscribe file:///a", "unsubscribe file:///a"]
+
+  test "Given the earlier API's get handler, when a prompt is requested, then the messages it built come back":
+    for v in SupportedProtocolVersions:
+      let server = newServer(McpServerCapabilities(prompts: some(McpPromptsCapability())))
+      let get: typeof(McpPromptHandlers().getHandler.get) =
+        proc(name: string, arguments: JsonNode): Future[JsonNode] {.async.} =
+          return %*{"messages": [{"role": "user", "content": {"type": "text", "text": name}}]}
+      server.setPromptHandlers(McpPromptHandlers(getHandler: some(get)))
+      let reply = server.connect(server.attach(), v).ask("prompts/get", %*{"name": "greet"})
+      check reply["result"]["messages"][0]["content"]["text"].getStr() == "greet"
