@@ -102,6 +102,16 @@ proc failLimit(p: Parser, what: string) {.noreturn.} =
 func atEnd(p: Parser): bool = p.pos >= p.src.len
 func peek(p: Parser): int32 = int32(p.src[p.pos])
 
+func asciiAt(p: Parser, at: int): char =
+  ## The character at `at` for a `case` over the syntax, which is all ASCII.
+  ## A code point above U+007F is none of the syntax; it is given as a byte
+  ## no branch names. `char` of such a code point is a RangeDefect from
+  ## U+0100 on, which a pattern holding "あ" outside a class once was.
+  let c = int32(p.src[at])
+  if c <= 0x7F: char(c) else: '\x80'
+
+func ascii(p: Parser): char = p.asciiAt(p.pos)
+
 proc complement(r: RangeSet): RangeSet =
   ## The ranges of `r` are assumed sorted and disjoint (the escapes above).
   var next = 0'i32
@@ -118,7 +128,8 @@ proc parseEscapeChar(p: var Parser): int32 =
   ## already consumed.
   if p.atEnd:
     p.fail("a pattern ends with a backslash")
-  let c = char(p.peek)
+  let raw = p.peek
+  let c = p.ascii
   inc p.pos
   case c
   of 'n': 10
@@ -133,7 +144,7 @@ proc parseEscapeChar(p: var Parser): int32 =
       p.fail("a \\" & c & " escape needs " & $digits & " hex digits")
     var text = ""
     for i in 0 ..< digits:
-      text.add char(p.src[p.pos + i])
+      text.add p.asciiAt(p.pos + i)
     p.pos += digits
     try:
       int32(parseHexInt(text))
@@ -143,7 +154,7 @@ proc parseEscapeChar(p: var Parser): int32 =
     p.fail("Unicode property escapes are not supported")
   of '1' .. '9':
     p.fail("back references are not supported")
-  else: int32(c)
+  else: raw
 
 proc classEscape(c: char): RangeSet =
   case c
@@ -174,12 +185,12 @@ proc parseClass(p: var Parser): Node =
       inc p.pos
       if p.atEnd:
         p.fail("a pattern ends with a backslash")
-      let escaped = classEscape(char(p.peek))
+      let escaped = classEscape(p.ascii)
       if escaped.len > 0:
         inc p.pos
         result.ranges.add escaped
         continue
-      if char(p.peek) == 'b':
+      if p.ascii == 'b':
         inc p.pos
         lo = 8'i32
       else:
@@ -202,8 +213,8 @@ proc parseClass(p: var Parser): Node =
 
 proc parseNumber(p: var Parser): int =
   var text = ""
-  while not p.atEnd and char(p.peek) in {'0' .. '9'}:
-    text.add char(p.peek)
+  while not p.atEnd and p.ascii in {'0' .. '9'}:
+    text.add p.ascii
     inc p.pos
   if text.len == 0: return -1
   # Ten digits already exceed every limit; parseInt must not see an overflow.
@@ -215,7 +226,7 @@ proc parseQuantifier(p: var Parser, atom: Node): Node =
   if p.atEnd:
     return atom
   var min, max: int
-  case char(p.peek)
+  case p.ascii
   of '*': min = 0; max = NoRepeatLimit; inc p.pos
   of '+': min = 1; max = NoRepeatLimit; inc p.pos
   of '?': min = 0; max = 1; inc p.pos
@@ -247,8 +258,9 @@ proc parseQuantifier(p: var Parser, atom: Node): Node =
 
 proc parseAtom(p: var Parser): Node =
   let c = p.peek
+  let syntax = p.ascii
   inc p.pos
-  case char(c)
+  case syntax
   of '.': Node(kind: nkAny)
   of '^': Node(kind: nkBol)
   of '$': Node(kind: nkEol)
@@ -256,7 +268,7 @@ proc parseAtom(p: var Parser): Node =
   of '(':
     var kind = nkSeq
     if p.pos + 1 < p.src.len and p.peek == int32('?'):
-      case char(p.src[p.pos + 1])
+      case p.asciiAt(p.pos + 1)
       of ':': p.pos += 2
       of '=': p.pos += 2; kind = nkLookahead
       of '!': p.pos += 2; kind = nkNotLookahead
@@ -276,11 +288,11 @@ proc parseAtom(p: var Parser): Node =
   of '\\':
     if p.atEnd:
       p.fail("a pattern ends with a backslash")
-    case char(p.peek)
+    case p.ascii
     of 'b': inc p.pos; Node(kind: nkWordBoundary)
     of 'B': inc p.pos; Node(kind: nkNotWordBoundary)
     of 'd', 'D', 'w', 'W', 's', 'S':
-      let escaped = char(p.peek)
+      let escaped = p.ascii
       inc p.pos
       Node(kind: nkSet, ranges: classEscape(escaped))
     else: Node(kind: nkChar, ch: p.parseEscapeChar())

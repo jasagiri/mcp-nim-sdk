@@ -76,6 +76,37 @@ proc nestedArrays(depth: int): JsonNode =
   for _ in 1 .. depth:
     result = %[result]
 
+suite "patterns with characters outside ASCII":
+
+  test "Given a pattern with a literal character above U+00FF, when matched, then it stands for itself":
+    # Each of these was a RangeDefect when compiled: the parser turned the
+    # code point into a `char` to see whether it was a metacharacter.
+    check compileRegex("^名前$").isMatch("名前")
+    check not compileRegex("^名前$").isMatch("名")
+    check compileRegex("あ+い").isMatch("ああい")
+    check compileRegex("(あ|い)う").isMatch("いう")
+    check compileRegex("x{2}あ").isMatch("xxあ")
+    check not compileRegex("x{2}あ").isMatch("xあ")
+    check compileRegex("^\xF0\x9F\x98\x80$").isMatch("\xF0\x9F\x98\x80")   # U+1F600
+
+  test "Given an escaped character above U+00FF, when matched, then it stands for itself":
+    check compileRegex("\\あ").isMatch("あ")
+    check compileRegex("[\\あ]+").isMatch("ああ")
+
+  test "Given a character above U+00FF wherever the syntax expects an ASCII one, when compiled, then the pattern compiles or is a RegexError":
+    for before in ["", "\\", "(?", "(", "[", "[^", "[\\", "[a-", "a{", "a{2", "a{2,", "\\x", "\\x4", "\\u00", "a|", "a*", "\\b"]:
+      for ch in ["あ", "\xC4\x80", "\xF0\x9F\x98\x80", "\xFC"]:
+        for after in ["", ")", "]", "}", "a"]:
+          try:
+            discard compileRegex(before & ch & after)
+          except RegexError:
+            discard   # a pattern this engine does not read: the documented refusal
+
+  test "Given a schema whose pattern has a character above U+00FF, when validated, then the pattern is applied":
+    let schema = parseJson("""{"type": "string", "pattern": "^[ぁ-ん]+さん$"}""")
+    check validate(schema, %"たなかさん").len == 0
+    check validate(schema, %"tanaka-san").len == 1
+
 suite "schemas that refer to themselves":
 
   test "Given a $ref to the root, when an instance is validated, then the schema is reported invalid":
