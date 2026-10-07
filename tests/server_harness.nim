@@ -71,6 +71,9 @@ proc responseTo*(t: SessionedTransport, id: string): JsonNode =
     false)
   for s in t.sent:
     if not s.message.hasKey("method") and s.message{"id"}.getStr() == id:
+      # JSON-RPC 2.0: every response says so, whatever the method answered.
+      doAssert s.message{"jsonrpc"}.getStr() == "2.0",
+        "the response to " & id & " does not say jsonrpc 2.0"
       return s.message
 
 proc messagesOf*(t: SessionedTransport, methodName: string): seq[Sent] =
