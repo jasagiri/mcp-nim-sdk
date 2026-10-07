@@ -7,6 +7,9 @@
 ## authenticated principal, and a short expiry. This does not make a state
 ## single-use; a server that needs that must enforce it itself.
 ##
+## A sealed state is base64url text plus a dot-separated signature, so it
+## survives a URL or a header unchanged.
+##
 ##   let state = sealRequestState(key, %*{"step": 2}, "tools/call",
 ##                                salient = %*{"name": name, "arguments": arguments},
 ##                                principal = user)
