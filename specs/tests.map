@@ -201,6 +201,7 @@ MCP-COMPLETION-6 | tests/test_client_operations.nim | Given 2024-11-05, when com
 MCP-COMPLETION-6 | tests/test_client_operations.nim | Given 2024-11-05, when completing with context, then McpUnsupportedError is raised
 MCP-LOGGING-1 | tests/test_server_logging.nim | Given no setLevel, when a handler logs at every level, then the client gets every message
 MCP-LOGGING-1 | tests/test_server_logging.nim | Given a log message, when it is sent, then it carries level, logger and data and belongs to the request
+MCP-LOGGING-1 | tests/test_server_logging.nim | Given a log message without a logger, when it is sent, then it carries no logger key
 MCP-LOGGING-2 | tests/test_server_logging.nim | Given setLevel warning, when a handler logs at every level, then the client gets warning and above
 MCP-LOGGING-2 | tests/test_server_logging.nim | Given two clients with different levels, when the server logs, then each gets what its level allows
 MCP-LOGGING-3 | tests/test_server_logging.nim | Given an unknown level, when setLevel is sent, then the answer is invalid params
@@ -208,6 +209,8 @@ MCP-LOGGING-3 | tests/test_server_logging.nim | Given a server without the loggi
 MCP-LOGGING-3 | tests/test_server_logging.nim | Given a client that has not initialized, when it sends setLevel, then the answer is invalid request
 MCP-LOGGING-4 | tests/test_server_logging.nim | Given a server that did not declare logging, when a handler logs, then it is an internal error and nothing is sent
 MCP-LOGGING-4 | tests/test_server_logging.nim | Given a client that ended its session, when the server logs, then nothing is sent to it
+MCP-LOGGING-4 | tests/test_server_logging.nim | Given a request that has been answered, when its context logs afterwards, then nothing is sent
+MCP-LOGGING-4 | tests/test_server_logging.nim | Given a request the client cancelled, when its handler logs afterwards, then nothing is sent
 MCP-LOGGING-5 | tests/test_server_logging.nim | Given a request without a log level, when a handler logs, then no notification is sent
 MCP-LOGGING-5 | tests/test_server_logging.nim | Given a 2026-07-28 client only, when the server logs outside a request, then nothing is sent
 MCP-LOGGING-6 | tests/test_server_logging.nim | Given a request with a log level, when a handler logs, then the client gets that level and above for this request

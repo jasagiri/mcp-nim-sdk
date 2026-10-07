@@ -6,14 +6,30 @@ import ./server_harness
 
 const LogLevelKey = "io.modelcontextprotocol/logLevel"
 
+var
+  kept: McpRequestContext
+  gate: Future[void]
+  started: bool
+
 proc logServer(declare = true): McpServer =
   result = newServer(McpServerCapabilities(
     tools: some(McpToolsCapability()),
     logging: if declare: some(McpLoggingCapability()) else: none(McpLoggingCapability)))
   result.onToolCall(proc(ctx: McpRequestContext, name: string,
                          arguments: JsonNode): Future[JsonNode] {.async.} =
-    for level in McpLogLevel:
-      await ctx.log(level, %($level & " happened"), "db")
+    case name
+    of "keep":
+      kept = ctx
+    of "anonymous":
+      await ctx.log(mllInfo, %"no logger")
+    of "late":
+      started = true
+      gate = newFuture[void]("gate")
+      await gate
+      await ctx.log(mllError, %"too late")
+    else:
+      for level in McpLogLevel:
+        await ctx.log(level, %($level & " happened"), "db")
     return %*{"content": [{"type": "text", "text": "done"}]})
 
 proc levelsSent(t: SessionedTransport, session = ""): seq[string] =
@@ -50,6 +66,13 @@ suite "logging before 2026-07-28":
       let first = t.messagesOf("notifications/message")[0]
       check first.message["params"] == %*{"level": "debug", "logger": "db", "data": "debug happened"}
       check first.related == id
+
+  test "Given a log message without a logger, when it is sent, then it carries no logger key":
+    for v in versionsWith(ftLoggingSetLevel):
+      let server = logServer()
+      let t = server.attach()
+      discard server.connect(t, v).ask("tools/call", %*{"name": "anonymous"})
+      check t.messagesOf("notifications/message")[0].message["params"] == %*{"level": "info", "data": "no logger"}
 
   test "Given two clients with different levels, when the server logs, then each gets what its level allows":
     let server = logServer()
@@ -88,6 +111,29 @@ suite "logging before 2026-07-28":
     server.endSession("gone")
     waitFor server.log(mllError, %"x")
     check t.levelsSent("gone").len == 0
+
+  test "Given a request that has been answered, when its context logs afterwards, then nothing is sent":
+    for v in versionsWith(ftLoggingSetLevel):
+      let server = logServer()
+      let t = server.attach()
+      discard server.connect(t, v).ask("tools/call", %*{"name": "keep"})
+      waitFor kept.log(mllError, %"after the answer")
+      check t.levelsSent().len == 0
+
+  test "Given a request the client cancelled, when its handler logs afterwards, then nothing is sent":
+    for v in versionsWith(ftLoggingSetLevel):
+      started = false
+      let server = logServer()
+      let t = server.attach()
+      let peer = server.connect(t, v)
+      let id = freshId()
+      peer.send(%id, "tools/call", %*{"name": "late"})
+      untilTrue("the handler to start", proc(): bool = started)
+      peer.notify("notifications/cancelled", %*{"requestId": id})
+      settle()
+      gate.complete()
+      settle()
+      check t.levelsSent().len == 0
 
   test "Given a server that did not declare logging, when a handler logs, then it is an internal error and nothing is sent":
     let server = logServer(declare = false)

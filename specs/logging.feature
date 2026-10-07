@@ -14,6 +14,7 @@ Feature: Logging
     When a handler logs at every level
     Then the client gets a notifications/message for each, carrying level, logger and data
     And the message belongs to the request that logged it
+    And a message without a logger carries no logger key
 
   @spec:MCP-LOGGING-2 @feature:ftLoggingSetLevel
   Scenario: setLevel filters what a session receives
@@ -34,6 +35,7 @@ Feature: Logging
     When a handler logs
     Then it is an internal error and nothing is sent
     And a client that ended its session is sent nothing
+    And a request that has been answered or cancelled is sent nothing more
 
   @spec:MCP-LOGGING-5 @feature:ftLogging
   Scenario: 2026-07-28 sends no log messages to a request without a log level
