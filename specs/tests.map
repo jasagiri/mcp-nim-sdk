@@ -1040,6 +1040,17 @@ MCP-SUBSCRIBE-12 | tests/test_subscriptions.nim | Given a client and a server ov
 MCP-SUBSCRIBE-12 | tests/test_subscriptions.nim | Given a client and a server over Streamable HTTP, when the tool list changes, then it arrives on the response stream, and cancelling closes the subscription
 MCP-SUBSCRIBE-12 | tests/test_subscriptions.nim | Given a client over Streamable HTTP, when the server ends the subscription, then the client sees a graceful end
 MCP-SUBSCRIBE-13 | tests/test_subscriptions.nim | Given listen filter hooks, when a client listens, then each runs in the order added and the acknowledgment carries what they leave in the filter
+MCP-SUBSCRIBE-g2f-subs-1 | tests/test_subscriptions.nim | Given a filter naming every type, when it is written as JSON, then each named type is true and a type left out is absent
+MCP-SUBSCRIBE-g2f-subs-1 | tests/test_subscriptions.nim | Given task ids in a filter, when it is parsed, then they are read and a malformed list is rejected
+MCP-SUBSCRIBE-g2f-subs-1 | tests/test_subscriptions.nim | Given a filter that names one type or uri or task, when asked whether it is empty, then only the filter naming nothing is
+MCP-SUBSCRIBE-g2f-subs-1 | tests/test_subscriptions.nim | Given a filter with task ids, when a task status notification arrives, then only the listed tasks are wanted
+MCP-SUBSCRIBE-g2f-subs-1 | tests/test_subscriptions.nim | Given malformed notification params, when asked whether they are wanted, then they never are
+MCP-SUBSCRIBE-g2f-subs-1 | tests/test_subscriptions.nim | Given params that cannot hold a subscription id, when it is read, then there is none
+MCP-SUBSCRIBE-g2f-subs-1 | tests/test_subscriptions.nim | Given params with a _meta of their own, when tagged with a subscription id, then the other keys stay and the original is untouched
+MCP-SUBSCRIBE-g2f-subs-2 | tests/test_subscriptions.nim | Given an acknowledgment that honors everything asked for, when the client reports what was not honored, then nothing is reported
+MCP-SUBSCRIBE-g2f-subs-2 | tests/test_subscriptions.nim | Given an acknowledgment that honors only part of the filter, when the client reports what was not honored, then it names the types, uris and tasks left out
+MCP-SUBSCRIBE-g2f-subs-2 | tests/test_subscriptions.nim | Given a request that cannot be sent, when the client listens, then the transport's error is raised and no subscription is kept
+MCP-SUBSCRIBE-g2f-subs-2 | tests/test_subscriptions.nim | Given a zero timeout, when the server acknowledges after the client's default, then the client waits and returns the subscription
 MCP-MRTR-16 | tests/test_mrtr.nim | Given a handler whose input request breaks the rules of its method, when it is called, then it is an internal error and nothing is asked
 MCP-MRTR-16 | tests/test_mrtr.nim | Given input requests whose params break the rules of their method, when checked, then each problem names its request
 MCP-MRTR-17 | tests/test_mrtr.nim | Given a URL elicitation or sampling with tools, when compared with a client's capabilities, then the mode and the tools must be declared too

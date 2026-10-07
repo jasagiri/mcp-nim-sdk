@@ -83,6 +83,61 @@ suite "subscriptions: the filter and the messages of the specification":
     check subscriptionIdOf(withSubscriptionId(newJObject(), %7)) == some("7")
     check subscriptionIdOf(%*{"uri": "x"}).isNone
 
+  test "Given a filter naming every type, when it is written as JSON, then each named type is true and a type left out is absent":
+    let full = SubscriptionFilter(toolsListChanged: true, promptsListChanged: true,
+      resourcesListChanged: true, resourceSubscriptions: @[Config], taskIds: @["task-1"])
+    check full.toJson() == %*{"toolsListChanged": true, "promptsListChanged": true,
+      "resourcesListChanged": true, "resourceSubscriptions": [Config], "taskIds": ["task-1"]}
+    check SubscriptionFilter().toJson() == newJObject()
+
+  test "Given task ids in a filter, when it is parsed, then they are read and a malformed list is rejected":
+    let (filter, problem) = parseSubscriptionFilter(%*{"taskIds": ["a", "b"]})
+    check problem.isNone
+    check filter.taskIds == @["a", "b"]
+    check parseSubscriptionFilter(%*{"taskIds": "a"}).problem == some("taskIds must be an array")
+    check parseSubscriptionFilter(%*{"taskIds": ["a", 1]}).problem == some("taskIds must hold strings")
+    check parseSubscriptionFilter(%*{"taskIds": "a"}).filter.taskIds.len == 0
+
+  test "Given a filter that names one type or uri or task, when asked whether it is empty, then only the filter naming nothing is":
+    check SubscriptionFilter().isEmpty
+    check not SubscriptionFilter(toolsListChanged: true).isEmpty
+    check not SubscriptionFilter(promptsListChanged: true).isEmpty
+    check not SubscriptionFilter(resourcesListChanged: true).isEmpty
+    check not SubscriptionFilter(resourceSubscriptions: @[Config]).isEmpty
+    check not SubscriptionFilter(taskIds: @["task-1"]).isEmpty
+
+  test "Given a filter with task ids, when a task status notification arrives, then only the listed tasks are wanted":
+    let filter = SubscriptionFilter(taskIds: @["task-1"])
+    check filter.wants("notifications/tasks", %*{"taskId": "task-1"})
+    check not filter.wants("notifications/tasks", %*{"taskId": "task-2"})
+    check not filter.wants("notifications/tasks", %*{"status": "working"})
+    check not filter.wants("notifications/tasks", nil)
+    check not filter.wants("notifications/tasks", %*["task-1"])
+
+  test "Given malformed notification params, when asked whether they are wanted, then they never are":
+    let filter = SubscriptionFilter(resourceSubscriptions: @[""], taskIds: @[""])
+    check not filter.wants("notifications/resources/updated", nil)
+    check not filter.wants("notifications/resources/updated", %*{"other": 1})
+    check not filter.wants("notifications/resources/updated", %*{"uri": 5})
+    check not filter.wants("notifications/tasks", %*{"taskId": 5})
+    check not filter.wants("notifications/tasks", %*{"other": 1})
+
+  test "Given params that cannot hold a subscription id, when it is read, then there is none":
+    check subscriptionIdOf(nil).isNone
+    check subscriptionIdOf(%*[1]).isNone
+    check subscriptionIdOf(%*{"_meta": 5}).isNone
+    check subscriptionIdOf(%*{"_meta": {"io.modelcontextprotocol/subscriptionId": true}}).isNone
+
+  test "Given params with a _meta of their own, when tagged with a subscription id, then the other keys stay and the original is untouched":
+    let params = %*{"uri": Config, "_meta": {"progressToken": 3}}
+    let tagged = withSubscriptionId(params, %"listen-1")
+    check tagged["_meta"]["progressToken"].getInt() == 3
+    check tagged["_meta"]["io.modelcontextprotocol/subscriptionId"].getStr() == "listen-1"
+    check tagged["uri"].getStr() == Config
+    check not params["_meta"].hasKey("io.modelcontextprotocol/subscriptionId")
+    check withSubscriptionId(%*{"_meta": 5}, %"listen-1")["_meta"] ==
+      %*{"io.modelcontextprotocol/subscriptionId": "listen-1"}
+
 suite "subscriptions on the server (2026-07-28 only)":
 
   test "Given a listen request, when the server accepts it, then the acknowledgment is the first message and carries the subscription id":
@@ -537,6 +592,57 @@ suite "subscriptions on the client":
       for _ in 0 ..< 3:
         discard waitFor client.listen(SubscriptionFilter(toolsListChanged: true), options)
       check token.heldWaiters == 0
+
+  test "Given an acknowledgment that honors everything asked for, when the client reports what was not honored, then nothing is reported":
+    for v in versionsWith(ftSubscriptionsListen):
+      let honored = %*{"toolsListChanged": true, "promptsListChanged": true,
+        "resourcesListChanged": true, "resourceSubscriptions": [Config], "taskIds": ["task-1"]}
+      let peer = listenPeer(proc(peer: client_peer.Peer, message: JsonNode) =
+        acknowledge(peer, message, honored))
+      let client = peer.connectedClient(v)
+      let sub = waitFor client.listen(SubscriptionFilter(
+        toolsListChanged: true, promptsListChanged: true, resourcesListChanged: true,
+        resourceSubscriptions: @[Config], taskIds: @["task-1"]))
+      check sub.unsupported().isEmpty
+
+  test "Given an acknowledgment that honors only part of the filter, when the client reports what was not honored, then it names the types, uris and tasks left out":
+    for v in versionsWith(ftSubscriptionsListen):
+      let peer = listenPeer(proc(peer: client_peer.Peer, message: JsonNode) =
+        acknowledge(peer, message, %*{"resourceSubscriptions": [Config], "taskIds": ["task-1"]}))
+      let client = peer.connectedClient(v)
+      let sub = waitFor client.listen(SubscriptionFilter(
+        toolsListChanged: true, resourcesListChanged: true,
+        resourceSubscriptions: @[Config, "file:///other"], taskIds: @["task-1", "task-2"]))
+      let left = sub.unsupported()
+      check left.toolsListChanged
+      check not left.promptsListChanged
+      check left.resourcesListChanged
+      check left.resourceSubscriptions == @["file:///other"]
+      check left.taskIds == @["task-2"]
+
+  test "Given a request that cannot be sent, when the client listens, then the transport's error is raised and no subscription is kept":
+    for v in versionsWith(ftSubscriptionsListen):
+      let peer = listenPeer(proc(peer: client_peer.Peer, message: JsonNode) = discard)
+      let client = peer.connectedClient(v)
+      let gate = newFuture[void]("test.sendGate")
+      peer.pair.client.holdSendsOf = "subscriptions/listen"
+      peer.pair.client.sendGate = gate
+      let listening = client.listen(SubscriptionFilter(toolsListChanged: true))
+      waitFor sleepAsync(5)
+      gate.fail(newException(McpTransportError, "the connection broke"))
+      expect McpTransportError:
+        discard waitFor listening
+      check client.subscriptions.len == 0
+
+  test "Given a zero timeout, when the server acknowledges after the client's default, then the client waits and returns the subscription":
+    for v in versionsWith(ftSubscriptionsListen):
+      let peer = listenPeer(proc(peer: client_peer.Peer, message: JsonNode) =
+        sleepAsync(80).addCallback(proc() = acknowledge(peer, message, %*{"toolsListChanged": true})))
+      let client = peer.connectedClient(v)
+      client.requestTimeoutMs = 20
+      let sub = waitFor client.listen(SubscriptionFilter(toolsListChanged: true),
+        McpRequestOptions(timeoutMs: some(0)))
+      check sub.acknowledged.isSome
 
   test "Given a server that rejects the listen request, when the client listens, then it raises McpRequestError":
     for v in versionsWith(ftSubscriptionsListen):
