@@ -126,6 +126,26 @@ suite "sampling":
     peer.ask(%"s1", "sampling/createMessage", %*{"maxTokens": 1})
     check peer.responseTo("s1")["error"]["code"].getInt() == -32602
 
+  test "Given a temperature that is not a number, when the server asks, then the client answers invalid params naming the field and the handler is not called":
+    var called = false
+    let peer = startPeer(nil)
+    discard peer.connectedClient(LegacyDefault, proc(client: McpClient) =
+      client.setSamplingHandler(proc(request: McpSamplingRequest): Future[McpSamplingResult] {.async.} =
+        called = true))
+    let broken = samplingParams.copy()
+    broken["temperature"] = %"hot"
+    peer.ask(%"s1", "sampling/createMessage", broken)
+    let answer = peer.responseTo("s1")
+    check answer["error"]["code"].getInt() == -32602
+    check "temperature" in answer["error"]["message"].getStr()
+    check not called
+
+  test "Given params that are not an object, when they are parsed as a sampling request, then McpProtocolError is raised":
+    expect McpProtocolError:
+      discard parseSamplingRequest(nil)
+    expect McpProtocolError:
+      discard parseSamplingRequest(%*[1])
+
   test "Given a connected client, when a sampling handler is set, then McpError is raised":
     let peer = startPeer(nil)
     let client = peer.connectedClient(LegacyDefault)
@@ -166,6 +186,12 @@ suite "roots":
     waitFor client.notifyRootsListChanged()
     waitFor sleepAsync(5)
     check "notifications/roots/list_changed" in peer.sentMethods()
+
+  test "Given a connected client, when a roots provider is set, then McpError is raised":
+    let peer = startPeer(nil)
+    let client = peer.connectedClient(LegacyDefault)
+    expect McpError:
+      client.setRootsProvider(proc(): Future[seq[McpRoot]] {.async.} = return @[])
 
   test "Given roots declared without listChanged, when the client notifies, then McpUnsupportedError is raised":
     let peer = startPeer(nil)
@@ -246,3 +272,13 @@ if SpeaksModern:
       for name in ["ping", "sampling/createMessage"]:
         peer.ask(%name, name, samplingParams)
         check peer.responseTo(name)["error"]["code"].getInt() == -32601
+
+  suite "roots in the 2026-07-28 protocol":
+
+    test "Given a 2026-07-28 connection, when the client notifies that its roots changed, then McpUnsupportedError is raised and nothing is sent":
+      let peer = startPeer(nil, modern = true)
+      let client = peer.connectedClient(DefaultProtocolVersion, proc(client: McpClient) =
+        client.setRootsProvider(proc(): Future[seq[McpRoot]] {.async.} = return @[]))
+      expect McpUnsupportedError:
+        waitFor client.notifyRootsListChanged()
+      check "notifications/roots/list_changed" notin peer.sentMethods()

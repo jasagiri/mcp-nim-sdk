@@ -72,7 +72,7 @@ Feature: Requests the server makes of the client
     When the server sends sampling/createMessage
     Then the client declared sampling in initialize, passes the parsed request to the handler and sends its result in wire form
     And a handler that refuses has its error code sent, and one that fails gets an internal error, the client carrying on
-    And malformed params are answered with invalid params
+    And malformed params are answered with invalid params, also when only a typed field such as the temperature is wrong
 
   @spec:MCP-CLIENTREQ-2 @feature:ftSampling
   Scenario: A client without a sampling handler does not sample
@@ -92,7 +92,7 @@ Feature: Requests the server makes of the client
     Given a client that declared roots with listChanged
     When its roots change and it notifies
     Then notifications/roots/list_changed is sent
-    And a client that declared roots without listChanged refuses to notify
+    And a client that declared roots without listChanged refuses to notify, and so does a 2026-07-28 connection
 
   @spec:MCP-CLIENTREQ-5 @feature:ftServerInitiatedRequests
   Scenario: A client answers a server's ping and keeps the type of the request id

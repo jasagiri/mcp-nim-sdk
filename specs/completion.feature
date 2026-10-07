@@ -37,6 +37,7 @@ Feature: Argument completion
     Given a connected client
     When it completes an argument of a prompt or a resource template, with the context where the version has one
     Then the request carries ref, argument and context, and the client reads the values
+    And an answer without a completion object is a protocol error
 
   @spec:MCP-COMPLETION-6 @feature:ftCompletionsCapability
   Scenario: A client asks only a server that declared completions, from 2025-03-26

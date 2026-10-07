@@ -86,6 +86,7 @@ Feature: Content of tools, resources and prompts
     Given a tool that was listed with an outputSchema
     When the client calls it and the result has no structuredContent or one that does not conform
     Then the call raises a protocol error, unless validation is turned off for the call or the result reports a failure
+    And a later listing of the tool without an outputSchema ends the checking
 
   @spec:MCP-STRUCTOUT-6 @feature:ftStructuredToolOutput
   Scenario: A result is returned unchecked when nothing says what to check
@@ -188,6 +189,13 @@ Feature: Content of tools, resources and prompts
     Given a server whose answer has a title, description, mimeType, text, blob or nextCursor that is not a string
     When the client reads the answer
     Then it raises a protocol error naming the operation and the field, and an absent field is still none
+
+  @spec:MCP-CONTENT-FIELDS-2
+  Scenario: A content block of the wrong shape is a protocol violation
+    Given a server whose answer holds a content block that is not an object, or an embedded resource without its resource object
+    When the client reads the answer
+    Then it raises a protocol error
+    And an embedded resource without a mimeType is written back without one
 
   @spec:MCP-ICONS-6 @feature:ftIcons
   Scenario: An icon is fetched the way the security considerations ask

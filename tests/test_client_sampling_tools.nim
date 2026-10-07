@@ -2,7 +2,7 @@
 ## declares sampling.tools, refuses what it did not declare or what breaks the
 ## message rules, and checks the handler's answer before the server sees it.
 
-import std/[unittest, asyncdispatch, json, options]
+import std/[unittest, asyncdispatch, json, options, os, strutils]
 import client/client
 import client/content
 import client/sampling
@@ -16,6 +16,19 @@ proc responseTo(peer: Peer, id: string): JsonNode =
     if message.hasKey("id") and not message.hasKey("method") and message["id"].getStr() == id:
       return message
   nil
+
+proc loggedWhile(body: proc()): string =
+  ## Everything the code under test wrote to stderr.
+  let path = getTempDir() / "mcp-client-sampling-" & $getCurrentProcessId() & ".log"
+  let saved = stderr
+  stderr = open(path, fmWrite)
+  try:
+    body()
+  finally:
+    stderr.close()
+    stderr = saved
+  result = readFile(path)
+  removeFile(path)
 
 let
   weather = %*{"name": "get_weather", "inputSchema": {"type": "object"}}
@@ -120,6 +133,17 @@ if LegacyDefault >= mpv20251125:
       let reply = peer.responseTo("s1")
       check reply["error"]["code"].getInt() == -32603
       check not reply.hasKey("result")
+
+    test "Given a handler that answers toolUse without a tool_use block, when the server asks, then the client says on stderr that the answer was not sent":
+      let peer = startPeer(nil)
+      discard peer.connectedClient(mpv20251125, proc(client: McpClient) =
+        client.setSamplingHandler(proc(request: McpSamplingRequest): Future[McpSamplingResult] {.async.} =
+          return McpSamplingResult(role: "assistant", model: "m", stopReason: some("toolUse"),
+            content: McpContentItem(kind: mckText, text: "x")), tools = true))
+      let logged = loggedWhile(proc() =
+        peer.ask(%"s1", "sampling/createMessage", withTools(@[question]))
+        discard peer.responseTo("s1"))
+      check "the sampling handler's answer was not sent" in logged
 
     test "Given a request without tools, when the handler answers as before, then the result is the plain content object":
       let peer = startPeer(nil)

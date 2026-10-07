@@ -113,6 +113,8 @@ MCP-TOOLS-1 | tests/test_stdio.nim | Given a server started as a child, when the
 MCP-TOOLS-1 | tests/test_streamable_http.nim | Given an HTTP server, when the client connects and calls a tool, then the call succeeds in the newest common version
 MCP-TOOLS-1 | tests/test_era_matrix.nim | Given no initialize, when a 2026-07-28 tools/list arrives, then it is served and the server keeps no handshake state
 MCP-TOOLS-1 | tests/test_era_matrix.nim | Given a 2026-07-28 tools/call, when it is answered, then the result is complete and carries no cache fields
+MCP-TOOLS-1 | tests/test_client_operations.nim | Given a server without the tools capability, when a tool is called, then McpUnsupportedError is raised and nothing is sent
+MCP-TOOLS-1 | tests/test_client_operations.nim | Given a tool result without isError, when it is read, then isError is false
 MCP-TOOLS-2 | tests/test_era_matrix.nim | Given an initialized legacy client, when it lists tools, then the result carries no 2026-07-28 fields
 MCP-RESOURCES-1 | tests/test_server_resources_prompts.nim | Given resources, when a client lists and reads them, then entries carry uri and name and contents carry the uri with text or blob
 MCP-RESOURCES-1 | tests/test_server_errors.nim | Given a resource with two contents, when it is read, then both are returned
@@ -185,6 +187,7 @@ MCP-COMPLETION-4 | tests/test_server_completion.nim | Given a malformed request,
 MCP-COMPLETION-4 | tests/test_server_completion.nim | Given a handler that rejects the argument, when a client completes, then the answer is invalid params
 MCP-COMPLETION-5 | tests/test_client_operations.nim | Given a prompt reference, when an argument is completed, then ref and argument are sent and values read
 MCP-COMPLETION-5 | tests/test_client_operations.nim | Given a resource template reference, when completed with context, then ref/resource and context are sent
+MCP-COMPLETION-5 | tests/test_client_operations.nim | Given a completion answer without a completion object, when completing, then McpProtocolError is raised
 MCP-COMPLETION-6 | tests/test_client_operations.nim | Given 2025-03-26 or later without the completions capability, when completing, then McpUnsupportedError is raised
 MCP-COMPLETION-6 | tests/test_client_operations.nim | Given 2024-11-05, when completing, then the server need not declare completions
 MCP-COMPLETION-6 | tests/test_client_operations.nim | Given 2024-11-05, when completing with context, then McpUnsupportedError is raised
@@ -263,12 +266,16 @@ MCP-CLIENTREQ-1 | tests/test_client_server_requests.nim | Given a sampling handl
 MCP-CLIENTREQ-1 | tests/test_client_server_requests.nim | Given a handler that refuses, when the server asks, then the handler's error code is sent
 MCP-CLIENTREQ-1 | tests/test_client_server_requests.nim | Given a handler that fails, when the server asks, then an internal error is sent and the client carries on
 MCP-CLIENTREQ-1 | tests/test_client_server_requests.nim | Given malformed sampling params, when the server asks, then the client answers invalid params
+MCP-CLIENTREQ-1 | tests/test_client_server_requests.nim | Given a temperature that is not a number, when the server asks, then the client answers invalid params naming the field and the handler is not called
+MCP-CLIENTREQ-1 | tests/test_client_server_requests.nim | Given params that are not an object, when they are parsed as a sampling request, then McpProtocolError is raised
 MCP-CLIENTREQ-2 | tests/test_client_server_requests.nim | Given no sampling handler, when the server asks, then the client answers method not found
 MCP-CLIENTREQ-3 | tests/test_client_server_requests.nim | Given a roots provider, when the server asks, then the roots are listed
 MCP-CLIENTREQ-3 | tests/test_client_server_requests.nim | Given a roots provider, when the client connects, then initialize declares roots with listChanged
 MCP-CLIENTREQ-3 | tests/test_client_server_requests.nim | Given a client that declared no roots, when the server asks, then the client answers method not found
+MCP-CLIENTREQ-3 | tests/test_client_server_requests.nim | Given a connected client, when a roots provider is set, then McpError is raised
 MCP-CLIENTREQ-4 | tests/test_client_server_requests.nim | Given roots that changed, when the client notifies, then roots/list_changed is sent
 MCP-CLIENTREQ-4 | tests/test_client_server_requests.nim | Given roots declared without listChanged, when the client notifies, then McpUnsupportedError is raised
+MCP-CLIENTREQ-4 | tests/test_client_server_requests.nim | Given a 2026-07-28 connection, when the client notifies that its roots changed, then McpUnsupportedError is raised and nothing is sent
 MCP-CLIENTREQ-5 | tests/test_client_server_requests.nim | Given a legacy connection, when the server pings, then the client answers with an empty result
 MCP-CLIENTREQ-5 | tests/test_client_server_requests.nim | Given a numeric request id, when the client answers, then the id keeps its JSON type
 MCP-HTTPSTREAM-1 | tests/test_http_streams.nim | Given a request during which the server sent notifications, when posted, then the answer is an event stream with the notifications first and the response last
@@ -591,6 +598,7 @@ MCP-STRUCTOUT-5 | tests/test_structured_tool_output.nim | Given a listed tool wi
 MCP-STRUCTOUT-5 | tests/test_structured_tool_output.nim | Given a listed tool with an outputSchema, when the result is an error, then it is returned unchecked
 MCP-STRUCTOUT-5 | tests/test_structured_tool_output.nim | Given a result that breaks the schema, when validation is switched off for the call, then it is returned
 MCP-STRUCTOUT-5 | tests/test_structured_tool_output.nim | Given a schema in a dialect that cannot be checked, when the result arrives, then the dialect is reported and validateOutput = false reads it
+MCP-STRUCTOUT-5 | tests/test_structured_tool_output.nim | Given a tool listed with an outputSchema, when it is listed again without one, then its results are no longer checked
 MCP-STRUCTOUT-6 | tests/test_structured_tool_output.nim | Given a version without structured output, when the result has no structuredContent, then it is served as it is
 MCP-STRUCTOUT-6 | tests/test_structured_tool_output.nim | Given a tool without an outputSchema, when it returns any structuredContent, then it is not checked
 MCP-STRUCTOUT-6 | tests/test_structured_tool_output.nim | Given a client of a version without structured output, when a result breaks the schema, then it is returned unchecked
@@ -751,6 +759,7 @@ MCP-SAMPLING-TOOLS-6 | tests/test_sampling_tools_payload.nim | Given a result wi
 MCP-SAMPLING-TOOLS-6 | tests/test_server_sampling_tools.nim | Given an answer that stops for tool use without a tool_use block, when it arrives, then McpPayloadError is raised
 MCP-SAMPLING-TOOLS-6 | tests/test_server_sampling_tools.nim | Given tool choice none, when the answer holds a tool_use, then McpPayloadError is raised
 MCP-SAMPLING-TOOLS-7 | tests/test_client_sampling_tools.nim | Given a handler that answers toolUse without a tool_use block, when the server asks, then the server gets an internal error and not the answer
+MCP-SAMPLING-TOOLS-7 | tests/test_client_sampling_tools.nim | Given a handler that answers toolUse without a tool_use block, when the server asks, then the client says on stderr that the answer was not sent
 MCP-TRACE-1 | tests/test_trace_context.nim | Given the specification's traceparent, when validated, then it is accepted
 MCP-TRACE-1 | tests/test_trace_context.nim | Given a traceparent of a later version with extra fields, when validated, then it is accepted
 MCP-TRACE-1 | tests/test_trace_context.nim | Given malformed traceparents, when validated, then each is rejected
@@ -1040,6 +1049,9 @@ MCP-CONTENT-FIELDS-1 | tests/test_client_field_types.nim | Given a nextCursor th
 MCP-CONTENT-FIELDS-1 | tests/test_client_field_types.nim | Given a prompt description that is a list, when the prompt is fetched, then it is a protocol error
 MCP-CONTENT-FIELDS-1 | tests/test_client_field_types.nim | Given an embedded text resource whose text is a number, when parsed, then it is a protocol error
 MCP-CONTENT-FIELDS-1 | tests/test_client_field_types.nim | Given optional strings that are absent or strings, when read, then they are none or the string
+MCP-CONTENT-FIELDS-2 | tests/test_client_operations.nim | Given a content block that is not an object, when it is parsed, then McpProtocolError is raised
+MCP-CONTENT-FIELDS-2 | tests/test_client_operations.nim | Given an embedded resource block without its resource object, when it is parsed, then McpProtocolError is raised
+MCP-CONTENT-FIELDS-2 | tests/test_client_operations.nim | Given an embedded resource without a mimeType, when it is written back, then no mimeType key is written
 MCP-ICONS-6 | tests/test_icon_fetch.nim | Given an icon of an allowed type, when fetched, then the bytes and the type found in them are returned
 MCP-ICONS-6 | tests/test_icon_fetch.nim | Given a fetch, when the request goes out, then it carries no credentials
 MCP-ICONS-6 | tests/test_icon_fetch.nim | Given an icon whose Content-Type disagrees with its bytes, when fetched, then it is refused

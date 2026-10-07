@@ -3,6 +3,7 @@
 
 import std/[unittest, asyncdispatch, json, options, strutils]
 import client/client
+import client/content
 import client/tools
 import client/resources
 import client/prompts
@@ -380,6 +381,48 @@ suite "ping, logging and completion":
     expect McpUnsupportedError:
       discard waitFor client.complete(promptRef("p"), "a", "b", {"c": "d"})
     check peer.requestsFor("completion/complete").len == 0
+
+suite "answers that do not have the shape the specification gives them":
+
+  test "Given a server without the tools capability, when a tool is called, then McpUnsupportedError is raised and nothing is sent":
+    let peer = startPeer(nil, capabilities = %*{"prompts": {}})
+    let client = peer.connectedClient(LegacyDefault)
+    expect McpUnsupportedError:
+      discard waitFor client.callTool("t")
+    check peer.requestsFor("tools/call").len == 0
+
+  test "Given a tool result without isError, when it is read, then isError is false":
+    let peer = startPeer(proc(peer: Peer, message: JsonNode) =
+      if message{"method"}.getStr() == "tools/call":
+        peer.reply(message["id"], %*{"content": [{"type": "text", "text": "ok"}]}))
+    let client = peer.connectedClient(LegacyDefault)
+    check not waitFor(client.callTool("t")).isError
+
+  test "Given a content block that is not an object, when it is parsed, then McpProtocolError is raised":
+    expect McpProtocolError:
+      discard parseContentItem(%"text", "tools/call")
+    expect McpProtocolError:
+      discard parseContentItem(nil, "tools/call")
+
+  test "Given an embedded resource block without its resource object, when it is parsed, then McpProtocolError is raised":
+    expect McpProtocolError:
+      discard parseContentItem(%*{"type": "resource"}, "tools/call")
+    expect McpProtocolError:
+      discard parseContentItem(%*{"type": "resource", "resource": "file:///a"}, "tools/call")
+
+  test "Given an embedded resource without a mimeType, when it is written back, then no mimeType key is written":
+    let item = parseContentItem(
+      %*{"type": "resource", "resource": {"uri": "file:///a", "text": "x"}}, "tools/call")
+    check item.toJson()["resource"] == %*{"uri": "file:///a", "text": "x"}
+
+  test "Given a completion answer without a completion object, when completing, then McpProtocolError is raised":
+    let peer = startPeer(proc(peer: Peer, message: JsonNode) =
+      if message{"method"}.getStr() == "completion/complete":
+        peer.reply(message["id"], newJObject()),
+      capabilities = AllCapabilities)
+    let client = peer.connectedClient(LegacyDefault)
+    expect McpProtocolError:
+      discard waitFor client.complete(promptRef("p"), "a", "b")
 
 if SpeaksModern:
   suite "operations in the 2026-07-28 protocol":

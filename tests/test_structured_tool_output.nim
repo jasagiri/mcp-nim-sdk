@@ -194,6 +194,25 @@ suite "structured output in the client":
       let result = waitFor client.callTool("weather", validateOutput = false)
       check result.structuredContent.isSome
 
+  test "Given a tool listed with an outputSchema, when it is listed again without one, then its results are no longer checked":
+    if LegacyDefault.has(ftStructuredToolOutput):
+      var listings = 0
+      let peer = startPeer(proc(peer: client_peer.Peer, message: JsonNode) =
+        case message{"method"}.getStr()
+        of "tools/list":
+          inc listings
+          let tool = if listings == 1: weatherTool()
+                     else: %*{"name": "weather", "inputSchema": {"type": "object"}}
+          peer.reply(message["id"], %*{"tools": [tool]})
+        of "tools/call":
+          peer.reply(message["id"], %*{"content": [], "structuredContent": {"temperature": "hot"}})
+        else: discard)
+      let client = peer.listed()
+      expect McpProtocolError:
+        discard waitFor client.callTool("weather")
+      discard waitFor client.listAllTools()
+      check waitFor(client.callTool("weather")).structuredContent.isSome
+
   test "Given a tool that was never listed, when it is called, then its structuredContent is not checked":
     let peer = weatherPeer(%*{"content": [], "structuredContent": {"temperature": "hot"}})
     let client = peer.connectedClient(LegacyDefault)
