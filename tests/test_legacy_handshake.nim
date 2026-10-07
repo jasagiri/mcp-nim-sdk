@@ -129,6 +129,46 @@ suite "legacy handshake: server":
     check server.clientCapabilities.get.roots.isNone
     check server.clientCapabilities.get.sampling.isNone
 
+  test "Given a server, when initialize declares capabilities as objects, then the server records each of them":
+    let pair = newLoopbackPair()
+    let server = newMcpServer(info())
+    waitFor server.attachTransport(pair.server)
+    let reply = replyTo(pair, %*{"jsonrpc": "2.0", "id": "1", "method": "initialize",
+      "params": {"protocolVersion": $LegacyDefault, "capabilities": {
+        "roots": {"listChanged": true},
+        "sampling": {"tools": {}, "context": {}},
+        "elicitation": {"form": {}, "url": {}},
+        "experimental": {"x": 1},
+        "extensions": {"com.example/e": {}}}}})
+    check reply.hasKey("result")
+    let declared = server.clientCapabilities.get
+    check declared.roots.get.listChanged
+    check declared.sampling.get.tools
+    check declared.sampling.get.context
+    check declared.elicitation.get.form
+    check declared.elicitation.get.url
+    check declared.experimental.get == %*{"x": 1}
+    check declared.extensions.get == %*{"com.example/e": {}}
+
+  test "Given a server, when initialize declares sampling features and extensions that are no objects, then the server counts them as not declared":
+    let pair = newLoopbackPair()
+    let server = newMcpServer(info())
+    waitFor server.attachTransport(pair.server)
+    let reply = replyTo(pair, %*{"jsonrpc": "2.0", "id": "1", "method": "initialize",
+      "params": {"protocolVersion": $LegacyDefault, "capabilities": {
+        "sampling": {"tools": true, "context": "yes"},
+        "elicitation": 5,
+        "experimental": 5,
+        "extensions": ["com.example/e"]}}})
+    check reply.hasKey("result")
+    let declared = server.clientCapabilities.get
+    check declared.sampling.isSome
+    check not declared.sampling.get.tools
+    check not declared.sampling.get.context
+    check declared.elicitation.isNone
+    check declared.experimental.isNone
+    check declared.extensions.isNone
+
   test "Given a legacy client, when it pings with a string id or an integer id, then the answer is an empty result of JSON-RPC 2.0 under the same id":
     let pair = newLoopbackPair()
     let server = newMcpServer(info())

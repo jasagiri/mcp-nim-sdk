@@ -19,6 +19,7 @@ Feature: Starting a conversation
     When it answers initialize
     Then no other capability is present
     And a client that omits capabilities, or sends null for one, is still answered, the null counting as not declared
+    And the capabilities a client declares as objects are kept, and a sampling feature, experimental or extensions that is no object counts as not declared
 
   @spec:MCP-LIFECYCLE-3 @feature:ftInitializeHandshake
   Scenario: A client offers its version, then confirms

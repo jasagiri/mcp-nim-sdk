@@ -24,6 +24,8 @@ MCP-LIFECYCLE-1 | tests/test_legacy_handshake.nim | Given a server, when initial
 MCP-LIFECYCLE-2 | tests/test_legacy_handshake.nim | Given a server, when initialize omits capabilities, then it still answers with a result
 MCP-LIFECYCLE-2 | tests/test_legacy_handshake.nim | Given a server that declares only tools, when it answers initialize, then no other capability key is present
 MCP-LIFECYCLE-2 | tests/test_legacy_handshake.nim | Given a server, when initialize carries null for a capability, then it treats the capability as not declared
+MCP-LIFECYCLE-2 | tests/test_legacy_handshake.nim | Given a server, when initialize declares capabilities as objects, then the server records each of them
+MCP-LIFECYCLE-2 | tests/test_legacy_handshake.nim | Given a server, when initialize declares sampling features and extensions that are no objects, then the server counts them as not declared
 MCP-LIFECYCLE-3 | tests/test_legacy_handshake.nim | Given a client limited to a legacy version, when it connects, then initialize offers that version as a string
 MCP-LIFECYCLE-3 | tests/test_legacy_handshake.nim | Given a client that declares only roots, when it connects, then initialize carries no other capability key
 MCP-LIFECYCLE-3 | tests/test_legacy_handshake.nim | Given a legacy client, when the handshake completes, then it sends notifications/initialized
