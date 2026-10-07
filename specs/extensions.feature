@@ -108,7 +108,7 @@ Feature: Extensions (2026-07-28)
     When a client that declared the extension calls it
     Then the answer is an internal error and carries no result
 
-  @spec:MCP-EXT-g2e-ext-mrtr-1 @feature:ftExtensions
+  @spec:MCP-EXT-18 @feature:ftExtensions
   Scenario: Only the tasks extension takes over tasks/get and tasks/cancel
     Given the tasks extension and another extension, both registered
     When each registers tasks/get, tasks/cancel and another method of the core

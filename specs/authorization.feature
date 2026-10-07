@@ -31,7 +31,7 @@ Feature: Authorization
     And a token in the query string is not looked at
     And a verifier that fails gives 500 and the request does not go through
 
-  @spec:MCP-AUTH-g2e-auth-diag-1 @feature:ftAuthorization
+  @spec:MCP-AUTH-32 @feature:ftAuthorization
   Scenario: The challenge says what is wrong and no more
     Given a protected MCP endpoint
     When a request has no token, a token the verifier rejects, or a token that lacks scope
@@ -40,7 +40,7 @@ Feature: Authorization
     And a token that lacks scope gets insufficient_scope with no description
     And the metadata document lists scopes_supported only when scopes are configured
 
-  @spec:MCP-AUTH-g2e-auth-diag-2 @feature:ftAuthorization
+  @spec:MCP-AUTH-33 @feature:ftAuthorization
   Scenario: A token of unreasonable length, a verifier that fails and an unwritable scope are refused and reported
     Given a protected MCP endpoint
     When a token is longer than 8192 characters, the verifier fails, or the verifier names a scope that cannot go in a header

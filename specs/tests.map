@@ -432,13 +432,13 @@ MCP-AUTH-2 | tests/test_auth_resource_server.nim | Given the Bearer scheme in an
 MCP-AUTH-2 | tests/test_auth_resource_server.nim | Given Authorization headers that are not Bearer tokens and version <version>, when posted, then each is 401 and none reaches the verifier
 MCP-AUTH-2 | tests/test_auth_resource_server.nim | Given a token in the query string and version <version>, when posted, then it is not looked at
 MCP-AUTH-2 | tests/test_auth_resource_server.nim | Given a verifier that fails and version <version>, when posted, then the answer is 500 and the request does not go through
-MCP-AUTH-g2e-auth-diag-1 | tests/test_auth_resource_server.nim | Given a request without a token and version <version>, when posted, then the challenge names no error: there was no credential to fault
-MCP-AUTH-g2e-auth-diag-1 | tests/test_auth_resource_server.nim | Given a token the verifier rejects and version <version>, when posted, then the challenge explains the refusal
-MCP-AUTH-g2e-auth-diag-1 | tests/test_auth_resource_server.nim | Given a token that lacks scope and version <version>, when posted, then the challenge carries no empty description
-MCP-AUTH-g2e-auth-diag-1 | tests/test_auth_resource_server.nim | Given a configuration that lists no scopes, when the metadata document is made, then it has no scopes_supported
-MCP-AUTH-g2e-auth-diag-2 | tests/test_auth_resource_server.nim | Given a token of 8192 characters and one of 8193 and version <version>, when each arrives, then only the longer is refused before the verifier
-MCP-AUTH-g2e-auth-diag-2 | tests/test_auth_resource_server.nim | Given a verifier that fails and version <version>, when a token arrives, then stderr names the failure and not the token
-MCP-AUTH-g2e-auth-diag-2 | tests/test_auth_resource_server.nim | Given a verifier that names a scope that cannot go in a header and version <version>, when a token arrives, then the answer is 500 without a challenge and stderr says why
+MCP-AUTH-32 | tests/test_auth_resource_server.nim | Given a request without a token and version <version>, when posted, then the challenge names no error: there was no credential to fault
+MCP-AUTH-32 | tests/test_auth_resource_server.nim | Given a token the verifier rejects and version <version>, when posted, then the challenge explains the refusal
+MCP-AUTH-32 | tests/test_auth_resource_server.nim | Given a token that lacks scope and version <version>, when posted, then the challenge carries no empty description
+MCP-AUTH-32 | tests/test_auth_resource_server.nim | Given a configuration that lists no scopes, when the metadata document is made, then it has no scopes_supported
+MCP-AUTH-33 | tests/test_auth_resource_server.nim | Given a token of 8192 characters and one of 8193 and version <version>, when each arrives, then only the longer is refused before the verifier
+MCP-AUTH-33 | tests/test_auth_resource_server.nim | Given a verifier that fails and version <version>, when a token arrives, then stderr names the failure and not the token
+MCP-AUTH-33 | tests/test_auth_resource_server.nim | Given a verifier that names a scope that cannot go in a header and version <version>, when a token arrives, then the answer is 500 without a challenge and stderr says why
 MCP-AUTH-3 | tests/test_auth_resource_server.nim | Given the verifier is told the resource and version <version>, when a token arrives, then it gets the canonical URI of this server to check the audience against
 MCP-AUTH-4 | tests/test_auth_resource_server.nim | Given a token that lacks scope and version <version>, when posted, then the answer is 403 insufficient_scope with all needed scopes
 MCP-AUTH-5 | tests/test_auth_resource_server.nim | Given a delete or get on the endpoint without a token and version <version>, when sent, then it is 401 too
@@ -754,21 +754,21 @@ MCP-ELICIT-5 | tests/test_client_elicitation.nim | Given an elicitation handler,
 MCP-ELICIT-5 | tests/test_client_elicitation.nim | Given a request whose schema breaks the rules, when it arrives, then the client answers invalid params and the handler is not called
 MCP-ELICIT-5 | tests/test_client_elicitation.nim | Given no elicitation handler, when the server asks, then the client answers method not found
 MCP-ELICIT-5 | tests/test_client_elicitation.nim | Given a connection of a version before elicitation, when the server asks, then the client answers method not found
-MCP-ELICIT-g2e-elicit-b-1 | tests/test_elicitation_payload.nim | Given a string or number bound that is not a number or is inverted, when checked, then the bound is named
-MCP-ELICIT-g2e-elicit-b-1 | tests/test_elicitation_payload.nim | Given a plain enum that is empty or holds a non-string, when checked, then it is reported
-MCP-ELICIT-g2e-elicit-b-1 | tests/test_elicitation_payload.nim | Given minItems or maxItems that is not a non-negative integer, when checked, then it is reported
-MCP-ELICIT-g2e-elicit-b-1 | tests/test_elicitation_payload.nim | Given a multi-select with no items or with an enum that breaks the rules, when checked, then the items are named
-MCP-ELICIT-g2e-elicit-b-1 | tests/test_elicitation_payload.nim | Given a property that is not an object or has no type, when checked, then that property is named
-MCP-ELICIT-g2e-elicit-b-1 | tests/test_elicitation_payload.nim | Given required that is not an array, when checked, then it is reported
-MCP-ELICIT-g2e-elicit-b-2 | tests/test_elicitation_payload.nim | Given params that are not an object, when checked, then that is the report
-MCP-ELICIT-g2e-elicit-b-2 | tests/test_elicitation_payload.nim | Given a mode that is a string but neither form nor url, when read, then McpPayloadError names it
-MCP-ELICIT-g2e-elicit-b-2 | tests/test_elicitation_payload.nim | Given error data whose entry is a URL request that breaks the rules, when checked, then it is reported
-MCP-ELICIT-g2e-elicit-b-2 | tests/test_elicitation_payload.nim | Given a result or content that is not an object, when checked, then it is reported
-MCP-ELICIT-g2e-elicit-b-2 | tests/test_elicitation_payload.nim | Given an answer to params with an unknown mode, when checked, then the mode is reported
-MCP-ELICIT-g2e-elicit-b-3 | tests/test_elicitation_payload.nim | Given values at the limits of their bounds, when checked, then they are accepted
-MCP-ELICIT-g2e-elicit-b-3 | tests/test_elicitation_payload.nim | Given a date-time with an offset, when checked, then only a well-formed offset is accepted
-MCP-ELICIT-g2e-elicit-b-4 | tests/test_elicitation_payload.nim | Given several problems, when an error is built, then its message joins them after the context
-MCP-ELICIT-g2e-elicit-b-4 | tests/test_elicitation_payload.nim | Given no problem, when an error is built, then the contract is broken loudly
+MCP-ELICIT-6 | tests/test_elicitation_payload.nim | Given a string or number bound that is not a number or is inverted, when checked, then the bound is named
+MCP-ELICIT-6 | tests/test_elicitation_payload.nim | Given a plain enum that is empty or holds a non-string, when checked, then it is reported
+MCP-ELICIT-6 | tests/test_elicitation_payload.nim | Given minItems or maxItems that is not a non-negative integer, when checked, then it is reported
+MCP-ELICIT-6 | tests/test_elicitation_payload.nim | Given a multi-select with no items or with an enum that breaks the rules, when checked, then the items are named
+MCP-ELICIT-6 | tests/test_elicitation_payload.nim | Given a property that is not an object or has no type, when checked, then that property is named
+MCP-ELICIT-6 | tests/test_elicitation_payload.nim | Given required that is not an array, when checked, then it is reported
+MCP-ELICIT-7 | tests/test_elicitation_payload.nim | Given params that are not an object, when checked, then that is the report
+MCP-ELICIT-7 | tests/test_elicitation_payload.nim | Given a mode that is a string but neither form nor url, when read, then McpPayloadError names it
+MCP-ELICIT-7 | tests/test_elicitation_payload.nim | Given error data whose entry is a URL request that breaks the rules, when checked, then it is reported
+MCP-ELICIT-7 | tests/test_elicitation_payload.nim | Given a result or content that is not an object, when checked, then it is reported
+MCP-ELICIT-7 | tests/test_elicitation_payload.nim | Given an answer to params with an unknown mode, when checked, then the mode is reported
+MCP-ELICIT-8 | tests/test_elicitation_payload.nim | Given values at the limits of their bounds, when checked, then they are accepted
+MCP-ELICIT-8 | tests/test_elicitation_payload.nim | Given a date-time with an offset, when checked, then only a well-formed offset is accepted
+MCP-ELICIT-9 | tests/test_elicitation_payload.nim | Given several problems, when an error is built, then its message joins them after the context
+MCP-ELICIT-9 | tests/test_elicitation_payload.nim | Given no problem, when an error is built, then the contract is broken loudly
 MCP-ELICIT-ENUM-1 | tests/test_elicitation_payload.nim | Given titled and untitled, single and multi-select enums, when checked in 2025-11-25 and later, then they are accepted
 MCP-ELICIT-ENUM-1 | tests/test_elicitation_payload.nim | Given oneOf or an array property, when checked in 2025-06-18, then it is reported
 MCP-ELICIT-ENUM-1 | tests/test_elicitation_payload.nim | Given a oneOf entry without const or title, when checked, then the property is named
@@ -816,9 +816,9 @@ MCP-ELICIT-URL-5 | tests/test_server_elicitation.nim | Given a handler that need
 MCP-ELICIT-URL-5 | tests/test_client_elicitation.nim | Given a request that failed with -32042, when the error is read, then the URL requests come back
 MCP-ELICIT-URL-5 | tests/test_client_elicitation.nim | Given an error with another code, when read for URL requests, then there are none
 MCP-ELICIT-URL-5 | tests/test_client_elicitation.nim | Given a -32042 error with malformed data, when read, then McpProtocolError is raised
-MCP-ELICIT-g2e-elicit-b-5 | tests/test_server_elicitation.nim | Given a handler that asks in url mode, when a tool is called, then the request belongs to the tool call and the answer drives the result
-MCP-ELICIT-g2e-elicit-b-5 | tests/test_tasks_end_to_end.nim | Given a tool that elicits in form or url mode inside a task, when the client has answered, then the task is working again while the tool goes on
-MCP-ELICIT-g2e-elicit-b-5 | tests/test_client_elicitation.nim | Given an accepted URL request, when a completion arrives without a string id, then it is ignored and the real one still reaches the callback
+MCP-ELICIT-10 | tests/test_server_elicitation.nim | Given a handler that asks in url mode, when a tool is called, then the request belongs to the tool call and the answer drives the result
+MCP-ELICIT-10 | tests/test_tasks_end_to_end.nim | Given a tool that elicits in form or url mode inside a task, when the client has answered, then the task is working again while the tool goes on
+MCP-ELICIT-10 | tests/test_client_elicitation.nim | Given an accepted URL request, when a completion arrives without a string id, then it is ignored and the real one still reaches the callback
 MCP-SAMPLING-TOOLS-1 | tests/test_sampling_tools_payload.nim | Given tools and a tool choice, when the request is checked in 2025-11-25 and later, then there is nothing to report
 MCP-SAMPLING-TOOLS-1 | tests/test_sampling_tools_payload.nim | Given a result that stops for tool use with tool_use blocks, when checked, then it is valid
 MCP-SAMPLING-TOOLS-1 | tests/test_sampling_tools_payload.nim | Given tool uses, when they are read from a result, then they come back as blocks in order
@@ -1263,7 +1263,7 @@ MCP-EXT-15 | tests/test_extensions.nim | Given a server whose capabilities are n
 MCP-EXT-15 | tests/test_extensions.nim | Given a top-level capability registered with settings, with none and with settings that are not an object, when registered, then the first two are declared to a 2026-07-28 client and the last raises
 MCP-EXT-16 | tests/test_extensions.nim | Given a method of a specification that asks nothing of the client, when a client that declared nothing calls it, then the server serves it
 MCP-EXT-17 | tests/test_extensions.nim | Given an extension method whose handler returns something that is not an object, when it answers, then it is an internal error
-MCP-EXT-g2e-ext-mrtr-1 | tests/test_extensions.nim | Given the tasks extension and another one, when each registers tasks/get, tasks/cancel and other core methods, then only the tasks extension may take over those two
+MCP-EXT-18 | tests/test_extensions.nim | Given the tasks extension and another one, when each registers tasks/get, tasks/cancel and other core methods, then only the tasks extension may take over those two
 MCP-HOOKS-1 | tests/test_request_hooks.nim | Given handlers that never read ctx.meta, when requests carry different _meta, then the results are identical
 MCP-HOOKS-1 | tests/test_request_hooks.nim | Given no response filter, when the standard methods are answered, then each result is what the handler returned
 MCP-HOOKS-1 | tests/test_request_hooks.nim | Given no list scope, or one that answers nil, when lists are asked and a tool is called, then the registered handlers serve and validate

@@ -104,31 +104,31 @@ Feature: Elicitation
     Then the call fails with code -32042 and data.elicitations lists the URL requests
     And the client reads them back, and malformed data is a protocol error
 
-  @spec:MCP-ELICIT-g2e-elicit-b-1 @feature:ftElicitation
+  @spec:MCP-ELICIT-6 @feature:ftElicitation
   Scenario: A requested schema's bounds, counts, enums and properties are well formed
     Given a requestedSchema
     When a bound is not a number or is inverted, an enum is empty or holds a non-string, a count is not a non-negative integer, a multi-select has no items, or a property is not an object, has no type, or required is not an array
     Then the property or field is named in the report, and equal bounds are accepted
 
-  @spec:MCP-ELICIT-g2e-elicit-b-2 @feature:ftElicitation
+  @spec:MCP-ELICIT-7 @feature:ftElicitation
   Scenario: Params, results and content that are not objects, and an unknown mode, are reported as such
     Given elicitation/create params, an answer or its content
     When the params, the answer or the content is not an object, or the mode is neither form nor url
     Then the report says so, and the same mode check applies to the answer of a request
 
-  @spec:MCP-ELICIT-g2e-elicit-b-3 @feature:ftElicitation
+  @spec:MCP-ELICIT-8 @feature:ftElicitation
   Scenario: A value at the limit of its bounds is accepted and a date-time offset is RFC 3339
     Given a form with length and numeric bounds and a date-time property
     When the content sits exactly on a bound, or carries a numeric offset
     Then it is accepted, and an offset that is not (+|-)HH:MM with HH up to 23 and MM up to 59 is reported
 
-  @spec:MCP-ELICIT-g2e-elicit-b-4 @feature:ftElicitation
+  @spec:MCP-ELICIT-9 @feature:ftElicitation
   Scenario: A payload error joins its problems and refuses to be built without one
     Given a list of problems
     When a payload error is built
     Then its message is the context and the problems joined by semicolons, and an empty list is a contract violation
 
-  @spec:MCP-ELICIT-g2e-elicit-b-5 @feature:ftUrlElicitation
+  @spec:MCP-ELICIT-10 @feature:ftUrlElicitation
   Scenario: A handler asks in url mode on behalf of its request, and a task is working again once the answer is in
     Given a tool handler that asks the client in url or form mode, in a task or not
     When the client answers

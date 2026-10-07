@@ -13,7 +13,7 @@
 同値の 4 件は、4 件をまとめて当てても `test_auth_resource_server.nim` が全部通ることを確かめた。
 テストはすべて `tests/test_auth_resource_server.nim` にあり (ジョブの `testCommand` に既に入っている。ジョブの変更は無い)、
 認可のある 4 つの版 (2025-03-26 / 2025-06-18 / 2025-11-25 / 2026-07-28) それぞれで通る。`-d:mcpDefaultProtocolVersion=2024-11-05` でもコンパイルでき、通る。
-Scenario は仮の id `MCP-AUTH-g2e-auth-diag-1` と `-2` (リードが付け替える)。
+Scenario は仮の id `MCP-AUTH-32` と `-2` (リードが付け替える)。
 
 | id | 場所 | 変異 | 原文 → 変異 | 分類 | 理由 / 検出するテスト |
 |---:|---|---|---|---|---|
