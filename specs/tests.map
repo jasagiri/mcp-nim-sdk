@@ -466,16 +466,16 @@ MCP-HTTPSSE-10 | tests/test_http_sse_legacy.nim | Given a server that is down, w
 MCP-HTTPSSE-10 | tests/test_http_sse_legacy.nim | Given a full client and server, when the client connects through the wrapper to the old transport, then initialize and tools/list work
 MCP-HTTPSSE-11 | tests/test_http_sse_legacy.nim | Given the SSE endpoint switched off, when a client posts to the messages path, then the answer is 404
 MCP-HTTPSSE-11 | tests/test_http_sse_legacy.nim | Given the messages path, when a client sends GET, then the answer is 405 naming POST
-MCP-SSE-g2f-small-1 | tests/test_event_stream.nim | Given a byte order mark after the first line, when read, then it stays part of that line's field name
-MCP-SSE-g2f-small-2 | tests/test_event_stream.nim | Given blank lines after an event, when read, then they dispatch nothing more
-MCP-SSE-g2f-small-3 | tests/test_event_stream.nim | Given a line of exactly the limit, when read, then it is accepted and one byte more raises SseLimitError
-MCP-TRANSPORT-g2f-small-1 | tests/test_transport.nim | Given a transport that ignores routes, when a request is sent with one, then the plain send gets it
-MCP-TRANSPORT-g2f-small-1 | tests/test_transport.nim | Given a transport that ignores routes, when a notification is sent with one, then the plain send gets it
-MCP-TRANSPORT-g2f-small-2 | tests/test_transport.nim | Given a request, when classified, then it is a request only
-MCP-TRANSPORT-g2f-small-2 | tests/test_transport.nim | Given a notification, when classified, then it is a notification only
-MCP-TRANSPORT-g2f-small-2 | tests/test_transport.nim | Given a result or an error with an id, when classified, then it is a response only
-MCP-TRANSPORT-g2f-small-2 | tests/test_transport.nim | Given a result without an id, when classified, then it is nothing
-MCP-TRANSPORT-g2f-small-2 | tests/test_transport.nim | Given JSON that is not an object, when classified, then it is nothing
+MCP-SSE-1 | tests/test_event_stream.nim | Given a byte order mark after the first line, when read, then it stays part of that line's field name
+MCP-SSE-2 | tests/test_event_stream.nim | Given blank lines after an event, when read, then they dispatch nothing more
+MCP-SSE-3 | tests/test_event_stream.nim | Given a line of exactly the limit, when read, then it is accepted and one byte more raises SseLimitError
+MCP-TRANSPORT-1 | tests/test_transport.nim | Given a transport that ignores routes, when a request is sent with one, then the plain send gets it
+MCP-TRANSPORT-1 | tests/test_transport.nim | Given a transport that ignores routes, when a notification is sent with one, then the plain send gets it
+MCP-TRANSPORT-2 | tests/test_transport.nim | Given a request, when classified, then it is a request only
+MCP-TRANSPORT-2 | tests/test_transport.nim | Given a notification, when classified, then it is a notification only
+MCP-TRANSPORT-2 | tests/test_transport.nim | Given a result or an error with an id, when classified, then it is a response only
+MCP-TRANSPORT-2 | tests/test_transport.nim | Given a result without an id, when classified, then it is nothing
+MCP-TRANSPORT-2 | tests/test_transport.nim | Given JSON that is not an object, when classified, then it is nothing
 MCP-AUTH-1 | tests/test_auth_resource_server.nim | Given a request without a token and version <version>, when posted, then the answer is 401 with a Bearer challenge
 MCP-AUTH-1 | tests/test_auth_resource_server.nim | Given a token the verifier rejects and version <version>, when posted, then the answer is 401 invalid_token
 MCP-AUTH-2 | tests/test_auth_resource_server.nim | Given a token the verifier accepts and version <version>, when posted, then the request reaches the MCP server

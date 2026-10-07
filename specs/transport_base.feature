@@ -8,13 +8,13 @@ Feature: What every transport shares
   method and no id, a response an id and a result or an error. The route of a
   send is the SDK's own (Streamable HTTP uses it to pick a stream).
 
-  @spec:MCP-TRANSPORT-g2f-small-1
+  @spec:MCP-TRANSPORT-1
   Scenario: A transport that ignores routes receives a routed send as a plain send
     Given a transport that implements only the sends without a route
     When the server sends a request or a notification naming a route
     Then the plain send is called with it
 
-  @spec:MCP-TRANSPORT-g2f-small-2
+  @spec:MCP-TRANSPORT-2
   Scenario: A message is a request, a notification or a response by its members
     Given a JSON-RPC message
     When it is classified
