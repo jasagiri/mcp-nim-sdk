@@ -4,7 +4,7 @@
 ## Needs `-d:ssl` (nimble test runs it so) and the `openssl` command, which
 ## makes a CA and a server certificate in a temporary directory.
 
-import std/[unittest, asyncdispatch, httpcore, net, os, osproc, strutils]
+import std/[unittest, asyncdispatch, asyncnet, httpcore, net, os, osproc, strutils]
 import transport/http_wire
 
 when not defined(ssl):
@@ -143,3 +143,102 @@ else:
       let port = silent.getLocalAddr()[1].int
       let attempt = request("https://127.0.0.1:" & $port & "/", HttpGet, connectTimeoutMs = 300)
       check "no connection" in outcome(attempt)
+
+  # ---- mutation review, g2g-hc-c ----------------------------------------
+
+  proc openDescriptors(): int =
+    for _ in walkDir("/dev/fd"):
+      inc result
+
+  proc settle(limitMs: int) =
+    var waited = 0
+    while waited < limitMs:
+      poll(20)
+      waited += 20
+
+  type Delayed = ref object
+    ## Forwards each connection to `upstream` after `delayMs`, so that a
+    ## handshake is slower than a connect timeout; records whether the client
+    ## ended the connection.
+    socket: AsyncSocket
+    port: int
+    clientEnded: bool
+
+  proc pump(source, sink: AsyncSocket) {.async.} =
+    ## Copies until `source` ends. The other direction closes both sockets
+    ## when its side ends; a read or write that was waiting then fails, which
+    ## ends this one too.
+    try:
+      while true:
+        let data = await source.recv(4096)
+        if data.len == 0:
+          break
+        await sink.send(data)
+    except OSError:
+      discard
+
+  proc startDelayed(upstream, delayMs: int): Delayed =
+    let forwarder = Delayed(socket: newAsyncSocket(buffered = false))
+    forwarder.socket.bindAddr(Port(0), "127.0.0.1")
+    forwarder.socket.listen()
+    forwarder.port = forwarder.socket.getLocalAddr()[1].int
+    proc relay(client: AsyncSocket) {.async.} =
+      await sleepAsync(delayMs)
+      let onward = newAsyncSocket(buffered = false)
+      await onward.connect("127.0.0.1", Port(upstream))
+      asyncCheck pump(onward, client)
+      await pump(client, onward)
+      forwarder.clientEnded = true
+      onward.close()
+      client.close()
+    proc acceptLoop() {.async.} =
+      while true:
+        asyncCheck relay(await forwarder.socket.accept())
+    asyncCheck acceptLoop()
+    forwarder
+
+  suite "connections that do not become a response (mutation review, g2g-hc-c)":
+    var pki: Pki
+
+    setup:
+      pki.dir = getTempDir() / ("mcp-wire-tls-g2g-hc-c-" & $getCurrentProcessId())
+      createDir(pki.dir)
+      try:
+        pki.caFile = makeCa(pki.dir)
+      except OSError as e:
+        fail()
+        echo "cannot run: " & e.msg
+
+    teardown:
+      removeDir(pki.dir)
+
+    test "Given a certificate for another host, when requests are refused again and again, then no connection is left open":
+      if not dirExists("/dev/fd"):
+        skip()
+      else:
+        let (cert, key) = makeServerCert(pki.dir, "refused", "DNS:other.example")
+        let (port, server) = serve(cert, key)
+        defer:
+          server.kill()
+          server.close()
+        let url = "https://wire.example:" & $port & "/"
+        check "is not valid for" in outcome(url, pki.caFile, "127.0.0.1")
+        settle(200)
+        let before = openDescriptors()
+        for attempt in 1 .. 3:
+          check "is not valid for" in outcome(url, pki.caFile, "127.0.0.1")
+        settle(300)
+        check openDescriptors() == before
+
+    test "Given a handshake that ends after the connect timeout, when it ends, then the connection is closed by the client":
+      let (cert, key) = makeServerCert(pki.dir, "late", "DNS:wire.example")
+      let (port, server) = serve(cert, key)
+      defer:
+        server.kill()
+        server.close()
+      let delayed = startDelayed(port, 800)
+      let attempt = request("https://wire.example:" & $delayed.port & "/", HttpGet,
+                            caFile = pki.caFile, connectTo = "127.0.0.1", connectTimeoutMs = 200)
+      check "no connection" in outcome(attempt)
+      settle(2500)
+      check delayed.clientEnded

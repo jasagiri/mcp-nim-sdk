@@ -183,6 +183,181 @@ proc openDescriptors(): int =
   for _ in walkDir("/dev/fd"):
     inc result
 
+suite "the request on the wire (mutation review, g2g-hc-c)":
+
+  test "Given a header name with digits, when a request is sent, then it is accepted and sent":
+    let server = startScripted(ending(plain))
+    let headers = newHttpHeaders({"X-Request-Id-2": "abc", "H2": "x"})
+    check outcome(request(server.scriptedUrl, HttpGet, headers)) == "ok"
+    let sent = server.requests[0].toLowerAscii()
+    check "x-request-id-2: abc\c\L" in sent
+    check "h2: x\c\L" in sent
+
+  test "Given a header with an empty name, when a request is sent, then it is refused and nothing is connected":
+    let server = startScripted(ending(plain))
+    let headers = newHttpHeaders({"": "x"})
+    check "header name" in outcome(request(server.scriptedUrl, HttpGet, headers))
+    check server.requests.len == 0
+
+  test "Given a path with a NUL but no space, or a space but no control character, when a request is sent, then it is refused":
+    let server = startScripted(ending(plain))
+    check "line break or control" in outcome(request(server.scriptedUrl("/a\x00b"), HttpGet))
+    check "line break or control" in outcome(request(server.scriptedUrl("/a\c\Lb"), HttpGet))
+    check "line break or control" in outcome(request(server.scriptedUrl("/a b"), HttpGet))
+    check "line break or control" in outcome(request(server.scriptedUrl("/a?b c"), HttpGet))
+    check "line break or control" in outcome(request(server.scriptedUrl("/a?b\x00c"), HttpGet))
+    check server.requests.len == 0
+
+  test "Given a URL with neither path nor query, when a request is sent, then the request line asks for /":
+    let server = startScripted(ending(plain))
+    check outcome(request("http://127.0.0.1:" & $server.port, HttpGet)) == "ok"
+    check server.requests[0].startsWith("GET / HTTP/1.1\c\L")
+
+  test "Given a URL with a path and a query, when a request is sent, then the request line carries both":
+    let server = startScripted(ending(plain))
+    check outcome(request(server.scriptedUrl("/a/b?c=1&d=2"), HttpGet)) == "ok"
+    check server.requests[0].startsWith("GET /a/b?c=1&d=2 HTTP/1.1\c\L")
+
+  test "Given a GET without a body, when it is sent, then there is no Content-Length":
+    let server = startScripted(ending(plain))
+    check outcome(request(server.scriptedUrl, HttpGet)) == "ok"
+    check "content-length" notin server.requests[0].toLowerAscii()
+
+  test "Given a POST without a body, when it is sent, then it says Content-Length: 0":
+    let server = startScripted(ending(plain))
+    check outcome(request(server.scriptedUrl, HttpPost)) == "ok"
+    check "Content-Length: 0\c\L" in server.requests[0]
+
+  test "Given a PUT with a body, when it is sent, then Content-Length is its size and the body follows the head":
+    let server = startScripted(ending(plain))
+    check outcome(request(server.scriptedUrl, HttpPut, body = "abc")) == "ok"
+    check "Content-Length: 3\c\L" in server.requests[0]
+    check server.requests[0].endsWith("\c\L\c\Labc")
+
+  test "Given a Host header and a Content-Length of the caller, when a request is sent, then the SDK's own are the only ones":
+    let server = startScripted(ending(plain))
+    let headers = newHttpHeaders({"Host": "evil.example", "Content-Length": "999", "Connection": "keep-alive"})
+    check outcome(request(server.scriptedUrl, HttpPost, headers, body = "ab")) == "ok"
+    let sent = server.requests[0].toLowerAscii()
+    check sent.count("host:") == 1
+    check "host: 127.0.0.1:" & $server.port & "\c\L" in sent
+    check sent.count("content-length:") == 1
+    check sent.count("connection:") == 1
+    check "connection: close\c\L" in sent
+
+  test "Given a URL with no port, when a request is sent, then the connection is attempted (the URL is not refused as malformed)":
+    let attempt = outcome(request("http://127.0.0.1/", HttpGet))
+    check "invalid integer" notin attempt
+
+  test "Given a host that does not resolve and a server on loopback, when a request is sent, then the host named in the URL is the one that is connected to":
+    let server = startScripted(ending(plain))
+    let attempt = outcome(request("http://no-such-host.invalid:" & $server.port & "/", HttpGet))
+    check attempt != "ok"
+    check server.requests.len == 0
+
+when not defined(ssl):
+  suite "https without TLS support (mutation review, g2g-hc-c)":
+
+    test "Given a build without -d:ssl, when https URLs are refused again and again, then no connection is left open":
+      if not dirExists("/dev/fd"):
+        skip()
+      else:
+        let server = startScripted(ending(plain))
+        let url = "https://127.0.0.1:" & $server.port & "/"
+        check "https needs a build with -d:ssl" in outcome(request(url, HttpGet))
+        settle(100)
+        let before = openDescriptors()
+        for attempt in 1 .. 3:
+          check "https needs a build with -d:ssl" in outcome(request(url, HttpGet))
+        settle(200)
+        check openDescriptors() == before
+
+suite "the response head (mutation review, g2g-hc-c)":
+
+  test "Given a status line without a reason phrase, when the head is read, then the status is taken":
+    let server = startScripted(ending("HTTP/1.1 200\c\LContent-Length: 0\c\L\c\L"))
+    let response = request(server.scriptedUrl, HttpGet).finishedBy
+    check response.code == Http200
+
+  test "Given a status line that does not start with HTTP/, or has no status, when the head is read, then it is refused":
+    let wrong = startScripted(ending("FOO/1.1 200 OK\c\LContent-Length: 0\c\L\c\L"))
+    check "not an HTTP response" in outcome(request(wrong.scriptedUrl, HttpGet))
+    let bare = startScripted(ending("HTTP/1.1\c\LContent-Length: 0\c\L\c\L"))
+    check "not an HTTP response" in outcome(request(bare.scriptedUrl, HttpGet))
+
+  test "Given a head of nothing but the blank line, when it is read, then it is refused as not HTTP":
+    let server = startScripted(ending("\c\L\c\L"))
+    check "not an HTTP response" in outcome(request(server.scriptedUrl, HttpGet))
+
+  test "Given a header line that starts with a colon, when the head is read, then it is no header":
+    let server = startScripted(ending("HTTP/1.1 200 OK\c\L: nameless\c\LContent-Length: 0\c\L\c\L"))
+    let response = request(server.scriptedUrl, HttpGet).finishedBy
+    check response.headers.len == 1
+    check response.headers.hasKey("Content-Length")
+
+  test "Given a HEAD request, when the answer announces a Content-Length, then there is no body to wait for":
+    let server = startScripted(keeping("HTTP/1.1 200 OK\c\LContent-Length: 10\c\L\c\L"))
+    let response = request(server.scriptedUrl, HttpHead).finishedBy
+    check response.isFinished
+    response.close()
+
+  test "Given an answer of 1xx, 204 or 304, when the head is read, then the response has no body and is finished":
+    for code in [101, 204, 304]:
+      let server = startScripted(keeping("HTTP/1.1 " & $code & " X\c\L\c\L"))
+      let response = request(server.scriptedUrl, HttpGet).finishedBy
+      check response.isFinished
+      response.close()
+
+  test "Given an answer that is not HTTP, when the request fails, then the connection is closed":
+    let server = startScripted(keeping("FOO\c\L\c\L"))
+    check "not an HTTP response" in outcome(request(server.scriptedUrl, HttpGet))
+    settle(100)
+    check server.ended[0]
+
+  test "Given a server that never answers, when the header timeout passes, then the connection is closed":
+    let server = startScripted(keeping(""))
+    check "no response" in outcome(request(server.scriptedUrl, HttpGet, headerTimeoutMs = 200))
+    settle(100)
+    check server.ended[0]
+
+suite "redirects (mutation review, g2g-hc-c)":
+
+  proc redirecting(location: string): Answer =
+    ## The first connection is answered with a 307 to `location` ({port} is
+    ## the port of this server) and kept open until the client ends it; later
+    ## ones with 200.
+    result = proc (server: Scripted, client: AsyncSocket, index: int): Future[void] {.async.} =
+      if index == 0:
+        await client.send("HTTP/1.1 307 Temporary Redirect\c\LLocation: " & location.replace("{port}", $server.port) &
+                          "\c\LContent-Length: 0\c\L\c\L")
+        await holdUntilEnd(server, client, index)
+      else:
+        await client.send(plain)
+
+  test "Given a redirect within the server, when it is followed, then the connection that gave it is closed":
+    let server = startScripted(redirecting("/two"))
+    check outcome(request(server.scriptedUrl("/one"), HttpGet)) == "ok"
+    settle(100)
+    check server.requests.len == 2
+    check server.ended[0]
+
+  test "Given a redirect to another server, when it is refused, then the connection that gave it is closed":
+    let server = startScripted(redirecting("http://evil.example/steal"))
+    check "redirects to another server" in outcome(request(server.scriptedUrl("/one"), HttpGet))
+    settle(100)
+    check server.ended[0]
+
+  test "Given a redirect to another host name on the same port, when a request is sent, then it is refused and nothing is sent there":
+    let server = startScripted(redirecting("http://localhost:{port}/two"))
+    let headers = newHttpHeaders({"Authorization": "Bearer secret"})
+    check "redirects to another server" in outcome(request(server.scriptedUrl("/one"), HttpGet, headers))
+    check server.requests.len == 1
+
+  test "Given a redirect to the same host and port under another scheme, when a request is sent, then it is refused":
+    let server = startScripted(redirecting("https://127.0.0.1:{port}/two"))
+    check "redirects to another server" in outcome(request(server.scriptedUrl("/one"), HttpGet))
+    check server.requests.len == 1
+
 proc closeAfter(response: WireResponse, delayMs: int) {.async.} =
   await sleepAsync(delayMs)
   response.close()
@@ -219,6 +394,89 @@ proc sending(parts: varargs[string]): Answer =
         await sleepAsync(PauseMs)
       await client.send(piece)
     await holdUntilEnd(server, client, index)
+
+suite "what a server may send and how long (mutation review, g2g-hc-c)":
+
+  test "Given a connect timeout of 0, when a request is sent, then there is no limit and the server is reached":
+    let server = startScripted(ending(plain))
+    check outcome(request(server.scriptedUrl, HttpGet, connectTimeoutMs = 0)) == "ok"
+
+  test "Given a head of exactly the limit before its end arrives, when the end arrives, then it is accepted":
+    let prefix = "HTTP/1.1 200 OK\c\LContent-Length: 0\c\LX-Pad: "
+    let server = startScripted(sending(prefix & repeat('a', MaxHead - prefix.len), "\c\L\c\L"))
+    let response = request(server.scriptedUrl, HttpGet).finishedBy
+    check response.code == Http200
+    response.close()
+
+  test "Given a head one byte over the limit without its end, when it has arrived, then it is refused as too long":
+    let prefix = "HTTP/1.1 200 OK\c\LContent-Length: 0\c\LX-Pad: "
+    let server = startScripted(sending(prefix & repeat('a', MaxHead + 1 - prefix.len)))
+    check "too long" in outcome(request(server.scriptedUrl, HttpGet))
+
+  test "Given a chunk size line of 64 bytes, when the body is read, then it is accepted; of 65, then it is refused":
+    let fits = startScripted(ending(chunkedHead & "5;" & repeat('x', 61) & "\c\Lhello\c\L0\c\L\c\L"))
+    check request(fits.scriptedUrl, HttpGet).finishedBy.bodyOrError == "hello"
+    let over = startScripted(ending(chunkedHead & "5;" & repeat('x', 62) & "\c\Lhello\c\L0\c\L\c\L"))
+    check "chunk size line is too long" in request(over.scriptedUrl, HttpGet).finishedBy.bodyOrError
+
+  test "Given a chunked body that ends with the last chunk and a blank line, when it is read to the end, then it is returned whole":
+    let server = startScripted(ending(chunkedHead & "5\c\Lhello\c\L0\c\L\c\L"))
+    check request(server.scriptedUrl, HttpGet).finishedBy.bodyOrError == "hello"
+
+  test "Given a chunked body whose last chunk has arrived but not the blank line, when it is read, then the body is not complete until the blank line":
+    let server = startScripted(sending(chunkedHead & "5\c\Lhello\c\L0\c\L", "\c\L"))
+    let response = request(server.scriptedUrl, HttpGet).finishedBy
+    let reading = response.readAll(1000)
+    settle(250)
+    check not reading.finished
+    check reading.outcome == "ok"
+    check reading.read() == "hello"
+
+  test "Given a chunked body with a trailer, when the trailer has arrived but not the blank line, then the body is not complete until the blank line":
+    let server = startScripted(sending(chunkedHead & "5\c\Lhello\c\L0\c\LX-Trailer: v\c\L", "\c\L"))
+    let response = request(server.scriptedUrl, HttpGet).finishedBy
+    let reading = response.readAll(1000)
+    settle(250)
+    check not reading.finished
+    check reading.outcome == "ok"
+    check reading.read() == "hello"
+
+  test "Given a chunk size line that arrives before its data, when the body is read, then the read goes on to the data":
+    let server = startScripted(sending(chunkedHead & "5\c\L", "hello\c\L0\c\L\c\L"))
+    check request(server.scriptedUrl, HttpGet).finishedBy.bodyOrError == "hello"
+
+  test "Given a chunked body that is complete, when the server keeps the connection open, then the body ends and the connection is closed":
+    let server = startScripted(sending(chunkedHead & "5\c\Lhello\c\L0\c\L\c\L"))
+    let response = request(server.scriptedUrl, HttpGet).finishedBy
+    check response.bodyOrError == "hello"
+    settle(100)
+    check server.ended[0]
+
+  test "Given a body of exactly maxSize bytes, when it is read, then it is returned; one byte more, then it is refused":
+    let body = "0123456789"
+    let server = startScripted(ending("HTTP/1.1 200 OK\c\LContent-Length: 10\c\L\c\L" & body))
+    check request(server.scriptedUrl, HttpGet).finishedBy.bodyOrError(maxSize = 10) == body
+    check "exceeds 9 bytes" in request(server.scriptedUrl, HttpGet).finishedBy.bodyOrError(maxSize = 9)
+
+  test "Given a body that grows past maxSize, when the read is refused, then the connection is closed":
+    let server = startScripted(sending("HTTP/1.1 200 OK\c\LContent-Length: 1000\c\L\c\L" & repeat('a', 20)))
+    let response = request(server.scriptedUrl, HttpGet).finishedBy
+    check "exceeds 9 bytes" in response.bodyOrError(maxSize = 9)
+    check response.isFinished
+    settle(100)
+    check server.ended[0]
+
+  test "Given a Content-Length body cut short, when it is read, then it fails and the response is finished":
+    let server = startScripted(ending("HTTP/1.1 200 OK\c\LContent-Length: 100\c\L\c\L" & "abcde"))
+    let response = request(server.scriptedUrl, HttpGet).finishedBy
+    check "before the whole body arrived" in response.bodyOrError
+    check response.isFinished
+
+  test "Given a chunked body cut short, when it is read, then it fails and the response is finished":
+    let server = startScripted(ending(chunkedHead & "5\c\Lhello\c\L"))
+    let response = request(server.scriptedUrl, HttpGet).finishedBy
+    check "before the last chunk" in response.bodyOrError
+    check response.isFinished
 
 suite "closing a response while it is read (mutation review, g2g-hc-c)":
 
