@@ -4,7 +4,7 @@
     "src/transport/guarded_wire.nim",
     "src/client/icons.nim"
   ],
-  "testCommand": "nim c -r --hints:off tests/test_security_address.nim && nim c -r --hints:off tests/test_security_icons.nim && nim c -r --hints:off tests/test_icons.nim",
+  "testCommand": "nim c -r --hints:off tests/test_security_address.nim && nim c -r --hints:off tests/test_security_icons.nim && nim c -r --hints:off tests/test_icons.nim && nim c -r --hints:off tests/test_icon_fetch.nim",
   "mutators": [
     "AOR",
     "ROR",
