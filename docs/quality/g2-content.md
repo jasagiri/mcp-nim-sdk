@@ -11,7 +11,7 @@
 分類は、1 = 同値、3 = 穴 (新しい外部仕様テストを足した)。
 クラス 3 の 25 件は、変異を手で当てて下に書いたテストが落ちることを確かめた (変異 1 件ごとにテスト 1 回、当てたあとファイルは戻した)。
 足したテストは `tests/test_structured_tool_output.nim` (S)、`tests/test_tool_annotations.nim` (A)、`tests/test_implementation_info.nim` (I) にあり、3 本ともジョブの `testCommand` に入っているので、ジョブの変更は要らない。
-Scenario は `MCP-CONTENT-g2f-content-1` から `-6` (`specs/content.feature`、対応は `specs/tests.map`)。
+Scenario は `MCP-CONTENT-FIELDS-3` から `-6` (`specs/content.feature`、対応は `specs/tests.map`)。
 `SIGSEGV` と書いた行は、変異で `nil` を返す (または `nil` を読む) ため、テストが `FAILED` を出さずに異常終了して落ちた。落ちることに変わりはない。
 
 ### content.nim

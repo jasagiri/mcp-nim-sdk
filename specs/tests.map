@@ -733,21 +733,21 @@ MCP-STRUCTOUT-5 | tests/test_structured_tool_output.nim | Given a listed tool wi
 MCP-STRUCTOUT-5 | tests/test_structured_tool_output.nim | Given a result that breaks the schema, when validation is switched off for the call, then it is returned
 MCP-STRUCTOUT-5 | tests/test_structured_tool_output.nim | Given a schema in a dialect that cannot be checked, when the result arrives, then the dialect is reported and validateOutput = false reads it
 MCP-STRUCTOUT-5 | tests/test_structured_tool_output.nim | Given a tool listed with an outputSchema, when it is listed again without one, then its results are no longer checked
-MCP-CONTENT-g2f-content-1 | tests/test_tool_annotations.nim | Given annotations that are not a JSON object, when they are parsed, then the protocol violation is raised
-MCP-CONTENT-g2f-content-1 | tests/test_implementation_info.nim | Given an Implementation that is not a JSON object, when it is parsed, then the protocol violation is raised
-MCP-CONTENT-g2f-content-2 | tests/test_structured_tool_output.nim | Given a value that is not a JSON object, when any version filters it, then it comes back as it is
-MCP-CONTENT-g2f-content-3 | tests/test_structured_tool_output.nim | Given a version without structured output, when structuredContent comes with an empty content list, then a text block carries the data
-MCP-CONTENT-g2f-content-3 | tests/test_structured_tool_output.nim | Given a version without structured output, when structuredContent comes without content, then a text block carries the data
-MCP-CONTENT-g2f-content-3 | tests/test_structured_tool_output.nim | Given a result without content or with content that is not a list, when any version sends it, then it is sent as it is
-MCP-CONTENT-g2f-content-4 | tests/test_structured_tool_output.nim | Given a prompt result without messages or with messages that are not a list, when any version sends it, then it is sent as it is
-MCP-CONTENT-g2f-content-4 | tests/test_structured_tool_output.nim | Given a message without content or that is not an object, when any version sends the prompt, then the message is sent as it is
-MCP-CONTENT-g2f-content-5 | tests/test_structured_tool_output.nim | Given a result with structuredContent and an empty content list, when its text is serialized, then the content is that one text block
-MCP-CONTENT-g2f-content-5 | tests/test_structured_tool_output.nim | Given a result without structuredContent, when its text is serialized, then it is unchanged
-MCP-CONTENT-g2f-content-6 | tests/test_tool_annotations.nim | Given only a name, a description and a schema, when a tool is defined, then no optional field is sent
-MCP-CONTENT-g2f-content-6 | tests/test_tool_annotations.nim | Given a title and an icon, when a tool is defined, then both are sent
-MCP-CONTENT-g2f-content-6 | tests/test_tool_annotations.nim | Given a result built without isError, when it is read, then it is not an error
-MCP-CONTENT-g2f-content-6 | tests/test_tool_annotations.nim | Given no description and no required list, when schemas are built, then only type and shape are sent
-MCP-CONTENT-g2f-content-6 | tests/test_tool_annotations.nim | Given a description and required names, when schemas are built, then they are sent
+MCP-CONTENT-FIELDS-3 | tests/test_tool_annotations.nim | Given annotations that are not a JSON object, when they are parsed, then the protocol violation is raised
+MCP-CONTENT-FIELDS-3 | tests/test_implementation_info.nim | Given an Implementation that is not a JSON object, when it is parsed, then the protocol violation is raised
+MCP-CONTENT-FIELDS-4 | tests/test_structured_tool_output.nim | Given a value that is not a JSON object, when any version filters it, then it comes back as it is
+MCP-CONTENT-FIELDS-5 | tests/test_structured_tool_output.nim | Given a version without structured output, when structuredContent comes with an empty content list, then a text block carries the data
+MCP-CONTENT-FIELDS-5 | tests/test_structured_tool_output.nim | Given a version without structured output, when structuredContent comes without content, then a text block carries the data
+MCP-CONTENT-FIELDS-5 | tests/test_structured_tool_output.nim | Given a result without content or with content that is not a list, when any version sends it, then it is sent as it is
+MCP-CONTENT-FIELDS-6 | tests/test_structured_tool_output.nim | Given a prompt result without messages or with messages that are not a list, when any version sends it, then it is sent as it is
+MCP-CONTENT-FIELDS-6 | tests/test_structured_tool_output.nim | Given a message without content or that is not an object, when any version sends the prompt, then the message is sent as it is
+MCP-CONTENT-FIELDS-7 | tests/test_structured_tool_output.nim | Given a result with structuredContent and an empty content list, when its text is serialized, then the content is that one text block
+MCP-CONTENT-FIELDS-7 | tests/test_structured_tool_output.nim | Given a result without structuredContent, when its text is serialized, then it is unchanged
+MCP-CONTENT-FIELDS-8 | tests/test_tool_annotations.nim | Given only a name, a description and a schema, when a tool is defined, then no optional field is sent
+MCP-CONTENT-FIELDS-8 | tests/test_tool_annotations.nim | Given a title and an icon, when a tool is defined, then both are sent
+MCP-CONTENT-FIELDS-8 | tests/test_tool_annotations.nim | Given a result built without isError, when it is read, then it is not an error
+MCP-CONTENT-FIELDS-8 | tests/test_tool_annotations.nim | Given no description and no required list, when schemas are built, then only type and shape are sent
+MCP-CONTENT-FIELDS-8 | tests/test_tool_annotations.nim | Given a description and required names, when schemas are built, then they are sent
 MCP-STRUCTOUT-6 | tests/test_structured_tool_output.nim | Given a version without structured output, when the result has no structuredContent, then it is served as it is
 MCP-STRUCTOUT-6 | tests/test_structured_tool_output.nim | Given a tool without an outputSchema, when it returns any structuredContent, then it is not checked
 MCP-STRUCTOUT-6 | tests/test_structured_tool_output.nim | Given a client of a version without structured output, when a result breaks the schema, then it is returned unchecked
