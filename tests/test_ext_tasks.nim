@@ -26,8 +26,6 @@ proc caps(extra: JsonNode = nil): JsonNode =
       declared[key] = value
   %*{"io.modelcontextprotocol/clientCapabilities": declared}
 
-proc withoutExt(): JsonNode = nil
-
 type Fixture = object
   server: McpServer
   tasks: TasksExtension
