@@ -591,3 +591,195 @@ if speaks >= mpv20250326:
       waitFor transport.close()
       waitFor sleepAsync(100)
       check server.sessionCount == 0
+
+import std/os
+
+proc loggedWhile(body: proc()): string =
+  ## Everything the code under test wrote to stderr.
+  let path = getTempDir() / "mcp-http-client-streams-" & $getCurrentProcessId() & ".log"
+  let saved = stderr
+  stderr = open(path, fmWrite)
+  try:
+    body()
+  finally:
+    stderr.close()
+    stderr = saved
+  result = readFile(path)
+  removeFile(path)
+
+type Behaviour = enum
+  bAnswered      ## 200 with the JSON response
+  bSseAnswered   ## 200 event stream carrying the response, then the end of the stream
+  bDropped       ## the connection is closed without a word
+  bHold          ## says nothing until the client leaves
+  bSseEnds       ## 200 event stream with one notification and no response
+  bPartialHold   ## 200 JSON head, a piece of the body, then silence
+
+proc startSequence(script: seq[Behaviour]): string =
+  ## A server whose n-th POST behaves as `script[n]` (the last one repeats).
+  var served = 0
+  startRawServer(proc(request: RawRequest, socket: AsyncSocket) {.async.} =
+    let id = parseJson(request.body)["id"]
+    let step = script[min(served, script.high)]
+    inc served
+    case step
+    of bAnswered:
+      let body = $(%*{"jsonrpc": "2.0", "id": id, "result": {}})
+      await socket.send("HTTP/1.1 200 OK\c\LContent-Type: application/json\c\L" &
+                        "Content-Length: " & $body.len & "\c\L\c\L" & body)
+    of bSseAnswered:
+      await eventStreamHead(socket)
+      await socket.send(formatSseEvent($(%*{"jsonrpc": "2.0", "id": id, "result": {}})))
+    of bDropped:
+      discard
+    of bHold:
+      discard await socket.recv(1)
+    of bSseEnds:
+      await eventStreamHead(socket)
+      await socket.send(formatSseEvent($notification(1)))
+    of bPartialHold:
+      await socket.send("HTTP/1.1 200 OK\c\LContent-Type: application/json\c\L" &
+                        "Content-Length: 100\c\L\c\L{\"jsonrpc\": \"2.0\", ")
+      discard await socket.recv(1))
+
+proc requestIsForgotten(transport: StreamableHttpTransport) =
+  ## The request "r1" is sent again, to a server that ends its stream without
+  ## the response: the transport must say so with the local stream-closed
+  ## error, as it does for any request. Nothing that was done to the earlier
+  ## "r1" may keep it silent.
+  transport.ask()
+  check transport.received()["method"].getStr() == "notifications/progress"
+  check transport.received().isLocalStreamClosed
+
+suite "client: what an exchange leaves behind (mutation review, g2g-hc-b)":
+
+  test "Given a request whose answer was a JSON body, when the client cancels it afterwards and sends the id again, then the new request is not taken for a cancelled one":
+    let transport = newStreamableHttpTransport(startSequence(@[bAnswered, bSseEnds]))
+    transport.ask()
+    check transport.received()["id"].getStr() == "r1"
+    transport.cancelRequest("r1")
+    transport.requestIsForgotten()
+    waitFor transport.close()
+
+  test "Given a request whose answer was an event stream, when the client cancels it afterwards and sends the id again, then the new request is not taken for a cancelled one":
+    let transport = newStreamableHttpTransport(startSequence(@[bSseAnswered, bSseEnds]))
+    transport.ask()
+    check transport.received()["id"].getStr() == "r1"
+    waitFor sleepAsync(50)
+    transport.cancelRequest("r1")
+    transport.requestIsForgotten()
+    waitFor transport.close()
+
+  test "Given a request that failed after the connection was made, when the client cancels it afterwards and sends the id again, then the new request is not taken for a cancelled one":
+    let transport = newStreamableHttpTransport(startSequence(@[bDropped, bSseEnds]))
+    expect McpTransportError:
+      transport.ask()
+    transport.cancelRequest("r1")
+    transport.requestIsForgotten()
+    waitFor transport.close()
+
+  test "Given a request cancelled while the server was silent, when the id is sent again, then the new request is not taken for a cancelled one":
+    let transport = newStreamableHttpTransport(startSequence(@[bHold, bSseEnds]))
+    let sending = transport.sendRequest(newJsonRpcRequest("r1", "tools/call", newJObject()))
+    waitFor sleepAsync(50)
+    transport.cancelRequest("r1")
+    check waitFor withTimeout(sending, 2000)
+    transport.requestIsForgotten()
+    waitFor transport.close()
+
+  test "Given a request cancelled while its JSON body is arriving, when the client cancels, then sendRequest returns without an error and the id is free again":
+    let transport = newStreamableHttpTransport(startSequence(@[bPartialHold, bSseEnds]))
+    let sending = transport.sendRequest(newJsonRpcRequest("r1", "tools/call", newJObject()))
+    waitFor sleepAsync(50)
+    transport.cancelRequest("r1")
+    check waitFor withTimeout(sending, 2000)
+    check not sending.failed
+    transport.requestIsForgotten()
+    waitFor transport.close()
+
+  test "Given a request whose event stream is open, when the transport closes, then the server sees the client leave":
+    let hangedUp = newFuture[void]("hangedUp")
+    let url = startRawServer(proc(request: RawRequest, socket: AsyncSocket) {.async.} =
+      await eventStreamHead(socket)
+      await socket.send(formatSseEvent($notification(1)))
+      let gone = await socket.recv(1)
+      if gone.len == 0:
+        hangedUp.complete())
+    let transport = newStreamableHttpTransport(url)
+    transport.ask()
+    check transport.received()["method"].getStr() == "notifications/progress"
+    waitFor transport.close()
+    check waitFor withTimeout(hangedUp, 2000)
+
+  test "Given a server that answers a notification with 202 and an empty body, when the notification is sent, then the client closes the connection":
+    let hangedUp = newFuture[void]("hangedUp")
+    let url = startRawServer(proc(request: RawRequest, socket: AsyncSocket) {.async.} =
+      await socket.send("HTTP/1.1 202 Accepted\c\LContent-Length: 0\c\L\c\L")
+      let gone = await socket.recv(1)
+      if gone.len == 0:
+        hangedUp.complete())
+    let transport = newStreamableHttpTransport(url)
+    waitFor transport.sendNotification(newJsonRpcNotification("notifications/cancelled", newJObject()))
+    check waitFor withTimeout(hangedUp, 2000)
+    waitFor transport.close()
+
+if speaks >= mpv20250326:
+  suite "client: the GET stream and DELETE (mutation review, g2g-hc-b)":
+
+    test "Given a client that says initialized twice, when the GET stream is already open, then it does not open a second one":
+      var gets = 0
+      let url = startRawServer(proc(request: RawRequest, socket: AsyncSocket) {.async.} =
+        if request.httpMethod == "GET":
+          inc gets
+          await eventStreamHead(socket)
+          discard await socket.recv(1)
+        else:
+          await socket.send("HTTP/1.1 202 Accepted\c\LContent-Length: 0\c\L\c\L"))
+      let transport = newStreamableHttpTransport(url)
+      transport.protocolVersionNegotiated(speaks)
+      for _ in 1 .. 2:
+        waitFor transport.sendNotification(
+          newJsonRpcNotification("notifications/initialized", newJObject()))
+      waitFor sleepAsync(200)
+      check gets == 1
+      waitFor transport.close()
+
+    proc closingWith(answer: string): string =
+      ## What a transport with a session logs when it closes and the server
+      ## answers DELETE with `answer` (the connection is dropped when empty).
+      let url = startRawServer(proc(request: RawRequest, socket: AsyncSocket) {.async.} =
+        if answer.len > 0:
+          await socket.send(answer))
+      let transport = newStreamableHttpTransport(url)
+      transport.listenForServerMessages = false
+      transport.sessionId = some("s-1")
+      transport.protocolVersionNegotiated(speaks)
+      loggedWhile(proc() = waitFor transport.close())
+
+    test "Given a server that answers DELETE with 500, when the client closes, then the refusal is logged and closing succeeds":
+      let logged = closingWith("HTTP/1.1 500 Internal Server Error\c\LContent-Length: 0\c\L\c\L")
+      check "[mcp-http] DELETE" in logged
+      check "answered HTTP 500" in logged
+
+    test "Given a server that answers DELETE with 204 or 405, when the client closes, then nothing is logged":
+      check closingWith("HTTP/1.1 204 No Content\c\L\c\L") == ""
+      check closingWith("HTTP/1.1 405 Method Not Allowed\c\LContent-Length: 0\c\L\c\L") == ""
+
+    test "Given a server that drops the connection on DELETE, when the client closes, then the failure is logged and closing succeeds":
+      let logged = closingWith("")
+      check "[mcp-http] DELETE" in logged
+      check "failed:" in logged
+
+    test "Given a server that answers DELETE with 204 and no body, when the client closes, then the client closes the connection":
+      let hangedUp = newFuture[void]("hangedUp")
+      let url = startRawServer(proc(request: RawRequest, socket: AsyncSocket) {.async.} =
+        await socket.send("HTTP/1.1 204 No Content\c\L\c\L")
+        let gone = await socket.recv(1)
+        if gone.len == 0:
+          hangedUp.complete())
+      let transport = newStreamableHttpTransport(url)
+      transport.listenForServerMessages = false
+      transport.sessionId = some("s-1")
+      transport.protocolVersionNegotiated(speaks)
+      waitFor transport.close()
+      check waitFor withTimeout(hangedUp, 2000)

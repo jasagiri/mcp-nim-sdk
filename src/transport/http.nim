@@ -359,6 +359,16 @@ type AuthChallenged = object of CatchableError
   status: int
   wwwAuthenticate: seq[string]
 
+proc pumpAnswer(t: StreamableHttpTransport, response: WireResponse,
+                requestId: JsonNode) {.async.} =
+  ## `pump`, then forget the request: once its stream is over there is
+  ## nothing left to cancel, and `cancelRequest` must do nothing for it.
+  try:
+    await t.pump(response, requestId)
+  finally:
+    if not requestId.isNil:
+      t.inflight.del idKey(requestId)
+
 proc postOnce(t: StreamableHttpTransport, body: string,
               extraHeaders: seq[(string, string)], requestId: JsonNode) {.async.} =
   if t.closed:
@@ -391,7 +401,7 @@ proc postOnce(t: StreamableHttpTransport, body: string,
 
   if response.code.is2xx and response.isEventStream:
     t.track response
-    asyncCheck t.pump(response, requestId)
+    asyncCheck t.pumpAnswer(response, requestId)
     return
 
   var text: string
