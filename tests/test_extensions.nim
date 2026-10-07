@@ -34,6 +34,8 @@ proc widgetServer(): McpServer =
         return %*{"resultType": "widget_job", "jobId": "j1"}
       if kind == "rogue":
         return %*{"resultType": "undeclared_type"}
+      if kind == "bare":
+        return %"not an object"
       return %*{"made": params{"kind"}, "flavour": settings.get(newJObject()){"flavour"}})
 
 suite "extension identifiers and capability wire form":
@@ -142,6 +144,15 @@ suite "extensions on the server":
         return %*{"resultType": 7})
       let peer = server.connect(server.attach(), v)
       check peer.ask("tools/call", %*{"name": "t"}).errorCode == -32603
+
+  test "Given an extension method whose handler returns something that is not an object, when it answers, then it is an internal error":
+    for v in versionsWith(ftExtensions):
+      let server = widgetServer()
+      let peer = server.connect(server.attach(), v)
+      let answer = peer.ask("widgets/make", %*{"kind": "bare"},
+        meta = clientCaps(%*{Ext: {}}))
+      check answer.errorCode == -32603
+      check not answer.hasKey("result")
 
   test "Given a handler that uses ctx.requireClientExtension, when the client lacks the extension, then the answer is the missing-capability error":
     for v in versionsWith(ftExtensions):
@@ -258,6 +269,22 @@ suite "extensions on the client":
           newJObject(), clientDeclares = false)
       check bare.requestsFor("widgets/count").len == 0
 
+  test "Given a method of a specification that asks nothing of the client, when a client that declared nothing calls it, then the server serves it":
+    for v in versionsWith(ftExtensions):
+      let server = newServer(McpServerCapabilities(tools: some(McpToolsCapability())))
+      server.registerOpenMethod("example/count",
+        proc(ctx: McpRequestContext, params: JsonNode): Future[JsonNode] {.async.} =
+          return %*{"count": 3})
+      let asked = server.connect(server.attach(), v).ask("example/count", newJObject())
+      check not asked.hasKey("error")
+      check asked["result"]["count"].getInt() == 3
+      expect ValueError:
+        server.registerOpenMethod("example/count",
+          proc(ctx: McpRequestContext, params: JsonNode): Future[JsonNode] {.async.} = newJObject())
+      expect ValueError:
+        server.registerOpenMethod("tools/call",
+          proc(ctx: McpRequestContext, params: JsonNode): Future[JsonNode] {.async.} = newJObject())
+
   test "Given a client that did not declare the extension, when it calls an extension method, then it raises McpUnsupportedError":
     for v in versionsWith(ftExtensions):
       let peer = startPeer(nil, modern = true,
@@ -328,6 +355,21 @@ suite "extensions in the initialize handshake of the versions before 2026-07-28"
                             arguments: JsonNode): Future[JsonNode] {.async.} =
         return %*{"content": [{"type": "text", "text": $ctx.clientExtension(Ext).isSome}]})
       check other.connect(other.attach(), v).ask("tools/call", %*{"name": "t"}).textOf == "false"
+
+  test "Given a legacy client, when a handler reads what the client declared, then only the extensions are carried over and nothing known is JSON null":
+    proc declaredBy(version: McpProtocolVersion, capabilities: JsonNode): string =
+      let server = newServer(McpServerCapabilities(tools: some(McpToolsCapability())))
+      server.onToolCall(proc(ctx: McpRequestContext, name: string,
+                             arguments: JsonNode): Future[JsonNode] {.async.} =
+        let declared = ctx.declaredCapabilities
+        return %*{"content": [{"type": "text",
+          "text": if declared.isNil: "nil" else: $declared}]})
+      let peer = server.connect(server.attach(), version, clientCapabilities = capabilities)
+      peer.ask("tools/call", %*{"name": "t"}).textOf
+    for v in versionsWithout(ftExtensions):
+      check declaredBy(v, %*{"sampling": {}, "extensions": {Ext: {"flavour": "blue"}}}) ==
+        $(%*{"extensions": {Ext: {"flavour": "blue"}}})
+      check declaredBy(v, %*{"sampling": {}}) == "null"
 
   test "Given an extension registered with onLegacyHandshake, when a legacy client initializes, then the result announces it and only it":
     for v in versionsWithout(ftExtensions):

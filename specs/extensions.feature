@@ -95,3 +95,15 @@ Feature: Extensions (2026-07-28)
     When the client connects, in any version
     Then serverCapability returns the settings of the one the core does not define, and nothing for core capabilities or non-object values
     And a server whose capabilities are not an object is taken to have declared nothing
+
+  @spec:MCP-EXT-16 @feature:ftExtensions
+  Scenario: A method of a specification that asks nothing of the client is served to any client
+    Given a method registered with registerOpenMethod
+    When a client that declared nothing calls it
+    Then the server serves it, and refuses to register a method of the core or one already defined
+
+  @spec:MCP-EXT-17 @feature:ftExtensions
+  Scenario: A result of an extension method that is not an object is the server's defect
+    Given an extension method whose handler returns something that is not an object
+    When a client that declared the extension calls it
+    Then the answer is an internal error and carries no result
