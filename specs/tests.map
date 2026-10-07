@@ -231,6 +231,7 @@ MCP-PROGRESS-5 | tests/test_client_requests.nim | Given progress for an unknown 
 MCP-CANCEL-1 | tests/test_server_progress_cancel.nim | Given a request in flight, when the client cancels it, then no response is sent and the handler sees the cancellation
 MCP-CANCEL-1 | tests/test_server_progress_cancel.nim | Given a numeric request id, when the client cancels it, then the request is cancelled
 MCP-CANCEL-1 | tests/test_server_progress_cancel.nim | Given a handler waiting on whenCancelled, when the client cancels, then the wait ends
+MCP-CANCEL-1 | tests/test_server_progress_cancel.nim | Given a cancellation with a reason, when the handler looks, then ctx.cancelReason is that reason, and empty when the reason is missing or no string
 MCP-CANCEL-2 | tests/test_server_progress_cancel.nim | Given a request id nobody sent, when the client cancels it, then it is ignored and the server goes on
 MCP-CANCEL-2 | tests/test_server_progress_cancel.nim | Given a request already answered, when the client cancels it, then the answer stands
 MCP-CANCEL-2 | tests/test_server_progress_cancel.nim | Given the initialize request in flight, when the client cancels it, then it is answered anyway

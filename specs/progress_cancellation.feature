@@ -43,6 +43,7 @@ Feature: Progress and cancellation
     Given a request in progress
     When the client sends notifications/cancelled with its id, string or integer
     Then no response is sent and the handler sees the cancellation, so a wait on it ends
+    And the handler can read the reason, which is empty when the notification has none or it is not a string
 
   @spec:MCP-CANCEL-2 @feature:ftCancellation
   Scenario: A cancellation that refers to nothing live is ignored

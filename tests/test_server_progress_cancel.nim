@@ -8,6 +8,7 @@ var
   gate: Future[void]
   started: bool
   sawCancelled: bool
+  seenReason: string
   checkRaised: bool
   lateProgressError: string
   raceWonByCancel: bool
@@ -38,6 +39,7 @@ proc progressServer(): McpServer =
       gate = newFuture[void]("gate")
       await gate
       sawCancelled = ctx.cancelled
+      seenReason = ctx.cancelReason
       try:
         ctx.checkCancelled()
       except McpCancelled:
@@ -58,6 +60,7 @@ proc reset() =
   gate = nil
   started = false
   sawCancelled = false
+  seenReason = "unset"
   checkRaised = false
   raceWonByCancel = false
 
@@ -185,6 +188,23 @@ suite "cancellation (every version)":
     check sawCancelled
     for s in t.sent:
       check not (s.message.hasKey("result") and s.message{"id"}.getInt() == 4711)
+
+  test "Given a cancellation with a reason, when the handler looks, then ctx.cancelReason is that reason, and empty when the reason is missing or no string":
+    for reason in [%"user", newJNull(), %42]:
+      reset()
+      let server = progressServer()
+      let peer = server.connect(server.attach(), DefaultProtocolVersion)
+      let id = freshId()
+      peer.send(%id, "tools/call", %*{"name": "slow"})
+      untilTrue("the handler to start", proc(): bool = started)
+      var params = %*{"requestId": id}
+      if reason.kind != JNull:
+        params["reason"] = reason
+      peer.notify("notifications/cancelled", params)
+      settle()
+      release()
+      check sawCancelled
+      check seenReason == (if reason.kind == JString: "user" else: "")
 
   test "Given a handler waiting on whenCancelled, when the client cancels, then the wait ends":
     reset()
