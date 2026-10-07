@@ -10,6 +10,7 @@
 import std/[asyncdispatch, asyncnet, asynchttpserver, deques, httpcore,
             options, strutils]
 import ./event_stream
+import ./first_of
 
 const
   DefaultMaxStreamEvents* = 1024
@@ -143,6 +144,13 @@ proc serveStream*(req: Request, stream: SseStream, afterSeq: int,
   headers["X-Accel-Buffering"] = "no"  # a proxy must not hold events back
   var cursor = afterSeq
   var idle = sleepAsync(keepAliveMs)
+  # `gone` and `idle` outlive many waits. Each is watched once: a callback
+  # cannot be taken off a future again, so waiting on them afresh in every
+  # round would pile one up per event on a connection that lives for hours.
+  let bell = newDoorbell()
+  bell.watch(gone)
+  bell.watch(idle)
+  var watchedChange: Future[void]
   result = seDrained
   try:
     await req.writeHead(Http200, headers)
@@ -170,9 +178,13 @@ proc serveStream*(req: Request, stream: SseStream, afterSeq: int,
       if gone.finished:
         result = seClientGone
         break
-      await (changed or gone or idle)
+      if changed != watchedChange:
+        bell.watch(changed)
+        watchedChange = changed
+      await bell.wait()
       if idle.finished:
         idle = sleepAsync(keepAliveMs)
+        bell.watch(idle)
         if not gone.finished:
           await req.client.send(formatSseComment("keep-alive"))
   except OSError, IOError:

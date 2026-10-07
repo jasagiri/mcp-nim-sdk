@@ -13,6 +13,7 @@
 import std/[asyncdispatch, asyncnet, httpcore, strutils, uri]
 import std/net except dial
 import ./transport
+import ./first_of
 
 when defined(ssl):
   import std/openssl
@@ -49,8 +50,11 @@ type
     chunk: ChunkState
     line: string           ## the size line or trailer line being read
     finished: bool
-    leftOpen: Future[void]
-      ## Completes when `close` is called, to wake a read that waits on the socket.
+    closed: bool
+    interrupt: Future[void]
+      ## Of the read that waits on the socket now: `close` completes it. One
+      ## per read, because a callback cannot be taken off a future again and
+      ## a read happens for every chunk of the body.
 
 proc httpFailure(message: string): ref McpTransportError =
   newException(McpTransportError, message)
@@ -185,8 +189,9 @@ proc chooseBodyMode(r: WireResponse, httpMethod: HttpMethod) =
 proc close*(r: WireResponse) =
   ## Drop the connection; a body not read to its end is abandoned.
   r.finished = true
-  if not r.leftOpen.finished:
-    r.leftOpen.complete()
+  r.closed = true
+  if not r.interrupt.isNil and not r.interrupt.finished:
+    r.interrupt.complete()
   if not r.socket.isNil and not r.socket.isClosed:
     r.socket.close()
 
@@ -194,8 +199,11 @@ proc receive(r: WireResponse): Future[tuple[data: string, interrupted: bool]] {.
   ## The next bytes from the socket; `interrupted` when `close` was called
   ## while waiting. A socket closed under a pending read never wakes it.
   let pending = r.socket.recv(ReadSize)
+  r.interrupt = newFuture[void]("WireResponse.interrupt")
+  if r.closed:
+    r.interrupt.complete()
   try:
-    await (pending or r.leftOpen)
+    await firstOf(pending, r.interrupt)
   except OSError as e:
     r.close()
     raise httpFailure("reading the response failed: " & e.msg)
@@ -219,7 +227,7 @@ proc connectWithin(target: Uri, url, connectTo, caFile: string,
   try:
     if timeoutMs > 0:
       let timer = sleepAsync(timeoutMs)
-      await (attempt or timer)
+      await firstOf(attempt, timer)
       if not attempt.finished:
         # The connection is still being made: whoever finishes it closes it,
         # and a failure of an attempt nobody waits for is not news.
@@ -264,7 +272,7 @@ proc requestOnce(url: string, httpMethod: HttpMethod, headers: HttpHeaders,
                  connectTimeoutMs, headerTimeoutMs: int): Future[WireResponse] {.async.} =
   let target = parseUri(url)
   checkRequestFields(target, headers)
-  let response = WireResponse(leftOpen: newFuture[void]("WireResponse.leftOpen"))
+  let response = WireResponse()
   response.socket = await connectWithin(target, url, connectTo, caFile, connectTimeoutMs)
   if not connected.isNil:
     connected(response)
@@ -272,7 +280,7 @@ proc requestOnce(url: string, httpMethod: HttpMethod, headers: HttpHeaders,
     let exchange = response.exchangeHead(url, httpMethod, target, headers, body)
     if headerTimeoutMs > 0:
       let timer = sleepAsync(headerTimeoutMs)
-      await (exchange or timer)
+      await firstOf(exchange, timer)
       if not exchange.finished:
         # Closing wakes a read that waits (see `receive`); how the abandoned
         # exchange ends is of no interest, the caller is told of the timeout.

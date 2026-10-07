@@ -52,6 +52,7 @@ import std/[asyncdispatch, asyncnet, asynchttpserver, httpcore, json, tables, de
              options, uri, nativesockets, sysrand, strutils, sequtils, times]
 import ./transport
 import ./sse_stream
+import ./first_of
 import ./auth_hook
 import ../protocol/types
 import ../protocol/diagnostic
@@ -941,7 +942,7 @@ proc handlePost(t: HttpServerTransport, req: Request,
   # The connection is watched for the whole exchange, which is why it is
   # closed at the end: the watcher would otherwise eat the next request.
   let gone = watchDisconnect(req.client)
-  await (group.settled or gone)
+  await firstOf(group.settled, gone)
   if not group.settled.finished:
     if modern:
       t.cancel(group)
