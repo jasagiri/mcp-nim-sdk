@@ -301,31 +301,31 @@ Feature: Security properties
     When it is compiled and matched
     Then the character stands for itself, or the pattern is refused with a RegexError, and nothing else is raised
 
-  @spec:MCP-SEC-SCHEMA-g2h-js-a-1
+  @spec:MCP-SEC-SCHEMA-10
   Scenario: A limit is reached only beyond its value
     Given maxDepth, maxChecks, or an item compared for uniqueItems that nests as deep as maxDepth
     When a validation needs exactly that much, and when it needs one more
     Then the first is validated and the second raises SchemaLimitError, and siblings do not add to the depth
 
-  @spec:MCP-SEC-g2h-js-b-1
+  @spec:MCP-SEC-SCHEMA-11
   Scenario: Character classes and the shorthands follow ECMA-262 at their edges
     Given \D, \W and \S, classes with a leading ^, a leading ], escapes, ranges, a trailing hyphen, and malformed classes
     When patterns with them are matched or compiled
     Then each member and each neighbour of a set is told apart, [] matches nothing and [^] anything, and a malformed class is refused with a RegexError
 
-  @spec:MCP-SEC-g2h-js-b-2
+  @spec:MCP-SEC-SCHEMA-12
   Scenario: Quantifiers match as many times as their counts say
     Given {0}, {0,0}, {1,}, {2,3}, a brace that is no quantifier, ??, a repetition that is not closed or runs backwards, and counts above the limit
     When patterns with them are matched or compiled
     Then the number of repetitions at and around each edge is the one ECMA-262 gives, a malformed repetition is a RegexError and a count above the limit is a RegexLimitError
 
-  @spec:MCP-SEC-g2h-js-b-3
+  @spec:MCP-SEC-SCHEMA-13
   Scenario: Alternation, groups, anchors, escapes and lookaheads follow ECMA-262
     Given alternatives, unbalanced parentheses, unsupported group syntax, many groups one after another, a backslash or hex escape at the end of the pattern, \b and \B at the ends of the text, and lookaheads
     When patterns with them are matched or compiled
     Then every alternative is required equally, a pattern that cannot be read is a RegexError whose message names the cause and its position, and a lookahead looks only at the characters after its position
 
-  @spec:MCP-SEC-g2h-js-b-4
+  @spec:MCP-SEC-SCHEMA-14
   Scenario: The limits on a pattern are exact
     Given a pattern whose program is exactly the size limit, a pattern that does exactly the work allowed, and a match that needs exactly the step budget
     When each is compiled or matched

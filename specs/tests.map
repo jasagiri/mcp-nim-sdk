@@ -774,34 +774,34 @@ MCP-SCHEMA-2 | tests/test_json_schema.nim | Given $schema naming an unknown dial
 MCP-SCHEMA-2 | tests/test_json_schema.nim | Given $schema that is not a string, when an instance is validated, then the schema is invalid
 MCP-SCHEMA-2 | tests/test_json_schema.nim | Given a $ref that leaves the document or points at nothing, when validated, then it is reported
 MCP-SCHEMA-2 | tests/test_json_schema.nim | Given a keyword that is not implemented, when validated, then it is reported, not skipped
-MCP-SCHEMA-g2h-js-a-1 | tests/test_json_schema.nim | Given a keyword of the wrong JSON type, when validated, then the schema is invalid
-MCP-SCHEMA-g2h-js-a-1 | tests/test_json_schema.nim | Given a type list with a member that is not a string, when a matching instance is validated, then the schema is invalid
-MCP-SCHEMA-g2h-js-a-1 | tests/test_json_schema.nim | Given a count keyword, when it is 0, 2.0, 2.5 or negative, then 0 and 2.0 are read and the others are invalid
-MCP-SCHEMA-g2h-js-a-1 | tests/test_json_schema.nim | Given a $ref whose index step names nothing, when validated, then the schema is invalid
-MCP-SCHEMA-g2h-js-a-1 | tests/test_json_schema.nim | Given a $ref that points at nothing inside a property, when an instance is validated, then the schema is invalid
-MCP-SCHEMA-g2h-js-a-1 | tests/test_json_schema.nim | Given a $ref that comes back to itself, when validated, then the schema is invalid and no limit is reported
-MCP-SCHEMA-g2h-js-a-1 | tests/test_json_schema.nim | Given multipleOf, when the divisor is not above zero, then the schema is invalid and no limit is reported
-MCP-SCHEMA-g2h-js-a-1 | tests/test_json_schema.nim | Given required with a member that is not a string, when validated, then the schema is invalid
-MCP-SCHEMA-g2h-js-a-1 | tests/test_json_schema.nim | Given a $ref whose array index has a leading zero, when validated, then the schema is invalid (RFC 6901)
-MCP-SCHEMA-g2h-js-a-2 | tests/test_json_schema.nim | Given an infinite number, when validated against integer and number, then it is a number but no integer
-MCP-SCHEMA-g2h-js-a-2 | tests/test_json_schema.nim | Given const arrays, when the instance differs in length or in an item, then it does not conform
-MCP-SCHEMA-g2h-js-a-2 | tests/test_json_schema.nim | Given const objects, when the instance differs in size, in a key or in a value, then it does not conform
-MCP-SCHEMA-g2h-js-a-2 | tests/test_json_schema.nim | Given 1 and 1.0, when compared by const and enum in either direction, then they are the same number
-MCP-SCHEMA-g2h-js-a-2 | tests/test_json_schema.nim | Given integers at the edge of 64 bits, when compared with doubles, then equal values match and neighbours do not
-MCP-SCHEMA-g2h-js-a-2 | tests/test_json_schema.nim | Given uniqueItems, when two items are the same value however spelled, then the array does not conform
-MCP-SCHEMA-g2h-js-a-2 | tests/test_json_schema.nim | Given uniqueItems, when items of different type or content could be told apart only by a part of their text, then they are distinct
-MCP-SCHEMA-g2h-js-a-3 | tests/test_json_schema.nim | Given minLength and maxLength, when the length is at, below or above the bound, then the bound itself conforms
-MCP-SCHEMA-g2h-js-a-3 | tests/test_json_schema.nim | Given a string of multibyte characters, when its length is bounded, then characters are counted, not bytes
-MCP-SCHEMA-g2h-js-a-3 | tests/test_json_schema.nim | Given minItems and maxItems, when the size is at the bound, then it conforms and one beyond does not
-MCP-SCHEMA-g2h-js-a-3 | tests/test_json_schema.nim | Given contains with minContains and maxContains, when the number of matches is at or beyond a bound, then the bounds are inclusive
-MCP-SCHEMA-g2h-js-a-3 | tests/test_json_schema.nim | Given minProperties and maxProperties, when the size is at the bound, then it conforms and one beyond does not
-MCP-SCHEMA-g2h-js-a-4 | tests/test_json_schema.nim | Given a $ref into an array, when validated, then the element is the target
-MCP-SCHEMA-g2h-js-a-4 | tests/test_json_schema.nim | Given a $ref with sibling keywords, when validated, then 2020-12 applies them and draft-07 ignores them
-MCP-SCHEMA-g2h-js-a-4 | tests/test_json_schema.nim | Given multipleOf with a decimal divisor, when the quotient carries rounding error, then the decimal multiples still conform
-MCP-SCHEMA-g2h-js-a-4 | tests/test_json_schema.nim | Given minContains or maxContains without contains, or in draft-07, when validated, then they assert nothing
-MCP-SCHEMA-g2h-js-a-4 | tests/test_json_schema.nim | Given patternProperties, when a property matches a pattern, then additionalProperties does not apply to it
-MCP-SCHEMA-g2h-js-a-4 | tests/test_json_schema.nim | Given dependencies in 2020-12, when validated, then they assert nothing
-MCP-SCHEMA-g2h-js-a-4 | tests/test_json_schema.nim | Given draft-07 dependencies as a list of names, when validated, then a present key demands the others
+MCP-SCHEMA-3 | tests/test_json_schema.nim | Given a keyword of the wrong JSON type, when validated, then the schema is invalid
+MCP-SCHEMA-3 | tests/test_json_schema.nim | Given a type list with a member that is not a string, when a matching instance is validated, then the schema is invalid
+MCP-SCHEMA-3 | tests/test_json_schema.nim | Given a count keyword, when it is 0, 2.0, 2.5 or negative, then 0 and 2.0 are read and the others are invalid
+MCP-SCHEMA-3 | tests/test_json_schema.nim | Given a $ref whose index step names nothing, when validated, then the schema is invalid
+MCP-SCHEMA-3 | tests/test_json_schema.nim | Given a $ref that points at nothing inside a property, when an instance is validated, then the schema is invalid
+MCP-SCHEMA-3 | tests/test_json_schema.nim | Given a $ref that comes back to itself, when validated, then the schema is invalid and no limit is reported
+MCP-SCHEMA-3 | tests/test_json_schema.nim | Given multipleOf, when the divisor is not above zero, then the schema is invalid and no limit is reported
+MCP-SCHEMA-3 | tests/test_json_schema.nim | Given required with a member that is not a string, when validated, then the schema is invalid
+MCP-SCHEMA-3 | tests/test_json_schema.nim | Given a $ref whose array index has a leading zero, when validated, then the schema is invalid (RFC 6901)
+MCP-SCHEMA-4 | tests/test_json_schema.nim | Given an infinite number, when validated against integer and number, then it is a number but no integer
+MCP-SCHEMA-4 | tests/test_json_schema.nim | Given const arrays, when the instance differs in length or in an item, then it does not conform
+MCP-SCHEMA-4 | tests/test_json_schema.nim | Given const objects, when the instance differs in size, in a key or in a value, then it does not conform
+MCP-SCHEMA-4 | tests/test_json_schema.nim | Given 1 and 1.0, when compared by const and enum in either direction, then they are the same number
+MCP-SCHEMA-4 | tests/test_json_schema.nim | Given integers at the edge of 64 bits, when compared with doubles, then equal values match and neighbours do not
+MCP-SCHEMA-4 | tests/test_json_schema.nim | Given uniqueItems, when two items are the same value however spelled, then the array does not conform
+MCP-SCHEMA-4 | tests/test_json_schema.nim | Given uniqueItems, when items of different type or content could be told apart only by a part of their text, then they are distinct
+MCP-SCHEMA-5 | tests/test_json_schema.nim | Given minLength and maxLength, when the length is at, below or above the bound, then the bound itself conforms
+MCP-SCHEMA-5 | tests/test_json_schema.nim | Given a string of multibyte characters, when its length is bounded, then characters are counted, not bytes
+MCP-SCHEMA-5 | tests/test_json_schema.nim | Given minItems and maxItems, when the size is at the bound, then it conforms and one beyond does not
+MCP-SCHEMA-5 | tests/test_json_schema.nim | Given contains with minContains and maxContains, when the number of matches is at or beyond a bound, then the bounds are inclusive
+MCP-SCHEMA-5 | tests/test_json_schema.nim | Given minProperties and maxProperties, when the size is at the bound, then it conforms and one beyond does not
+MCP-SCHEMA-6 | tests/test_json_schema.nim | Given a $ref into an array, when validated, then the element is the target
+MCP-SCHEMA-6 | tests/test_json_schema.nim | Given a $ref with sibling keywords, when validated, then 2020-12 applies them and draft-07 ignores them
+MCP-SCHEMA-6 | tests/test_json_schema.nim | Given multipleOf with a decimal divisor, when the quotient carries rounding error, then the decimal multiples still conform
+MCP-SCHEMA-6 | tests/test_json_schema.nim | Given minContains or maxContains without contains, or in draft-07, when validated, then they assert nothing
+MCP-SCHEMA-6 | tests/test_json_schema.nim | Given patternProperties, when a property matches a pattern, then additionalProperties does not apply to it
+MCP-SCHEMA-6 | tests/test_json_schema.nim | Given dependencies in 2020-12, when validated, then they assert nothing
+MCP-SCHEMA-6 | tests/test_json_schema.nim | Given draft-07 dependencies as a list of names, when validated, then a present key demands the others
 MCP-SCHEMA-2 | tests/test_json_schema.nim | Given a $schema that only contains a name after a leading #, when validated, then the dialect is unsupported
 MCP-TOOLANN-1 | tests/test_tool_annotations.nim | Given a version that has tool annotations, when tools are listed, then every hint is sent
 MCP-TOOLANN-1 | tests/test_tool_annotations.nim | Given only some hints, when annotations are built, then the hints left out are not sent
@@ -1775,33 +1775,33 @@ MCP-SEC-SCHEMA-9 | tests/test_security_schema.nim | Given a pattern with a liter
 MCP-SEC-SCHEMA-9 | tests/test_security_schema.nim | Given an escaped character above U+00FF, when matched, then it stands for itself
 MCP-SEC-SCHEMA-9 | tests/test_security_schema.nim | Given a character above U+00FF wherever the syntax expects an ASCII one, when compiled, then the pattern compiles or is a RegexError
 MCP-SEC-SCHEMA-9 | tests/test_security_schema.nim | Given a schema whose pattern has a character above U+00FF, when validated, then the pattern is applied
-MCP-SEC-SCHEMA-g2h-js-a-1 | tests/test_security_schema.nim | Given maxDepth, when the schema nests exactly that deep, then it is validated and one level more is reported
-MCP-SEC-SCHEMA-g2h-js-a-1 | tests/test_security_schema.nim | Given maxDepth, when many sibling schemas are applied one after another, then only the nesting counts
-MCP-SEC-SCHEMA-g2h-js-a-1 | tests/test_security_schema.nim | Given maxChecks, when the validation needs exactly that many schema applications, then it is validated and one more is reported
-MCP-SEC-SCHEMA-g2h-js-a-1 | tests/test_security_schema.nim | Given uniqueItems, when an item nests as deep as maxDepth, then comparing it is reported and one level less is compared
-MCP-SEC-SCHEMA-g2h-js-a-1 | tests/test_security_schema.nim | Given uniqueItems, when items nest far deeper than maxDepth, then comparing them is reported, however the nesting is built
-MCP-SEC-g2h-js-b-1 | tests/test_json_schema.nim | Given the negated shorthands, when matched at the edges of their sets, then members are refused and the neighbours accepted
-MCP-SEC-g2h-js-b-1 | tests/test_json_schema.nim | Given an empty class, when matched, then [] matches nothing and [^] anything
-MCP-SEC-g2h-js-b-1 | tests/test_json_schema.nim | Given a class, when its members are written in the ways ECMA-262 allows, then each stands for what it names
-MCP-SEC-g2h-js-b-1 | tests/test_json_schema.nim | Given a class that is not well formed, when compiled, then it is refused
-MCP-SEC-g2h-js-b-2 | tests/test_json_schema.nim | Given braces, when they are not a quantifier, then they stand for themselves
-MCP-SEC-g2h-js-b-2 | tests/test_json_schema.nim | Given a repetition, when its counts sit at the edges, then it matches exactly that many
-MCP-SEC-g2h-js-b-2 | tests/test_json_schema.nim | Given a lazy quantifier after ?, when matched, then ?? is the lazy optional, not an error
-MCP-SEC-g2h-js-b-2 | tests/test_json_schema.nim | Given a repetition that is not closed or runs backwards, when compiled, then it is refused
-MCP-SEC-g2h-js-b-2 | tests/test_json_schema.nim | Given a repetition above the limit, when compiled, then the limit is reported whichever count is above
-MCP-SEC-g2h-js-b-3 | tests/test_json_schema.nim | Given alternatives, when matched, then the last one is as required as the others
-MCP-SEC-g2h-js-b-3 | tests/test_json_schema.nim | Given parentheses that do not match, when compiled, then the pattern is refused
-MCP-SEC-g2h-js-b-3 | tests/test_json_schema.nim | Given a group syntax that is not supported, when compiled, then the message names the group syntax
-MCP-SEC-g2h-js-b-3 | tests/test_json_schema.nim | Given groups one after another, when compiled, then only nesting counts against the nesting limit
-MCP-SEC-g2h-js-b-3 | tests/test_json_schema.nim | Given a backslash at the end of the pattern, when compiled, then the pattern is refused
-MCP-SEC-g2h-js-b-3 | tests/test_json_schema.nim | Given a hex escape that ends the pattern, when compiled, then it is read, and one with fewer digits is refused
-MCP-SEC-g2h-js-b-3 | tests/test_json_schema.nim | Given word boundaries, when matched at both ends of the text, then the text edge counts as a non-word
-MCP-SEC-g2h-js-b-3 | tests/test_json_schema.nim | Given a lookahead, when matched, then it looks at the next characters only, not at the rest of the text
-MCP-SEC-g2h-js-b-3 | tests/test_json_schema.nim | Given a pattern that is refused, when the cause is a quantifier with nothing to repeat, then the message points at it
-MCP-SEC-g2h-js-b-4 | tests/test_security_schema.nim | Given a compiled pattern, when asked its size, then it is the instructions it needs, the final match included
-MCP-SEC-g2h-js-b-4 | tests/test_security_schema.nim | Given a program of exactly the size limit, when compiled, then it is accepted and one instruction more is refused
-MCP-SEC-g2h-js-b-4 | tests/test_security_schema.nim | Given a pattern whose parts emit nothing, when it does as much work as the limit allows, then it is accepted and one step more is refused
-MCP-SEC-g2h-js-b-4 | tests/test_security_schema.nim | Given a step budget that is exactly what a match needs, when matched, then it is answered and the budget is spent
+MCP-SEC-SCHEMA-10 | tests/test_security_schema.nim | Given maxDepth, when the schema nests exactly that deep, then it is validated and one level more is reported
+MCP-SEC-SCHEMA-10 | tests/test_security_schema.nim | Given maxDepth, when many sibling schemas are applied one after another, then only the nesting counts
+MCP-SEC-SCHEMA-10 | tests/test_security_schema.nim | Given maxChecks, when the validation needs exactly that many schema applications, then it is validated and one more is reported
+MCP-SEC-SCHEMA-10 | tests/test_security_schema.nim | Given uniqueItems, when an item nests as deep as maxDepth, then comparing it is reported and one level less is compared
+MCP-SEC-SCHEMA-10 | tests/test_security_schema.nim | Given uniqueItems, when items nest far deeper than maxDepth, then comparing them is reported, however the nesting is built
+MCP-SEC-SCHEMA-11 | tests/test_json_schema.nim | Given the negated shorthands, when matched at the edges of their sets, then members are refused and the neighbours accepted
+MCP-SEC-SCHEMA-11 | tests/test_json_schema.nim | Given an empty class, when matched, then [] matches nothing and [^] anything
+MCP-SEC-SCHEMA-11 | tests/test_json_schema.nim | Given a class, when its members are written in the ways ECMA-262 allows, then each stands for what it names
+MCP-SEC-SCHEMA-11 | tests/test_json_schema.nim | Given a class that is not well formed, when compiled, then it is refused
+MCP-SEC-SCHEMA-12 | tests/test_json_schema.nim | Given braces, when they are not a quantifier, then they stand for themselves
+MCP-SEC-SCHEMA-12 | tests/test_json_schema.nim | Given a repetition, when its counts sit at the edges, then it matches exactly that many
+MCP-SEC-SCHEMA-12 | tests/test_json_schema.nim | Given a lazy quantifier after ?, when matched, then ?? is the lazy optional, not an error
+MCP-SEC-SCHEMA-12 | tests/test_json_schema.nim | Given a repetition that is not closed or runs backwards, when compiled, then it is refused
+MCP-SEC-SCHEMA-12 | tests/test_json_schema.nim | Given a repetition above the limit, when compiled, then the limit is reported whichever count is above
+MCP-SEC-SCHEMA-13 | tests/test_json_schema.nim | Given alternatives, when matched, then the last one is as required as the others
+MCP-SEC-SCHEMA-13 | tests/test_json_schema.nim | Given parentheses that do not match, when compiled, then the pattern is refused
+MCP-SEC-SCHEMA-13 | tests/test_json_schema.nim | Given a group syntax that is not supported, when compiled, then the message names the group syntax
+MCP-SEC-SCHEMA-13 | tests/test_json_schema.nim | Given groups one after another, when compiled, then only nesting counts against the nesting limit
+MCP-SEC-SCHEMA-13 | tests/test_json_schema.nim | Given a backslash at the end of the pattern, when compiled, then the pattern is refused
+MCP-SEC-SCHEMA-13 | tests/test_json_schema.nim | Given a hex escape that ends the pattern, when compiled, then it is read, and one with fewer digits is refused
+MCP-SEC-SCHEMA-13 | tests/test_json_schema.nim | Given word boundaries, when matched at both ends of the text, then the text edge counts as a non-word
+MCP-SEC-SCHEMA-13 | tests/test_json_schema.nim | Given a lookahead, when matched, then it looks at the next characters only, not at the rest of the text
+MCP-SEC-SCHEMA-13 | tests/test_json_schema.nim | Given a pattern that is refused, when the cause is a quantifier with nothing to repeat, then the message points at it
+MCP-SEC-SCHEMA-14 | tests/test_security_schema.nim | Given a compiled pattern, when asked its size, then it is the instructions it needs, the final match included
+MCP-SEC-SCHEMA-14 | tests/test_security_schema.nim | Given a program of exactly the size limit, when compiled, then it is accepted and one instruction more is refused
+MCP-SEC-SCHEMA-14 | tests/test_security_schema.nim | Given a pattern whose parts emit nothing, when it does as much work as the limit allows, then it is accepted and one step more is refused
+MCP-SEC-SCHEMA-14 | tests/test_security_schema.nim | Given a step budget that is exactly what a match needs, when matched, then it is answered and the budget is spent
 MCP-SEC-SWEEP-6 | tests/test_fuzz_regressions.nim | Given the seeds of every target, when handled, then nothing is wrong
 MCP-SEC-SWEEP-6 | tests/test_fuzz_regressions.nim | Given every input kept from fuzzing, when handled, then nothing is wrong
 MCP-SEC-SWEEP-6 | tests/test_fuzz_regressions.nim | Given the corpus directory, when listed, then every directory in it is a target

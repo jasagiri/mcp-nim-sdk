@@ -124,6 +124,8 @@
 | `src/protocol/implementation_status.nim`、`src/protocol/sampling_tools.nim` | 使われていない `notYet` と定数 `ContentTypes` を削除 | `tests/test_docs_version.nim`、`tests/test_sampling_tools_payload.nim` |
 | `src/transport/http.nim` | ストリームが終わった要求を `inflight` から消す。`close()` の後に開き終わったストリームを閉じる。通知に答えたストリームの終了で落ちない。取り消した要求を再開しない | `tests/test_http_client_streams.nim` |
 | `src/transport/http_wire.nim` | `close()` で起こされた読み取りは静かに終わる。`readAll` は途中で閉じられた本文を返さない。負の `Content-Length` を拒否 | `tests/test_http_client_streams.nim`、`tests/test_security_wire_limits.nim`、`tests/test_security_wire_headers.nim` |
+| `src/jsonschema/json_schema_regex.nim` | 7d32c165 の測定の後: `[]` と `[^]` を ECMA-262 どおりに読む。読まれない `lazy` を削除 | `tests/test_json_schema.nim`、`tests/test_security_schema.nim` |
+| `src/jsonschema/json_schema.nim` | 7d32c165 の測定の後: `$ref` の先頭が 0 の添字を拒否 | `tests/test_security_schema.nim` |
 
 注 (利用者の判断待ち): `sse_legacy.nim` と `http_wire.nim` の `sameOrigin` は、既定のポートを書いた URL と省いた URL
 (`https://h/` と `https://h:443/`) を別のオリジンと見る。HTTP+SSE の `endpoint` イベントは拒否され、リダイレクトでは
