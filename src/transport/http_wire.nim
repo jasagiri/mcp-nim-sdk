@@ -51,6 +51,7 @@ type
     line: string           ## the size line or trailer line being read
     finished: bool
     closed: bool
+    cut: bool              ## `close` ended a read before the body did
     interrupt: Future[void]
       ## Of the read that waits on the socket now: `close` completes it. One
       ## per read, because a callback cannot be taken off a future again and
@@ -198,16 +199,19 @@ proc close*(r: WireResponse) =
 proc receive(r: WireResponse): Future[tuple[data: string, interrupted: bool]] {.async.} =
   ## The next bytes from the socket; `interrupted` when `close` was called
   ## while waiting. A socket closed under a pending read never wakes it.
+  if r.closed:
+    return (data: "", interrupted: true)
   let pending = r.socket.recv(ReadSize)
   r.interrupt = newFuture[void]("WireResponse.interrupt")
-  if r.closed:
-    r.interrupt.complete()
   try:
     await firstOf(pending, r.interrupt)
   except OSError as e:
     r.close()
     raise httpFailure("reading the response failed: " & e.msg)
-  if not pending.finished:
+  # `close` closes the socket right after completing `interrupt`, and the
+  # read waiting on it then fails with "Bad file descriptor" before this
+  # continues: that failure is the interruption, not news.
+  if r.closed or not pending.finished:
     return (data: "", interrupted: true)
   try:
     return (data: pending.read(), interrupted: false)
@@ -400,6 +404,7 @@ proc readSome*(r: WireResponse): Future[string] {.async.} =
     else:
       let (received, interrupted) = await r.receive()
       if interrupted:
+        r.cut = true
         return ""
       data = received
     case r.mode
@@ -432,10 +437,14 @@ proc readSome*(r: WireResponse): Future[string] {.async.} =
   return ""
 
 proc readAll*(r: WireResponse, maxSize: int): Future[string] {.async.} =
-  ## The whole body. Raises McpTransportError past `maxSize` bytes.
+  ## The whole body. Raises McpTransportError past `maxSize` bytes, and when
+  ## `close` ended the reading before the body did: what was read until then
+  ## is not the body.
   while true:
     let part = await r.readSome()
     if part.len == 0:
+      if r.cut:
+        raise httpFailure("the response was closed before its whole body was read")
       break
     result.add part
     if result.len > maxSize:
