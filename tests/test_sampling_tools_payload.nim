@@ -262,6 +262,13 @@ suite "sampling with tools: absent and non-object values":
     check toolUsesOf(%*"x").len == 0
     check toolUsesOf(%*{"role": "assistant", "model": "m"}).len == 0
 
+  test "Given content blocks without a usable type, when asked for tool uses, then they are not tool uses":
+    let untyped = %*{"role": "assistant", "model": "m",
+                     "content": [{"text": "x"}, {"type": 5}, "x", toolUseBlock("a", "t", %*{})]}
+    check toolUsesOf(untyped) == @[toolUseBlock("a", "t", %*{})]
+    check createMessageResultProblems(untyped, request(@[question], %*{"tools": [weather]}),
+                                      mpv20251125).len == 3
+
   test "Given params that are not an object, when checked, then that is the only problem":
     for bad in [newJNull(), %*[1]]:
       for v in WithTools:
