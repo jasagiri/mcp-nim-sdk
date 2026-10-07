@@ -17,7 +17,7 @@
 | `src/client/client.nim` | `tests/test_legacy_handshake.nim`, `tests/test_era_matrix.nim` | 2026-10-05 |
 | `src/client/{content,tools,resources,prompts,utilities}.nim` | `tests/test_client_operations.nim` | 2026-10-06 |
 | `src/client/{roots,sampling}.nim` | `tests/test_client_server_requests.nim` | 2026-10-06 |
-| `src/client/client.nim` (タイムアウト・キャンセル・進捗・接続終了・通知) | `tests/test_client_requests.nim`, `tests/test_client_server_requests.nim` | 2026-10-06 |
+| `src/client/client.nim` | タイムアウト・キャンセル・進捗・接続終了・通知 | `tests/test_client_requests.nim`, `tests/test_client_server_requests.nim` | 2026-10-06 |
 | `src/transport/transport.nim` | `tests/test_era_matrix.nim` | 2026-10-05 |
 | `src/transport/event_stream.nim` | `tests/test_event_stream.nim` | 2026-10-05 |
 | `src/transport/http.nim` | `tests/test_streamable_http.nim` | 2026-10-05 |
@@ -29,7 +29,7 @@
 | `src/server/completion.nim` | `tests/test_server_completion.nim` | 2026-10-06 |
 | `src/protocol/log_level.nim` | `tests/test_server_logging.nim` | 2026-10-06 |
 | `src/transport/http.nim` (SSE の逐次読み取り、再開、GET ストリーム、DELETE、リダイレクト) | `tests/test_http_client_streams.nim` | 2026-10-06 |
-| `src/transport/http_server.nim` (SSE 応答、GET ストリーム、再開、バッチ、版ヘッダ、期限切れ、HTTP+SSE) | `tests/test_http_streams.nim`, `tests/test_http_sse_legacy.nim` | 2026-10-06 |
+| `src/transport/http_server.nim` | SSE 応答、GET ストリーム、再開、バッチ、版ヘッダ、期限切れ、HTTP+SSE | `tests/test_http_streams.nim`, `tests/test_http_sse_legacy.nim` | 2026-10-06 |
 | `src/transport/http_wire.nim` | `tests/test_http_client_streams.nim`, `tests/test_http_streams.nim` | 2026-10-06 |
 | `src/transport/sse_stream.nim` | `tests/test_http_streams.nim`, `tests/test_http_sse_legacy.nim` | 2026-10-06 |
 | `src/transport/sse_legacy.nim` | `tests/test_http_sse_legacy.nim` | 2026-10-06 |
@@ -78,7 +78,7 @@
 
 | モジュール | 対応する外部仕様テスト | 追加・変更した日 |
 |---|---|---|
-| `src/transport/http_wire.nim` (TLS のホスト名照合、要求・応答ヘッダの検査、接続・ヘッダ待ちのタイムアウト) | `tests/test_security_wire_tls.nim` (`-d:ssl`)、`tests/test_security_wire_headers.nim`、`tests/test_security_wire_limits.nim` | 2026-10-06 |
+| `src/transport/http_wire.nim` | TLS のホスト名照合、要求・応答ヘッダの検査、接続・ヘッダ待ちのタイムアウト | `tests/test_security_wire_tls.nim` (`-d:ssl`)、`tests/test_security_wire_headers.nim`、`tests/test_security_wire_limits.nim` | 2026-10-06 |
 | `src/transport/event_stream.nim` (行・イベントの上限)、`src/transport/{http,sse_legacy}.nim` (上限とタイムアウトの受け渡し) | `tests/test_security_wire_limits.nim` | 2026-10-06 |
 | `src/transport/address_policy.nim`、`src/transport/guarded_wire.nim`、`src/auth/oauth/{urls,fetch}.nim`、`src/auth/client.nim` (`narrowedTo`) | `tests/test_security_address.nim` | 2026-10-06 |
 | `src/client/icons.nim` (タイムアウト時の接続、アドレス判定) | `tests/test_security_icons.nim` | 2026-10-06 |
@@ -93,7 +93,7 @@
 
 | モジュール | 対応する外部仕様テスト | 追加・変更した日 |
 |---|---|---|
-| `src/transport/sse_stream.nim` (待機の前に `changed` を控える。書き込み中に積まれたイベントを待ち落とさない) | `tests/test_http_streams.nim` | 2026-10-06 |
+| `src/transport/sse_stream.nim` | 待機の前に `changed` を控える。書き込み中に積まれたイベントを待ち落とさない | `tests/test_http_streams.nim` | 2026-10-06 |
 | `src/protocol/modern.nim` (`decodeHeaderValue`: パディングの無い Base64 を拒否する) | `tests/test_modern_protocol.nim`, `tests/test_param_headers_http.nim` | 2026-10-06 |
 | `src/auth/oauth/discovery.nim`、`src/auth/oauth/metadata.nim` (ルートの well-known URI から得た PRM は、オリジンを `resource` に名乗ってよい) | `tests/test_auth_client_flow.nim` | 2026-10-06 |
 | `src/auth/client.nim` (`indicator`: `resource` は PRM が公表した識別子をそのまま送る) | `tests/test_auth_client_flow.nim` | 2026-10-06 |
@@ -110,11 +110,17 @@
 |---|---|---|
 | `src/client/client.nim` | 送信に失敗した要求を待ちの表から外す (`startRequest`)。到達しない文 2 つを削除、`discover` の末尾を `raiseAssert` に | `tests/test_client_requests.nim` |
 | `src/protocol/lifecycle.nim` | 呼び出し元の無い補助関数 4 つを削除 | `tests/test_legacy_handshake.nim` |
+| `src/transport/first_of.nim` | 新規。`firstOf`、`Doorbell`。future の既存コールバックを消さずに最初の 1 つを待つ | `tests/test_first_of.nim` (内部実装テスト)。外部仕様テストは下の各モジュールの行 |
+| `src/client/client.nim` | `sendOnce`、`startRequest` の待ちを `or` から `firstOf` に。取り消しトークンを共有する複数の要求が全部取り消される。`startRequest` の `try/except` は不要になり削除 | `tests/test_client_requests.nim` (MCP-CANCEL-4) |
+| `src/client/subscriptions.nim` | `listen` の待ちを `firstOf` に。トークン共有 | `tests/test_subscriptions.nim` (MCP-SUBSCRIBE-11) |
+| `src/transport/http_wire.nim` | 読み取りと `close`、接続と応答ヘッダーのタイムアウトの待ちを `firstOf` に。`leftOpen` を読み取りごとの `interrupt` に | `tests/test_http_unresponsive.nim`、`tests/test_http_client_streams.nim`、`tests/test_http_sse_legacy.nim`、`tests/test_security_wire_limits.nim` |
+| `src/transport/sse_stream.nim` | `serveStream` の待ちを `Doorbell` に。`gone` と `idle` は 1 回だけ監視 | `tests/test_http_streams.nim`、`tests/test_streamable_http.nim` |
+| `src/transport/http_server.nim` | 交換の完了と切断の待ちを `firstOf` に | `tests/test_streamable_http.nim`、`tests/test_security_http.nim` |
 
 ## 未測定 (HTTP サーバーのセキュリティ修正。本線向け)
 
 | モジュール | 対応する外部仕様テスト | 追加・変更した日 |
 |---|---|---|
-| `src/transport/http_server.nim` (認可の対象パス、セッションの所有者、cancelled の書き換え、資源上限、Host 検証) | `tests/test_security_http.nim` | 2026-10-06 |
+| `src/transport/http_server.nim` | 認可の対象パス、セッションの所有者、cancelled の書き換え、資源上限、Host 検証 | `tests/test_security_http.nim` | 2026-10-06 |
 | `src/transport/auth_hook.nim`、`src/auth/resource_server.nim` (`ownPaths`、`mcpPath` の廃止) | `tests/test_security_http.nim`、`tests/test_auth_resource_server.nim` | 2026-10-06 |
 | `src/protocol/diagnostic.nim` (`peerText`) と、それを使う `src/server/server.nim`、`src/transport/{http,http_server,sse_legacy,stdio}.nim` の診断 | `tests/test_security_diagnostic.nim` | 2026-10-06 |
