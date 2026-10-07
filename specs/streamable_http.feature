@@ -134,3 +134,15 @@ Feature: Streamable HTTP transport
     Then the client reads tools/list again and retries the call with the headers the tool declares now
     And a second refusal is returned to the caller without another retry
 
+
+  @spec:MCP-HTTP-g2f-hs-b-1 @feature:ftStreamableHttp
+  Scenario: Only an initialize request opens a session
+    Given a server that keeps a session for every client that initializes
+    When a message named initialize but without an id is posted, with no session
+    Then the answer is 400 for the missing session and no session is made
+
+  @spec:MCP-HTTP-g2f-hs-b-2 @feature:ftStreamableHttp
+  Scenario: A POST answered with a JSON body ends the connection
+    Given a POST that the server answers with a plain JSON body
+    When the answer is complete
+    Then the server closes the connection, so that nothing the client sends next is read by the watcher of a finished exchange

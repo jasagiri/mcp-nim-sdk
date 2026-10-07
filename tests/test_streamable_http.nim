@@ -577,3 +577,62 @@ suite "HTTP client transport with hand-written servers":
     else:
       check methods == @["initialize", "notifications/initialized"]
     waitFor client.close()
+
+import std/asyncnet
+
+proc sendWithin(url: string, httpMethod: HttpMethod, body: string,
+                headers: openArray[(string, string)] = [], ms = 2000): Option[Reply] =
+  ## The reply, or none when the server has not answered within `ms`: a
+  ## transport that forgets to answer must fail a check, not hang the test.
+  let http = newAsyncHttpClient()
+  defer: http.close()
+  let pending = http.request(url, httpMethod, body, newHttpHeaders(headers))
+  if waitFor withTimeout(pending, ms):
+    let response = pending.read()
+    some((response.code, response.headers, waitFor response.body))
+  else:
+    none(Reply)
+
+suite "HTTP endpoint (mutation review, g2f-hs-b)":
+
+  test "Given a JSON body that is a single value and no object, when posted, then the answer is 400 invalid request":
+    let (_, url, _) = startServer()
+    for body in ["42", "\"text\"", "null", "true"]:
+      let reply = sendWithin(url, HttpPost, body)
+      require reply.isSome
+      check reply.get.code == Http400
+      check parseJson(reply.get.body)["error"]["code"].getInt() == -32600
+
+  test "Given a notification whose method is initialize and no session, when posted, then the answer is 400 and no session is made":
+    # Only an initialize request opens a session; a message without an id is not one.
+    let (transport, url, _) = startServer()
+    let reply = sendWithin(url, HttpPost, $(%*{"jsonrpc": "2.0", "method": "initialize",
+      "params": {"protocolVersion": $LegacyDefault, "capabilities": {},
+                 "clientInfo": {"name": "peer", "version": "0"}}}))
+    require reply.isSome
+    check reply.get.code == Http400
+    check transport.sessionCount == 0
+
+  test "Given a POST answered with a JSON body, when the answer is complete, then the server closes the connection":
+    let (transport, _, _) = startServer()
+    # Unbuffered: a buffered recv(4096) would wait for 4096 bytes or the close.
+    let socket = newAsyncSocket(buffered = false)
+    waitFor socket.connect("127.0.0.1", Port(transport.port))
+    let body = legacyInitialize()
+    waitFor socket.send("POST /mcp HTTP/1.1\c\LHost: 127.0.0.1:" & $transport.port &
+      "\c\LContent-Type: application/json\c\LAccept: application/json, text/event-stream" &
+      "\c\LContent-Length: " & $body.len & "\c\L\c\L" & body)
+    var received = ""
+    var closed = false
+    while true:
+      let read = socket.recv(4096)
+      if not waitFor withTimeout(read, 2000):
+        break
+      let chunk = read.read()
+      if chunk.len == 0:
+        closed = true
+        break
+      received.add chunk
+    socket.close()
+    check received.startsWith("HTTP/1.1 200")
+    check closed

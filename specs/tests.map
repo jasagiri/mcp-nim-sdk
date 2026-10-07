@@ -89,6 +89,7 @@ MCP-HTTP-1 | tests/test_streamable_http.nim | Given the endpoint, when it receiv
 MCP-HTTP-1 | tests/test_streamable_http.nim | Given a body that is not JSON, when posted, then the answer is 400 with a parse error
 MCP-HTTP-1 | tests/test_streamable_http.nim | Given a JSON body that is not an object, when posted, then the answer is 400 invalid request
 MCP-HTTP-1 | tests/test_streamable_http.nim | Given a body larger than the limit, when posted, then the answer is 413
+MCP-HTTP-1 | tests/test_streamable_http.nim | Given a JSON body that is a single value and no object, when posted, then the answer is 400 invalid request
 MCP-HTTP-2 | tests/test_streamable_http.nim | Given an Origin that is neither loopback nor allowed, when posted, then the answer is 403
 MCP-HTTP-2 | tests/test_streamable_http.nim | Given a loopback Origin, when posted, then the request is served
 MCP-HTTP-2 | tests/test_streamable_http.nim | Given an Origin the operator allowed, when posted, then the request is served
@@ -103,6 +104,8 @@ MCP-HTTP-5 | tests/test_streamable_http.nim | Given a session, when the client s
 MCP-HTTP-5 | tests/test_streamable_http.nim | Given DELETE without a session id or with an unknown one, when sent, then the answer is 400 or 404
 MCP-HTTP-5 | tests/test_streamable_http.nim | Given the session limit is reached by a session in use, when another client initializes, then the answer is 503
 MCP-HTTP-5 | tests/test_streamable_http.nim | Given an initialize the server rejects, when answered, then no session is opened
+MCP-HTTP-g2f-hs-b-1 | tests/test_streamable_http.nim | Given a notification whose method is initialize and no session, when posted, then the answer is 400 and no session is made
+MCP-HTTP-g2f-hs-b-2 | tests/test_streamable_http.nim | Given a POST answered with a JSON body, when the answer is complete, then the server closes the connection
 MCP-HTTP-6 | tests/test_streamable_http.nim | Given the specification's tools/call request, when posted with its headers, then the answer is 200 with a complete result
 MCP-HTTP-6 | tests/test_streamable_http.nim | Given an Mcp-Name that differs from the body, when posted, then the answer is 400 header mismatch
 MCP-HTTP-6 | tests/test_streamable_http.nim | Given each required header missing in turn, when posted, then the answer is 400 header mismatch
