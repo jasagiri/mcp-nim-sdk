@@ -6,7 +6,7 @@
 ## only where the default version is 2026-07-28 or later.
 
 import std/[unittest, asyncdispatch, asynchttpserver, httpclient, json,
-            options, strutils, nativesockets]
+            options, strutils, nativesockets, os]
 import transport/transport
 import transport/http
 import transport/http_server
@@ -118,6 +118,61 @@ proc startScripted(handler: Scripted): string =
       await server.acceptRequest(handler)
   asyncCheck loop()
   "http://127.0.0.1:" & $port & "/mcp"
+
+proc loggedWhile(body: proc()): string =
+  ## Everything the code under test wrote to stderr.
+  let path = getTempDir() / "mcp-param-headers-http-" & $getCurrentProcessId() & ".log"
+  let saved = stderr
+  stderr = open(path, fmWrite)
+  try:
+    body()
+  finally:
+    stderr.close()
+    stderr = saved
+  result = readFile(path)
+  removeFile(path)
+
+type MismatchState = ref object
+  ## A scripted server that refuses every tools/call as a header mismatch.
+  calls: int
+  lists: int
+  listReply: proc(id: JsonNode, cursor: string): JsonNode {.gcsafe.}
+
+proc startMismatchServer(state: MismatchState): string =
+  startScripted(proc(req: Request) {.async, gcsafe.} =
+    let message = parseJson(req.body)
+    var code = Http200
+    var body: JsonNode
+    {.cast(gcsafe).}:
+      case message["method"].getStr()
+      of "server/discover":
+        body = %*{"jsonrpc": "2.0", "id": message["id"], "result": {
+          "resultType": "complete", "supportedVersions": ["2026-07-28"],
+          "capabilities": {"tools": {}},
+          "serverInfo": {"name": "scripted", "version": "1"}}}
+      of "tools/list":
+        inc state.lists
+        body = state.listReply(message["id"], message["params"]{"cursor"}.getStr())
+      else:
+        inc state.calls
+        code = Http400
+        body = %*{"jsonrpc": "2.0", "id": message["id"], "error": {
+          "code": -32020, "message": "Header mismatch: Mcp-Param-Region is required"}}
+    await req.respond(code, $body, newHttpHeaders({"Content-Type": "application/json"})))
+
+proc listPage(id: JsonNode, tools: seq[JsonNode], next: JsonNode = nil): JsonNode =
+  var res = %*{"resultType": "complete", "tools": tools, "ttlMs": 0, "cacheScope": "private"}
+  if not next.isNil:
+    res["nextCursor"] = next
+  %*{"jsonrpc": "2.0", "id": id, "result": res}
+
+proc callExecuteSql(client: McpClient): JsonRpcResponse =
+  waitFor client.sendRequest("tools/call",
+    %*{"name": "execute_sql", "arguments": {"region": "us-west1", "query": "q"}})
+
+proc connectedTo(url: string): McpClient =
+  result = newMcpClient(McpClientInfo(name: "ExampleClient", version: "1.0.0"))
+  waitFor result.connect(newStreamableHttpTransport(url))
 
 if SpeaksModern:
   suite "2026-07-28 parameter headers: server validation":
@@ -264,6 +319,83 @@ if SpeaksModern:
       check response.error.get.code == -32020
       check calls == 2
       check lists == 1
+
+    test "Given a tool call that the server answers, when it is sent over HTTP, then the client does not read the tool list again":
+      let state = MismatchState(listReply: proc(id: JsonNode, cursor: string): JsonNode {.gcsafe.} =
+        listPage(id, @[sqlTool()]))
+      let url = startScripted(proc(req: Request) {.async, gcsafe.} =
+        let message = parseJson(req.body)
+        var payload: JsonNode
+        {.cast(gcsafe).}:
+          case message["method"].getStr()
+          of "server/discover":
+            payload = %*{"resultType": "complete", "supportedVersions": ["2026-07-28"],
+              "capabilities": {"tools": {}}, "serverInfo": {"name": "scripted", "version": "1"}}
+          of "tools/list":
+            inc state.lists
+            payload = %*{"resultType": "complete", "tools": [sqlTool()], "ttlMs": 0, "cacheScope": "private"}
+          else:
+            payload = %*{"resultType": "complete", "content": []}
+        await req.respond(Http200, $(%*{"jsonrpc": "2.0", "id": message["id"], "result": payload}),
+          newHttpHeaders({"Content-Type": "application/json"})))
+      let client = connectedTo(url)
+      let response = client.callExecuteSql()
+      check response.error.isNone
+      check state.lists == 0
+
+    test "Given a header mismatch and a tool list that cannot be read, when the call is refused, then the refusal is returned without a retry":
+      let state = MismatchState(listReply: proc(id: JsonNode, cursor: string): JsonNode {.gcsafe.} =
+        %*{"jsonrpc": "2.0", "id": id, "error": {"code": -32603,
+                                                  "message": "list failed\n[mcp-client] forged line \e[2J"}})
+      let client = connectedTo(startMismatchServer(state))
+      var response: JsonRpcResponse
+      let logged = loggedWhile(proc() = response = client.callExecuteSql())
+      check response.error.get.code == -32020
+      check state.lists == 1
+      check state.calls == 1
+      check "tools/list after a header mismatch failed: list failed" in logged
+      check "\e" notin logged
+      check logged.count('\n') == 1
+
+    test "Given a header mismatch and a tool list without the tool, when the call is refused, then the refusal is returned without a retry":
+      let state = MismatchState(listReply: proc(id: JsonNode, cursor: string): JsonNode {.gcsafe.} =
+        listPage(id, @[plainTool()]))
+      let client = connectedTo(startMismatchServer(state))
+      let response = client.callExecuteSql()
+      check response.error.get.code == -32020
+      check state.lists == 1
+      check state.calls == 1
+
+    test "Given a header mismatch and a tool listed on the second page, when the call is refused, then the client reads on and retries":
+      let state = MismatchState(listReply: proc(id: JsonNode, cursor: string): JsonNode {.gcsafe.} =
+        if cursor == "": listPage(id, @[plainTool()], %"second")
+        else: listPage(id, @[sqlTool()]))
+      let client = connectedTo(startMismatchServer(state))
+      let response = client.callExecuteSql()
+      check response.error.get.code == -32020
+      check state.lists == 2
+      check state.calls == 2
+
+    test "Given a header mismatch and a tool list whose nextCursor is not a string, when the call is refused, then the client stops reading and returns the refusal":
+      let state = MismatchState(listReply: proc(id: JsonNode, cursor: string): JsonNode {.gcsafe.} =
+        listPage(id, @[plainTool()], %7))
+      let client = connectedTo(startMismatchServer(state))
+      let response = client.callExecuteSql()
+      check response.error.get.code == -32020
+      check state.lists == 1
+      check state.calls == 1
+
+    test "Given a header mismatch and a server whose tool list never ends, when the call is refused, then the client gives up reading and returns the refusal":
+      let state = MismatchState(listReply: proc(id: JsonNode, cursor: string): JsonNode {.gcsafe.} =
+        listPage(id, @[plainTool()], %"again"))
+      let client = connectedTo(startMismatchServer(state))
+      var response: JsonRpcResponse
+      let logged = loggedWhile(proc() = response = client.callExecuteSql())
+      check response.error.get.code == -32020
+      check state.lists > 1
+      check state.calls == 1
+      check "'execute_sql' was not found" in logged
+      check logged.count('\n') == 1
 
     test "Given a scripted server, when a client calls a tool listed with x-mcp-header, then the headers are exactly the specification's":
       var seen: seq[tuple[name, region, other: string]] = @[]
