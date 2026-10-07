@@ -98,6 +98,28 @@ suite "event stream: reading":
   test "Given a byte order mark at the start, when read, then it is not part of the first field name":
     check feedAll("\xEF\xBB\xBFdata: x\n\n")[0].data == "x"
 
+  test "Given a byte order mark after the first line, when read, then it stays part of that line's field name":
+    # WHATWG: only a mark at the start of the stream is dropped; a later one
+    # leaves a field named "\xEF\xBB\xBFdata", which no event reads.
+    let events = feedAll("data: first\n\n\xEF\xBB\xBFdata: second\n\n")
+    check events.len == 1
+    check events[0].data == "first"
+
+  test "Given blank lines after an event, when read, then they dispatch nothing more":
+    # The data buffer is empty after a dispatch: a further blank line has no
+    # data to dispatch (WHATWG: "If the data buffer is an empty string, set
+    # the data buffer and the event type buffer to the empty string and abort
+    # these steps").
+    check feedAll("data: a\n\n\n\n").len == 1
+    check feedAll("data: a\n\n", "\n").len == 1
+
+suite "event stream: line limit":
+  test "Given a line of exactly the limit, when read, then it is accepted and one byte more raises SseLimitError":
+    var parser = initSseParser(maxLineBytes = 10)
+    check parser.feed("data: abcd\n\n")[0].data == "abcd"
+    expect SseLimitError:
+      discard parser.feed("data: abcde")
+
 suite "event stream: writing":
 
   test "Given data, when formatted, then it is one data line and a blank line":
