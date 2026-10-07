@@ -69,9 +69,9 @@ proc discoverProtectedResource*(resourceUrl: string, advertisedUrl: Option[strin
       return await fetchProtectedResourceMetadata(url, resourceUrl, policy, builtFromOrigin)
     except OAuthSecurityError as e:
       security = e
-      failures.add e.msg
+      failures.add e.plainMessage
     except OAuthError as e:
-      failures.add e.msg
+      failures.add e.plainMessage
   if not security.isNil:
     raise newException(OAuthSecurityError,
       "no usable protected resource metadata: " & failures.join("; "))
@@ -95,9 +95,9 @@ proc discoverAuthorizationServer*(issuer: string, style: AsDiscoveryStyle, polic
       return parseAuthorizationServerMetadata(reply.document.get, issuer, policy)
     except OAuthSecurityError as e:
       sawSecurityFailure = true
-      failures.add url & ": " & e.msg
+      failures.add url & ": " & e.plainMessage
     except OAuthError as e:
-      failures.add url & ": " & e.msg
+      failures.add url & ": " & e.plainMessage
   let message = "no authorization server metadata for " & issuer & ": " & failures.join("; ")
   if sawSecurityFailure:
     raise newException(OAuthSecurityError, message)

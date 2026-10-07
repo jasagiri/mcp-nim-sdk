@@ -514,6 +514,17 @@ suite "Protected resource metadata over a scripted server (mutation review, g2f-
       check outcome.kind == "oauth"
       check ("(HTTP " & $code & ")") in outcome.msg
 
+  test "Given no document at either well-known URL, when probing, then the failure lists both with their status":
+    let server = startScripted(proc(origin, line: string): string = jsonReply(404, "Not Found", "{}"))
+    defer: server.stop()
+    let outcome = outcomeOf(discoverProtectedResource(server.origin & "/mcp", none(string), true, policy))
+    check outcome.kind == "oauth"
+    check outcome.msg.startsWith("no protected resource metadata: ")
+    check (server.origin & "/.well-known/oauth-protected-resource/mcp is not a JSON object (HTTP 404)") in
+      outcome.msg
+    check (server.origin & "/.well-known/oauth-protected-resource is not a JSON object (HTTP 404)") in
+      outcome.msg
+
   test "Given a document for another resource at the first URL, when probing, then the failure is a security failure that says why":
     let server = startScripted(proc(origin, line: string): string =
       if "/oauth-protected-resource/mcp" in line:
