@@ -20,7 +20,6 @@ import ./types
 export payload
 
 const
-  ContentTypes = ["text", "image", "audio"]
   ToolChoiceModes = ["auto", "required", "none"]
 
 func isString(node: JsonNode, key: string): bool =
