@@ -104,6 +104,13 @@
 |---|---|---|
 | `src/transport/transport.nim` (`McpAuthorizationError`)、`src/transport/http.nim` (401 / 403 を解消できないときに送出)、`src/client/client.nim` (`discover` が旧版への切り替えをしない) | `tests/test_auth_failure.nim` | 2026-10-06 |
 
+## 測定後に変わったモジュール (2026-10-07 の測定 36a4c8a5 より後。push の前に測り直す)
+
+| モジュール | 変えた内容 | 対応する外部仕様テスト |
+|---|---|---|
+| `src/client/client.nim` | 送信に失敗した要求を待ちの表から外す (`startRequest`)。到達しない文 2 つを削除、`discover` の末尾を `raiseAssert` に | `tests/test_client_requests.nim` |
+| `src/protocol/lifecycle.nim` | 呼び出し元の無い補助関数 4 つを削除 | `tests/test_legacy_handshake.nim` |
+
 ## 未測定 (HTTP サーバーのセキュリティ修正。本線向け)
 
 | モジュール | 対応する外部仕様テスト | 追加・変更した日 |
