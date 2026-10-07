@@ -14,6 +14,7 @@ import transport/http_server
 import transport/event_stream
 import protocol/types
 import protocol/version
+import protocol/features
 
 type
   RawRequest = object
@@ -1182,3 +1183,31 @@ if speaks >= mpv20250326:
       waitFor sleepAsync(100)
       check gets == 2
       waitFor transport.close()
+
+if speaks.has(ftProtocolVersionHeader):
+  suite "client: the protocol version header (mutation review, g2g-hc-a)":
+
+    test "Given a negotiated version that has the header, when the client posts, opens the GET stream and ends the session, then each request names the version":
+      var seen: seq[tuple[httpMethod, version: string]] = @[]
+      let url = startRawServer(proc(request: RawRequest, socket: AsyncSocket) {.async.} =
+        seen.add (request.httpMethod, request.header("MCP-Protocol-Version"))
+        case request.httpMethod
+        of "GET":
+          await eventStreamHead(socket)
+          discard await socket.recv(1)
+        of "DELETE":
+          await socket.send("HTTP/1.1 200 OK\c\LContent-Length: 0\c\L\c\L")
+        else:
+          await socket.accepted())
+      let transport = newStreamableHttpTransport(url)
+      transport.sessionId = some("s-1")
+      transport.initialized()
+      waitFor sleepAsync(100)
+      waitFor transport.close()
+      var methods: seq[string] = @[]
+      for (httpMethod, version) in seen:
+        methods.add httpMethod
+        check version == $speaks
+      check "POST" in methods
+      check "GET" in methods
+      check "DELETE" in methods

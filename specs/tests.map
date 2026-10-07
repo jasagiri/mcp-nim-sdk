@@ -1494,6 +1494,7 @@ MCP-HTTP-g2g-hc-a-4 | tests/test_http_client_streams.nim | Given a server that h
 MCP-HTTP-g2g-hc-a-4 | tests/test_http_client_streams.nim | Given an event that is no JSON on the GET stream, when it arrives, then the client says the stream failed
 MCP-HTTP-g2g-hc-a-4 | tests/test_http_client_streams.nim | Given a GET stream that is open, when the client closes, then the connection of the stream is closed
 MCP-HTTP-g2g-hc-a-4 | tests/test_http_client_streams.nim | Given a GET stream still being opened, when the client closes, then the connection of that stream is closed as well
+MCP-HTTP-g2g-hc-a-4 | tests/test_http_client_streams.nim | Given a negotiated version that has the header, when the client posts, opens the GET stream and ends the session, then each request names the version
 MCP-HTTP-g2g-hc-a-5 | tests/test_http_client_streams.nim | Given a resumed stream whose events carry no id, when it is cut too, then the next resumption still names the last id that was sent
 MCP-HTTP-g2g-hc-a-5 | tests/test_http_client_streams.nim | Given a server that says something on every resumed stream, when the stream is cut more often than the limit, then the response still arrives
 MCP-HTTP-g2g-hc-a-6 | tests/test_http_client_streams.nim | Given a server that ends every GET stream at once, when the session is initialized, then the client asks once and as often again as it may reconnect
