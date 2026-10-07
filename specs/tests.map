@@ -1351,6 +1351,7 @@ MCP-SEC-HTTP-1 | tests/test_security_http.nim | Given an authorized transport, w
 MCP-SEC-HTTP-1 | tests/test_security_http.nim | Given a token, when a client opens /sse and posts, then the request reaches the server as that principal
 MCP-SEC-HTTP-1 | tests/test_security_http.nim | Given an invalid token, when GET /sse comes, then the answer is 401
 MCP-SEC-HTTP-1 | tests/test_security_http.nim | Given an authorized transport with documents, when a document and the metadata are read without a token, then both are served
+MCP-SEC-HTTP-g2f-hs-b-1 | tests/test_security_http.nim | Given an authorization hook that raises, when a request arrives, then the answer is 500 and nothing reaches the server
 MCP-SEC-HTTP-2 | tests/test_security_http.nim | Given alice's session, when bob posts with its id, then the answer is 404 and the server sees nothing
 MCP-SEC-HTTP-2 | tests/test_security_http.nim | Given alice's session, when alice posts with its id, then it is served
 MCP-SEC-HTTP-2 | tests/test_security_http.nim | Given alice's session, when bob opens its GET stream, then the answer is 404
@@ -1370,6 +1371,7 @@ MCP-SEC-HTTP-3 | tests/test_security_http.nim | Given a client address at its li
 MCP-SEC-HTTP-3 | tests/test_security_http.nim | Given a batch longer than the limit, when posted, then the answer is 400, and a batch within it is answered
 MCP-SEC-HTTP-3 | tests/test_security_http.nim | Given requests in progress up to the limit, when another arrives, then the answer is 503 with Retry-After
 MCP-SEC-HTTP-3 | tests/test_security_http.nim | Given messages waiting for the server up to the limit, when another arrives, then the answer is 503
+MCP-SEC-HTTP-3 | tests/test_security_http.nim | Given requests in progress up to the limit, when a client of HTTP+SSE posts another, then the answer is 503 with Retry-After
 MCP-SEC-HTTP-5 | tests/test_security_http.nim | Given a transport bound to loopback, when a request names another host, then the answer is 403 on every endpoint
 MCP-SEC-HTTP-5 | tests/test_security_http.nim | Given a transport bound to loopback, when a request names a loopback host with a port, then it is served
 MCP-SEC-HTTP-5 | tests/test_security_http.nim | Given allowed hosts, when a request names one of them or another, then the first is served and the second is 403

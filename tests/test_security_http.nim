@@ -531,3 +531,53 @@ suite "The Host header names this server, in its odd forms (mutation review, g2f
     let status = waitFor socket.recvLine()
     socket.close()
     check " 403 " in status
+
+import transport/auth_hook
+
+proc sendWithin(url: string, httpMethod: HttpMethod, body: string,
+                headers: openArray[(string, string)] = [], ms = 2000):
+    Option[tuple[code: HttpCode, headers: HttpHeaders, body: string]] =
+  ## The reply, or none when the server has not answered within `ms`: a
+  ## transport that forgets to answer must fail a check, not hang the test.
+  let http = newAsyncHttpClient()
+  defer: http.close()
+  let all = newHttpHeaders({"Content-Type": "application/json",
+                            "Accept": "application/json, text/event-stream"})
+  for (name, value) in headers:
+    all[name] = value
+  let pending = http.request(url, httpMethod, body, all)
+  if waitFor withTimeout(pending, ms):
+    let response = pending.read()
+    some((response.code, response.headers, waitFor response.body))
+  else:
+    none(tuple[code: HttpCode, headers: HttpHeaders, body: string])
+
+suite "A hook that fails lets nothing through (mutation review, g2f-hs-b)":
+  test "Given an authorization hook that raises, when a request arrives, then the answer is 500 and nothing reaches the server":
+    let env = startOpen()
+    env.transport.auth = HttpServerAuth(
+      check: proc(httpMethod, path: string, authorization: Option[string]):
+                 Future[HttpServerAuthOutcome] {.async.} =
+        raise newException(ValueError, "the hook could not decide"))
+    let reply = sendWithin(env.base & "/mcp", HttpPost, initializeBody())
+    require reply.isSome
+    check reply.get.code == Http500
+    waitFor sleepAsync(50)
+    check env.script.received.len == 0
+    check env.transport.sessionCount == 0
+
+if ServesLegacySse:
+  suite "The limits hold on the HTTP+SSE endpoints (mutation review, g2f-hs-b)":
+    test "Given requests in progress up to the limit, when a client of HTTP+SSE posts another, then the answer is 503 with Retry-After":
+      let env = startOpen()
+      env.transport.maxPendingRequests = 1
+      let stream = open(env.base & "/sse", HttpGet, "", @[("Accept", "text/event-stream")])
+      let endpoint = stream.next().get.data
+      check send(env.base & endpoint, HttpPost, rpc(1, "hang")).code == Http202
+      waitFor sleepAsync(30)
+      check env.transport.pendingExchangeCount == 1
+      let reply = sendWithin(env.base & endpoint, HttpPost, rpc(2, "hang"))
+      require reply.isSome
+      check reply.get.code == Http503
+      check reply.get.headers.hasKey("Retry-After")
+      stream.close()

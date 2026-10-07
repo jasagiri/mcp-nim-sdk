@@ -102,6 +102,12 @@ Feature: Security properties
     And an address at its limit loses only its own unused sessions or is refused with 503
     And a batch over the limit is answered 400, and work over the limit 503 with Retry-After
 
+  @spec:MCP-SEC-HTTP-g2f-hs-b-1
+  Scenario: A hook that cannot decide lets nothing through
+    Given a transport with an authorization hook that fails with an error
+    When a request to the MCP endpoint arrives
+    Then the answer is 500, the request does not reach the server, and no session is made
+
   @spec:MCP-SEC-HTTP-5
   Scenario: A request must be addressed to this server
     Given a transport bound to a loopback address
