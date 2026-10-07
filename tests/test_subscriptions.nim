@@ -475,6 +475,19 @@ suite "subscriptions on the client":
         discard waitFor request
       check client.subscriptions.len == 0
 
+  # An internal-implementation test (I): see the same kind of test in
+  # test_client_requests.nim.
+  test "Given a token used for several listens that were acknowledged, when they are done, then the token holds nothing of them":
+    for v in versionsWith(ftSubscriptionsListen):
+      let peer = listenPeer(proc(peer: client_peer.Peer, message: JsonNode) =
+        acknowledge(peer, message, %*{"toolsListChanged": true}))
+      let client = peer.connectedClient(v)
+      let token = newMcpCancelToken()
+      let options = McpRequestOptions(cancel: token)
+      for _ in 0 ..< 3:
+        discard waitFor client.listen(SubscriptionFilter(toolsListChanged: true), options)
+      check token.heldWaiters == 0
+
   test "Given a server that rejects the listen request, when the client listens, then it raises McpRequestError":
     for v in versionsWith(ftSubscriptionsListen):
       let peer = listenPeer(proc(peer: client_peer.Peer, message: JsonNode) =

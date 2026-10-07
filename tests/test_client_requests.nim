@@ -200,6 +200,24 @@ suite "cancelling a request":
       discard waitFor pending
     check told == 1
 
+  # An internal-implementation test (I): nothing outside the token shows what
+  # it still holds, so `heldWaiters` is the hook. The behaviour behind it is
+  # that a token used for the whole life of an application does not grow by
+  # one closure per request.
+  test "Given one token used by many requests that end in different ways, when they are done, then the token holds nothing of them":
+    let peer = startPeer(proc(peer: Peer, message: JsonNode) =
+      if message{"method"}.getStr() == "tools/list":
+        peer.reply(message["id"], %*{"tools": []}))
+    let client = peer.connectedClient(LegacyDefault)
+    let token = newMcpCancelToken()
+    for _ in 0 ..< 20:
+      discard waitFor client.sendRequest("tools/list", newJObject(),
+        McpRequestOptions(cancel: token))
+    expect McpTimeoutError:
+      discard waitFor client.sendRequest("tools/call", %*{"name": "slow"},
+        McpRequestOptions(cancel: token, timeoutMs: some(20)))
+    check token.heldWaiters == 0
+
 suite "starting a request without waiting for its response":
 
   test "Given a request that is started, when the server has not answered, then it returns the id on the wire and a response that completes later":

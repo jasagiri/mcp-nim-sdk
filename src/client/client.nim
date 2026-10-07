@@ -80,6 +80,7 @@ type
     ## McpCancelledError and tells the server to stop.
     reason: string
     signal: Future[void]
+    waiters: seq[Future[void]]
 
   McpProgress* = object
     ## One notifications/progress for a request that asked for them.
@@ -170,6 +171,14 @@ proc cancel*(token: McpCancelToken, reason: string = "") =
   if not token.signal.finished:
     token.reason = reason
     token.signal.complete()
+    # Each waiter is woken from here and not by a callback on `signal`: a
+    # callback cannot be taken off a future again, so one per request would
+    # stay on a token that outlives its requests.
+    let woken = token.waiters
+    token.waiters = @[]
+    for waiter in woken:
+      if not waiter.finished:
+        waiter.complete()
 
 proc isCancelled*(token: McpCancelToken): bool = token.signal.finished
 
@@ -177,6 +186,27 @@ proc whenCancelled*(token: McpCancelToken): Future[void] = token.signal
   ## Completes when the token is cancelled.
 
 proc cancelReason*(token: McpCancelToken): string = token.reason
+
+proc watchCancellation*(token: McpCancelToken): Future[void] =
+  ## Internal to the SDK. A future that completes when `token` is cancelled,
+  ## for one request to wait on; give it back with `unwatchCancellation`
+  ## when the request ends. Unlike `whenCancelled` it touches no callback of
+  ## the token's own future, so any number of requests can share a token.
+  result = newFuture[void]("McpCancelToken.watch")
+  if token.signal.finished:
+    result.complete()
+  else:
+    token.waiters.add result
+
+proc unwatchCancellation*(token: McpCancelToken, waiter: Future[void]) =
+  ## Internal to the SDK: the request that waited with `waiter` has ended.
+  let at = token.waiters.find(waiter)
+  if at >= 0:
+    token.waiters.del(at)
+
+proc heldWaiters*(token: McpCancelToken): int =
+  ## Internal, for tests: how many requests are still waiting on `token`.
+  token.waiters.len
 
 proc newMcpClient*(
   clientInfo: McpClientInfo,
@@ -513,13 +543,16 @@ proc sendOnce(client: McpClient, methodName: string, params: JsonNode,
   if progressKey.len > 0:
     client.progressCallbacks[progressKey] = options.onProgress
   var response: JsonRpcResponse
+  var watching: Future[void]
   try:
     let started = client.beginRequest(methodName, wireParams)
     let timeoutMs = options.timeoutMs.get(client.requestTimeoutMs)
     let timer = if timeoutMs > 0: sleepAsync(timeoutMs)
                 else: newFuture[void]("McpClient.noTimeout")
     let cancelled = if options.cancel.isNil: newFuture[void]("McpClient.noCancel")
-                    else: options.cancel.signal
+                    else: options.cancel.watchCancellation()
+    if not options.cancel.isNil:
+      watching = cancelled
     await firstOf(started.response, timer, cancelled)
     if started.response.finished:
       response = started.response.read
@@ -534,6 +567,8 @@ proc sendOnce(client: McpClient, methodName: string, params: JsonNode,
       raise newException(McpTimeoutError,
         methodName & ": no response within " & $timeoutMs & " ms")
   finally:
+    if not watching.isNil:
+      options.cancel.unwatchCancellation(watching)
     if progressKey.len > 0:
       client.progressCallbacks.del(progressKey)
   return response

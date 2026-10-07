@@ -103,8 +103,12 @@ proc listen*(client: McpClient, filter: SubscriptionFilter,
   let timer = if timeoutMs > 0: sleepAsync(timeoutMs)
               else: newFuture[void]("McpClient.listen.noTimeout")
   let cancelled = if options.cancel.isNil: newFuture[void]("McpClient.listen.noCancel")
-                  else: options.cancel.whenCancelled
-  await firstOf(subscription.acknowledgement, subscription.ended, timer, cancelled)
+                  else: options.cancel.watchCancellation()
+  try:
+    await firstOf(subscription.acknowledgement, subscription.ended, timer, cancelled)
+  finally:
+    if not options.cancel.isNil:
+      options.cancel.unwatchCancellation(cancelled)
   if subscription.acknowledgement.finished:
     if subscription.problem.isSome:
       await subscription.cancel("malformed acknowledgment")
