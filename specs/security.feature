@@ -275,3 +275,15 @@ Feature: Security properties
     Given text a peer chose where base64 is expected: a cursor, the data of a data URI
     When it holds a character outside the base64 alphabet, or padding anywhere but its end
     Then it is refused as malformed before the decoder sees it, whatever compiler built the decoder
+
+  @spec:MCP-SEC-hardening-2
+  Scenario: A pattern may hold any character
+    Given a pattern with a character above U+007F as a literal, after a backslash, or where the syntax expects an ASCII character
+    When it is compiled and matched
+    Then the character stands for itself, or the pattern is refused with a RegexError, and nothing else is raised
+
+  @spec:MCP-SEC-hardening-3
+  Scenario: The inputs that fuzzing found stay handled
+    Given the seeds of every fuzzing target and every input kept under tests/fuzz/corpus
+    When each is handled by its target
+    Then nothing is wrong and no defect is raised
