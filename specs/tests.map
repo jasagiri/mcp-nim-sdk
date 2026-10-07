@@ -1431,3 +1431,16 @@ MCP-SEC-SWEEP-3 | tests/test_security_sampling.nim | Given numbers and nulls, wh
 MCP-SEC-SWEEP-5 | tests/test_security_pages.nim | Given a server that makes up a new cursor for every page, when all pages are read, then it is a protocol error after the limit
 MCP-SEC-SWEEP-5 | tests/test_security_pages.nim | Given a server whose last page is the limit, when all pages are read, then every item is returned
 MCP-SEC-SWEEP-5 | tests/test_security_pages.nim | Given the default limit, when a server has 1000 pages, then they are read
+MCP-SEC-hardening-1 | tests/test_base64_shape.nim | Given what base64.encode writes, when its shape is checked, then it is padded base64
+MCP-SEC-hardening-1 | tests/test_base64_shape.nim | Given padded base64 without its padding, when its shape is checked, then it is base64 text and not padded base64
+MCP-SEC-hardening-1 | tests/test_base64_shape.nim | Given a character outside the alphabet, when the shape is checked, then it is neither
+MCP-SEC-hardening-1 | tests/test_base64_shape.nim | Given more than two pad characters, when the shape is checked, then it is neither
+MCP-SEC-hardening-1 | tests/test_base64_shape.nim | Given the empty text, when the shape is checked, then it is both
+MCP-SEC-hardening-1 | tests/test_base64_shape.nim | Given text of either shape, when it is decoded, then the decoder raises nothing but ValueError
+MCP-PAGINATION-2 | tests/test_server_pagination.nim | Given a cursor that is not the padded base64 the server writes, when the list is paged, then the cursor is invalid params
+MCP-SEC-hardening-1 | tests/test_server_pagination.nim | Given a cursor that is not the padded base64 the server writes, when the list is paged, then the cursor is invalid params
+MCP-PAGINATION-2 | tests/test_server_pagination.nim | Given a cursor that is not base64, when a client lists, then the error is invalid params and the server goes on answering
+MCP-SEC-hardening-1 | tests/test_server_pagination.nim | Given a cursor that is not base64, when a client lists, then the error is invalid params and the server goes on answering
+MCP-ICONS-6 | tests/test_icon_fetch.nim | Given a data URI whose data is not base64, when fetched, then it is refused
+MCP-ICONS-6 | tests/test_icon_fetch.nim | Given a data URI whose base64 has no padding, when fetched, then the icon is read
+MCP-SEC-hardening-1 | tests/test_icon_fetch.nim | Given a data URI whose data is not base64, when fetched, then it is refused

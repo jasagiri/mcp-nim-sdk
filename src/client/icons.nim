@@ -17,6 +17,7 @@
 import std/[asyncdispatch, base64, httpcore, options, strutils, uri]
 import ./client
 import ./content
+import ../protocol/base64_shape
 import ../transport/transport
 import ../transport/http_wire as wire
 import ../transport/address_policy
@@ -102,6 +103,8 @@ proc iconFromDataUri(src: string, options: IconFetchOptions): McpFetchedIcon =
   let parts = src[5 .. ^1].split(',', maxsplit = 1)
   if parts.len != 2:
     raise newException(McpIconError, "the data URI has no data")
+  if not isBase64Text(parts[1]):
+    raise newException(McpIconError, "the data URI is not valid base64")
   var bytes: string
   try:
     bytes = decode(parts[1])

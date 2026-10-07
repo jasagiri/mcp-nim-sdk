@@ -3,6 +3,7 @@
 
 import std/[asyncdispatch, base64, json, options, strutils]
 import ./errors
+import ../protocol/base64_shape
 
 type
   McpPage* = object
@@ -24,6 +25,8 @@ func encodeCursor(offset: int): string =
 func decodeCursor(cursor: string, itemCount: int): Option[int] =
   ## The offset a cursor of `encodeCursor` names, when it lies inside a list
   ## of `itemCount` items.
+  if not isPaddedBase64(cursor):
+    return none(int)
   var text: string
   try:
     text = base64.decode(cursor)

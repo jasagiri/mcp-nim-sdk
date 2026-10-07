@@ -62,6 +62,18 @@ suite "pageOf":
         code = e.code
       check code == -32602
 
+  test "Given a cursor that is not the padded base64 the server writes, when the list is paged, then the cursor is invalid params":
+    # The first two made std/base64.decode of Nim 2.2.8 read past the end of
+    # its input (nim-lang/Nim#25530, an IndexDefect). The rest it decodes to
+    # "offset:1": a cursor of this server but for the white space or the pad.
+    for bad in ["\rN0x", "\rp1d", " b2Zmc2V0OjE=", "b2Zmc2V0OjE=\n", "b2Zm c2V0OjE=", "b2Zmc2V0OjE"]:
+      var code = 0
+      try:
+        discard pageOf(items("x", 5), some(bad), 2)
+      except McpRequestError as e:
+        code = e.code
+      check code == -32602
+
   test "Given a page size of 0, when any cursor is given, then it is invalid params":
     expect McpRequestError:
       discard pageOf(items("x", 5), some("b2Zmc2V0OjI="), 0)
@@ -103,6 +115,13 @@ suite "list methods on the wire (every version)":
         let server = pagedServer(2)
         let peer = server.connect(server.attach(), v)
         check peer.ask(methodName, %*{"cursor": "bogus"}).errorCode == -32602
+
+  test "Given a cursor that is not base64, when a client lists, then the error is invalid params and the server goes on answering":
+    for v in SupportedProtocolVersions:
+      let server = pagedServer(2)
+      let peer = server.connect(server.attach(), v)
+      check peer.ask("tools/list", %*{"cursor": "\rN0x"}).errorCode == -32602
+      check peer.ask("tools/list")["result"]["tools"].len == 2
 
   test "Given a cursor that is not a string, when a client lists, then the error is invalid params":
     for v in SupportedProtocolVersions:

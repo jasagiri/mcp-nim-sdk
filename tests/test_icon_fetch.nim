@@ -131,6 +131,21 @@ suite "fetching an icon":
     check port.refused("data:text/html;base64," & encode("<script>")).len > 0
     check port.refused("data:image/png;base64,@@@").len > 0
 
+  test "Given a data URI whose data is not base64, when fetched, then it is refused":
+    # The first made std/base64.decode of Nim 2.2.8 read past the end of its
+    # input (nim-lang/Nim#25530). The others carry white space, which a data
+    # URI does not.
+    let port = startServer(Seen())
+    let png = encode(Png)
+    check port.refused("data:image/png;base64,\rN0x").len > 0
+    check port.refused("data:image/png;base64, " & png).len > 0
+    check port.refused("data:image/png;base64," & png & "\n").len > 0
+    check port.refused("data:image/png;base64," & png[0 .. 3] & "\n" & png[4 .. ^1]).len > 0
+
+  test "Given a data URI whose base64 has no padding, when fetched, then the icon is read":
+    let port = startServer(Seen())
+    check port.fetch("data:image/png;base64," & encode(Png).strip(leading = false, chars = {'='})).kind == itPng
+
   test "Given a fetch without the server's origin, when asked for a URL, then it is refused":
     let port = startServer(Seen())
     var failed = false

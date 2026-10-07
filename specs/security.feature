@@ -269,3 +269,9 @@ Feature: Security properties
     Given a server that makes up a new cursor for every page of a list
     When the client reads all pages
     Then it stops with a protocol error after the page limit, which a list of that many pages still fits
+
+  @spec:MCP-SEC-hardening-1
+  Scenario: Text of a peer is decoded as base64 only when it has the shape of base64
+    Given text a peer chose where base64 is expected: a cursor, the data of a data URI
+    When it holds a character outside the base64 alphabet, or padding anywhere but its end
+    Then it is refused as malformed before the decoder sees it, whatever compiler built the decoder
