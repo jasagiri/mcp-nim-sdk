@@ -1,0 +1,44 @@
+{"kind": "stage", "date": "2026-10-07", "stage": "mutation_ledger", "commit": "e79ebbd81dbf", "doneWhen": "every survivor of the 27 mainline jobs measured at 36a4c8a5 and 7d32c165 is listed with a class and a reason in docs/quality/g2-*.md; the jobs whose sources changed afterwards are queued for a second measurement and are not judged yet", "orderReason": "mutation testing came before the nim-muter ledger tool was adopted here: the classes are the six of build/G2_BRIEF.md written into docs/quality/g2-*.md, not survivors.json"}
+{"kind": "stage", "date": "2026-10-07", "stage": "fuzzing", "commit": "bd991d8a", "doneWhen": "ten targets in tests/fuzz/targets.nim, the inputs found are replayed by tests/test_fuzz_regressions.nim; the list of entrances was written from reading and is not approved by a person, and four entrances are named as not covered at the top of targets.nim"}
+{"kind": "defect", "date": "2026-10-07", "fixCommit": "517c5ee3f260", "foundBy": "survivor_triage", "class": "implementation", "note": "a request whose sending failed stayed in the table of waiting requests"}
+{"kind": "defect", "date": "2026-10-07", "fixCommit": "0db04ab411a9", "foundBy": "survivor_triage", "class": "implementation", "note": "a cancel token shared by several requests cancelled only the last one: `or` on a future replaces the callback already there"}
+{"kind": "defect", "date": "2026-10-07", "fixCommit": "fb3dcd0e7a6a", "foundBy": "survivor_triage", "class": "implementation", "note": "follow-up of the shared cancel token: a long-lived token kept a waiter per finished request"}
+{"kind": "defect", "date": "2026-10-07", "fixCommit": "321b73618191", "foundBy": "survivor_triage", "class": "unwritten_rule", "note": "an empty tracestate value was accepted; W3C Trace Context requires at least one character"}
+{"kind": "defect", "date": "2026-10-07", "fixCommit": "7fb5b961cfb4", "foundBy": "survivor_triage", "class": "implementation", "note": "listClientTasks crashed (SIGSEGV) on a last page without nextCursor"}
+{"kind": "defect", "date": "2026-10-07", "fixCommit": "109d29b3b82c", "foundBy": "review", "class": "dependency", "note": "a cursor or data URI that is not base64 reached std/base64.decode, an IndexDefect up to Nim 2.2.8 (nim-lang/Nim#25530); found by reading after the same fault in another library"}
+{"kind": "defect", "date": "2026-10-07", "fixCommit": "638f7cf671a9", "foundBy": "fuzzing", "class": "implementation", "note": "a pattern with a character above U+00FF outside a class was a RangeDefect"}
+{"kind": "defect", "date": "2026-10-07", "fixCommit": "b3c07ee677f9", "foundBy": "survivor_triage", "class": "implementation", "note": "discovery lost every failure after the first in a debug build: the async traceback in the message swallowed what was joined after it"}
+{"kind": "defect", "date": "2026-10-07", "fixCommit": "9e671ff02e5c", "foundBy": "survivor_triage", "class": "implementation", "note": "a request answered on an event stream stayed in flight after the stream ended; a later cancel of that id hid the error of the next request with the same id"}
+{"kind": "defect", "date": "2026-10-07", "fixCommit": "08cdbb77e232", "foundBy": "survivor_triage", "class": "implementation", "note": "a stream that finished opening after close() was never closed"}
+{"kind": "defect", "date": "2026-10-07", "fixCommit": "118ec08f2860", "foundBy": "survivor_triage", "class": "implementation", "note": "a read woken by close() failed with Bad file descriptor instead of ending quietly; readAll then had to refuse a body cut short"}
+{"kind": "defect", "date": "2026-10-07", "fixCommit": "a62e77f2ce7e", "foundBy": "survivor_triage", "class": "unwritten_rule", "note": "a negative Content-Length was read as an empty body"}
+{"kind": "defect", "date": "2026-10-07", "fixCommit": "917409a6e2cd", "foundBy": "review", "class": "implementation", "note": "two faults read by a teammate during the triage and reproduced by test: a server answering a notification with an event stream crashed the client (nil id), and a cancelled request was resumed with Last-Event-ID"}
+{"kind": "defect", "date": "2026-10-07", "fixCommit": "c9cbaf295309", "foundBy": "survivor_triage", "class": "unwritten_rule", "note": "an array index with a leading zero in a $ref pointer resolved; RFC 6901 does not allow it"}
+{"kind": "defect", "date": "2026-10-07", "fixCommit": "e83fed507740", "foundBy": "survivor_triage", "class": "unwritten_rule", "note": "[] and [^] followed the POSIX rule for a leading ]; ECMA-262 reads them as the empty class and any character"}
+{"kind": "mutation_run", "date": "2026-10-07", "module": "stdio", "commit": "36a4c8a5836f", "mutants": 64, "survived": 26, "minutes": 19}
+{"kind": "mutation_run", "date": "2026-10-07", "module": "lifecycle", "commit": "36a4c8a5836f", "mutants": 31, "survived": 10, "minutes": 13}
+{"kind": "mutation_run", "date": "2026-10-07", "module": "client", "commit": "36a4c8a5836f", "mutants": 344, "survived": 113, "minutes": 123}
+{"kind": "mutation_run", "date": "2026-10-07", "module": "server", "commit": "36a4c8a5836f", "mutants": 502, "survived": 237, "minutes": 147}
+{"kind": "mutation_run", "date": "2026-10-07", "module": "tasks", "commit": "36a4c8a5836f", "mutants": 296, "survived": 67, "minutes": 63}
+{"kind": "mutation_run", "date": "2026-10-07", "module": "auth_client", "commit": "36a4c8a5836f", "mutants": 77, "survived": 21, "minutes": 4}
+{"kind": "mutation_run", "date": "2026-10-07", "module": "features", "commit": "36a4c8a5836f", "mutants": 58, "survived": 1, "minutes": 3}
+{"kind": "mutation_run", "date": "2026-10-07", "module": "version", "commit": "36a4c8a5836f", "mutants": 23, "survived": 5, "minutes": 5}
+{"kind": "mutation_run", "date": "2026-10-07", "module": "trace_context", "commit": "36a4c8a5836f", "mutants": 99, "survived": 36, "minutes": 7}
+{"kind": "mutation_run", "date": "2026-10-07", "module": "modern", "commit": "36a4c8a5836f", "mutants": 106, "survived": 26, "minutes": 8}
+{"kind": "mutation_run", "date": "2026-10-07", "module": "elicitation", "commit": "36a4c8a5836f", "mutants": 324, "survived": 103, "minutes": 21}
+{"kind": "mutation_run", "date": "2026-10-07", "module": "auth_resource_server", "commit": "36a4c8a5836f", "mutants": 42, "survived": 12, "minutes": 3}
+{"kind": "mutation_run", "date": "2026-10-07", "module": "extensions", "commit": "36a4c8a5836f", "mutants": 86, "survived": 25, "minutes": 4}
+{"kind": "mutation_run", "date": "2026-10-07", "module": "diagnostic", "commit": "36a4c8a5836f", "mutants": 37, "survived": 9, "minutes": 1}
+{"kind": "mutation_run", "date": "2026-10-07", "module": "mrtr", "commit": "36a4c8a5836f", "mutants": 105, "survived": 24, "minutes": 3}
+{"kind": "mutation_run", "date": "2026-10-07", "module": "http_server", "commit": "36a4c8a5836f", "mutants": 391, "survived": 94, "minutes": 285}
+{"kind": "mutation_run", "date": "2026-10-07", "module": "address_policy", "commit": "36a4c8a5836f", "mutants": 212, "survived": 106, "minutes": 9}
+{"kind": "mutation_run", "date": "2026-10-07", "module": "subscriptions", "commit": "36a4c8a5836f", "mutants": 85, "survived": 30, "minutes": 17}
+{"kind": "mutation_run", "date": "2026-10-07", "module": "event_stream", "commit": "36a4c8a5836f", "mutants": 35, "survived": 5, "minutes": 1}
+{"kind": "mutation_run", "date": "2026-10-07", "module": "transport", "commit": "36a4c8a5836f", "mutants": 21, "survived": 6, "minutes": 9}
+{"kind": "mutation_run", "date": "2026-10-07", "module": "sampling_tools", "commit": "36a4c8a5836f", "mutants": 168, "survived": 36, "minutes": 5}
+{"kind": "mutation_run", "date": "2026-10-07", "module": "content", "commit": "36a4c8a5836f", "mutants": 101, "survived": 26, "minutes": 13}
+{"kind": "mutation_run", "date": "2026-10-07", "module": "auth_oauth", "commit": "36a4c8a5836f", "mutants": 333, "survived": 81, "minutes": 25}
+{"kind": "mutation_run", "date": "2026-10-07", "module": "param_headers", "commit": "36a4c8a5836f", "mutants": 84, "survived": 13, "minutes": 2}
+{"kind": "mutation_run", "date": "2026-10-07", "module": "http_client", "commit": "36a4c8a5836f", "mutants": 369, "survived": 149, "minutes": 162}
+{"kind": "mutation_run", "date": "2026-10-07", "module": "jsonschema", "commit": "7d32c165e25e", "mutants": 483, "survived": 126}
+{"kind": "mutation_run", "date": "2026-10-07", "module": "base64_shape", "commit": "7d32c165e25e", "mutants": 14, "survived": 0}
