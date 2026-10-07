@@ -237,12 +237,15 @@ MCP-CANCEL-1 | tests/test_server_progress_cancel.nim | Given a request in flight
 MCP-CANCEL-1 | tests/test_server_progress_cancel.nim | Given a numeric request id, when the client cancels it, then the request is cancelled
 MCP-CANCEL-1 | tests/test_server_progress_cancel.nim | Given a handler waiting on whenCancelled, when the client cancels, then the wait ends
 MCP-CANCEL-1 | tests/test_server_progress_cancel.nim | Given a cancellation with a reason, when the handler looks, then ctx.cancelReason is that reason, and empty when the reason is missing or no string
+MCP-CANCEL-1 | tests/test_server_progress_cancel.nim | Given a request in flight, when the client cancels it, then the transport is told at once that it will not be answered
+MCP-CANCEL-1 | tests/test_server_progress_cancel.nim | Given a request that is answered, when it was not cancelled, then the transport is not told to drop it
 MCP-CANCEL-2 | tests/test_server_progress_cancel.nim | Given a request id nobody sent, when the client cancels it, then it is ignored and the server goes on
 MCP-CANCEL-2 | tests/test_server_progress_cancel.nim | Given a request already answered, when the client cancels it, then the answer stands
 MCP-CANCEL-2 | tests/test_server_progress_cancel.nim | Given the initialize request in flight, when the client cancels it, then it is answered anyway
 MCP-CANCEL-2 | tests/test_server_progress_cancel.nim | Given cancelRequest called directly, when the request is live, unknown, cancelled already or initialize, then it says whether it stopped waiting
 MCP-CANCEL-3 | tests/test_server_progress_cancel.nim | Given the same request id on two sessions, when one client cancels it, then the other's request goes on
 MCP-CANCEL-3 | tests/test_server_progress_cancel.nim | Given a session that ends, when a request of it is in flight, then it is cancelled
+MCP-CANCEL-3 | tests/test_server_progress_cancel.nim | Given a request id used again while the first request runs, when the first finishes, then the second can still be cancelled
 MCP-CANCEL-4 | tests/test_client_requests.nim | Given a server that never answers, when a request has a timeout, then it raises McpTimeoutError
 MCP-CANCEL-4 | tests/test_client_requests.nim | Given a timed-out request, when it raises, then the server is told to cancel that request id
 MCP-CANCEL-4 | tests/test_client_requests.nim | Given a late response to a timed-out request, when it arrives, then it is ignored

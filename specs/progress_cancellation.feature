@@ -44,6 +44,7 @@ Feature: Progress and cancellation
     When the client sends notifications/cancelled with its id, string or integer
     Then no response is sent and the handler sees the cancellation, so a wait on it ends
     And the handler can read the reason, which is empty when the notification has none or it is not a string
+    And the transport is told at once, without waiting for the handler, that the request will not be answered; one that was answered is not
 
   @spec:MCP-CANCEL-2 @feature:ftCancellation
   Scenario: A cancellation that refers to nothing live is ignored
@@ -57,6 +58,7 @@ Feature: Progress and cancellation
     When one client cancels it
     Then the other's request goes on
     And a session that ends cancels its requests in flight
+    And a request id used again in a session stays cancellable after the first request with it finishes
 
   @spec:MCP-CANCEL-4 @feature:ftCancellation
   Scenario: A client gives up on a request and tells the server

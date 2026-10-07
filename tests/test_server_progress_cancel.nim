@@ -227,6 +227,51 @@ suite "cancellation (every version)":
       peer.notify("notifications/cancelled", %*{"requestId": [1]})
       check peer.ask("tools/call", %*{"name": "progress"})["result"]["content"][0]["text"].getStr() == "done"
 
+  test "Given a request in flight, when the client cancels it, then the transport is told at once that it will not be answered":
+    for v in SupportedProtocolVersions:
+      reset()
+      let server = progressServer()
+      let t = server.attach()
+      let peer = server.connect(t, v)
+      let id = freshId()
+      peer.send(%id, "tools/call", %*{"name": "slow"})
+      untilTrue("the handler to start", proc(): bool = started)
+      check t.dropped.len == 0
+      peer.notify("notifications/cancelled", %*{"requestId": id})
+      # The handler is still running: the server does not wait for it.
+      untilTrue("the transport to be told", proc(): bool = t.dropped.len == 1)
+      check t.dropped[0].requestId == id
+      release()
+
+  test "Given a request that is answered, when it was not cancelled, then the transport is not told to drop it":
+    for v in SupportedProtocolVersions:
+      let server = progressServer()
+      let t = server.attach()
+      let peer = server.connect(t, v)
+      discard peer.ask("tools/call", %*{"name": "progress"})
+      settle()
+      check t.dropped.len == 0
+
+  test "Given a request id used again while the first request runs, when the first finishes, then the second can still be cancelled":
+    # The specification forbids reusing an id in a session; a client that does
+    # must not take cancellation away from its own later request.
+    reset()
+    let server = progressServer()
+    let t = server.attach()
+    let peer = server.connect(t, DefaultProtocolVersion.min(mpv20251125))
+    let id = freshId()
+    peer.send(%id, "tools/call", %*{"name": "race"})
+    untilTrue("the first handler to start", proc(): bool = started)
+    let firstGate = gate
+    started = false
+    peer.send(%id, "tools/call", %*{"name": "race"})
+    untilTrue("the second handler to start", proc(): bool = started)
+    firstGate.complete()
+    settle()
+    peer.notify("notifications/cancelled", %*{"requestId": id})
+    untilTrue("the second handler to see the cancellation", proc(): bool = raceWonByCancel)
+    check raceWonByCancel
+
   test "Given a request already answered, when the client cancels it, then the answer stands":
     for v in SupportedProtocolVersions:
       let server = progressServer()

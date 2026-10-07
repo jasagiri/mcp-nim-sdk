@@ -21,6 +21,8 @@ type
     sent*: seq[Sent]
     failFor*: string
       ## A session that notifications cannot be delivered to.
+    dropped*: seq[tuple[session, requestId: string]]
+      ## The requests the server told the transport it will not answer.
 
 proc newSessionedTransport*(): SessionedTransport =
   SessionedTransport(kind: mtkStreamable, inbox: initDeque[McpIncoming](),
@@ -43,6 +45,9 @@ proc inject*(t: SessionedTransport, session: string, message: JsonNode) =
 
 proc record(t: SessionedTransport, session: string, wire: JsonNode, related = "") =
   t.sent.add Sent(session: session, message: wire, related: related)
+
+method requestDropped*(t: SessionedTransport, session, requestId: string) =
+  t.dropped.add (session: session, requestId: requestId)
 
 method sendRequest*(t: SessionedTransport, request: JsonRpcRequest): Future[void] {.async.} =
   t.record(request.session, parseJson(encodeMessage(request)), request.relatedRequestId)
