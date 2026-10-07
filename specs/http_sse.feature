@@ -120,3 +120,9 @@ Feature: HTTP with Server-Sent Events (2024-11-05)
     Given a client reading a stream
     When the stream fails on a message that is not JSON
     Then a line naming the stream and the failure goes to stderr
+
+  @spec:MCP-HTTPSSE-g2g-hc-b-1
+  Scenario: The wrapper that tries Streamable HTTP first passes everything on to the transport it chose
+    Given a client that tries Streamable HTTP first
+    When a notification or a response is sent after the fallback, a version is agreed, or the wrapper is closed with or without a session, or before it has chosen
+    Then the chosen transport sends it, receives the agreed version, and ends its session or stream, and a receive that waits fails when the wrapper is closed

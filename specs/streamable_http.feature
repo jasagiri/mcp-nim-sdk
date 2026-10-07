@@ -181,3 +181,53 @@ Feature: Streamable HTTP transport
     When it is started
     Then its port is bound at once and it answers requests
     And the start ends only when the transport is closed
+
+  @spec:MCP-HTTP-g2g-hc-b-1
+  Scenario: A request that is over is forgotten, and cancelling it does nothing
+    Given a request that was answered with a JSON body or an event stream, failed after the connection was made, or was cancelled while the server was silent or its body was arriving
+    When the client cancels it afterwards and sends the same id again
+    Then the new request is not taken for a cancelled one: when its stream ends without a response, the stream-closed error is delivered
+
+  @spec:MCP-HTTP-g2g-hc-b-2
+  Scenario: Closing the transport ends the event streams it has open
+    Given a request whose answer is an event stream that is still open
+    When the transport is closed
+    Then the server sees the client leave
+
+  @spec:MCP-HTTP-g2g-hc-b-3
+  Scenario: An answer without a body ends the connection
+    Given a server that answers a notification with 202, or DELETE with 204, and sends no body
+    When the client has the answer
+    Then the client closes the connection and does not leave it open
+
+  @spec:MCP-HTTP-g2g-hc-b-4 @feature:ftHttpGetStream
+  Scenario: The GET stream is opened once
+    Given a session whose GET stream is open
+    When the client says initialized again
+    Then no second GET stream is opened
+
+  @spec:MCP-HTTP-g2g-hc-b-5 @feature:ftHttpSessions
+  Scenario: A refusal of DELETE is logged unless the server may refuse it
+    Given a session that the client ends by closing
+    When the server answers DELETE with 500, or drops the connection
+    Then the refusal or the failure is logged and closing succeeds
+    And an answer of 204 or 405 is not logged
+
+  @spec:MCP-HTTP-g2g-hc-b-6
+  Scenario: A notification names the protocol version only in the versions that have the header
+    Given a transport that negotiated a version
+    When it sends a notification
+    Then MCP-Protocol-Version is present for 2025-06-18 and 2025-11-25 and absent for 2024-11-05, 2025-03-26 and 2026-07-28
+
+  @spec:MCP-HTTP-g2g-hc-b-7
+  Scenario: Authorization is retried at most three times per request
+    Given a hook that always says it improved things and a server that keeps refusing
+    When a request is sent
+    Then it is posted four times in all and McpAuthorizationError counts three attempts
+
+  @spec:MCP-HTTP-g2g-hc-b-8 @feature:ftParameterHeaders
+  Scenario: Only a call that names 2026-07-28 and a tool carries Mcp-Param headers
+    Given a transport that listed a tool with x-mcp-header
+    When a tools/call is sent whose _meta lacks the version or names another, or that names no tool
+    Then it is posted without Mcp-Param headers, and without failing
+    And an answer to anything but a tools/list that was sent is not read as a tool list

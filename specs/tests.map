@@ -481,6 +481,12 @@ MCP-HTTPSSE-g2g-hc-d-5 | tests/test_http_sse_legacy.nim | Given a server that na
 MCP-HTTPSSE-g2g-hc-d-5 | tests/test_http_sse_legacy.nim | Given a POST the server answered, when the client has read the answer, then it closes its end of the POST connection
 MCP-HTTPSSE-g2g-hc-d-5 | tests/test_http_sse_legacy.nim | Given a connected client, when it is closed, then it closes its end of the stream
 MCP-HTTPSSE-g2g-hc-d-6 | tests/test_http_sse_legacy.nim | Given a stream that fails on a message that is not JSON, when the client reads it, then it says so on stderr
+MCP-HTTPSSE-g2g-hc-b-1 | tests/test_http_sse_legacy.nim | Given a server of the old transport, when the client sends a notification after falling back, then the server receives it
+MCP-HTTPSSE-g2g-hc-b-1 | tests/test_http_sse_legacy.nim | Given a server of the old transport, when the client answers a request after falling back, then the server receives the response
+MCP-HTTPSSE-g2g-hc-b-1 | tests/test_http_sse_legacy.nim | Given a version agreed through the wrapper, when a Streamable HTTP server is used, then later requests name it
+MCP-HTTPSSE-g2g-hc-b-1 | tests/test_http_sse_legacy.nim | Given a Streamable HTTP server that issued a session, when the wrapper closes, then the session is ended with DELETE
+MCP-HTTPSSE-g2g-hc-b-1 | tests/test_http_sse_legacy.nim | Given a server of the old transport, when the wrapper closes, then the stream ends and the server's session with it
+MCP-HTTPSSE-g2g-hc-b-1 | tests/test_http_sse_legacy.nim | Given a wrapper that has not decided, when it closes while a receive waits, then the receive fails with McpTransportError
 MCP-SSE-1 | tests/test_event_stream.nim | Given a byte order mark after the first line, when read, then it stays part of that line's field name
 MCP-SSE-2 | tests/test_event_stream.nim | Given blank lines after an event, when read, then they dispatch nothing more
 MCP-SSE-3 | tests/test_event_stream.nim | Given a line of exactly the limit, when read, then it is accepted and one byte more raises SseLimitError
@@ -1447,6 +1453,24 @@ MCP-HOOKS-2 | tests/test_request_hooks.nim | Given a listen filter hook that rai
 MCP-HOOKS-3 | tests/test_request_hooks.nim | Given a filter that turns a 2026-07-28 result into something that is not an object, when the request is answered, then it is an internal error
 MCP-HOOKS-4 | tests/test_request_hooks.nim | Given interceptors, when a request is served, then they run in the order added, the first answer ends the matter and none lets the server carry on
 MCP-HTTP-6 | tests/test_streamable_http.nim | Given a server without the extension that defines it, when tasks/get is posted without Mcp-Name, then the answer is method not found and not a header mismatch
+MCP-HTTP-g2g-hc-b-1 | tests/test_http_client_streams.nim | Given a request whose answer was a JSON body, when the client cancels it afterwards and sends the id again, then the new request is not taken for a cancelled one
+MCP-HTTP-g2g-hc-b-1 | tests/test_http_client_streams.nim | Given a request whose answer was an event stream, when the client cancels it afterwards and sends the id again, then the new request is not taken for a cancelled one
+MCP-HTTP-g2g-hc-b-1 | tests/test_http_client_streams.nim | Given a request that failed after the connection was made, when the client cancels it afterwards and sends the id again, then the new request is not taken for a cancelled one
+MCP-HTTP-g2g-hc-b-1 | tests/test_http_client_streams.nim | Given a request cancelled while the server was silent, when the id is sent again, then the new request is not taken for a cancelled one
+MCP-HTTP-g2g-hc-b-1 | tests/test_http_client_streams.nim | Given a request cancelled while its JSON body is arriving, when the client cancels, then sendRequest returns without an error and the id is free again
+MCP-HTTP-g2g-hc-b-2 | tests/test_http_client_streams.nim | Given a request whose event stream is open, when the transport closes, then the server sees the client leave
+MCP-HTTP-g2g-hc-b-3 | tests/test_http_client_streams.nim | Given a server that answers a notification with 202 and an empty body, when the notification is sent, then the client closes the connection
+MCP-HTTP-g2g-hc-b-3 | tests/test_http_client_streams.nim | Given a server that answers DELETE with 204 and no body, when the client closes, then the client closes the connection
+MCP-HTTP-g2g-hc-b-4 | tests/test_http_client_streams.nim | Given a client that says initialized twice, when the GET stream is already open, then it does not open a second one
+MCP-HTTP-g2g-hc-b-5 | tests/test_http_client_streams.nim | Given a server that answers DELETE with 500, when the client closes, then the refusal is logged and closing succeeds
+MCP-HTTP-g2g-hc-b-5 | tests/test_http_client_streams.nim | Given a server that answers DELETE with 204 or 405, when the client closes, then nothing is logged
+MCP-HTTP-g2g-hc-b-5 | tests/test_http_client_streams.nim | Given a server that drops the connection on DELETE, when the client closes, then the failure is logged and closing succeeds
+MCP-HTTP-g2g-hc-b-6 | tests/test_streamable_http.nim | Given versions without the header, when a notification is sent, then it names no protocol version
+MCP-HTTP-g2g-hc-b-6 | tests/test_streamable_http.nim | Given versions with the header, when a notification is sent, then it names the negotiated version
+MCP-HTTP-g2g-hc-b-7 | tests/test_auth_failure.nim | Given a hook that always says it improved things, when the server keeps refusing, then the request is posted again three times and the failure counts them
+MCP-HTTP-g2g-hc-b-8 | tests/test_param_headers_http.nim | Given a call that does not name 2026-07-28, when it is sent after the tool was listed, then it carries no Mcp-Param header
+MCP-HTTP-g2g-hc-b-8 | tests/test_param_headers_http.nim | Given a 2026-07-28 tools/call without a tool name, when it is sent, then it is posted without Mcp-Param headers
+MCP-HTTP-g2g-hc-b-8 | tests/test_param_headers_http.nim | Given a tools/list that failed, when its id is used again by another request, then that answer is not read as a tool list
 MCP-SEC-SCHEMA-1 | tests/test_security_schema.nim | Given a plain pattern, when 4 MiB of text is matched, then the process survives and answers
 MCP-SEC-SCHEMA-1 | tests/test_security_schema.nim | Given a lookahead, when long text is matched, then it is answered
 MCP-SEC-SCHEMA-2 | tests/test_security_schema.nim | Given patterns that backtrack exponentially, when matched, then each answers at once
