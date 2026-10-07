@@ -54,7 +54,7 @@
 | T16 | Given a result that completes without a tool use, when the tool choice is not required, then it is valid |
 | T17 | Given tool choice required and a message without content, when a result completes without a tool use, then the absence of a tool use is reported |
 
-Scenario は `MCP-SAMPLING-g2f-sampling-1` (欠けた値・種類違いの値、T1〜T7)、`-2` (tool_use / tool_result の必須項目、T8〜T12)、`-3` (対応の違反は 1 回だけ、T13・T14)、`-4` (answer の content、T15〜T17)。リードが採番し直す。
+Scenario は `MCP-SAMPLING-TOOLS-9` (欠けた値・種類違いの値、T1〜T7)、`-2` (tool_use / tool_result の必須項目、T8〜T12)、`-3` (対応の違反は 1 回だけ、T13・T14)、`-4` (answer の content、T15〜T17)。リードが採番し直す。
 
 | id | file:line | mutator | original → replacement | 分類 | 理由 | 落ちたテスト |
 |---|---|---|---|---|---|---|
@@ -103,3 +103,10 @@ compileError 3 件 (id 102、103、149) は変異が型に合わない (`discard
 - 95 と 94 は T15 が落ちるのを見た。T16 は同じ変異を狙って書いたが、T16 単独で落ちるかは確認していない (T15 で足りるので追加の確認はしていない)。
 - 他の 32 件は、表に書いたテストが落ちるのを確認した。確認できていない id は無い。
 - 分類 4 (到達しない・冗長) と 5 (欠陥) は無い。
+
+## リードの判断
+
+- id 163、142 (`samplingToolsUnavailable` の先頭と末尾の `none(string)`): 同値。「冗長な 2 行」という指摘は採らない。
+  先頭の `return none(string)` は「tools を使わない要求には当てはまらない」という早期の戻りで、末尾は関数の値そのもの。
+  どちらも消すと意味が読めなくなる。残す。
+

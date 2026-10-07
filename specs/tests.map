@@ -1321,23 +1321,23 @@ MCP-ICONS-7 | tests/test_icon_fetch.nim | Given markup that holds no svg element
 MCP-ICONS-8 | tests/test_icon_fetch.nim | Given a data URI icon of exactly the allowed size, when fetched, then it is read; one byte more, refused
 MCP-SAMPLING-TOOLS-8 | tests/test_sampling_tools_payload.nim | Given an audio block in a message, when the request is checked, then only versions with audio content accept it
 MCP-SAMPLING-TOOLS-8 | tests/test_sampling_tools_payload.nim | Given an image block in a message, when the request is checked, then every version accepts it
-MCP-SAMPLING-g2f-sampling-1 | tests/test_sampling_tools_payload.nim | Given no params, no answer or an answer without content, when asked for tool uses, then there are none
-MCP-SAMPLING-g2f-sampling-1 | tests/test_sampling_tools_payload.nim | Given content blocks without a usable type, when asked for tool uses, then they are not tool uses
-MCP-SAMPLING-g2f-sampling-1 | tests/test_sampling_tools_payload.nim | Given params that are not an object, when checked, then that is the only problem
-MCP-SAMPLING-g2f-sampling-1 | tests/test_sampling_tools_payload.nim | Given a result that is not an object, when checked, then that is the only problem
-MCP-SAMPLING-g2f-sampling-1 | tests/test_sampling_tools_payload.nim | Given a message that is not an object or has no content, when checked, then that message is the only problem
-MCP-SAMPLING-g2f-sampling-1 | tests/test_sampling_tools_payload.nim | Given an array of content whose entry is not a content block, when checked, then that entry is the only problem
-MCP-SAMPLING-g2f-sampling-1 | tests/test_sampling_tools_payload.nim | Given a tool choice that is not an object, when checked, then it is the only problem
-MCP-SAMPLING-g2f-sampling-2 | tests/test_sampling_tools_payload.nim | Given a tool_use without an id, with an empty id, without a name or without an input object, when a result holds it, then that field is the only problem
-MCP-SAMPLING-g2f-sampling-2 | tests/test_sampling_tools_payload.nim | Given a tool_result without a toolUseId, when checked, then the field is reported
-MCP-SAMPLING-g2f-sampling-2 | tests/test_sampling_tools_payload.nim | Given a tool_result whose content is missing, not an array or not content blocks, when checked, then that is the only problem
-MCP-SAMPLING-g2f-sampling-2 | tests/test_sampling_tools_payload.nim | Given a tool_result with structuredContent or isError of the wrong kind, when checked, then that field is the only problem
-MCP-SAMPLING-g2f-sampling-2 | tests/test_sampling_tools_payload.nim | Given a tool_result with structuredContent as an object and isError as a boolean, when checked, then there is nothing to report
-MCP-SAMPLING-g2f-sampling-3 | tests/test_sampling_tools_payload.nim | Given tool uses followed by a message that is not their results, when checked, then that message is the only problem
-MCP-SAMPLING-g2f-sampling-3 | tests/test_sampling_tools_payload.nim | Given two tool results for one id, when checked, then the repeat is the only problem
-MCP-SAMPLING-g2f-sampling-4 | tests/test_sampling_tools_payload.nim | Given array content or an unknown content type in a result, when checked, then the version and the block decide
-MCP-SAMPLING-g2f-sampling-4 | tests/test_sampling_tools_payload.nim | Given a result that completes without a tool use, when the tool choice is not required, then it is valid
-MCP-SAMPLING-g2f-sampling-4 | tests/test_sampling_tools_payload.nim | Given tool choice required and a message without content, when a result completes without a tool use, then the absence of a tool use is reported
+MCP-SAMPLING-TOOLS-9 | tests/test_sampling_tools_payload.nim | Given no params, no answer or an answer without content, when asked for tool uses, then there are none
+MCP-SAMPLING-TOOLS-9 | tests/test_sampling_tools_payload.nim | Given content blocks without a usable type, when asked for tool uses, then they are not tool uses
+MCP-SAMPLING-TOOLS-9 | tests/test_sampling_tools_payload.nim | Given params that are not an object, when checked, then that is the only problem
+MCP-SAMPLING-TOOLS-9 | tests/test_sampling_tools_payload.nim | Given a result that is not an object, when checked, then that is the only problem
+MCP-SAMPLING-TOOLS-9 | tests/test_sampling_tools_payload.nim | Given a message that is not an object or has no content, when checked, then that message is the only problem
+MCP-SAMPLING-TOOLS-9 | tests/test_sampling_tools_payload.nim | Given an array of content whose entry is not a content block, when checked, then that entry is the only problem
+MCP-SAMPLING-TOOLS-9 | tests/test_sampling_tools_payload.nim | Given a tool choice that is not an object, when checked, then it is the only problem
+MCP-SAMPLING-TOOLS-10 | tests/test_sampling_tools_payload.nim | Given a tool_use without an id, with an empty id, without a name or without an input object, when a result holds it, then that field is the only problem
+MCP-SAMPLING-TOOLS-10 | tests/test_sampling_tools_payload.nim | Given a tool_result without a toolUseId, when checked, then the field is reported
+MCP-SAMPLING-TOOLS-10 | tests/test_sampling_tools_payload.nim | Given a tool_result whose content is missing, not an array or not content blocks, when checked, then that is the only problem
+MCP-SAMPLING-TOOLS-10 | tests/test_sampling_tools_payload.nim | Given a tool_result with structuredContent or isError of the wrong kind, when checked, then that field is the only problem
+MCP-SAMPLING-TOOLS-10 | tests/test_sampling_tools_payload.nim | Given a tool_result with structuredContent as an object and isError as a boolean, when checked, then there is nothing to report
+MCP-SAMPLING-TOOLS-11 | tests/test_sampling_tools_payload.nim | Given tool uses followed by a message that is not their results, when checked, then that message is the only problem
+MCP-SAMPLING-TOOLS-11 | tests/test_sampling_tools_payload.nim | Given two tool results for one id, when checked, then the repeat is the only problem
+MCP-SAMPLING-TOOLS-12 | tests/test_sampling_tools_payload.nim | Given array content or an unknown content type in a result, when checked, then the version and the block decide
+MCP-SAMPLING-TOOLS-12 | tests/test_sampling_tools_payload.nim | Given a result that completes without a tool use, when the tool choice is not required, then it is valid
+MCP-SAMPLING-TOOLS-12 | tests/test_sampling_tools_payload.nim | Given tool choice required and a message without content, when a result completes without a tool use, then the absence of a tool use is reported
 MCP-EXT-10 | tests/test_extensions.nim | Given extensions registered without onLegacyHandshake, when a legacy client initializes, then the request and the result are those of a peer with no extensions
 MCP-EXT-11 | tests/test_extensions.nim | Given an extension declared with onLegacyHandshake, when a legacy client initializes, then the request carries it and only it
 MCP-EXT-12 | tests/test_extensions.nim | Given a legacy client that declared an extension in initialize, when a handler asks, then it sees the settings; without the declaration it does not
