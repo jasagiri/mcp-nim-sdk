@@ -63,6 +63,20 @@ MCP-STDIO-3 | tests/test_stdio.nim | Given a child limited to 2024-11-05, when t
 MCP-STDIO-3 | tests/test_stdio.nim | Given a client, when it closes the transport, then the child process has exited
 MCP-STDIO-4 | tests/test_stdio.nim | Given a child that never answers, when the client connects, then the dispatcher keeps running and the wait can time out
 MCP-STDIO-4 | tests/test_stdio.nim | Given a command that does not exist, when a process transport is made, then McpTransportError names the command
+MCP-STDIO-5 | tests/test_stdio.nim | Given blank lines, CRLF, several lines in one write and a last line without a newline, when a server reads its stdin, then each line is one message in order and the end of input is reported
+MCP-STDIO-5 | tests/test_stdio.nim | Given a message of exactly the size limit that is completed by its newline only later, when read, then it is accepted
+MCP-STDIO-5 | tests/test_stdio.nim | Given more than the size limit without a newline, when read, then the transport fails and names the limit
+MCP-STDIO-5 | tests/test_stdio.nim | Given a line that is not JSON on a server's stdin, when it reads, then it answers a parse error with a null id and reads on
+MCP-STDIO-5 | tests/test_stdio.nim | Given a server that closed its transport, when it looks at its stdin descriptor, then it is released
+MCP-STDIO-5 | tests/test_stdio.nim | Given a transport over streams, when it is closed, then both streams are closed
+MCP-STDIO-5 | tests/test_stdio.nim | Given a message sent over a stream, when the send completes, then the stream has been flushed
+MCP-STDIO-5 | tests/test_stdio.nim | Given a line that is not JSON, when a server reads it, then the diagnostic names the line as ignored on stderr
+MCP-STDIO-6 | tests/test_stdio.nim | Given a server that prints a line that is not JSON, when the client reads on, then it does not answer the noise to the server
+MCP-STDIO-6 | tests/test_stdio.nim | Given a child that fills its stderr, when the client connects, then the child is not stalled and its diagnostics appear on the client's stderr
+MCP-STDIO-6 | tests/test_stdio.nim | Given a child that exits when its stdin closes, when the client closes the transport, then the child ends by itself within the grace period
+MCP-STDIO-6 | tests/test_stdio.nim | Given a child that ignores the closing of its stdin, when the client closes the transport, then the child is terminated
+MCP-STDIO-6 | tests/test_stdio.nim | Given a child that also ignores SIGTERM, when the client closes the transport, then the child is killed
+MCP-STDIO-6 | tests/test_stdio.nim | Given a client, when it closes the transport, then the descriptors of the child's pipes are released
 MCP-HTTP-1 | tests/test_streamable_http.nim | Given a path other than the endpoint, when posted to, then the answer is 404
 MCP-HTTP-1 | tests/test_streamable_http.nim | Given the endpoint, when it receives PUT, then the answer is 405 naming the allowed methods
 MCP-HTTP-1 | tests/test_streamable_http.nim | Given a body that is not JSON, when posted, then the answer is 400 with a parse error

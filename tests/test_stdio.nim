@@ -3,14 +3,16 @@
 ##
 ## The test binary starts itself with a role argument to act as the child.
 
-import std/[unittest, asyncdispatch, json, options, os, osproc, streams, strutils]
+import std/[sequtils, unittest, asyncdispatch, json, monotimes, options, os, osproc, posix, streams, strutils, times]
 import transport/transport
 import transport/stdio
 import server/server
 import client/client
 import protocol/types
 
-const LegacyDefault = min(DefaultProtocolVersion, mpv20251125)
+const
+  LegacyDefault = min(DefaultProtocolVersion, mpv20251125)
+  FloodBytes = 300_000
 
 proc echoServer(version: McpProtocolVersion): McpServer =
   result = newMcpServer(McpServerInfo(name: "child", version: "1"),
@@ -28,11 +30,41 @@ proc echoServer(version: McpProtocolVersion): McpServer =
 
 proc runChild(role: string) =
   case role
-  of "--serve", "--serve-legacy":
-    let server = echoServer(if role == "--serve": DefaultProtocolVersion else: mpv20241105)
+  of "--serve", "--serve-legacy", "--sflood":
+    let server = echoServer(if role == "--serve-legacy": mpv20241105 else: DefaultProtocolVersion)
     server.transport = newStdioTransport()
     stderr.writeLine("child diagnostics go to stderr")
+    if role == "--sflood":
+      # More than a pipe holds: the child stalls here unless its parent drains stderr.
+      stderr.write('x'.repeat(FloodBytes))
     waitFor server.processMessages()
+  of "--sframes":
+    # Echoes what arrives on its stdin and says how the input ended and what close released.
+    let transport = newStdioTransport(maxLineSize = parseInt(paramStr(2)))
+    try:
+      while true:
+        let message = waitFor transport.receiveMessage()
+        waitFor transport.sendNotification(newJsonRpcNotification("echo", message))
+    except McpTransportClosedError:
+      waitFor transport.sendNotification(newJsonRpcNotification("closed", newJObject()))
+    except McpTransportError as e:
+      waitFor transport.sendNotification(newJsonRpcNotification("failed", %*{"reason": e.msg}))
+    waitFor transport.close()
+    waitFor transport.sendNotification(newJsonRpcNotification("released",
+      %*{"stdinClosed": fcntl(STDIN_FILENO, F_GETFL) == -1}))
+  of "--snoise":
+    # A server that prints noise, then records what its client sends it.
+    stdout.writeLine("this line is not JSON")
+    stdout.writeLine("""{"jsonrpc":"2.0","method":"hello"}""")
+    stdout.flushFile()
+    writeFile(paramStr(2), stdin.readAll())
+  of "--sstubborn", "--sdeaf":
+    # Does not exit when its stdin closes; --sdeaf also ignores SIGTERM.
+    if role == "--sdeaf":
+      discard signal(SIGTERM, SIG_IGN)
+    stdout.writeLine("""{"jsonrpc":"2.0","method":"ready"}""")
+    stdout.flushFile()
+    sleep(60_000)
   of "--silent":
     # Reads everything, answers nothing.
     let transport = newStdioTransport()
@@ -51,6 +83,50 @@ if paramCount() >= 1 and paramStr(1).startsWith("--s"):
 proc overStreams(input: string): tuple[transport: StdioTransport, output: StringStream] =
   let output = newStringStream()
   (newStdioTransport(newStringStream(input), output), output)
+
+proc runFrames(chunks: openArray[string], maxLineSize = 1024, pauseMs = 0):
+    tuple[messages: seq[JsonNode], exitCode: int] =
+  ## Writes `chunks` to the stdin of a child that reads it with the
+  ## transport over its own descriptors, closes its stdin, and collects
+  ## what the child answers.
+  let child = startProcess(getAppFilename(), args = ["--sframes", $maxLineSize],
+                            options = {})
+  for chunk in chunks:
+    child.inputStream.write(chunk)
+    child.inputStream.flush()
+    sleep(pauseMs)
+  child.inputStream.close()
+  result.exitCode = child.waitForExit(10_000)
+  if result.exitCode == -1:
+    child.kill()
+  for line in child.outputStream.readAll().splitLines:
+    if line.len > 0:
+      result.messages.add parseJson(line)
+  child.close()
+
+proc methods(messages: seq[JsonNode]): seq[string] =
+  for message in messages:
+    result.add message["method"].getStr()
+
+proc redirectStderrTo(path: string): proc() =
+  ## Sends this process's stderr to `path`; the returned proc restores it.
+  let saved = dup(STDERR_FILENO)
+  let file = open(path.cstring, O_WRONLY or O_CREAT or O_TRUNC, 0o644)
+  doAssert saved != -1 and file != -1
+  doAssert dup2(file, STDERR_FILENO) != -1
+  discard close(file)
+  result = proc() =
+    doAssert dup2(saved, STDERR_FILENO) != -1
+    discard close(saved)
+
+var closedStreams {.threadvar.}: seq[string]
+  ## What the streams of a transport under test were told to close.
+
+var flushedData {.threadvar.}: string
+  ## What a stream under test held when it was last flushed.
+
+proc descriptorIsOpen(fd: cint): bool =
+  fcntl(fd, F_GETFL) != -1
 
 suite "stdio framing":
 
@@ -88,6 +164,71 @@ suite "stdio framing":
     waitFor transport.sendNotification(newJsonRpcNotification("notifications/x", %*{"text": "a\nb"}))
     check output.data.count('\n') == 1
     check parseJson(output.data)["params"]["text"].getStr() == "a\nb"
+
+  test "Given a transport over streams, when it is closed, then both streams are closed":
+    let input = newStringStream("")
+    let output = newStringStream()
+    input.closeImpl = proc(s: Stream) = closedStreams.add "input"
+    output.closeImpl = proc(s: Stream) = closedStreams.add "output"
+    closedStreams = @[]
+    waitFor newStdioTransport(input, output).close()
+    check closedStreams == @["input", "output"]
+
+  test "Given a message sent over a stream, when the send completes, then the stream has been flushed":
+    let output = newStringStream()
+    output.flushImpl = proc(s: Stream) = flushedData = StringStream(s).data
+    flushedData = ""
+    let transport = newStdioTransport(newStringStream(""), output)
+    waitFor transport.sendNotification(newJsonRpcNotification("notifications/x", newJObject()))
+    check flushedData.len > 0
+    check flushedData == output.data
+
+  test "Given a line that is not JSON, when a server reads it, then the diagnostic names the line as ignored on stderr":
+    let record = getTempDir() / "mcp-stdio-diag-" & $getCurrentProcessId()
+    defer: removeFile(record)
+    let restore = redirectStderrTo(record)
+    try:
+      let (transport, _) = overStreams("{not json\n{\"id\":2}\n")
+      discard waitFor transport.receiveMessage()
+    finally:
+      restore()
+    check "ignoring a line that is not JSON" in readFile(record)
+
+suite "stdio over the descriptors of a server process":
+
+  test "Given blank lines, CRLF, several lines in one write and a last line without a newline, when a server reads its stdin, then each line is one message in order and the end of input is reported":
+    let (messages, exitCode) = runFrames(["\n\r\n{\"id\":1}\r\n{\"id\":2}\n\n{\"id\":3}"])
+    check messages.methods == @["echo", "echo", "echo", "closed", "released"]
+    check messages[0..2].mapIt(it["params"]["id"].getInt()) == @[1, 2, 3]
+    check exitCode == 0
+
+  test "Given a message of exactly the size limit that is completed by its newline only later, when read, then it is accepted":
+    const limit = 40
+    let prefix = "{\"id\":1,\"pad\":\""
+    let message = prefix & 'x'.repeat(limit - prefix.len - 2) & "\"}"
+    check message.len == limit
+    let (messages, exitCode) = runFrames([message, "\n"], maxLineSize = limit, pauseMs = 300)
+    check messages.methods == @["echo", "closed", "released"]
+    check exitCode == 0
+
+  test "Given more than the size limit without a newline, when read, then the transport fails and names the limit":
+    let (messages, exitCode) = runFrames(['x'.repeat(100)], maxLineSize = 40, pauseMs = 300)
+    check messages.methods[0] == "failed"
+    check "40" in messages[0]["params"]["reason"].getStr()
+    check exitCode == 0
+
+  test "Given a line that is not JSON on a server's stdin, when it reads, then it answers a parse error with a null id and reads on":
+    let (messages, exitCode) = runFrames(["{not json\n{\"id\":2}\n"])
+    check messages[0]["error"]["code"].getInt() == -32700
+    check messages[0]["id"].kind == JNull
+    check messages[1]["method"].getStr() == "echo"
+    check messages[1]["params"]["id"].getInt() == 2
+    check exitCode == 0
+
+  test "Given a server that closed its transport, when it looks at its stdin descriptor, then it is released":
+    let (messages, _) = runFrames(["{\"id\":1}\n"])
+    check messages[^1]["method"].getStr() == "released"
+    check messages[^1]["params"]["stdinClosed"].getBool()
 
 suite "stdio with a child process":
 
@@ -132,3 +273,61 @@ suite "stdio with a child process":
     except McpTransportError as e:
       message = e.msg
     check "/no/such/mcp-server-binary" in message
+
+  test "Given a server that prints a line that is not JSON, when the client reads on, then it does not answer the noise to the server":
+    let record = getTempDir() / "mcp-stdio-noise-" & $getCurrentProcessId()
+    defer: removeFile(record)
+    let transport = newProcessTransport(getAppFilename(), ["--snoise", record])
+    check (waitFor transport.receiveMessage())["method"].getStr() == "hello"
+    waitFor transport.close()
+    check readFile(record) == ""
+
+  test "Given a child that fills its stderr, when the client connects, then the child is not stalled and its diagnostics appear on the client's stderr":
+    let record = getTempDir() / "mcp-stdio-stderr-" & $getCurrentProcessId()
+    defer: removeFile(record)
+    let restore = redirectStderrTo(record)
+    var connected = false
+    let client = newMcpClient(McpClientInfo(name: "parent", version: "1"))
+    try:
+      let connecting = client.connect(newProcessTransport(getAppFilename(), ["--sflood"]))
+      connected = waitFor withTimeout(connecting, 10_000)
+      waitFor client.close()
+    finally:
+      restore()
+    check connected
+    let forwarded = readFile(record)
+    check "child diagnostics go to stderr" in forwarded
+    check forwarded.count('x') >= FloodBytes - 100_000
+
+  test "Given a child that exits when its stdin closes, when the client closes the transport, then the child ends by itself within the grace period":
+    let transport = newProcessTransport(getAppFilename(), ["--serve"])
+    let client = newMcpClient(McpClientInfo(name: "parent", version: "1"))
+    waitFor client.connect(transport)
+    let started = getMonoTime()
+    waitFor client.close()
+    check (getMonoTime() - started) < initDuration(milliseconds = 1500)
+    check transport.process.peekExitCode == 0
+
+  test "Given a child that ignores the closing of its stdin, when the client closes the transport, then the child is terminated":
+    let transport = newProcessTransport(getAppFilename(), ["--sstubborn"])
+    discard waitFor transport.receiveMessage()
+    waitFor transport.close()
+    check transport.process.peekExitCode == 128 + SIGTERM
+
+  test "Given a child that also ignores SIGTERM, when the client closes the transport, then the child is killed":
+    let transport = newProcessTransport(getAppFilename(), ["--sdeaf"])
+    discard waitFor transport.receiveMessage()
+    waitFor transport.close()
+    let code = transport.process.peekExitCode
+    if code == -1: transport.process.kill()
+    check code == 128 + SIGKILL
+
+  test "Given a client, when it closes the transport, then the descriptors of the child's pipes are released":
+    let transport = newProcessTransport(getAppFilename(), ["--serve"])
+    let handles = [transport.process.inputHandle.cint, transport.process.outputHandle.cint,
+                   transport.process.errorHandle.cint]
+    let client = newMcpClient(McpClientInfo(name: "parent", version: "1"))
+    waitFor client.connect(transport)
+    check handles.allIt(descriptorIsOpen(it))
+    waitFor client.close()
+    check not handles.anyIt(descriptorIsOpen(it))

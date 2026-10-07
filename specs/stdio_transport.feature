@@ -29,3 +29,19 @@ Feature: stdio transport
     Given a command that does not exist, or a child that never answers
     When a process transport is made, or the client connects
     Then McpTransportError names the command, or the wait can time out while the dispatcher keeps running
+
+  @spec:MCP-STDIO-5 @feature:ftStdio
+  Scenario: A server reads and writes its own descriptors
+    Given a server that reads its stdin with the transport
+    When a write holds blank lines, CRLF lines, several lines or a last line without a newline
+    Then each line is one message in order, and the end of input is reported
+    And a message of exactly the size limit is accepted, and more than the limit without a newline fails naming the limit
+    And a line that is not JSON is answered with a parse error with a null id, and reading goes on
+    And closing the transport releases the stdin descriptor, and a stream transport flushes what it sends and closes both streams
+
+  @spec:MCP-STDIO-6 @feature:ftStdio
+  Scenario: A client looks after the child it started
+    Given a server program started through a process transport
+    When the child prints a line that is not JSON, or fills its stderr, or ignores the closing of its stdin, or also ignores SIGTERM
+    Then the noise is reported on stderr and not answered to the child, and the child's stderr is passed on
+    And the child is asked to exit by closing its stdin, then terminated, then killed, and the pipe descriptors are released
