@@ -13,6 +13,7 @@ import transport/http_server
 import server/server
 import client/client
 import protocol/types
+import transport/event_stream
 
 const SpeaksModern = isModern(DefaultProtocolVersion)
 
@@ -537,3 +538,104 @@ if SpeaksModern:
       let answer = waitFor transport.receiveMessage()
       check answer["result"]["tools"].len == 2
       waitFor transport.close()
+
+  suite "2026-07-28 parameter headers: what the client learns from tools/list (mutation review, g2g-hc-a)":
+
+    type Listing = ref object
+      ## A scripted server: the tools/list answers are whatever the test
+      ## builds, and each tools/call records the Mcp-Param-Region it carried.
+      lists: int
+      regions: seq[string]
+      answer: proc(id: JsonNode, nth: int): tuple[contentType, body: string]
+
+    proc startListing(state: Listing): string =
+      startScripted(proc(req: Request) {.async, gcsafe.} =
+        let message = parseJson(req.body)
+        var contentType = "application/json"
+        var body: string
+        {.cast(gcsafe).}:
+          if message["method"].getStr() == "tools/list":
+            (contentType, body) = state.answer(message["id"], state.lists)
+            inc state.lists
+          else:
+            state.regions.add(if req.headers.hasKey("Mcp-Param-Region"):
+                                $req.headers["Mcp-Param-Region"] else: "<none>")
+            body = $(%*{"jsonrpc": "2.0", "id": message["id"], "result": {"content": []}})
+        await req.respond(Http200, body, newHttpHeaders({"Content-Type": contentType})))
+
+    proc listed(id: JsonNode, tools: varargs[JsonNode]): JsonNode =
+      %*{"jsonrpc": "2.0", "id": id, "result": {"tools": @tools}}
+
+    proc asJson(message: JsonNode): tuple[contentType, body: string] =
+      ("application/json", $message)
+
+    proc asEvents(messages: varargs[JsonNode]): tuple[contentType, body: string] =
+      result.contentType = "text/event-stream"
+      for message in messages:
+        result.body.add formatSseEvent($message)
+
+    proc regionAfterListing(state: Listing, lists: int): string =
+      ## Lists the tools `lists` times, then calls execute_sql with a region.
+      let transport = newStreamableHttpTransport(startListing(state))
+      let meta = modernMeta()
+      for n in 1 .. lists:
+        waitFor transport.sendRequest(newJsonRpcRequest("l" & $n, "tools/list", %*{"_meta": meta}))
+        discard waitFor transport.receiveMessage()
+      waitFor transport.sendRequest(newJsonRpcRequest("call", "tools/call", %*{"_meta": meta,
+        "name": "execute_sql", "arguments": {"region": "us-west1", "query": "q"}}))
+      result = state.regions[^1]
+      waitFor transport.close()
+
+    proc answerOf(answer: JsonNode): JsonNode =
+      ## What the client hands over when the server answers tools/list with
+      ## `answer` (a result or an error).
+      let state = Listing(answer: proc(id: JsonNode, nth: int): tuple[contentType, body: string] =
+        var reply = %*{"jsonrpc": "2.0", "id": id}
+        for key, value in answer:
+          reply[key] = value
+        reply.asJson)
+      let transport = newStreamableHttpTransport(startListing(state))
+      waitFor transport.sendRequest(newJsonRpcRequest("1", "tools/list", %*{"_meta": modernMeta()}))
+      result = waitFor transport.receiveMessage()
+      waitFor transport.close()
+
+    test "Given a tools/list answer without a tools member, when the client reads it, then the answer is handed over as it is":
+      let answer = answerOf(%*{"result": {"resultType": "complete"}})
+      check answer["result"]["resultType"].getStr() == "complete"
+      check not answer["result"].hasKey("tools")
+
+    test "Given a tools/list answer whose tools member is no array, when the client reads it, then the answer is handed over as it is":
+      check answerOf(%*{"result": {"tools": "none"}})["result"]["tools"].getStr() == "none"
+
+    test "Given a tool listed with x-mcp-header, when the next listing declares it invalid, then a call no longer carries the header":
+      let invalid = %*{"name": "execute_sql", "inputSchema": {"type": "object", "properties": {
+        "region": {"type": "number", "x-mcp-header": "Region"}}}}
+      let state = Listing(answer: proc(id: JsonNode, nth: int): tuple[contentType, body: string] =
+        asJson(listed(id, if nth == 0: sqlTool() else: invalid)))
+      check regionAfterListing(state, 2) == "<none>"
+
+    test "Given a tool listed with x-mcp-header, when the next listing no longer declares it, then a call no longer carries the header":
+      let state = Listing(answer: proc(id: JsonNode, nth: int): tuple[contentType, body: string] =
+        asJson(listed(id, if nth == 0: sqlTool() else: sqlToolWithoutHeader())))
+      check regionAfterListing(state, 2) == "<none>"
+
+    test "Given a tools/list answered twice with the same id, when the second answer drops the header, then the first answer is what counts":
+      let state = Listing(answer: proc(id: JsonNode, nth: int): tuple[contentType, body: string] =
+        asEvents(listed(id, sqlTool()), listed(id, sqlToolWithoutHeader())))
+      check regionAfterListing(state, 1) == "us-west1"
+
+    test "Given a request of the server whose id equals that of a pending tools/list, when the answer follows, then the answer is what counts":
+      let state = Listing(answer: proc(id: JsonNode, nth: int): tuple[contentType, body: string] =
+        asEvents(%*{"jsonrpc": "2.0", "id": id, "method": "ping"}, listed(id, sqlTool())))
+      check regionAfterListing(state, 1) == "us-west1"
+
+    test "Given a tool listed with an invalid x-mcp-header, when the client reads the listing, then it says which tool it left out":
+      let state = Listing(answer: proc(id: JsonNode, nth: int): tuple[contentType, body: string] =
+        asJson(listed(id, badTool(), plainTool())))
+      let logged = loggedWhile(proc() =
+        let transport = newStreamableHttpTransport(startListing(state))
+        waitFor transport.sendRequest(newJsonRpcRequest("1", "tools/list", %*{"_meta": modernMeta()}))
+        discard waitFor transport.receiveMessage()
+        waitFor transport.close())
+      check "ignoring tool 'bad_tool'" in logged
+      check logged.count('\n') == 1
