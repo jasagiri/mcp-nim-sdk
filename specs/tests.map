@@ -948,6 +948,10 @@ MCP-AUDIO-4 | tests/test_client_server_requests.nim | Given a handler that answe
 MCP-VERSION-2 | tests/test_version_floor.nim | Given a build, when its versions are listed, then they are every version from the oldest to the default
 MCP-VERSION-2 | tests/test_version_floor.nim | Given a ceiling, when the spoken versions up to it are listed, then none is older than the build's oldest
 MCP-VERSION-3 | tests/test_version_floor.nim | Given a version outside the build's range, when a server is created for it, then ValueError is raised
+MCP-VERSION-g2d-proto-1 | tests/test_version_build_config.nim | Given an oldest version that is not newer than the default, when the build is checked, then it is accepted
+MCP-VERSION-g2d-proto-1 | tests/test_version_build_config.nim | Given a default version that was never released, when the build is checked, then it fails naming the setting
+MCP-VERSION-g2d-proto-1 | tests/test_version_build_config.nim | Given an oldest version that was never released, when the build is checked, then it fails naming the setting
+MCP-VERSION-g2d-proto-1 | tests/test_version_build_config.nim | Given an oldest version newer than the default, when the build is checked, then it fails naming both
 MCP-VERSION-9 | tests/test_version_floor.nim | Given an initialize request, when the server speaks no legacy version, then the error names the versions it speaks
 MCP-VERSION-9 | tests/test_version_floor.nim | Given a request without the per-request fields, when the server speaks no legacy version, then it is invalid params
 MCP-HTTP-15 | tests/test_version_floor.nim | Given a GET that names no version and no session, when it arrives, then it is 400 where a spoken version has the stream and 405 otherwise
