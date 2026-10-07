@@ -38,6 +38,7 @@ Feature: Subscriptions (2026-07-28)
     Given open subscriptions
     When the server ends them
     Then each request is answered with a complete result naming its subscription, and over stdio notifications/cancelled comes first
+    And ending them again does not cancel or answer a stream twice
 
   @spec:MCP-SUBSCRIBE-7 @feature:ftSubscriptionsListen
   Scenario: A malformed filter is invalid params

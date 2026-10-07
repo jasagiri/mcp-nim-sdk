@@ -130,6 +130,19 @@ suite "subscriptions on the server (2026-07-28 only)":
       check sent[0].related == "l1"
       check sent[0].message["params"]["_meta"]["io.modelcontextprotocol/subscriptionId"].getStr() == "l1"
 
+  test "Given an open subscription, when an extension notifies the subscribers, then the stream that wants it gets it tagged with its id":
+    for v in versionsWith(ftSubscriptionsListen):
+      let server = fullServer()
+      let t = server.attach()
+      let peer = server.connect(t, v)
+      peer.listenAndWait(%"l1", %*{"resourceSubscriptions": [Config]})
+      waitFor server.notifySubscribers("notifications/resources/updated", %*{"uri": "file:///other"})
+      waitFor server.notifySubscribers("notifications/resources/updated", %*{"uri": Config})
+      let sent = t.messagesOf("notifications/resources/updated")
+      check sent.len == 1
+      check sent[0].related == "l1"
+      check sent[0].message["params"]["_meta"]["io.modelcontextprotocol/subscriptionId"].getStr() == "l1"
+
   test "Given a subscription that did not ask for a type, when that type changes, then nothing is sent":
     for v in versionsWith(ftSubscriptionsListen):
       let server = fullServer()
@@ -242,6 +255,22 @@ suite "subscriptions on the server (2026-07-28 only)":
       check pair.server.sent[1]["params"]["requestId"].getInt() == 5
       check pair.server.sent[2]["id"].getInt() == 5
       check pair.server.sent[2]["result"]["_meta"]["io.modelcontextprotocol/subscriptionId"].getInt() == 5
+
+  test "Given a stdio server that ends its subscriptions twice in a row, when both calls return, then the stream was cancelled and answered once":
+    for v in versionsWith(ftSubscriptionsListen):
+      let server = fullServer()
+      let pair = newLoopbackPair()
+      waitFor server.attachTransport(pair.server)
+      pair.server.inject(%*{"jsonrpc": "2.0", "id": 5, "method": "subscriptions/listen",
+        "params": {"_meta": modernMeta(), "notifications": {"toolsListChanged": true}}})
+      untilTrue("the acknowledgment", proc(): bool = pair.server.sent.len == 1)
+      waitFor server.endSubscriptions()
+      waitFor server.endSubscriptions()
+      untilTrue("the answer", proc(): bool = pair.server.sent.len >= 3)
+      settle()
+      check pair.server.sent.len == 3
+      check pair.server.sent[1]["method"].getStr() == "notifications/cancelled"
+      check pair.server.sent[2]["id"].getInt() == 5
 
   test "Given a request without a usable notifications filter, when it arrives, then it is invalid params":
     for v in versionsWith(ftSubscriptionsListen):

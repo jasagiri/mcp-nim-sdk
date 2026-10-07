@@ -886,11 +886,13 @@ MCP-SUBSCRIBE-3 | tests/test_subscriptions.nim | Given an open subscription, whe
 MCP-SUBSCRIBE-3 | tests/test_subscriptions.nim | Given a subscription that did not ask for a type, when that type changes, then nothing is sent
 MCP-SUBSCRIBE-3 | tests/test_subscriptions.nim | Given a subscription to a resource uri, when that resource and another change, then only the named one is delivered
 MCP-SUBSCRIBE-3 | tests/test_subscriptions.nim | Given two subscriptions, when a resource changes, then each stream gets its own notification with its own id
+MCP-SUBSCRIBE-3 | tests/test_subscriptions.nim | Given an open subscription, when an extension notifies the subscribers, then the stream that wants it gets it tagged with its id
 MCP-SUBSCRIBE-4 | tests/test_subscriptions.nim | Given a tool call with progress, when it reports, then the notification belongs to the call and not to the subscription
 MCP-SUBSCRIBE-5 | tests/test_subscriptions.nim | Given a client that cancels, when the cancellation arrives, then the subscription is gone and no response is sent
 MCP-SUBSCRIBE-5 | tests/test_subscriptions.nim | Given the transport reports the request abandoned, when the connection closes, then the subscription is gone
 MCP-SUBSCRIBE-6 | tests/test_subscriptions.nim | Given open subscriptions, when the server ends them, then each request is answered with a graceful result and nothing more is sent
 MCP-SUBSCRIBE-6 | tests/test_subscriptions.nim | Given a stdio server, when it ends a subscription, then it sends notifications/cancelled for the request and then the graceful result
+MCP-SUBSCRIBE-6 | tests/test_subscriptions.nim | Given a stdio server that ends its subscriptions twice in a row, when both calls return, then the stream was cancelled and answered once
 MCP-SUBSCRIBE-7 | tests/test_subscriptions.nim | Given a request without a usable notifications filter, when it arrives, then it is invalid params
 MCP-SUBSCRIBE-8 | tests/test_subscriptions.nim | Given a version without subscriptions/listen, when it is requested, then it is method not found
 MCP-SUBSCRIBE-8 | tests/test_subscriptions.nim | Given a legacy client subscribed to a resource, when the server notifies, then it gets the notification untagged
