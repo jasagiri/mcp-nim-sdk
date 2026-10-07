@@ -20,6 +20,7 @@ Feature: Requests the server makes of the client
     Given a version before 2026-07-28 and a client that declared roots
     When the server sends roots/list
     Then the client's roots come back to the server
+    And an answer without a roots array is a remote error
 
   @spec:MCP-SERVERREQ-3 @feature:ftServerInitiatedRequests
   Scenario: A server pings the client

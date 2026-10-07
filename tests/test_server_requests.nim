@@ -60,6 +60,16 @@ suite "requests of the server (before 2026-07-28)":
     t.answer(asked, %*{"roots": [{"uri": "file:///home", "name": "Home"}]})
     check waitFor(pending)[0]["uri"].getStr() == "file:///home"
 
+  test "Given a client that answers roots/list without a roots array, when the server lists them, then McpRemoteError is raised":
+    for answer in [newJObject(), %*{"roots": "file:///home"}, %*{"roots": nil}]:
+      let server = requestServer()
+      let t = server.attach()
+      discard server.connect(t, Legacy, clientCapabilities = SamplingAndRoots)
+      let pending = server.listRoots()
+      t.answer(t.awaitRequest("roots/list"), answer)
+      expect McpRemoteError:
+        discard waitFor pending
+
   test "Given a client, when the server pings it, then the ping completes on the empty result":
     for v in versionsWith(ftServerInitiatedRequests):
       let server = requestServer()

@@ -259,6 +259,7 @@ MCP-CANCEL-5 | tests/test_http_streams.nim | Given a cancelled request, when the
 MCP-CANCEL-6 | tests/test_http_streams.nim | Given a request whose connection was cut, when the server finishes it, then it was not treated as cancelled
 MCP-SERVERREQ-1 | tests/test_server_requests.nim | Given a client that can sample, when the server asks for a message, then the request names the session and the result comes back
 MCP-SERVERREQ-2 | tests/test_server_requests.nim | Given a client with roots, when the server lists them, then the roots come back
+MCP-SERVERREQ-2 | tests/test_server_requests.nim | Given a client that answers roots/list without a roots array, when the server lists them, then McpRemoteError is raised
 MCP-SERVERREQ-3 | tests/test_server_requests.nim | Given a client, when the server pings it, then the ping completes on the empty result
 MCP-SERVERREQ-4 | tests/test_server_requests.nim | Given a client without the sampling or roots capability, when the server asks, then it raises and sends nothing
 MCP-SERVERREQ-4 | tests/test_server_requests.nim | Given a client that has not sent initialized, when the server asks, then it raises
