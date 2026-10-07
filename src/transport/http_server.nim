@@ -973,7 +973,6 @@ proc handleLegacySse(t: HttpServerTransport, req: Request,
                         streams: initOrderedTable[string, SseStream](),
                         listen: newSseStream(newStreamId(), t.maxStreamEvents,
                                              emitIds = false))
-  session.touch()
   discard session.listen.push(t.legacyMessagesPath & "?sessionId=" & id, "endpoint")
   t.sessions[id] = session
   let gone = watchDisconnect(req.client)
@@ -1007,7 +1006,6 @@ proc handleLegacyPost(t: HttpServerTransport, req: Request,
   if t.overloaded(1):
     await req.refuseOverload()
     return
-  t.sessions[id].used = true
   if isRequest(message):
     inc t.exchangeCount
     let exchangeId = "http-" & $t.exchangeCount
