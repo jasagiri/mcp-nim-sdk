@@ -230,6 +230,7 @@ MCP-CANCEL-1 | tests/test_server_progress_cancel.nim | Given a handler waiting o
 MCP-CANCEL-2 | tests/test_server_progress_cancel.nim | Given a request id nobody sent, when the client cancels it, then it is ignored and the server goes on
 MCP-CANCEL-2 | tests/test_server_progress_cancel.nim | Given a request already answered, when the client cancels it, then the answer stands
 MCP-CANCEL-2 | tests/test_server_progress_cancel.nim | Given the initialize request in flight, when the client cancels it, then it is answered anyway
+MCP-CANCEL-2 | tests/test_server_progress_cancel.nim | Given cancelRequest called directly, when the request is live, unknown, cancelled already or initialize, then it says whether it stopped waiting
 MCP-CANCEL-3 | tests/test_server_progress_cancel.nim | Given the same request id on two sessions, when one client cancels it, then the other's request goes on
 MCP-CANCEL-3 | tests/test_server_progress_cancel.nim | Given a session that ends, when a request of it is in flight, then it is cancelled
 MCP-CANCEL-4 | tests/test_client_requests.nim | Given a server that never answers, when a request has a timeout, then it raises McpTimeoutError

@@ -267,3 +267,26 @@ suite "cancellation (every version)":
     server.endSession("s")
     release()
     check sawCancelled
+
+  test "Given cancelRequest called directly, when the request is live, unknown, cancelled already or initialize, then it says whether it stopped waiting":
+    reset()
+    let server = progressServer()
+    let t = server.attach()
+    let peer = server.connect(t, DefaultProtocolVersion.min(mpv20251125), session = "s")
+    check not server.cancelRequest("s", "never-sent")
+    peer.send(%"x", "tools/call", %*{"name": "slow"})
+    untilTrue("the handler to start", proc(): bool = started)
+    check not server.cancelRequest("other-session", "x")
+    check server.cancelRequest("s", "x", "enough")
+    check not server.cancelRequest("s", "x")
+    release()
+    check sawCancelled
+    let slowInit = newFuture[void]("slowInit")
+    server.registerRequestHandler("initialize",
+      proc(request: JsonRpcRequest): Future[JsonRpcResponse] {.async.} =
+        await slowInit
+        return newJsonRpcResponse(request.id, newJObject()))
+    t.inject("i", rpcRequest("init-1", "initialize", %*{}))
+    settle()
+    check not server.cancelRequest("i", "init-1")
+    slowInit.complete()
