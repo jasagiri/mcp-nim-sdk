@@ -19,9 +19,9 @@
 | 5 欠陥 | 0 |
 | 6 許容 | 1 (13) |
 
-分類 3 のうち、変異を手で当てて追加したテストが落ちる (または止まる) ところまで見たのは次の id: 10, 56, 57, 101, 136, 141, 147, 150, 153, 161, 162, 180, 183, 206, 215, 219, 229, 241, 271, 278, 299, 303, 306, 313, 315, 324, 97。残りは、同じテストの別の表明が同じ条件を破ることを読んで判断した (手では当てていない)。
+分類 3 の 52 件はすべて、変異を 1 件ずつ手で当てて、追加したテストが落ちる (または止まる) ことを確かめた。`||`/`and` の連鎖 (id 129 から 136) は、変異した演算子の左右を括弧でくくって、元の構文木と同じ形で当てた (演算子の優先順位で別のプログラムにならないように)。変異を当てた状態で、ベースにあった既存のテストだけでは落ちないことは、測定の結果 (生き残り) が示している。
 
-追加したテストは `tests/test_elicitation_payload.nim` の新しい suite 2 つ、`tests/test_server_elicitation.nim`、`tests/test_client_elicitation.nim`、`tests/test_tasks_end_to_end.nim` に各 1 件以上。Scenario は `specs/elicitation.feature` の `MCP-ELICIT-g2e-elicit-b-1` から `-5` (リードが採番し直す)。ジョブの `testCommand` に `tests/test_tasks_end_to_end.nim` を追記した。既定の版・2025-06-18・2025-11-25 の 3 通りで、変異なしで通ることを確かめた (`test_tasks_end_to_end` は 2025-11-25 以降だけ中身がある)。
+追加したテストは `tests/test_elicitation_payload.nim` の新しい suite 2 つ、`tests/test_server_elicitation.nim`、`tests/test_client_elicitation.nim`、`tests/test_tasks_end_to_end.nim` に各 1 件以上。Scenario は `specs/elicitation.feature` の `MCP-ELICIT-g2e-elicit-b-1` から `-5` (リードが採番し直す)。ジョブの `testCommand` に `tests/test_tasks_end_to_end.nim` を追記した。`test_elicitation_payload`・`test_server_elicitation`・`test_client_elicitation`・`test_tasks_end_to_end` を、既定の版・2025-06-18・2025-11-25 で、変異なしで通ることを確かめた (`test_tasks_end_to_end` は 2025-11-25 以降だけ中身がある)。
 
 ## 一覧
 
