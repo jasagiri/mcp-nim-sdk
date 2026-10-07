@@ -211,6 +211,18 @@ suite "the end of a connection":
       discard waitFor pending
     check not client.lastTransportError.isNil
 
+  test "Given a pending request, when the server ends the stream, then it fails with McpConnectionClosedError and nothing stays registered as pending":
+    let peer = silentPeer()
+    let client = peer.connectedClient(LegacyDefault)
+    let pending = client.sendRequest("tools/list", newJObject(),
+      McpRequestOptions(timeoutMs: some(0)))
+    waitFor sleepAsync(5)
+    check client.pendingRequests.len == 1
+    peer.pair.client.endStream()
+    expect McpConnectionClosedError:
+      discard waitFor pending
+    check client.pendingRequests.len == 0
+
   test "Given a closed client, when a request is made, then it raises McpConnectionClosedError without sending":
     let peer = silentPeer()
     let client = peer.connectedClient(LegacyDefault)

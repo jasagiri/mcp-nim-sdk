@@ -12,6 +12,7 @@ type
     waiters: Deque[Future[JsonNode]]
     sent*: seq[JsonNode]  ## every message this side put on the wire
     closed: bool
+    endOfStream: bool  ## the close was the peer's orderly end, as an EOF is
 
 proc deliver(t: LoopbackTransport, wire: string) =
   let message = parseJson(wire)
@@ -37,9 +38,15 @@ method sendNotification*(t: LoopbackTransport, notification: JsonRpcNotification
 method sendResponse*(t: LoopbackTransport, response: JsonRpcResponse): Future[void] {.async.} =
   t.put(encodeMessage(response))
 
+proc closedError(t: LoopbackTransport): ref McpTransportError =
+  if t.endOfStream:
+    newException(McpTransportClosedError, "loopback transport reached its end")
+  else:
+    newException(McpTransportError, "loopback transport closed")
+
 method receiveMessage*(t: LoopbackTransport): Future[JsonNode] {.async.} =
   if t.closed:
-    raise newException(McpTransportError, "loopback transport closed")
+    raise t.closedError()
   if t.inbox.len > 0:
     return t.inbox.popFirst()
   let waiter = newFuture[JsonNode]("LoopbackTransport.receiveMessage")
@@ -49,7 +56,15 @@ method receiveMessage*(t: LoopbackTransport): Future[JsonNode] {.async.} =
 method close*(t: LoopbackTransport): Future[void] {.async.} =
   t.closed = true
   while t.waiters.len > 0:
-    t.waiters.popFirst().fail(newException(McpTransportError, "loopback transport closed"))
+    t.waiters.popFirst().fail(t.closedError())
+
+proc endStream*(t: LoopbackTransport) =
+  ## What the reading side sees when its peer ends the stream (EOF on stdio):
+  ## McpTransportClosedError, where `close` raises a plain McpTransportError.
+  t.endOfStream = true
+  t.closed = true
+  while t.waiters.len > 0:
+    t.waiters.popFirst().fail(t.closedError())
 
 proc newLoopbackPair*(): tuple[client, server: LoopbackTransport] =
   let a = LoopbackTransport(kind: mtkStdio, inbox: initDeque[JsonNode](),
