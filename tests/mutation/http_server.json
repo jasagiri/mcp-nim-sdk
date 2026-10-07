@@ -3,7 +3,7 @@
     "src/transport/http_server.nim",
     "src/transport/sse_stream.nim"
   ],
-  "testCommand": "nim c -r --hints:off tests/test_http_streams.nim && nim c -r --hints:off tests/test_streamable_http.nim && nim c -r --hints:off tests/test_http_sse_legacy.nim && nim c -r --hints:off tests/test_version_floor.nim && nim c -r --hints:off tests/test_param_headers_http.nim && nim c -r --hints:off tests/test_subscriptions.nim && nim c -r --hints:off -d:mcpOldestProtocolVersion=2026-07-28 tests/test_version_floor.nim && nim c -r --hints:off tests/test_security_http.nim",
+  "testCommand": "nim c -r --hints:off tests/test_http_streams.nim && nim c -r --hints:off tests/test_streamable_http.nim && nim c -r --hints:off tests/test_http_sse_legacy.nim && nim c -r --hints:off tests/test_version_floor.nim && nim c -r --hints:off tests/test_param_headers_http.nim && nim c -r --hints:off tests/test_subscriptions.nim && nim c -r --hints:off -d:mcpOldestProtocolVersion=2026-07-28 tests/test_version_floor.nim && nim c -r --hints:off tests/test_security_http.nim && nim c -r --hints:off tests/test_http_documents.nim",
   "mutators": [
     "AOR",
     "ROR",
