@@ -438,3 +438,27 @@ suite "client that tries Streamable HTTP first (backward compatibility)":
     let response = waitFor client.sendRequest("tools/list", newJObject())
     check response.result.get["tools"].len == 1
     waitFor client.close()
+
+suite "HTTP+SSE server, requests in progress together (mutation review, g2f-hs-b)":
+
+  test "Given two requests in progress at once, when the server answers them one after the other, then each answer carries the id its own request chose":
+    let transport = newHttpServerTransport(port = 0, protocolVersion = mpv20241105)
+    transport.listen()
+    asyncCheck transport.serve()
+    let base = "http://127.0.0.1:" & $transport.port
+    let stream = openSse(base)
+    let endpoint = stream.endpointOf()
+    check postTo(base, endpoint, rpc(5, "first")).code == Http202
+    check postTo(base, endpoint, rpc(6, "second")).code == Http202
+    var seen: seq[McpIncoming] = @[]
+    for _ in 1 .. 2:
+      seen.add waitFor transport.receive()
+    for incoming in seen:
+      waitFor transport.sendResponse(newJsonRpcResponse(incoming.message["id"].getStr(),
+        %*{"answers": incoming.message["method"].getStr()}))
+    var answers: seq[(int, string)] = @[]
+    for _ in 1 .. 2:
+      let answer = stream.nextMessage()
+      answers.add (answer["id"].getInt(), answer["result"]["answers"].getStr())
+    check answers == @[(5, "first"), (6, "second")]
+    stream.close()

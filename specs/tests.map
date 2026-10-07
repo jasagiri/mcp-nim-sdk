@@ -430,6 +430,7 @@ MCP-HTTPSSE-1 | tests/test_http_sse_legacy.nim | Given two connections, when eac
 MCP-HTTPSSE-2 | tests/test_http_sse_legacy.nim | Given a request posted to the endpoint, when the server answers, then the POST gets 202 and the answer arrives on the stream
 MCP-HTTPSSE-2 | tests/test_http_sse_legacy.nim | Given a request during which the server sent a notification, when posted, then both arrive on the stream in order
 MCP-HTTPSSE-2 | tests/test_http_sse_legacy.nim | Given two clients using the same request id, when both are answered, then each answer reaches the right stream
+MCP-HTTPSSE-2 | tests/test_http_sse_legacy.nim | Given two requests in progress at once, when the server answers them one after the other, then each answer carries the id its own request chose
 MCP-HTTPSSE-3 | tests/test_http_sse_legacy.nim | Given a notification the server sends to every client, when two connections are open, then each hears it
 MCP-HTTPSSE-3 | tests/test_http_sse_legacy.nim | Given a request the server sends, when the client answers by POST, then the server receives the answer
 MCP-HTTPSSE-4 | tests/test_http_sse_legacy.nim | Given a POST naming no session or an unknown one, when posted, then the answer is 400 or 404
