@@ -165,6 +165,7 @@ MCP-PROMPTS-4 | tests/test_server_resources_prompts.nim | Given a prompt that ne
 MCP-PAGINATION-1 | tests/test_server_pagination.nim | Given a paged list, when a client follows nextCursor, then it sees every item and the last page has no nextCursor
 MCP-PAGINATION-1 | tests/test_server_pagination.nim | Given an unpaged list, when a client lists, then there is no nextCursor
 MCP-PAGINATION-1 | tests/test_server_pagination.nim | Given 5 items and a page size of 2, when the pages are followed, then every item comes once and the last page has no cursor
+MCP-PAGINATION-1 | tests/test_server_pagination.nim | Given a page size of 1, when the pages are followed, then the cursor of the first page leads to the second item
 MCP-PAGINATION-2 | tests/test_server_pagination.nim | Given a cursor the server did not issue, when a client lists, then the error is invalid params
 MCP-PAGINATION-2 | tests/test_server_pagination.nim | Given a cursor that is not a string, when a client lists, then the error is invalid params
 MCP-PAGINATION-2 | tests/test_server_pagination.nim | Given a cursor nobody issued, when the list is paged, then the cursor is invalid params
@@ -178,12 +179,14 @@ MCP-PAGINATION-5 | tests/test_client_operations.nim | Given a nextCursor that is
 MCP-COMPLETION-1 | tests/test_server_completion.nim | Given a prompt reference, when a client completes an argument, then the handler's values, total and hasMore come back
 MCP-COMPLETION-1 | tests/test_server_completion.nim | Given a resource template reference, when a client completes, then the handler sees the URI template
 MCP-COMPLETION-1 | tests/test_server_completion.nim | Given more than 100 values, when a client completes, then 100 are sent and hasMore is true
+MCP-COMPLETION-1 | tests/test_server_completion.nim | Given exactly 100 values, when a client completes, then all are sent and hasMore is not claimed
 MCP-COMPLETION-2 | tests/test_server_completion.nim | Given previously resolved arguments, when a client completes, then the handler gets them from 2025-06-18 on
 MCP-COMPLETION-3 | tests/test_server_completion.nim | Given a declared completions capability, when a client initializes, then it is announced from 2025-03-26 on
 MCP-COMPLETION-3 | tests/test_server_completion.nim | Given a 2026-07-28 server, when a client discovers it, then the completions capability is announced
 MCP-COMPLETION-3 | tests/test_server_completion.nim | Given a server without the completions capability, when a client completes, then the method is not found
 MCP-COMPLETION-4 | tests/test_server_completion.nim | Given a malformed request, when a client completes, then the answer is invalid params
 MCP-COMPLETION-4 | tests/test_server_completion.nim | Given a handler that rejects the argument, when a client completes, then the answer is invalid params
+MCP-COMPLETION-4 | tests/test_server_completion.nim | Given a request without params, when it is parsed, then it is invalid params and not a crash
 MCP-COMPLETION-5 | tests/test_client_operations.nim | Given a prompt reference, when an argument is completed, then ref and argument are sent and values read
 MCP-COMPLETION-5 | tests/test_client_operations.nim | Given a resource template reference, when completed with context, then ref/resource and context are sent
 MCP-COMPLETION-5 | tests/test_client_operations.nim | Given a completion answer without a completion object, when completing, then McpProtocolError is raised

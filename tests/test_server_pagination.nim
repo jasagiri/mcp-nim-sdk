@@ -41,14 +41,20 @@ suite "pageOf":
     check seen == all
     check pages == 3
 
+  test "Given a page size of 1, when the pages are followed, then the cursor of the first page leads to the second item":
+    let all = items("x", 3)
+    let first = pageOf(all, none(string), 1)
+    check first.nextCursor.isSome
+    check pageOf(all, first.nextCursor, 1).items == @[all[1]]
+
   test "Given a page size of 0, when the list is paged, then everything is on one page without a cursor":
     let page = pageOf(items("x", 5), none(string), 0)
     check page.items.len == 5
     check page.nextCursor.isNone
 
   test "Given a cursor nobody issued, when the list is paged, then the cursor is invalid params":
-    for bad in ["", "not base64 !!", "aGVsbG8=", "b2Zmc2V0Ond0Zg==", "b2Zmc2V0OjA=", "b2Zmc2V0OjUw"]:
-      # hello / offset:wtf / offset:0 / offset:50 (past the end)
+    for bad in ["", "not base64 !!", "aGVsbG8=", "b2Zmc2V0Ond0Zg==", "b2Zmc2V0OjA=", "b2Zmc2V0OjUw", "b2Zmc2V0OjU="]:
+      # hello / offset:wtf / offset:0 / offset:50 / offset:5 (the end itself: no page follows it)
       var code = 0
       try:
         discard pageOf(items("x", 5), some(bad), 2)

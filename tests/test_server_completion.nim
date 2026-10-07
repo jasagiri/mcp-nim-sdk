@@ -19,6 +19,11 @@ proc completionServer(declare = true): McpServer =
       for i in 1 .. 150:
         values.add "v" & $i
       return McpCompletion(values: values, total: some(150))
+    if request.argumentName == "exact":
+      var values: seq[string]
+      for i in 1 .. 100:
+        values.add "v" & $i
+      return McpCompletion(values: values)
     return McpCompletion(values: @["python", "pytorch"], total: some(10),
                          hasMore: some(true)))
 
@@ -59,6 +64,14 @@ suite "completion/complete (every version)":
       check reply["result"]["completion"]["total"].getInt() == 150
       check reply["result"]["completion"]["hasMore"].getBool() == true
 
+  test "Given exactly 100 values, when a client completes, then all are sent and hasMore is not claimed":
+    for v in SupportedProtocolVersions:
+      let server = completionServer()
+      let reply = server.connect(server.attach(), v).ask("completion/complete",
+        promptComplete("exact", ""))
+      check reply["result"]["completion"]["values"].len == 100
+      check not reply["result"]["completion"].hasKey("hasMore")
+
   test "Given previously resolved arguments, when a client completes, then the handler gets them from 2025-06-18 on":
     for v in SupportedProtocolVersions:
       let server = completionServer()
@@ -87,6 +100,15 @@ suite "completion/complete (every version)":
         let rejected = peer.ask("completion/complete", params).hasKey("error")
         # An older client does not send context, so the server does not read it.
         check rejected == (v.has(ftCompletionContext) or not params.hasKey("context"))
+
+  test "Given a request without params, when it is parsed, then it is invalid params and not a crash":
+    for withContext in [false, true]:
+      var code = 0
+      try:
+        discard parseCompletionRequest(nil, withContext)
+      except McpRequestError as e:
+        code = e.code
+      check code == -32602
 
   test "Given a handler that rejects the argument, when a client completes, then the answer is invalid params":
     for v in SupportedProtocolVersions:
