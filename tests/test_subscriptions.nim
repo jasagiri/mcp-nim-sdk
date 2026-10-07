@@ -16,6 +16,7 @@ import client/client as clientMod
 import client/subscriptions as clientSubs
 import protocol/subscriptions
 import transport/http
+import transport/transport
 import transport/http_server
 
 const
@@ -439,6 +440,20 @@ suite "subscriptions on the client":
       check cancelled.len == 1
       check cancelled[0]["params"]["requestId"].getStr() == sub.id
       check client.subscriptions.len == 0
+
+  test "Given an open subscription over HTTP, when the client cancels it, then the transport is asked once to close the stream and no notification is sent":
+    for v in versionsWith(ftSubscriptionsListen):
+      let peer = startPeer(proc(peer: client_peer.Peer, message: JsonNode) =
+        if message{"method"}.getStr() == "subscriptions/listen":
+          acknowledge(peer, message, %*{"toolsListChanged": true}),
+        modern = true, kind = mtkStreamable)
+      let client = peer.connectedClient(v)
+      let sub = waitFor client.listen(SubscriptionFilter(toolsListChanged: true))
+      waitFor sub.cancel("not needed")
+      settle()
+      check sub.endedBy == some(sbCancelled)
+      check peer.pair.client.cancelRequested == @[sub.id]
+      check peer.requestsFor("notifications/cancelled").len == 0
 
   test "Given a server that rejects the listen request, when the client listens, then it raises McpRequestError":
     for v in versionsWith(ftSubscriptionsListen):

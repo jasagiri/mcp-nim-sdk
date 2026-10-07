@@ -861,6 +861,7 @@ MCP-SUBSCRIBE-10 | tests/test_subscriptions.nim | Given the server answers the l
 MCP-SUBSCRIBE-10 | tests/test_subscriptions.nim | Given a stdio server that cancels the stream, when notifications/cancelled arrives, then the stream ended by the server
 MCP-SUBSCRIBE-10 | tests/test_subscriptions.nim | Given an open subscription, when notifications/cancelled arrives without a request id or with one that names nothing, then the stream stays open
 MCP-SUBSCRIBE-10 | tests/test_subscriptions.nim | Given an open subscription on stdio, when the client cancels it, then notifications/cancelled names the request and the stream ends
+MCP-SUBSCRIBE-10 | tests/test_subscriptions.nim | Given an open subscription over HTTP, when the client cancels it, then the transport is asked once to close the stream and no notification is sent
 MCP-SUBSCRIBE-10 | tests/test_subscriptions.nim | Given the transport fails while listening, when the stream breaks, then it ended lost
 MCP-SUBSCRIBE-11 | tests/test_subscriptions.nim | Given a server that rejects the listen request, when the client listens, then it raises McpRequestError
 MCP-SUBSCRIBE-11 | tests/test_subscriptions.nim | Given a server that never acknowledges, when the timeout passes, then the client raises McpTimeoutError and cancels
