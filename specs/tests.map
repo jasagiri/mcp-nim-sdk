@@ -155,6 +155,8 @@ MCP-LISTCHANGED-1 | tests/test_server_notifications.nim | Given resources, promp
 MCP-LISTCHANGED-1 | tests/test_server_notifications.nim | Given a server that did not declare listChanged, when a list changes, then nothing is sent
 MCP-LISTCHANGED-1 | tests/test_server_notifications.nim | Given a client that has not sent initialized, when a list changes, then it is not told
 MCP-LISTCHANGED-1 | tests/test_server_notifications.nim | Given a client whose transport fails, when a list changes, then the others are still told and the failure is raised
+MCP-LISTCHANGED-1 | tests/test_request_hooks.nim | Given prompts and resources declared without listChanged, when notifyListChanged is called for them, then nothing is sent
+MCP-LISTCHANGED-1 | tests/test_request_hooks.nim | Given a server that declared no tools, prompts or resources, when it announces a list change or a resource update, then nothing is sent and nothing is raised
 MCP-LISTCHANGED-2 | tests/test_client_server_requests.nim | Given list-changed callbacks, when the server reports changes, then each callback fires once
 MCP-LISTCHANGED-2 | tests/test_client_server_requests.nim | Given a callback that raises, when a notification arrives, then the client keeps receiving
 MCP-LISTCHANGED-2 | tests/test_client_server_requests.nim | Given no callbacks, when notifications arrive, then they are ignored

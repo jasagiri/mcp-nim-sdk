@@ -145,6 +145,30 @@ suite "list-changed notifications with params":
     settle()
     check transport.messagesOf("notifications/tools/list_changed").len == 0
 
+  test "Given prompts and resources declared without listChanged, when notifyListChanged is called for them, then nothing is sent":
+    let server = newServer(McpServerCapabilities(prompts: some(McpPromptsCapability()),
+                                                 resources: some(McpResourcesCapability())))
+    let transport = server.attach()
+    discard server.connect(transport, legacyVersions()[0])
+    waitFor server.notifyListChanged("notifications/prompts/list_changed")
+    waitFor server.notifyListChanged("notifications/resources/list_changed")
+    settle()
+    check transport.messagesOf("notifications/prompts/list_changed").len == 0
+    check transport.messagesOf("notifications/resources/list_changed").len == 0
+
+  test "Given a server that declared no tools, prompts or resources, when it announces a list change or a resource update, then nothing is sent and nothing is raised":
+    let server = newServer(McpServerCapabilities())
+    let transport = server.attach()
+    discard server.connect(transport, legacyVersions()[0])
+    for methodName in ["notifications/tools/list_changed", "notifications/prompts/list_changed",
+                       "notifications/resources/list_changed"]:
+      waitFor server.notifyListChanged(methodName)
+    waitFor server.notifyResourceUpdated("file:///a")
+    settle()
+    for methodName in ["notifications/tools/list_changed", "notifications/prompts/list_changed",
+                       "notifications/resources/list_changed", "notifications/resources/updated"]:
+      check transport.messagesOf(methodName).len == 0
+
   test "Given a method that is not a list-changed notification, when notifyListChanged is called, then ValueError is raised":
     let server = toolServer()
     expect ValueError:
