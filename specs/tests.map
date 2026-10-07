@@ -1780,6 +1780,28 @@ MCP-SEC-SCHEMA-g2h-js-a-1 | tests/test_security_schema.nim | Given maxDepth, whe
 MCP-SEC-SCHEMA-g2h-js-a-1 | tests/test_security_schema.nim | Given maxChecks, when the validation needs exactly that many schema applications, then it is validated and one more is reported
 MCP-SEC-SCHEMA-g2h-js-a-1 | tests/test_security_schema.nim | Given uniqueItems, when an item nests as deep as maxDepth, then comparing it is reported and one level less is compared
 MCP-SEC-SCHEMA-g2h-js-a-1 | tests/test_security_schema.nim | Given uniqueItems, when items nest far deeper than maxDepth, then comparing them is reported, however the nesting is built
+MCP-SEC-g2h-js-b-1 | tests/test_json_schema.nim | Given the negated shorthands, when matched at the edges of their sets, then members are refused and the neighbours accepted
+MCP-SEC-g2h-js-b-1 | tests/test_json_schema.nim | Given an empty class, when matched, then [] matches nothing and [^] anything
+MCP-SEC-g2h-js-b-1 | tests/test_json_schema.nim | Given a class, when its members are written in the ways ECMA-262 allows, then each stands for what it names
+MCP-SEC-g2h-js-b-1 | tests/test_json_schema.nim | Given a class that is not well formed, when compiled, then it is refused
+MCP-SEC-g2h-js-b-2 | tests/test_json_schema.nim | Given braces, when they are not a quantifier, then they stand for themselves
+MCP-SEC-g2h-js-b-2 | tests/test_json_schema.nim | Given a repetition, when its counts sit at the edges, then it matches exactly that many
+MCP-SEC-g2h-js-b-2 | tests/test_json_schema.nim | Given a lazy quantifier after ?, when matched, then ?? is the lazy optional, not an error
+MCP-SEC-g2h-js-b-2 | tests/test_json_schema.nim | Given a repetition that is not closed or runs backwards, when compiled, then it is refused
+MCP-SEC-g2h-js-b-2 | tests/test_json_schema.nim | Given a repetition above the limit, when compiled, then the limit is reported whichever count is above
+MCP-SEC-g2h-js-b-3 | tests/test_json_schema.nim | Given alternatives, when matched, then the last one is as required as the others
+MCP-SEC-g2h-js-b-3 | tests/test_json_schema.nim | Given parentheses that do not match, when compiled, then the pattern is refused
+MCP-SEC-g2h-js-b-3 | tests/test_json_schema.nim | Given a group syntax that is not supported, when compiled, then the message names the group syntax
+MCP-SEC-g2h-js-b-3 | tests/test_json_schema.nim | Given groups one after another, when compiled, then only nesting counts against the nesting limit
+MCP-SEC-g2h-js-b-3 | tests/test_json_schema.nim | Given a backslash at the end of the pattern, when compiled, then the pattern is refused
+MCP-SEC-g2h-js-b-3 | tests/test_json_schema.nim | Given a hex escape that ends the pattern, when compiled, then it is read, and one with fewer digits is refused
+MCP-SEC-g2h-js-b-3 | tests/test_json_schema.nim | Given word boundaries, when matched at both ends of the text, then the text edge counts as a non-word
+MCP-SEC-g2h-js-b-3 | tests/test_json_schema.nim | Given a lookahead, when matched, then it looks at the next characters only, not at the rest of the text
+MCP-SEC-g2h-js-b-3 | tests/test_json_schema.nim | Given a pattern that is refused, when the cause is a quantifier with nothing to repeat, then the message points at it
+MCP-SEC-g2h-js-b-4 | tests/test_security_schema.nim | Given a compiled pattern, when asked its size, then it is the instructions it needs, the final match included
+MCP-SEC-g2h-js-b-4 | tests/test_security_schema.nim | Given a program of exactly the size limit, when compiled, then it is accepted and one instruction more is refused
+MCP-SEC-g2h-js-b-4 | tests/test_security_schema.nim | Given a pattern whose parts emit nothing, when it does as much work as the limit allows, then it is accepted and one step more is refused
+MCP-SEC-g2h-js-b-4 | tests/test_security_schema.nim | Given a step budget that is exactly what a match needs, when matched, then it is answered and the budget is spent
 MCP-SEC-SWEEP-6 | tests/test_fuzz_regressions.nim | Given the seeds of every target, when handled, then nothing is wrong
 MCP-SEC-SWEEP-6 | tests/test_fuzz_regressions.nim | Given every input kept from fuzzing, when handled, then nothing is wrong
 MCP-SEC-SWEEP-6 | tests/test_fuzz_regressions.nim | Given the corpus directory, when listed, then every directory in it is a target

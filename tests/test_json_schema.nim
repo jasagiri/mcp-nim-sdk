@@ -428,3 +428,174 @@ suite "JSON Schema keywords (mutation review, g2h-js-a)":
     check conforms("""{"$defs": {"a": [{"type": "integer"}]}, "$ref": "#/$defs/a/0"}""", "5")
     for index in ["00", "01", "000000000"]:
       check invalidSchemaOf("{\"$defs\": {\"a\": [true, true]}, \"$ref\": \"#/$defs/a/" & index & "\"}", "5") != nil
+
+
+import std/unicode
+
+proc matches(pattern, text: string): bool =
+  compileRegex(pattern).isMatch(text)
+
+proc refusal(pattern: string): string =
+  ## The message of the RegexError a pattern is refused with; "" if it compiles.
+  try:
+    discard compileRegex(pattern)
+  except RegexError as e:
+    result = e.msg
+
+suite "regular expressions of patterns (mutation review, g2h-js-b)":
+
+  test "Given the negated shorthands, when matched at the edges of their sets, then members are refused and the neighbours accepted":
+    for member in ["0", "5", "9"]:
+      check not matches("^\\D$", member)
+    for outside in ["/", ":", "a", "\x00", "あ", $Rune(0x10FFFF)]:
+      check matches("^\\D$", outside)
+    for member in ["0", "9", "A", "Z", "_", "a", "z"]:
+      check not matches("^\\W$", member)
+    for outside in ["/", ":", "@", "[", "^", "`", "{", "\x00", "あ", $Rune(0x10FFFF)]:
+      check matches("^\\W$", outside)
+    for member in [9, 10, 11, 12, 13, 32, 0xA0, 0x1680, 0x2000, 0x2005, 0x200A, 0x2028,
+                   0x2029, 0x202F, 0x205F, 0x3000, 0xFEFF]:
+      check not matches("^\\S$", $Rune(member))
+    for outside in [0, 8, 14, 31, 33, 0x9F, 0xA1, 0x167F, 0x1681, 0x1FFF, 0x200B,
+                    0x2027, 0x202A, 0x202E, 0x2030, 0x205E, 0x2060, 0x2FFF, 0x3001,
+                    0xFEFE, 0xFF00, 0x10000, 0x10FFFF]:
+      check matches("^\\S$", $Rune(outside))
+    check matches("^[\\D]$", "a")
+    check not matches("^[\\D]$", "5")
+
+  test "Given an empty class, when matched, then [] matches nothing and [^] anything":
+    check not matches("^[]$", "")
+    check not matches("[]", "a")
+    check matches("^[^]$", "x")
+    check matches("^[^]$", "\n")
+    # `]` does not belong to the class when it comes first: `[]a]` is the empty
+    # class followed by "a]", which no text can satisfy.
+    check not matches("[]a]", "a]")
+    check not matches("[]a]", "]")
+    check not matches("[]a]", "a")
+
+  test "Given a class, when its members are written in the ways ECMA-262 allows, then each stands for what it names":
+    check matches("^[^a]$", "^")
+    check matches("^[^a]$", "b")
+    check not matches("^[^a]$", "a")
+    check matches("^[\\d]$", "5")
+    check not matches("^[\\d]$", "d")
+    check matches("^[\\s]$", " ")
+    check not matches("^[\\s]$", "s")
+    check matches("^[\\b]$", "\x08")
+    check not matches("^[\\b]$", "b")
+    check matches("^[a-]$", "a")
+    check matches("^[a-]$", "-")
+    check not matches("^[a-]$", "b")
+    check not matches("^[a-]$", "]")
+    check matches("^[a-c-e]$", "-")
+    check matches("^[a-c-e]$", "e")
+    check not matches("^[a-c-e]$", "d")
+    check matches("^[\\x30-\\x39]$", "5")
+    check not matches("^[\\x30-\\x39]$", "x")
+    check not matches("^[\\x30-\\x39]$", "a")
+    check matches("^[a-a]$", "a")
+    check not matches("^[a-a]$", "b")
+
+  test "Given a class that is not well formed, when compiled, then it is refused":
+    for bad in ["[b-a]", "[a-", "[a", "[\\", "[a-\\", "["]:
+      expect RegexError:
+        discard compileRegex(bad)
+
+  test "Given braces, when they are not a quantifier, then they stand for themselves":
+    check matches("^a{,3}$", "a{,3}")
+    check not matches("^a{,3}$", "aa")
+    check matches("^a{x}$", "a{x}")
+
+  test "Given a repetition, when its counts sit at the edges, then it matches exactly that many":
+    check matches("^a{0}$", "")
+    check not matches("^a{0}$", "a")
+    check matches("^a{0,0}$", "")
+    check not matches("^a{0,0}$", "a")
+    check matches("^a{1,}$", "aaa")
+    check not matches("^a{1,}$", "")
+    check matches("^a{000000001}$", "a")
+    check matches("^a{2,2}$", "aa")
+    for text in ["", "a", "aaaa"]:
+      check not matches("^a{2,3}$", text)
+    for text in ["aa", "aaa"]:
+      check matches("^a{2,3}$", text)
+
+  test "Given a lazy quantifier after ?, when matched, then ?? is the lazy optional, not an error":
+    check matches("^a??$", "")
+    check matches("^a??$", "a")
+    check not matches("^a??$", "aa")
+    check matches("^xa?$", "xa")
+
+  test "Given a repetition that is not closed or runs backwards, when compiled, then it is refused":
+    for bad in ["a{2", "a{2x", "a{2x}", "a{3,2}", "a{2,0}", "a{2,"]:
+      expect RegexError:
+        discard compileRegex(bad)
+
+  test "Given a repetition above the limit, when compiled, then the limit is reported whichever count is above":
+    for big in ["a{1001}", "a{1001,}", "a{1,1001}", "a{1001,2000}"]:
+      expect RegexLimitError:
+        discard compileRegex(big)
+    check matches("^a{1000}$", "a".repeat(1000))
+    check matches("^a{1000,}$", "a".repeat(1000))
+    check matches("^a{0,1000}$", "")
+
+  test "Given alternatives, when matched, then the last one is as required as the others":
+    check not matches("^(?:a|b)$", "")
+    check not matches("^(?:a|b|c)$", "")
+    check not matches("^(?:a|b)$", "c")
+    for text in ["a", "b", "c"]:
+      check matches("^(?:a|b|c)$", text)
+    check matches("^(?:a|)$", "")
+
+  test "Given parentheses that do not match, when compiled, then the pattern is refused":
+    for bad in ["a)", "(a))", "(a", "(?", "(?:", "x(?"]:
+      expect RegexError:
+        discard compileRegex(bad)
+
+  test "Given a group syntax that is not supported, when compiled, then the message names the group syntax":
+    for bad in ["(?<n>x)", "(?x)", "(?i:x)"]:
+      check "group syntax" in refusal(bad)
+
+  test "Given groups one after another, when compiled, then only nesting counts against the nesting limit":
+    check matches("^" & "(a)".repeat(70) & "$", "a".repeat(70))
+    expect RegexLimitError:
+      discard compileRegex("(".repeat(65) & "a" & ")".repeat(65))
+
+  test "Given a backslash at the end of the pattern, when compiled, then the pattern is refused":
+    for bad in ["a\\", "\\", "(\\", "[\\"]:
+      expect RegexError:
+        discard compileRegex(bad)
+
+  test "Given a hex escape that ends the pattern, when compiled, then it is read, and one with fewer digits is refused":
+    check matches("^\\x41$", "A")
+    check matches("^\\u0041$", "A")
+    check matches("\\x41", "xA")
+    check matches("\\u0041", "A")
+    for bad in ["\\x4", "\\x", "\\u004", "\\u00", "\\x4g", "\\u00zz"]:
+      expect RegexError:
+        discard compileRegex(bad)
+
+  test "Given word boundaries, when matched at both ends of the text, then the text edge counts as a non-word":
+    check matches("\\bab", "ab")
+    check not matches("\\bab", "xab")
+    check matches("ab\\b", "ab")
+    check not matches("ab\\b", "abx")
+    check not matches("\\Bab", "ab")
+    check matches("\\Bab", "xab")
+    check not matches("ab\\B", "ab")
+    check matches("ab\\B", "abx")
+    check matches("^a\\Bb$", "ab")
+    check not matches("a\\B ", "a ")
+    check matches("^\\B$", "")
+    check matches("^\\B", " b")
+
+  test "Given a lookahead, when matched, then it looks at the next characters only, not at the rest of the text":
+    check matches("^a(?=b)", "ab")
+    check not matches("^a(?=b)", "acb")
+    check matches("^a(?!b)", "acb")
+    check not matches("^a(?!b)", "ab")
+
+  test "Given a pattern that is refused, when the cause is a quantifier with nothing to repeat, then the message points at it":
+    check refusal("x|*").endsWith("at position 2")
+    check refusal("*").endsWith("at position 0")

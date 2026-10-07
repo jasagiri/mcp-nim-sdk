@@ -307,6 +307,30 @@ Feature: Security properties
     When a validation needs exactly that much, and when it needs one more
     Then the first is validated and the second raises SchemaLimitError, and siblings do not add to the depth
 
+  @spec:MCP-SEC-g2h-js-b-1
+  Scenario: Character classes and the shorthands follow ECMA-262 at their edges
+    Given \D, \W and \S, classes with a leading ^, a leading ], escapes, ranges, a trailing hyphen, and malformed classes
+    When patterns with them are matched or compiled
+    Then each member and each neighbour of a set is told apart, [] matches nothing and [^] anything, and a malformed class is refused with a RegexError
+
+  @spec:MCP-SEC-g2h-js-b-2
+  Scenario: Quantifiers match as many times as their counts say
+    Given {0}, {0,0}, {1,}, {2,3}, a brace that is no quantifier, ??, a repetition that is not closed or runs backwards, and counts above the limit
+    When patterns with them are matched or compiled
+    Then the number of repetitions at and around each edge is the one ECMA-262 gives, a malformed repetition is a RegexError and a count above the limit is a RegexLimitError
+
+  @spec:MCP-SEC-g2h-js-b-3
+  Scenario: Alternation, groups, anchors, escapes and lookaheads follow ECMA-262
+    Given alternatives, unbalanced parentheses, unsupported group syntax, many groups one after another, a backslash or hex escape at the end of the pattern, \b and \B at the ends of the text, and lookaheads
+    When patterns with them are matched or compiled
+    Then every alternative is required equally, a pattern that cannot be read is a RegexError whose message names the cause and its position, and a lookahead looks only at the characters after its position
+
+  @spec:MCP-SEC-g2h-js-b-4
+  Scenario: The limits on a pattern are exact
+    Given a pattern whose program is exactly the size limit, a pattern that does exactly the work allowed, and a match that needs exactly the step budget
+    When each is compiled or matched
+    Then it is accepted, and one instruction, one step more is a RegexLimitError
+
   @spec:MCP-SEC-SWEEP-6
   Scenario: The inputs that fuzzing found stay handled
     Given the seeds of every fuzzing target and every input kept under tests/fuzz/corpus

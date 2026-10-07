@@ -346,3 +346,34 @@ suite "JSON Schema limits (mutation review, g2h-js-a)":
       discard conformsWithin(unique, "[" & "[".repeat(40) & "1" & "]".repeat(40) & "]", limitsOf(maxDepth = 8))
     expect SchemaLimitError:
       discard conformsWithin(unique, "[" & """{"a":""".repeat(40) & "1" & "}".repeat(40) & "]", limitsOf(maxDepth = 8))
+
+
+suite "regular expression limits (mutation review, g2h-js-b)":
+
+  let small = RegexLimits(maxPatternLength: 100, maxRepeat: 10, maxProgramSize: 4, maxNesting: 4)
+
+  test "Given a compiled pattern, when asked its size, then it is the instructions it needs, the final match included":
+    check compileRegex("abc").size == 4
+    check compileRegex("").size == 1
+
+  test "Given a program of exactly the size limit, when compiled, then it is accepted and one instruction more is refused":
+    check compileRegex("abc", small).size == 4
+    expect RegexLimitError:
+      discard compileRegex("abcd", small)
+
+  test "Given a pattern whose parts emit nothing, when it does as much work as the limit allows, then it is accepted and one step more is refused":
+    # Four times the program size limit is the work allowed; `(?:)` costs one
+    # step and emits nothing, so only the work limit can stop a run of them.
+    let tiny = RegexLimits(maxPatternLength: 100, maxRepeat: 10, maxProgramSize: 1, maxNesting: 4)
+    check compileRegex("(?:)(?:)(?:)", tiny).size == 1
+    expect RegexLimitError:
+      discard compileRegex("(?:)(?:)(?:)(?:)", tiny)
+
+  test "Given a step budget that is exactly what a match needs, when matched, then it is answered and the budget is spent":
+    # One step for each instruction visited: `a` over "a" visits the char, the
+    # char again once it consumes "a", and the final match.
+    var budget = 3
+    check compileRegex("a").isMatch("a", budget)
+    check budget == 0
+    expect RegexLimitError:
+      discard compileRegex("a").isMatch("a", 2)
