@@ -1,0 +1,285 @@
+{
+ "claims": [
+  {
+   "id": "SPEC-01",
+   "layer": "specification",
+   "required": true,
+   "text": "specs/ に宣言した仕様 ID のすべてに、それを確かめる外部仕様テストがある",
+   "evidence": [
+    {
+     "supports": true,
+     "kind": "test",
+     "ref": "tests/test_spec_coverage.nim が 192f0a46 (2026-10-08) で通る (仕様 ID 467)",
+     "file": "../../tests/test_spec_coverage.nim"
+    }
+   ]
+  },
+  {
+   "id": "INP-01",
+   "layer": "input",
+   "required": true,
+   "text": "相手が選んだ文字列を読む 10 の入口 (tests/fuzz/targets.nim) は、種と、ファジングが見つけた入力で、文書にした拒否のほかに何も上げない",
+   "evidence": [
+    {
+     "supports": true,
+     "kind": "test",
+     "ref": "tests/test_fuzz_regressions.nim が 192f0a46 (2026-10-08) で通る",
+     "note": "ファジング (nim-fuzz、2026-10-07) が見つけた RangeDefect (正規表現、U+00FF を超える文字) は 638f7cf6 で修正し、入力を corpus に保存した。入口ごとに流した入力の数は記録していない",
+     "file": "../../tests/test_fuzz_regressions.nim"
+    }
+   ]
+  },
+  {
+   "id": "INP-02",
+   "layer": "input",
+   "required": true,
+   "text": "ファジングの入口の一覧を、書いた者以外が見直した",
+   "evidence": []
+  },
+  {
+   "id": "INP-03",
+   "layer": "input",
+   "required": true,
+   "text": "一覧に無い入口 (HTTP の要求と応答の読み取り、JSON-RPC の振り分け、OAuth のメタデータ文書、stdio の行) もファジングした",
+   "evidence": []
+  },
+  {
+   "id": "INP-04",
+   "layer": "input",
+   "required": true,
+   "text": "公開の前に、入口を libFuzzer で長く掘った",
+   "evidence": []
+  },
+  {
+   "id": "DEP-01",
+   "layer": "dependency",
+   "required": true,
+   "text": "nimble が求める Nim の下限は、base64.decode の欠陥 (nim-lang/Nim#25530) を直した版以上である",
+   "evidence": [
+    {
+     "supports": false,
+     "kind": "measurement",
+     "ref": "requires \"nim >= 2.2.2\" (2026-10-08)。この機体の Nim は 2.2.8",
+     "note": "2.2.12 への引き上げは 2026-10-12 の昼以降に行うと決まっている",
+     "file": "../../mcp_nim_sdk.nimble"
+    }
+   ]
+  },
+  {
+   "id": "DEP-02",
+   "layer": "dependency",
+   "required": true,
+   "text": "base64 を復号する 4 か所は、相手が選んだ文字列を、形を確かめるか署名を確かめてから復号する",
+   "evidence": [
+    {
+     "supports": true,
+     "kind": "test",
+     "ref": "specs/security.feature「Text of a peer is decoded as base64 only when it has the shape of base64」(cursor、data URI)",
+     "file": "../../specs/security.feature"
+    },
+    {
+     "supports": true,
+     "kind": "review",
+     "ref": "2026-10-08 に 4 か所を読んだ: pagination.nim・client/icons.nim・protocol/modern.nim は base64_shape を先に呼ぶ。server/request_state.nim は HMAC の一致を確かめてから復号する",
+     "file": "../../src/protocol/base64_shape.nim"
+    }
+   ]
+  },
+  {
+   "id": "DEP-03",
+   "layer": "dependency",
+   "required": false,
+   "text": "コンパイラと依存の版を、既知の欠陥の一覧 (nim-advisory-check) と突き合わせた",
+   "evidence": []
+  },
+  {
+   "id": "SEC-01",
+   "layer": "design",
+   "required": true,
+   "text": "2026-10-06 のセキュリティレビューの指摘 (Critical 1、High 4、Medium 6、Low 6) のそれぞれに、再現するテストと修正がある",
+   "evidence": [
+    {
+     "supports": true,
+     "kind": "test",
+     "ref": "指摘を再現するテストを先に書いて直した規則が specs/security.feature にある (HTTP サーバー、外向きの HTTP、検証器、資格情報、Tasks の上限)",
+     "file": "../../specs/security.feature"
+    },
+    {
+     "supports": false,
+     "kind": "review",
+     "ref": "指摘の番号とテストを 1 対 1 に結んだ表は無い。Tasks の上限の無い 4 か所は利用者の判断待ちで残っている (2026-10-08)"
+    }
+   ]
+  },
+  {
+   "id": "SEC-02",
+   "layer": "design",
+   "required": true,
+   "text": "セキュリティレビューを、実装した者 (このエージェントのチーム) 以外が行った",
+   "evidence": []
+  },
+  {
+   "id": "SEC-03",
+   "layer": "design",
+   "required": true,
+   "text": "https の接続は、証明書の名前を接続先のホスト名と照合する",
+   "evidence": [
+    {
+     "supports": true,
+     "kind": "test",
+     "ref": "tests/test_security_wire_tls.nim (-d:ssl)。nimble testSsl が本線 ulxvrxkt (2026-10-07) で通った。別のホストの証明書と、名前だけの証明書に IP アドレスでつなぐ場合を拒否する",
+     "file": "../../tests/test_security_wire_tls.nim"
+    }
+   ]
+  },
+  {
+   "id": "OPS-01",
+   "layer": "operation",
+   "required": true,
+   "text": "公開した HTTP サーバーは、要求を送り終えない相手に接続を占有され続けない",
+   "evidence": [
+    {
+     "supports": false,
+     "kind": "measurement",
+     "ref": "Nim 2.2.8 の asynchttpserver は要求の読み取りに時間の上限を持たない。SDK は足していない",
+     "note": "README は、信頼できない相手に公開するときはタイムアウトを持つリバースプロキシを前に置くよう求めている。readTimeout を足す Nim への PR は取り込まれていない",
+     "file": "../../README.md"
+    }
+   ]
+  },
+  {
+   "id": "VER-01",
+   "layer": "release",
+   "required": true,
+   "text": "公開するコミットで、5 つの版それぞれを既定にした全テストが通る",
+   "evidence": []
+  },
+  {
+   "id": "VER-01a",
+   "layer": "release",
+   "required": true,
+   "partOf": "VER-01",
+   "text": "実装を最後に通しで確かめたコミットで、5 版とも失敗 0・警告 0 だった",
+   "evidence": [
+    {
+     "supports": true,
+     "kind": "measurement",
+     "ref": "nimble testSsl と testAllVersions、本線 ulxvrxkt (2026-10-07): 2043 / 1435 / 1572 / 1661 / 2163 通過、失敗 0"
+    }
+   ]
+  },
+  {
+   "id": "VER-01b",
+   "layer": "release",
+   "required": true,
+   "partOf": "VER-01",
+   "text": "そのあとの修正 (HTTP クライアントの 2 件、JSON Schema の検証器) を含む公開するコミットで、通しを取り直した",
+   "evidence": []
+  },
+  {
+   "id": "VER-02",
+   "layer": "release",
+   "required": true,
+   "text": "版ごとのタグを展開したディレクトリで、nimble test と examples のコンパイルが通る",
+   "evidence": []
+  },
+  {
+   "id": "IOP-01",
+   "layer": "interoperability",
+   "required": true,
+   "text": "公開するコミットで、5 つの版それぞれが公式の Python SDK・TypeScript SDK と stdio と HTTP で接続できる",
+   "evidence": []
+  },
+  {
+   "id": "IOP-01a",
+   "layer": "interoperability",
+   "required": true,
+   "partOf": "IOP-01",
+   "text": "2026-10-06 のコミットで、総当たり 312 行がすべて期待どおりだった",
+   "evidence": [
+    {
+     "supports": true,
+     "kind": "measurement",
+     "ref": "nimble interop、2026-10-06: 合格 312、不合格 0",
+     "file": "../quality/interop-matrix-2026-10-06.md"
+    }
+   ]
+  },
+  {
+   "id": "IOP-01b",
+   "layer": "interoperability",
+   "required": true,
+   "partOf": "IOP-01",
+   "text": "公開するコミットで総当たりを測り直した",
+   "evidence": []
+  },
+  {
+   "id": "CNF-01",
+   "layer": "interoperability",
+   "required": true,
+   "text": "公開するコミットで、公式の適合性テストに不合格が無い",
+   "evidence": []
+  },
+  {
+   "id": "CNF-01a",
+   "layer": "interoperability",
+   "required": true,
+   "partOf": "CNF-01",
+   "text": "2026-10-06 のコミットで、サーバー検査とクライアント検査に不合格が無かった (2024-11-05 は検査が無い)",
+   "evidence": [
+    {
+     "supports": true,
+     "kind": "measurement",
+     "ref": "@modelcontextprotocol/conformance 0.2.0-alpha.12、2026-10-06",
+     "note": "2026-07-28 のクライアント検査の 1 件は一部未実行",
+     "file": "../quality/conformance-2026-10-06.md"
+    }
+   ]
+  },
+  {
+   "id": "CNF-01b",
+   "layer": "interoperability",
+   "required": true,
+   "partOf": "CNF-01",
+   "text": "公開するコミットで適合性テストを測り直した",
+   "evidence": []
+  },
+  {
+   "id": "REV-01",
+   "layer": "review",
+   "required": true,
+   "text": "変異検査で外部仕様テストの検出力を測り、公開するコミットに、理由の無い生き残りが無い",
+   "evidence": []
+  },
+  {
+   "id": "REV-01a",
+   "layer": "review",
+   "required": true,
+   "partOf": "REV-01",
+   "text": "36a4c8a5 と 7d32c165 で測った本線の 27 ジョブの生き残り 1,387 件すべてに、分類と理由がある",
+   "evidence": [
+    {
+     "supports": true,
+     "kind": "measurement",
+     "ref": "docs/quality/g2-*.md と migration-log.jsonl (2026-10-07)",
+     "file": "../quality/migration-log.jsonl"
+    }
+   ]
+  },
+  {
+   "id": "REV-01b",
+   "layer": "review",
+   "required": true,
+   "partOf": "REV-01",
+   "text": "測定のあとに実装が変わった 16 ジョブを測り直し、新しい生き残りを分類した",
+   "evidence": []
+  },
+  {
+   "id": "DOWN-01",
+   "layer": "release",
+   "required": false,
+   "text": "この SDK を使う下流のパッケージ (社内のもの) が、公開するコミットでコンパイルできる",
+   "evidence": []
+  }
+ ]
+}
