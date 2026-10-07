@@ -120,6 +120,13 @@
 | `src/auth/oauth/discovery.nim` | 探索の失敗を並べるとき、例外の文面から async の追跡を外す (2 番目以降の失敗が消えていた) | `tests/test_auth_oauth_basics.nim` |
 | `src/protocol/diagnostic.nim` | `plainMessage` をここへ移した (`server/errors.nim` は再 export) | `tests/test_server_errors.nim`、`tests/test_auth_oauth_basics.nim` |
 | `src/auth/oauth/jsonfield.nim` | 呼び出し元の無い `intField` を削除 | (なし) |
+| `src/transport/sse_legacy.nim` | 呼び出し元の無い `port` を削除。`sameOrigin` は URL に書かれたポートをそのまま比べる (下の注) | `tests/test_http_sse_legacy.nim` |
+| `src/protocol/implementation_status.nim`、`src/protocol/sampling_tools.nim` | 使われていない `notYet` と定数 `ContentTypes` を削除 | `tests/test_docs_version.nim`、`tests/test_sampling_tools_payload.nim` |
+
+注 (利用者の判断待ち): `sse_legacy.nim` と `http_wire.nim` の `sameOrigin` は、既定のポートを書いた URL と省いた URL
+(`https://h/` と `https://h:443/`) を別のオリジンと見る。HTTP+SSE の `endpoint` イベントは拒否され、リダイレクトでは
+資格情報が外れる。どちらも安全側の誤りで、既定のポートで待つサーバーを立てないとテストできないため、直していない。
+削除した `port` は、この比較に使うつもりで書かれて使われていなかった関数。
 
 ## 未測定 (HTTP サーバーのセキュリティ修正。本線向け)
 

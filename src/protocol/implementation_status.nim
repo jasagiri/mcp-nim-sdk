@@ -27,9 +27,6 @@ type
 func done(evidence: varargs[string]): Implementation {.raises: [].} =
   Implementation(status: isImplemented, evidence: @evidence)
 
-func notYet(note = ""): Implementation {.raises: [].} =
-  Implementation(status: isNotImplemented, note: note)
-
 func implementationOf*(feature: McpFeature): Implementation {.raises: [].} =
   case feature
   of ftInitializeHandshake:

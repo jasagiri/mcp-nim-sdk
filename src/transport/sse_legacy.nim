@@ -46,11 +46,6 @@ proc newSseLegacyTransport*(sseUrl: string): SseLegacyTransport =
     waiters: initDeque[Future[JsonNode]](),
   )
 
-func port(u: Uri): string =
-  if u.port.len > 0: u.port
-  elif u.scheme == "https": "443"
-  else: "80"
-
 func sameOrigin(a, b: Uri): bool =
   a.scheme == b.scheme and a.hostname.toLowerAscii() == b.hostname.toLowerAscii() and
     a.port == b.port
