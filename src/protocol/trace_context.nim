@@ -65,7 +65,8 @@ func isTracestateKey(key: string): bool {.raises: [].} =
     system.len in 1 .. 14 and system[0] in {'a'..'z'} and system.allCharsInSet(Tail)
 
 func isTracestateValue(value: string): bool {.raises: [].} =
-  value.len <= 256 and (value.len == 0 or value[^1] != ' ') and
+  ## W3C `value = 0*255(chr) nblk-chr`: one to 256 characters, the last not blank.
+  value.len in 1 .. 256 and value[^1] != ' ' and
     value.allCharsInSet({'\x20'..'\x7E'} - {',', '='})
 
 func validateTracestate*(value: string): Option[string] {.raises: [].} =
