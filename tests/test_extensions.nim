@@ -120,6 +120,29 @@ suite "extensions on the server":
         meta = clientCaps(%*{Ext: {}}))
       check answer.errorCode == -32603
 
+  test "Given a tool whose result carries an extension's resultType, when the client did not declare that extension, then the answer is the missing-capability error naming it":
+    for v in versionsWith(ftExtensions):
+      let server = newServer(McpServerCapabilities(tools: some(McpToolsCapability())))
+      server.registerExtension(Ext, resultTypes = ["widget_job"])
+      server.onToolCall(proc(ctx: McpRequestContext, name: string,
+                             arguments: JsonNode): Future[JsonNode] {.async.} =
+        return %*{"resultType": "widget_job", "jobId": "j1"})
+      let peer = server.connect(server.attach(), v)
+      let refused = peer.ask("tools/call", %*{"name": "t"})
+      check refused.errorCode == -32021
+      check refused["error"]["data"]["requiredCapabilities"]["extensions"][Ext] == newJObject()
+      let served = peer.ask("tools/call", %*{"name": "t"}, meta = clientCaps(%*{Ext: {}}))
+      check served["result"]["resultType"].getStr() == "widget_job"
+
+  test "Given a tool whose result has a resultType that is not a string, when it answers, then it is an internal error":
+    for v in versionsWith(ftExtensions):
+      let server = newServer(McpServerCapabilities(tools: some(McpToolsCapability())))
+      server.onToolCall(proc(ctx: McpRequestContext, name: string,
+                             arguments: JsonNode): Future[JsonNode] {.async.} =
+        return %*{"resultType": 7})
+      let peer = server.connect(server.attach(), v)
+      check peer.ask("tools/call", %*{"name": "t"}).errorCode == -32603
+
   test "Given a handler that uses ctx.requireClientExtension, when the client lacks the extension, then the answer is the missing-capability error":
     for v in versionsWith(ftExtensions):
       let server = newServer(McpServerCapabilities(tools: some(McpToolsCapability())))

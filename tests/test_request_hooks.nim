@@ -7,6 +7,7 @@ import std/[unittest, asyncdispatch, json, options]
 import ./server_harness
 import server/server
 import protocol/subscriptions
+import protocol/version
 
 const MetaKey = "com.example/lens"
 
@@ -58,6 +59,19 @@ suite "response filters":
       let peer = server.connect(server.attach(), v)
       check peer.ask("tools/call", %*{"name": "plain", "arguments": {"n": 1}})["result"]["filtered"].getBool()
       check not peer.ask("tools/list")["result"].hasKey("filtered")
+
+  if isSupported(mpv20260728):
+    test "Given a filter that turns a 2026-07-28 result into something that is not an object, when the request is answered, then it is an internal error":
+      for notAnObject in [%*[1, 2], newJNull()]:
+        let replacement = notAnObject
+        let server = toolServer()
+        server.addResponseFilter(proc(ctx: McpRequestContext, request: JsonRpcRequest,
+                                      response: JsonRpcResponse): Future[JsonRpcResponse] {.async.} =
+          var replaced = response
+          replaced.result = some(replacement)
+          return replaced)
+        let peer = server.connect(server.attach(), mpv20260728)
+        check peer.ask("tools/call", %*{"name": "plain", "arguments": {"n": 1}}).errorCode == -32603
 
   test "Given a filter that raises a request error, when a request is answered, then the client gets that JSON-RPC error":
     let server = toolServer()

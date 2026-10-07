@@ -32,6 +32,7 @@ Feature: Extensions (2026-07-28)
     Given an extension that declared a resultType
     When its handler returns it
     Then the result passes through, and a type no extension defines is an internal error
+    And a type of an extension the client did not declare gets the missing-capability error, and a resultType that is not a string is an internal error
 
   @spec:MCP-EXT-6 @feature:ftExtensions
   Scenario: Registrations are checked
