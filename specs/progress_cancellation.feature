@@ -77,3 +77,9 @@ Feature: Progress and cancellation
     Given a Streamable HTTP request whose connection was cut, in a version before 2026-07-28
     When the server finishes the request
     Then it was not treated as cancelled
+
+  @spec:MCP-CANCEL-7 @feature:ftCancellation
+  Scenario: A request served apart from the transport is cancelled once
+    Given a request served with serveDetached
+    When its cancel is called, twice, or after the request was answered
+    Then the handler sees the first cancellation and the others change nothing

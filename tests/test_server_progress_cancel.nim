@@ -310,3 +310,28 @@ suite "cancellation (every version)":
     settle()
     check not server.cancelRequest("i", "init-1")
     slowInit.complete()
+
+suite "cancellation of a detached request":
+
+  test "Given a detached request, when it is cancelled twice, then the handler sees it and the second call changes nothing":
+    reset()
+    let server = progressServer()
+    let t = server.attach()
+    discard server.connect(t, DefaultProtocolVersion.min(mpv20251125))
+    let detached = server.serveDetached(newJsonRpcRequest(freshId(), "tools/call", %*{"name": "race"}))
+    untilTrue("the handler to start", proc(): bool = started)
+    detached.cancel("first")
+    detached.cancel("second")
+    untilTrue("the handler to see the cancellation", proc(): bool = raceWonByCancel)
+    check raceWonByCancel
+
+  test "Given a detached request that has been answered, when it is cancelled, then its context does not become cancelled":
+    reset()
+    let server = progressServer()
+    let t = server.attach()
+    discard server.connect(t, DefaultProtocolVersion.min(mpv20251125))
+    let detached = server.serveDetached(newJsonRpcRequest(freshId(), "tools/call", %*{"name": "keep-context"}))
+    discard waitFor detached.response
+    settle()
+    detached.cancel("too late")
+    check not kept.cancelled

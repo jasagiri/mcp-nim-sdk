@@ -257,6 +257,8 @@ MCP-CANCEL-5 | tests/test_http_streams.nim | Given a request in progress, when t
 MCP-CANCEL-5 | tests/test_http_streams.nim | Given a request in progress with nothing sent yet, when the client closes the connection, then the server is told the request was cancelled
 MCP-CANCEL-5 | tests/test_http_streams.nim | Given a cancelled request, when the server answers it anyway, then the answer is dropped without an error
 MCP-CANCEL-6 | tests/test_http_streams.nim | Given a request whose connection was cut, when the server finishes it, then it was not treated as cancelled
+MCP-CANCEL-7 | tests/test_server_progress_cancel.nim | Given a detached request, when it is cancelled twice, then the handler sees it and the second call changes nothing
+MCP-CANCEL-7 | tests/test_server_progress_cancel.nim | Given a detached request that has been answered, when it is cancelled, then its context does not become cancelled
 MCP-SERVERREQ-1 | tests/test_server_requests.nim | Given a client that can sample, when the server asks for a message, then the request names the session and the result comes back
 MCP-SERVERREQ-2 | tests/test_server_requests.nim | Given a client with roots, when the server lists them, then the roots come back
 MCP-SERVERREQ-2 | tests/test_server_requests.nim | Given a client that answers roots/list without a roots array, when the server lists them, then McpRemoteError is raised
