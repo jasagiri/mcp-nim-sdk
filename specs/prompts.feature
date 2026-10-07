@@ -30,3 +30,9 @@ Feature: Prompts
     Given a server whose handler refuses a prompt name or a missing argument with invalid params
     When a client sends prompts/get for an unknown name or without a required argument
     Then the answer is the error -32602
+
+  @spec:MCP-PROMPTS-5 @feature:ftPrompts
+  Scenario: A prompt handler's result that is not an object is the server's defect
+    Given a prompt handler that returns something that is not an object
+    When a client sends prompts/get
+    Then the answer is an internal error

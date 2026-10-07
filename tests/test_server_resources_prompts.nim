@@ -113,3 +113,13 @@ suite "resources and prompts on the wire (every version)":
       let server = contentServer()
       let peer = server.connect(server.attach(), v)
       check peer.ask("prompts/get", %*{"name": "greet"}).errorCode == -32602
+
+  test "Given a read or a get whose required string parameter is missing or not a string, when it is sent, then the answer is invalid params":
+    for v in SupportedProtocolVersions:
+      let server = contentServer()
+      let peer = server.connect(server.attach(), v)
+      check peer.ask("resources/read", %*{}).errorCode == -32602
+      check peer.ask("resources/read", %*{"uri": 5}).errorCode == -32602
+      check peer.ask("prompts/get", %*{}).errorCode == -32602
+      check peer.ask("prompts/get", %*{"name": ["greet"]}).errorCode == -32602
+

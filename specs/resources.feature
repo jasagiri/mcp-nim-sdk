@@ -107,3 +107,9 @@ Feature: Resources
     Given a server that declared the resources and prompts capabilities and registered no handlers
     When a client sends resources/list, resources/read, prompts/list or prompts/get
     Then the answer is method not found
+
+  @spec:MCP-RESOURCES-14 @feature:ftResources
+  Scenario: A request without its required string parameter is invalid params
+    Given a server with resources, prompts and tools handlers
+    When resources/read has no uri, prompts/get or tools/call has no name, or the value is not a string
+    Then the answer is invalid params

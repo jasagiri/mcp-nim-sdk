@@ -152,6 +152,8 @@ MCP-RESOURCES-12 | tests/test_server_notifications.nim | Given a 2026-07-28 clie
 MCP-RESOURCES-12 | tests/test_client_operations.nim | Given a 2026-07-28 connection, when ping, setLevel or subscribe is used, then McpUnsupportedError is raised and nothing is sent
 MCP-RESOURCES-12 | tests/test_client_operations.nim | Given a 2026-07-28 connection, when a resource is unsubscribed, then McpUnsupportedError is raised and nothing is sent
 MCP-RESOURCES-13 | tests/test_server_resources_prompts.nim | Given the capabilities declared but no handlers, when a client calls the methods, then the method is not found
+MCP-RESOURCES-14 | tests/test_server_resources_prompts.nim | Given a read or a get whose required string parameter is missing or not a string, when it is sent, then the answer is invalid params
+MCP-RESOURCES-14 | tests/test_server_errors.nim | Given a call whose name is missing or not a string, when it is sent, then the answer is invalid params
 MCP-LISTCHANGED-1 | tests/test_server_notifications.nim | Given two initialized clients, when the tool list changes, then each is told on its own session
 MCP-LISTCHANGED-1 | tests/test_server_notifications.nim | Given resources, prompts and tools, when each list changes, then each notification has its method
 MCP-LISTCHANGED-1 | tests/test_server_notifications.nim | Given a server that did not declare listChanged, when a list changes, then nothing is sent
@@ -173,6 +175,7 @@ MCP-PROMPTS-3 | tests/test_server_resources_prompts.nim | Given no prompts capab
 MCP-PROMPTS-3 | tests/test_server_resources_prompts.nim | Given handlers for resources and prompts but no capability declared, when a client calls them, then the method is not found
 MCP-PROMPTS-4 | tests/test_server_errors.nim | Given an unknown prompt, when it is requested, then the answer is invalid params
 MCP-PROMPTS-4 | tests/test_server_resources_prompts.nim | Given a prompt that needs an argument, when a client gets it without, then the answer is invalid params
+MCP-PROMPTS-5 | tests/test_server_errors.nim | Given a prompt handler whose result is not an object, when the prompt is requested, then the answer is an internal error
 MCP-PAGINATION-1 | tests/test_server_pagination.nim | Given a paged list, when a client follows nextCursor, then it sees every item and the last page has no nextCursor
 MCP-PAGINATION-1 | tests/test_server_pagination.nim | Given an unpaged list, when a client lists, then there is no nextCursor
 MCP-PAGINATION-1 | tests/test_server_pagination.nim | Given 5 items and a page size of 2, when the pages are followed, then every item comes once and the last page has no cursor

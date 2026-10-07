@@ -28,6 +28,8 @@ proc errorServer(): McpServer =
     return @[%*{"uri": uri, "text": "a"}, %*{"uri": uri & "#2", "text": "b"}])
   result.onPromptGet(proc(ctx: McpRequestContext, name: string,
                           arguments: JsonNode): Future[JsonNode] {.async.} =
+    if name == "not-an-object":
+      return %"just text"
     if name != "greet":
       raise newInvalidParams("Invalid prompt name: " & name)
     return %*{"messages": []})
@@ -45,6 +47,13 @@ suite "tools/call failures (every version)":
       let peer = server.connect(server.attach(), v)
       check peer.ask("tools/list").errorCode == -32601
       check peer.ask("tools/call", %*{"name": "ok"}).errorCode == -32601
+
+  test "Given a call whose name is missing or not a string, when it is sent, then the answer is invalid params":
+    for v in SupportedProtocolVersions:
+      let server = errorServer()
+      let peer = server.connect(server.attach(), v)
+      check peer.ask("tools/call", %*{}).errorCode == -32602
+      check peer.ask("tools/call", %*{"name": 5}).errorCode == -32602
 
   test "Given the tools capability but no call handler, when a tool is called, then the method is not found":
     for v in SupportedProtocolVersions:
@@ -88,6 +97,12 @@ suite "tools/call failures (every version)":
     for v in SupportedProtocolVersions:
       let server = errorServer()
       let reply = server.connect(server.attach(), v).ask("tools/call", %*{"name": "not-an-object"})
+      check reply.errorCode == -32603
+
+  test "Given a prompt handler whose result is not an object, when the prompt is requested, then the answer is an internal error":
+    for v in SupportedProtocolVersions:
+      let server = errorServer()
+      let reply = server.connect(server.attach(), v).ask("prompts/get", %*{"name": "not-an-object"})
       check reply.errorCode == -32603
 
   test "Given arguments that are not an object, when a tool is called, then the answer is invalid params":
