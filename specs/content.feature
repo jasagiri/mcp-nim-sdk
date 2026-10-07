@@ -203,14 +203,14 @@ Feature: Content of tools, resources and prompts
     When the client fetches it
     Then it sends no credentials, stays on the origin of the server through redirects, limits the size, and accepts only allowed image types found in the bytes whatever the declared MIME type says
 
-  @spec:MCP-ICONS-g2f-ap-a-1 @feature:ftIcons
+  @spec:MCP-ICONS-7 @feature:ftIcons
   Scenario: The type of an icon is the one its first bytes say
     Given the first bytes of a fetched icon
     When they are a PNG, JPEG or WebP signature, even with nothing after it, or markup that holds an svg element at its start
     Then the icon is of that type
     And a signature cut short, or XML or HTML that holds no svg element at its start, is of no known type
 
-  @spec:MCP-ICONS-g2f-ap-a-2 @feature:ftIcons
+  @spec:MCP-ICONS-8 @feature:ftIcons
   Scenario: A data URI icon is within the size limit when its decoded bytes are
     Given a data URI icon and a limit of N bytes
     When the decoded bytes are N bytes

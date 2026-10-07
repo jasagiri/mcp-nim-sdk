@@ -102,7 +102,7 @@ Feature: Security properties
     And an address at its limit loses only its own unused sessions or is refused with 503
     And a batch over the limit is answered 400, and work over the limit 503 with Retry-After
 
-  @spec:MCP-SEC-HTTP-g2f-hs-b-1
+  @spec:MCP-SEC-HTTP-9
   Scenario: A hook that cannot decide lets nothing through
     Given a transport with an authorization hook that fails with an error
     When a request to the MCP endpoint arrives
@@ -182,13 +182,13 @@ Feature: Security properties
     When the server answers after the timeout
     Then the client closes that connection
 
-  @spec:MCP-SEC-WIRE-g2f-ap-a-1
+  @spec:MCP-SEC-WIRE-10
   Scenario: An icon that is refused after its answer began leaves no connection behind
     Given an icon request that the server answered with a status other than 200
     When the fetch is refused
     Then the client has closed the connection without reading the body
 
-  @spec:MCP-SEC-WIRE-g2f-ap-a-2
+  @spec:MCP-SEC-WIRE-11
   Scenario: A guarded request is plain http for loopback only and follows no redirect unless asked
     Given a request to a host that resolves to an address the policy allows
     When the scheme is http and the address is not loopback
@@ -307,28 +307,28 @@ Feature: Security properties
     When each is handled by its target
     Then nothing is wrong and no defect is raised
 
-  @spec:MCP-SEC-WIRE-g2f-ap-b-1
+  @spec:MCP-SEC-WIRE-12
   Scenario: An IPv6 block set aside by an RFC is reserved to its last address and not beyond
     Given the NAT64 prefix 64:ff9b::/96 and its local-use sibling 64:ff9b:1::/48, 6to4 2002::/16, IPv4-mapped ::ffff:0:0/96, the discard prefix 100::/64, the protocol assignments 2001::/23, the documentation prefixes 2001:db8::/32 and 3fff::/20, and the link-local prefix fe80::/10
     When an address is classified
     Then an address inside NAT64, 6to4 or IPv4-mapped is judged by the IPv4 address inside it, and one inside a reserved block is reserved
     And an address next to a block but outside it is judged on its own, not as part of the block
 
-  @spec:MCP-SEC-WIRE-g2f-ap-b-2
+  @spec:MCP-SEC-WIRE-13
   Scenario: A host written in an IPv4 notation is read the way inet_aton reads it, and no further
     Given a host of one to four parts, each decimal, hex in either case or octal
     When it is read as an address
     Then each digit has its value in its base, a digit its base does not have makes the text a name, and an empty part makes it a name
     And the last part must fit in the bytes left for it, so that 127.16777215 is loopback and 127.16777216 and 4294967296 are names
 
-  @spec:MCP-SEC-WIRE-g2f-ap-b-3
+  @spec:MCP-SEC-WIRE-14
   Scenario: A destination is loopback-only exactly when every address of the host is loopback
     Given a host that is an address, or a name that resolves to several
     When a destination is chosen under a policy that allows them
     Then it is loopback-only if all of its addresses are loopback, and not if any is not
     And the host written as an address is answered by the system resolver with that address
 
-  @spec:MCP-SEC-g2f-hs-c-1
+  @spec:MCP-SEC-HTTP-8
   Scenario: A failure inside the HTTP transport is logged and not told to the peer
     Given a session whose end callback raises
     When the client sends DELETE

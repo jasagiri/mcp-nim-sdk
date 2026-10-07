@@ -78,7 +78,7 @@ Feature: HTTP with Server-Sent Events (2024-11-05)
     And a Streamable HTTP server is used as one, and headers set on the client are carried by the fallback
     And a server that is down is an error, not a reason to fall back
 
-  @spec:MCP-HTTPSSE-g2f-hs-c-1 @feature:ftHttpSse
+  @spec:MCP-HTTPSSE-11 @feature:ftHttpSse
   Scenario: The two paths of the transport belong together
     Given a server with the HTTP+SSE transport whose SSE path is switched off
     When a client POSTs to the messages path, or GETs the messages path while the transport is on

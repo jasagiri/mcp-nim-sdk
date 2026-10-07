@@ -111,7 +111,7 @@
 | `src/client/subscriptions.nim` | `listen` の待ちを `firstOf` に。トークン共有 | `tests/test_subscriptions.nim` (MCP-SUBSCRIBE-11) |
 | `src/transport/http_wire.nim` | 読み取りと `close`、接続と応答ヘッダーのタイムアウトの待ちを `firstOf` に。`leftOpen` を読み取りごとの `interrupt` に | `tests/test_http_unresponsive.nim`、`tests/test_http_client_streams.nim`、`tests/test_http_sse_legacy.nim`、`tests/test_security_wire_limits.nim` |
 | `src/transport/sse_stream.nim` | `serveStream` の待ちを `Doorbell` に。`gone` と `idle` は 1 回だけ監視 | `tests/test_http_streams.nim`、`tests/test_streamable_http.nim` |
-| `src/transport/http_server.nim` | 交換の完了と切断の待ちを `firstOf` に | `tests/test_streamable_http.nim`、`tests/test_security_http.nim` |
+| `src/transport/http_server.nim` | 交換の完了と切断の待ちを `firstOf` に。HTTP+SSE のセッションで効果の無かった 2 文 (`touch()`、`used = true`) を削除 | `tests/test_streamable_http.nim`、`tests/test_security_http.nim` |
 | `src/protocol/base64_shape.nim` | 新規。base64 の形 (`isPaddedBase64`、`isBase64Text`) を復号の前に確かめる。ジョブ `base64_shape` を新設、未測定 | `tests/test_base64_shape.nim` (MCP-SEC-WIRE-9) |
 | `src/server/pagination.nim` | 形が base64 でない cursor を復号の前に断る (Nim 2.2.8 までの `base64.decode` が `IndexDefect` を出す。nim-lang/Nim#25530) | `tests/test_server_pagination.nim` (MCP-SEC-WIRE-9) |
 | `src/client/icons.nim` | data URI の中身が base64 でなければ復号の前に断る | `tests/test_icon_fetch.nim` (MCP-SEC-WIRE-9) |

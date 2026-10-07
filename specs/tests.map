@@ -104,8 +104,8 @@ MCP-HTTP-5 | tests/test_streamable_http.nim | Given a session, when the client s
 MCP-HTTP-5 | tests/test_streamable_http.nim | Given DELETE without a session id or with an unknown one, when sent, then the answer is 400 or 404
 MCP-HTTP-5 | tests/test_streamable_http.nim | Given the session limit is reached by a session in use, when another client initializes, then the answer is 503
 MCP-HTTP-5 | tests/test_streamable_http.nim | Given an initialize the server rejects, when answered, then no session is opened
-MCP-HTTP-g2f-hs-b-1 | tests/test_streamable_http.nim | Given a notification whose method is initialize and no session, when posted, then the answer is 400 and no session is made
-MCP-HTTP-g2f-hs-b-2 | tests/test_streamable_http.nim | Given a POST answered with a JSON body, when the answer is complete, then the server closes the connection
+MCP-HTTP-19 | tests/test_streamable_http.nim | Given a notification whose method is initialize and no session, when posted, then the answer is 400 and no session is made
+MCP-HTTP-20 | tests/test_streamable_http.nim | Given a POST answered with a JSON body, when the answer is complete, then the server closes the connection
 MCP-HTTP-6 | tests/test_streamable_http.nim | Given the specification's tools/call request, when posted with its headers, then the answer is 200 with a complete result
 MCP-HTTP-6 | tests/test_streamable_http.nim | Given an Mcp-Name that differs from the body, when posted, then the answer is 400 header mismatch
 MCP-HTTP-6 | tests/test_streamable_http.nim | Given each required header missing in turn, when posted, then the answer is 400 header mismatch
@@ -122,8 +122,8 @@ MCP-HTTP-9 | tests/test_streamable_http.nim | Given an event stream that ends wi
 MCP-HTTP-9 | tests/test_streamable_http.nim | Given an HTTP error with a JSON-RPC error body, when a request is sent, then the error arrives as the response
 MCP-HTTP-9 | tests/test_streamable_http.nim | Given an HTTP error whose JSON-RPC error names a placeholder id, when a request is sent, then the error arrives under the request's own id
 MCP-HTTP-9 | tests/test_streamable_http.nim | Given an HTTP error whose body is not a JSON-RPC error, when a request is sent, then McpTransportError names the status
-MCP-HTTP-g2f-hs-c-1 | tests/test_http_documents.nim | Given a document without an ETag, when a client GETs it with If-None-Match, then it is served whole and no ETag is sent
-MCP-HTTP-g2f-hs-c-2 | tests/test_streamable_http.nim | Given a transport that is not listening, when start is called, then it binds at once and serves until it is closed
+MCP-HTTP-22 | tests/test_http_documents.nim | Given a document without an ETag, when a client GETs it with If-None-Match, then it is served whole and no ETag is sent
+MCP-HTTP-23 | tests/test_streamable_http.nim | Given a transport that is not listening, when start is called, then it binds at once and serves until it is closed
 MCP-TOOLS-1 | tests/test_stdio.nim | Given a server started as a child, when the client connects and calls a tool, then the call succeeds in the build's default version
 MCP-TOOLS-1 | tests/test_streamable_http.nim | Given an HTTP server, when the client connects and calls a tool, then the call succeeds in the newest common version
 MCP-TOOLS-1 | tests/test_era_matrix.nim | Given no initialize, when a 2026-07-28 tools/list arrives, then it is served and the server keeps no handshake state
@@ -359,32 +359,32 @@ MCP-HTTPSTREAM-9 | tests/test_http_client_streams.nim | Given a server that answ
 MCP-HTTPSTREAM-9 | tests/test_http_client_streams.nim | Given a version without resumption, when the stream was cut, then nothing is resumed
 MCP-HTTPSTREAM-10 | tests/test_http_client_streams.nim | Given a server that asked for a delay with retry, when the stream was cut, then the client waits at least that long before resuming
 MCP-HTTPSTREAM-11 | tests/test_http_client_streams.nim | Given an event with an id and no data, when it arrives, then it is not a message and not an error
-MCP-HTTPSTREAM-g2f-hs-a-1 | tests/test_http_streams.nim | Given a transport that was never started, when it is asked, then it is not accepting; listening starts it and close stops it and frees the port
-MCP-HTTPSTREAM-g2f-hs-a-1 | tests/test_http_streams.nim | Given a posted request, when the server takes it with receiveMessage, then it gets the message
-MCP-HTTPSTREAM-g2f-hs-a-2 | tests/test_http_streams.nim | Given a response stream still open, when its session ends, then the stream ends
-MCP-HTTPSTREAM-g2f-hs-a-2 | tests/test_http_streams.nim | Given a session timeout of 0, when idle sessions are expired long after the last request, then the session stays
-MCP-HTTPSTREAM-g2f-hs-a-2 | tests/test_http_streams.nim | Given the session limit is reached by sessions that were used and then went idle, when another client initializes, then an idle one is dropped to make room
-MCP-HTTPSTREAM-g2f-hs-a-2 | tests/test_http_streams.nim | Given no limit on sessions per address (0), when a client initializes, then it gets a session
-MCP-HTTPSTREAM-g2f-hs-a-3 | tests/test_http_streams.nim | Given a limit of two queued messages and nobody receiving, when two requests are posted, then both are taken and a third is refused
-MCP-HTTPSTREAM-g2f-hs-a-3 | tests/test_http_streams.nim | Given a session that keeps one finished stream, when a second request ends, then the first stream can no longer be resumed and the second can
-MCP-HTTPSTREAM-g2f-hs-a-3 | tests/test_http_streams.nim | Given a session that keeps two finished streams, when a second request ends, then both can be resumed
-MCP-HTTPSTREAM-g2f-hs-a-4 | tests/test_http_streams.nim | Given two sessions that chose the same request ids, when one cancels its requests, then each notification names that session's own request
-MCP-HTTPSTREAM-g2f-hs-a-4 | tests/test_version_floor.nim | Given a request in progress on a server of 2026-07-28 alone, when a cancellation naming its id comes without a session, then it is not passed to the server
-MCP-HTTPSTREAM-g2f-hs-a-4 | tests/test_http_streams.nim | Given a subscription stream, when the server sends a notification that names another subscription, then the id is left as it is, and one that names this stream's request is given the client's id
-MCP-HTTPSTREAM-g2f-hs-a-4 | tests/test_http_streams.nim | Given a notification whose params is an array, when the server sends it on a request's stream, then it arrives as it was sent
-MCP-HTTPSTREAM-g2f-hs-a-5 | tests/test_http_streams.nim | Given an initialized session, when a notification is posted on it, then the empty answer carries no Content-Type
-MCP-HTTPSTREAM-g2f-hs-a-5 | tests/test_http_streams.nim | Given an initialize answer that names no version, when the session is used, then it is held to the newest version the build speaks and a version header it does not speak is refused
-MCP-HTTPSTREAM-g2f-hs-a-6 | tests/test_version_floor.nim | Given a version the build does not speak, when a transport is made for it, then ValueError is raised
-MCP-HTTPSTREAM-g2f-hs-a-7 | tests/test_security_http.nim | Given a transport bound to loopback, when a request names the bare IPv6 loopback address, then it is served
-MCP-HTTPSTREAM-g2f-hs-a-7 | tests/test_security_http.nim | Given a transport bound to loopback, when a request carries no Host header at all, then the answer is 403
-MCP-HTTPSTREAM-g2f-hs-c-1 | tests/test_http_streams.nim | Given a finished stream, when an event is pushed, then it is refused and not kept
-MCP-HTTPSTREAM-g2f-hs-c-1 | tests/test_http_streams.nim | Given text that is not the id of an event, when it is parsed, then there is no id
-MCP-HTTPSTREAM-g2f-hs-c-1 | tests/test_http_streams.nim | Given a stream that has sent nothing, when asked whether it can resume, then only the start is possible
-MCP-HTTPSTREAM-g2f-hs-c-1 | tests/test_http_streams.nim | Given a stream that remembers its last two of three events, when asked where it can resume, then from the last forgotten event on and no further
-MCP-HTTPSTREAM-g2f-hs-c-2 | tests/test_http_streams.nim | Given a stream with nothing to say, when a keep-alive period passes, then a comment goes out and the stream is still open
-MCP-HTTPSTREAM-g2f-hs-c-2 | tests/test_http_streams.nim | Given a stream that finishes, when its events are written, then the server closes the connection of a client that asked to keep it
-MCP-HTTPSTREAM-g2f-hs-c-2 | tests/test_http_streams.nim | Given a client that sent a stray byte, when it then closes the connection, then the server notices
-MCP-HTTPSTREAM-g2f-hs-c-2 | tests/test_http_streams.nim | Given events that no connection has written, when one resumes after the last of them, then the stream still reports nothing written
+MCP-HTTPSTREAM-12 | tests/test_http_streams.nim | Given a transport that was never started, when it is asked, then it is not accepting; listening starts it and close stops it and frees the port
+MCP-HTTPSTREAM-12 | tests/test_http_streams.nim | Given a posted request, when the server takes it with receiveMessage, then it gets the message
+MCP-HTTPSTREAM-13 | tests/test_http_streams.nim | Given a response stream still open, when its session ends, then the stream ends
+MCP-HTTPSTREAM-13 | tests/test_http_streams.nim | Given a session timeout of 0, when idle sessions are expired long after the last request, then the session stays
+MCP-HTTPSTREAM-13 | tests/test_http_streams.nim | Given the session limit is reached by sessions that were used and then went idle, when another client initializes, then an idle one is dropped to make room
+MCP-HTTPSTREAM-13 | tests/test_http_streams.nim | Given no limit on sessions per address (0), when a client initializes, then it gets a session
+MCP-HTTPSTREAM-14 | tests/test_http_streams.nim | Given a limit of two queued messages and nobody receiving, when two requests are posted, then both are taken and a third is refused
+MCP-HTTPSTREAM-14 | tests/test_http_streams.nim | Given a session that keeps one finished stream, when a second request ends, then the first stream can no longer be resumed and the second can
+MCP-HTTPSTREAM-14 | tests/test_http_streams.nim | Given a session that keeps two finished streams, when a second request ends, then both can be resumed
+MCP-HTTPSTREAM-15 | tests/test_http_streams.nim | Given two sessions that chose the same request ids, when one cancels its requests, then each notification names that session's own request
+MCP-HTTPSTREAM-15 | tests/test_version_floor.nim | Given a request in progress on a server of 2026-07-28 alone, when a cancellation naming its id comes without a session, then it is not passed to the server
+MCP-HTTPSTREAM-15 | tests/test_http_streams.nim | Given a subscription stream, when the server sends a notification that names another subscription, then the id is left as it is, and one that names this stream's request is given the client's id
+MCP-HTTPSTREAM-15 | tests/test_http_streams.nim | Given a notification whose params is an array, when the server sends it on a request's stream, then it arrives as it was sent
+MCP-HTTPSTREAM-16 | tests/test_http_streams.nim | Given an initialized session, when a notification is posted on it, then the empty answer carries no Content-Type
+MCP-HTTPSTREAM-16 | tests/test_http_streams.nim | Given an initialize answer that names no version, when the session is used, then it is held to the newest version the build speaks and a version header it does not speak is refused
+MCP-HTTPSTREAM-17 | tests/test_version_floor.nim | Given a version the build does not speak, when a transport is made for it, then ValueError is raised
+MCP-HTTPSTREAM-18 | tests/test_security_http.nim | Given a transport bound to loopback, when a request names the bare IPv6 loopback address, then it is served
+MCP-HTTPSTREAM-18 | tests/test_security_http.nim | Given a transport bound to loopback, when a request carries no Host header at all, then the answer is 403
+MCP-HTTPSTREAM-19 | tests/test_http_streams.nim | Given a finished stream, when an event is pushed, then it is refused and not kept
+MCP-HTTPSTREAM-19 | tests/test_http_streams.nim | Given text that is not the id of an event, when it is parsed, then there is no id
+MCP-HTTPSTREAM-19 | tests/test_http_streams.nim | Given a stream that has sent nothing, when asked whether it can resume, then only the start is possible
+MCP-HTTPSTREAM-19 | tests/test_http_streams.nim | Given a stream that remembers its last two of three events, when asked where it can resume, then from the last forgotten event on and no further
+MCP-HTTPSTREAM-20 | tests/test_http_streams.nim | Given a stream with nothing to say, when a keep-alive period passes, then a comment goes out and the stream is still open
+MCP-HTTPSTREAM-20 | tests/test_http_streams.nim | Given a stream that finishes, when its events are written, then the server closes the connection of a client that asked to keep it
+MCP-HTTPSTREAM-20 | tests/test_http_streams.nim | Given a client that sent a stray byte, when it then closes the connection, then the server notices
+MCP-HTTPSTREAM-20 | tests/test_http_streams.nim | Given events that no connection has written, when one resumes after the last of them, then the stream still reports nothing written
 MCP-HTTPGET-1 | tests/test_http_streams.nim | Given a session, when the client opens GET, then the server's own notifications arrive on it
 MCP-HTTPGET-1 | tests/test_http_streams.nim | Given a notification sent to every client, when two sessions listen, then each hears it once
 MCP-HTTPGET-1 | tests/test_http_streams.nim | Given a notification sent before the client opened GET, when it opens, then the notification is waiting
@@ -399,7 +399,7 @@ MCP-HTTPGET-4 | tests/test_http_streams.nim | Given a GET open on a session, whe
 MCP-HTTPGET-4 | tests/test_http_streams.nim | Given a session that expires, when a GET stream is open on it, then the stream ends
 MCP-HTTPGET-5 | tests/test_http_streams.nim | Given a 2026-07-28 endpoint, when GET is sent, then no stream opens and the answer is 400 or 405
 MCP-HTTPGET-5 | tests/test_http_streams.nim | Given a request of 2026-07-28, when the server tries to send a request of its own on its stream, then McpTransportError is raised
-MCP-HTTPGET-g2f-hs-b-1 | tests/test_http_streams.nim | Given a session negotiated at 2024-11-05, when it opens GET, then the answer is 405 naming POST and DELETE
+MCP-HTTPGET-8 | tests/test_http_streams.nim | Given a session negotiated at 2024-11-05, when it opens GET, then the answer is 405 naming POST and DELETE
 MCP-HTTPGET-6 | tests/test_http_client_streams.nim | Given an initialized session, when the server says something outside any request, then the client receives it
 MCP-HTTPGET-6 | tests/test_http_client_streams.nim | Given a request the server sends on the GET stream, when the client answers it, then the server receives the answer
 MCP-HTTPGET-6 | tests/test_http_client_streams.nim | Given a GET stream that is cut, when the client reconnects, then it names the last event id it saw
@@ -464,8 +464,8 @@ MCP-HTTPSSE-10 | tests/test_http_sse_legacy.nim | Given a Streamable HTTP server
 MCP-HTTPSSE-10 | tests/test_http_sse_legacy.nim | Given headers set on the wrapper, when it falls back, then the old transport carries them too
 MCP-HTTPSSE-10 | tests/test_http_sse_legacy.nim | Given a server that is down, when a client connects, then the connection error is raised and no fallback is tried
 MCP-HTTPSSE-10 | tests/test_http_sse_legacy.nim | Given a full client and server, when the client connects through the wrapper to the old transport, then initialize and tools/list work
-MCP-HTTPSSE-g2f-hs-c-1 | tests/test_http_sse_legacy.nim | Given the SSE endpoint switched off, when a client posts to the messages path, then the answer is 404
-MCP-HTTPSSE-g2f-hs-c-1 | tests/test_http_sse_legacy.nim | Given the messages path, when a client sends GET, then the answer is 405 naming POST
+MCP-HTTPSSE-11 | tests/test_http_sse_legacy.nim | Given the SSE endpoint switched off, when a client posts to the messages path, then the answer is 404
+MCP-HTTPSSE-11 | tests/test_http_sse_legacy.nim | Given the messages path, when a client sends GET, then the answer is 405 naming POST
 MCP-AUTH-1 | tests/test_auth_resource_server.nim | Given a request without a token and version <version>, when posted, then the answer is 401 with a Bearer challenge
 MCP-AUTH-1 | tests/test_auth_resource_server.nim | Given a token the verifier rejects and version <version>, when posted, then the answer is 401 invalid_token
 MCP-AUTH-2 | tests/test_auth_resource_server.nim | Given a token the verifier accepts and version <version>, when posted, then the request reaches the MCP server
@@ -1065,9 +1065,9 @@ MCP-HTTP-15 | tests/test_version_floor.nim | Given a GET or DELETE that names 20
 MCP-HTTP-16 | tests/test_version_floor.nim | Given a request with Mcp-Session-Id and Last-Event-ID, when it is served, then both are ignored and no session id comes back
 MCP-HTTP-16 | tests/test_version_floor.nim | Given a legacy initialize, when it is posted, then the answer is 400 and names the versions the server speaks
 MCP-HTTP-16 | tests/test_version_floor.nim | Given the HTTP+SSE paths, when no spoken version has that transport, then they do not exist
-MCP-HTTP-g2f-hs-b-3 | tests/test_version_floor.nim | Given a batch whose first message is a 2026-07-28 request, when it is posted, then the answer is 400 invalid request
-MCP-HTTP-g2f-hs-b-3 | tests/test_version_floor.nim | Given a notification that names 2026-07-28, when it is posted, then the answer is 202
-MCP-HTTP-g2f-hs-b-3 | tests/test_version_floor.nim | Given a notification whose method is initialize, when it is posted, then the answer is 202 and not the legacy-client refusal
+MCP-HTTP-21 | tests/test_version_floor.nim | Given a batch whose first message is a 2026-07-28 request, when it is posted, then the answer is 400 invalid request
+MCP-HTTP-21 | tests/test_version_floor.nim | Given a notification that names 2026-07-28, when it is posted, then the answer is 202
+MCP-HTTP-21 | tests/test_version_floor.nim | Given a notification whose method is initialize, when it is posted, then the answer is 202 and not the legacy-client refusal
 MCP-HTTP-17 | tests/test_http_unresponsive.nim | Given a server that never answers, when a client connects, then the probe and the handshake time out instead of waiting forever
 MCP-HTTP-17 | tests/test_http_unresponsive.nim | Given a server that never answers, when a request has its own timeout, then McpTimeoutError is raised after it
 MCP-TASKS-1 | tests/test_tasks_server.nim | Given tasks enabled, when a 2025-11-25 client handshakes, then the server declares list, cancel and tools/call
@@ -1293,11 +1293,11 @@ MCP-ICONS-6 | tests/test_icon_fetch.nim | Given a redirect inside the origin, wh
 MCP-ICONS-6 | tests/test_icon_fetch.nim | Given an icon of another origin or scheme, when fetched, then nothing is sent
 MCP-ICONS-6 | tests/test_icon_fetch.nim | Given a data URI, when fetched, then the bytes are checked like any others
 MCP-ICONS-6 | tests/test_icon_fetch.nim | Given a fetch without the server's origin, when asked for a URL, then it is refused
-MCP-ICONS-g2f-ap-a-1 | tests/test_icon_fetch.nim | Given nothing but the signature of an image type, when sniffed, then the type is the one the signature says
-MCP-ICONS-g2f-ap-a-1 | tests/test_icon_fetch.nim | Given a signature cut short, when sniffed, then there is no type
-MCP-ICONS-g2f-ap-a-1 | tests/test_icon_fetch.nim | Given markup that opens with a comment or a doctype, when it holds an svg element, then it is an SVG
-MCP-ICONS-g2f-ap-a-1 | tests/test_icon_fetch.nim | Given markup that holds no svg element at its start, when sniffed, then it is not an SVG
-MCP-ICONS-g2f-ap-a-2 | tests/test_icon_fetch.nim | Given a data URI icon of exactly the allowed size, when fetched, then it is read; one byte more, refused
+MCP-ICONS-7 | tests/test_icon_fetch.nim | Given nothing but the signature of an image type, when sniffed, then the type is the one the signature says
+MCP-ICONS-7 | tests/test_icon_fetch.nim | Given a signature cut short, when sniffed, then there is no type
+MCP-ICONS-7 | tests/test_icon_fetch.nim | Given markup that opens with a comment or a doctype, when it holds an svg element, then it is an SVG
+MCP-ICONS-7 | tests/test_icon_fetch.nim | Given markup that holds no svg element at its start, when sniffed, then it is not an SVG
+MCP-ICONS-8 | tests/test_icon_fetch.nim | Given a data URI icon of exactly the allowed size, when fetched, then it is read; one byte more, refused
 MCP-SAMPLING-TOOLS-8 | tests/test_sampling_tools_payload.nim | Given an audio block in a message, when the request is checked, then only versions with audio content accept it
 MCP-SAMPLING-TOOLS-8 | tests/test_sampling_tools_payload.nim | Given an image block in a message, when the request is checked, then every version accepts it
 MCP-EXT-10 | tests/test_extensions.nim | Given extensions registered without onLegacyHandshake, when a legacy client initializes, then the request and the result are those of a peer with no extensions
@@ -1364,7 +1364,7 @@ MCP-SEC-HTTP-1 | tests/test_security_http.nim | Given an authorized transport, w
 MCP-SEC-HTTP-1 | tests/test_security_http.nim | Given a token, when a client opens /sse and posts, then the request reaches the server as that principal
 MCP-SEC-HTTP-1 | tests/test_security_http.nim | Given an invalid token, when GET /sse comes, then the answer is 401
 MCP-SEC-HTTP-1 | tests/test_security_http.nim | Given an authorized transport with documents, when a document and the metadata are read without a token, then both are served
-MCP-SEC-HTTP-g2f-hs-b-1 | tests/test_security_http.nim | Given an authorization hook that raises, when a request arrives, then the answer is 500 and nothing reaches the server
+MCP-SEC-HTTP-9 | tests/test_security_http.nim | Given an authorization hook that raises, when a request arrives, then the answer is 500 and nothing reaches the server
 MCP-SEC-HTTP-2 | tests/test_security_http.nim | Given alice's session, when bob posts with its id, then the answer is 404 and the server sees nothing
 MCP-SEC-HTTP-2 | tests/test_security_http.nim | Given alice's session, when alice posts with its id, then it is served
 MCP-SEC-HTTP-2 | tests/test_security_http.nim | Given alice's session, when bob opens its GET stream, then the answer is 404
@@ -1440,32 +1440,32 @@ MCP-SEC-WIRE-5 | tests/test_security_address.nim | Given a name that resolves to
 MCP-SEC-WIRE-6 | tests/test_security_address.nim | Given a policy and a server URL, when narrowed, then loopback stays allowed only for a loopback server
 MCP-SEC-WIRE-6 | tests/test_security_address.nim | Given a remote server that names a loopback metadata URL, when the client answers its 401, then OAuthSecurityError is raised and nothing is requested
 MCP-SEC-WIRE-7 | tests/test_security_icons.nim | Given an answer that comes after the timeout, when the fetch has failed, then the connection is closed
-MCP-SEC-WIRE-g2f-ap-a-1 | tests/test_security_icons.nim | Given an answer that is not 200, when the fetch is refused, then the connection is closed
-MCP-SEC-WIRE-g2f-ap-a-2 | tests/test_security_address.nim | Given a name that resolves to a private address, when plain http is asked for, then it is refused before any connection
-MCP-SEC-WIRE-g2f-ap-a-2 | tests/test_security_address.nim | Given an answer that redirects, when no one asked for redirects to be followed, then the redirect is the answer
+MCP-SEC-WIRE-10 | tests/test_security_icons.nim | Given an answer that is not 200, when the fetch is refused, then the connection is closed
+MCP-SEC-WIRE-11 | tests/test_security_address.nim | Given a name that resolves to a private address, when plain http is asked for, then it is refused before any connection
+MCP-SEC-WIRE-11 | tests/test_security_address.nim | Given an answer that redirects, when no one asked for redirects to be followed, then the redirect is the answer
 MCP-SEC-WIRE-8 | tests/test_security_icons.nim | Given a server whose name resolves to a loopback address, when its icon is fetched, then the fetch is refused
 MCP-SEC-WIRE-8 | tests/test_security_icons.nim | Given a server whose name resolves to a metadata service address, when its icon is fetched, then the fetch is refused
 MCP-SEC-WIRE-8 | tests/test_security_icons.nim | Given a server whose name resolves to a private address, when its icon is fetched, then it is refused unless private networks are allowed
-MCP-SEC-WIRE-g2f-ap-b-1 | tests/test_security_address.nim | Given an IPv6 address inside NAT64 64:ff9b::/96, when classified, then the IPv4 address inside it decides
-MCP-SEC-WIRE-g2f-ap-b-1 | tests/test_security_address.nim | Given an address in 64:ff9b:1::/48 or one that merely shares some bytes with NAT64, when classified, then only the first is reserved
-MCP-SEC-WIRE-g2f-ap-b-1 | tests/test_security_address.nim | Given a 6to4 address 2002::/16, when classified, then the IPv4 address in bits 16 to 47 decides
-MCP-SEC-WIRE-g2f-ap-b-1 | tests/test_security_address.nim | Given an IPv4-mapped address whose IPv4 part is in a documentation /24, when classified, then the third octet counts
-MCP-SEC-WIRE-g2f-ap-b-1 | tests/test_security_address.nim | Given an address that has ff in bytes 10 or 11 but is not in ::ffff:0:0/96, when classified, then it is not read as IPv4-mapped
-MCP-SEC-WIRE-g2f-ap-b-1 | tests/test_security_address.nim | Given an address in ::/96 other than ::1, when classified, then it is reserved
-MCP-SEC-WIRE-g2f-ap-b-1 | tests/test_security_address.nim | Given the discard-only prefix 100::/64, when classified, then its edge is the 64th bit
-MCP-SEC-WIRE-g2f-ap-b-1 | tests/test_security_address.nim | Given the IETF protocol assignments 2001::/23, when classified, then the whole block is reserved and its neighbours are not
-MCP-SEC-WIRE-g2f-ap-b-1 | tests/test_security_address.nim | Given the documentation prefix 2001:db8::/32, when classified, then it is reserved and its neighbours are not
-MCP-SEC-WIRE-g2f-ap-b-1 | tests/test_security_address.nim | Given the documentation prefix 3fff::/20, when classified, then it is reserved and its neighbours are not
-MCP-SEC-WIRE-g2f-ap-b-1 | tests/test_security_address.nim | Given the link-local prefix fe80::/10, when classified, then its first and last address are link-local and a lookalike is not
-MCP-SEC-WIRE-g2f-ap-b-1 | tests/test_security_address.nim | Given addresses of every class, when asked whether they are globally routable, then only the public ones are
-MCP-SEC-WIRE-g2f-ap-b-2 | tests/test_security_address.nim | Given a literal at the top of the 32-bit range, when classified, then it is read, and one above it is a name
-MCP-SEC-WIRE-g2f-ap-b-2 | tests/test_security_address.nim | Given hex digits in capitals, when classified, then they have their value
-MCP-SEC-WIRE-g2f-ap-b-2 | tests/test_security_address.nim | Given a digit that its base does not have, when classified, then the text is a name
-MCP-SEC-WIRE-g2f-ap-b-2 | tests/test_security_address.nim | Given an empty part, when classified, then the text is a name
-MCP-SEC-WIRE-g2f-ap-b-2 | tests/test_security_address.nim | Given a last part, when it is one more than the bytes left for it hold, then the text is a name
-MCP-SEC-WIRE-g2f-ap-b-2 | tests/test_security_address.nim | Given brackets that do not enclose the whole host, when it is read, then it is no address
-MCP-SEC-WIRE-g2f-ap-b-3 | tests/test_security_address.nim | Given hosts that stand for loopback, public and mixed addresses, when a destination is chosen, then it is loopback-only exactly when every address is loopback
-MCP-SEC-WIRE-g2f-ap-b-3 | tests/test_security_address.nim | Given a host written as an address, when the system resolver is asked, then it answers with that address
+MCP-SEC-WIRE-12 | tests/test_security_address.nim | Given an IPv6 address inside NAT64 64:ff9b::/96, when classified, then the IPv4 address inside it decides
+MCP-SEC-WIRE-12 | tests/test_security_address.nim | Given an address in 64:ff9b:1::/48 or one that merely shares some bytes with NAT64, when classified, then only the first is reserved
+MCP-SEC-WIRE-12 | tests/test_security_address.nim | Given a 6to4 address 2002::/16, when classified, then the IPv4 address in bits 16 to 47 decides
+MCP-SEC-WIRE-12 | tests/test_security_address.nim | Given an IPv4-mapped address whose IPv4 part is in a documentation /24, when classified, then the third octet counts
+MCP-SEC-WIRE-12 | tests/test_security_address.nim | Given an address that has ff in bytes 10 or 11 but is not in ::ffff:0:0/96, when classified, then it is not read as IPv4-mapped
+MCP-SEC-WIRE-12 | tests/test_security_address.nim | Given an address in ::/96 other than ::1, when classified, then it is reserved
+MCP-SEC-WIRE-12 | tests/test_security_address.nim | Given the discard-only prefix 100::/64, when classified, then its edge is the 64th bit
+MCP-SEC-WIRE-12 | tests/test_security_address.nim | Given the IETF protocol assignments 2001::/23, when classified, then the whole block is reserved and its neighbours are not
+MCP-SEC-WIRE-12 | tests/test_security_address.nim | Given the documentation prefix 2001:db8::/32, when classified, then it is reserved and its neighbours are not
+MCP-SEC-WIRE-12 | tests/test_security_address.nim | Given the documentation prefix 3fff::/20, when classified, then it is reserved and its neighbours are not
+MCP-SEC-WIRE-12 | tests/test_security_address.nim | Given the link-local prefix fe80::/10, when classified, then its first and last address are link-local and a lookalike is not
+MCP-SEC-WIRE-12 | tests/test_security_address.nim | Given addresses of every class, when asked whether they are globally routable, then only the public ones are
+MCP-SEC-WIRE-13 | tests/test_security_address.nim | Given a literal at the top of the 32-bit range, when classified, then it is read, and one above it is a name
+MCP-SEC-WIRE-13 | tests/test_security_address.nim | Given hex digits in capitals, when classified, then they have their value
+MCP-SEC-WIRE-13 | tests/test_security_address.nim | Given a digit that its base does not have, when classified, then the text is a name
+MCP-SEC-WIRE-13 | tests/test_security_address.nim | Given an empty part, when classified, then the text is a name
+MCP-SEC-WIRE-13 | tests/test_security_address.nim | Given a last part, when it is one more than the bytes left for it hold, then the text is a name
+MCP-SEC-WIRE-13 | tests/test_security_address.nim | Given brackets that do not enclose the whole host, when it is read, then it is no address
+MCP-SEC-WIRE-14 | tests/test_security_address.nim | Given hosts that stand for loopback, public and mixed addresses, when a destination is chosen, then it is loopback-only exactly when every address is loopback
+MCP-SEC-WIRE-14 | tests/test_security_address.nim | Given a host written as an address, when the system resolver is asked, then it answers with that address
 MCP-SEC-AUTH-1 | tests/test_security_auth.nim | Given a client secret without an issuer and version <version>, when the client is made, then it is refused and the message says how to fix it
 MCP-SEC-AUTH-1 | tests/test_security_auth.nim | Given a client secret for one issuer and version <version>, when the resource names another, then nothing but metadata reaches it and the error names both
 MCP-SEC-AUTH-1 | tests/test_security_auth.nim | Given a public pre-registered client for one issuer and version <version>, when the resource names another, then the user is not sent there
@@ -1525,4 +1525,4 @@ MCP-SEC-SCHEMA-9 | tests/test_security_schema.nim | Given a schema whose pattern
 MCP-SEC-SWEEP-6 | tests/test_fuzz_regressions.nim | Given the seeds of every target, when handled, then nothing is wrong
 MCP-SEC-SWEEP-6 | tests/test_fuzz_regressions.nim | Given every input kept from fuzzing, when handled, then nothing is wrong
 MCP-SEC-SWEEP-6 | tests/test_fuzz_regressions.nim | Given the corpus directory, when listed, then every directory in it is a target
-MCP-SEC-g2f-hs-c-1 | tests/test_security_http.nim | Given a session whose end callback raises, when the client sends DELETE, then the answer is a bare 500, the log names the failure and the server goes on
+MCP-SEC-HTTP-8 | tests/test_security_http.nim | Given a session whose end callback raises, when the client sends DELETE, then the answer is a bare 500, the log names the failure and the server goes on

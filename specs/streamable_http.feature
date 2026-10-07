@@ -135,32 +135,32 @@ Feature: Streamable HTTP transport
     And a second refusal is returned to the caller without another retry
 
 
-  @spec:MCP-HTTP-g2f-hs-b-1 @feature:ftStreamableHttp
+  @spec:MCP-HTTP-19 @feature:ftStreamableHttp
   Scenario: Only an initialize request opens a session
     Given a server that keeps a session for every client that initializes
     When a message named initialize but without an id is posted, with no session
     Then the answer is 400 for the missing session and no session is made
 
-  @spec:MCP-HTTP-g2f-hs-b-2 @feature:ftStreamableHttp
+  @spec:MCP-HTTP-20 @feature:ftStreamableHttp
   Scenario: A POST answered with a JSON body ends the connection
     Given a POST that the server answers with a plain JSON body
     When the answer is complete
     Then the server closes the connection, so that nothing the client sends next is read by the watcher of a finished exchange
 
-  @spec:MCP-HTTP-g2f-hs-b-3 @feature:ftStreamableHttp
+  @spec:MCP-HTTP-21 @feature:ftStreamableHttp
   Scenario: A server that speaks 2026-07-28 alone refuses batches and accepts notifications
     Given a server that speaks 2026-07-28 and nothing older
     When a batch is posted, even one whose first message is a complete 2026-07-28 request
     Then the answer is 400 invalid request
     And a notification is answered 202, whatever its method is named and whichever version it names
 
-  @spec:MCP-HTTP-g2f-hs-c-1
+  @spec:MCP-HTTP-22
   Scenario: A document without a validator is served whole whatever the client holds
     Given a fixed document served without an ETag
     When a client GETs it with If-None-Match
     Then the answer is 200 with the body and no ETag header
 
-  @spec:MCP-HTTP-g2f-hs-c-2
+  @spec:MCP-HTTP-23
   Scenario: Starting a server transport binds it and serves until it is closed
     Given a server transport that is not listening
     When it is started
