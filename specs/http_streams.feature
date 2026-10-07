@@ -235,3 +235,20 @@ Feature: Event streams over Streamable HTTP
     Given a transport bound to loopback
     Then a Host that is the bare IPv6 loopback address is served
     And a request with no Host header is answered 403
+
+  @spec:MCP-HTTPSTREAM-g2f-hs-c-1
+  Scenario: The buffer behind a stream refuses what it cannot keep and says where a client may resume
+    Given an event stream that remembers a limited number of events
+    When an event is pushed after it finished, or an event id is parsed, or a client asks to resume after some event
+    Then the push is refused and nothing is kept
+    And only text of the form stream-number is an event id, and a stream id is never empty
+    And resumption is possible from the last forgotten event up to the newest, and nowhere else
+
+  @spec:MCP-HTTPSTREAM-g2f-hs-c-2
+  Scenario: The loop that writes a stream keeps the connection honest
+    Given a connection that is being served an event stream
+    When nothing happens for a keep-alive period, or the stream ends, or the peer sends a stray byte and closes, or a connection resumes after events no connection wrote
+    Then a keep-alive comment goes out and the stream stays open
+    And the server closes the connection when the stream ends, even for a client that asked to keep it
+    And the departure of the peer is noticed after a stray byte as well
+    And events that no connection wrote are not reported as written

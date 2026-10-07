@@ -462,3 +462,23 @@ suite "HTTP+SSE server, requests in progress together (mutation review, g2f-hs-b
       answers.add (answer["id"].getInt(), answer["result"]["answers"].getStr())
     check answers == @[(5, "first"), (6, "second")]
     stream.close()
+
+suite "HTTP+SSE server paths (mutation review, g2f-hs-c)":
+
+  proc status(base, path: string, httpMethod: HttpMethod): tuple[code: HttpCode, allow: string] =
+    let http = newAsyncHttpClient()
+    defer: http.close()
+    let response = waitFor http.request(base & path, httpMethod, "")
+    (response.code, response.headers.getOrDefault("Allow"))
+
+  test "Given the SSE endpoint switched off, when a client posts to the messages path, then the answer is 404":
+    # The two paths belong together: without the stream there is nothing to post to.
+    let (transport, base, _) = startLegacy()
+    transport.legacySsePath = ""
+    check status(base, "/messages", HttpPost).code == Http404
+
+  test "Given the messages path, when a client sends GET, then the answer is 405 naming POST":
+    let (_, base, _) = startLegacy()
+    let answer = status(base, "/messages", HttpGet)
+    check answer.code == Http405
+    check answer.allow == "POST"

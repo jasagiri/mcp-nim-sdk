@@ -636,3 +636,17 @@ suite "HTTP endpoint (mutation review, g2f-hs-b)":
     socket.close()
     check received.startsWith("HTTP/1.1 200")
     check closed
+
+suite "starting the server transport (mutation review, g2f-hs-c)":
+
+  test "Given a transport that is not listening, when start is called, then it binds at once and serves until it is closed":
+    let transport = newHttpServerTransport(port = 0)
+    let running = transport.start()
+    check transport.port != 0
+    check not running.finished
+    let http = newAsyncHttpClient()
+    check (waitFor http.request("http://127.0.0.1:" & $transport.port & "/nowhere", HttpGet)).code == Http404
+    http.close()
+    check not running.finished
+    waitFor transport.close()
+    check waitFor withTimeout(running, 2000)

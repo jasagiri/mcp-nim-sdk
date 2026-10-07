@@ -92,3 +92,21 @@ suite "documents served by the HTTP server transport":
     defer: waitFor t.close()
     check t.documents.len == 0
     check t.call(HttpGet, "/mcp/server-card").code == 404
+
+suite "documents served by the HTTP server transport (mutation review, g2f-hs-c)":
+
+  test "Given a document without an ETag, when a client GETs it with If-None-Match, then it is served whole and no ETag is sent":
+    # No validator, nothing to match: a conditional GET of such a document
+    # is an ordinary GET.
+    let t = newHttpServerTransport(port = 0)
+    t.documents["/mcp/plain"] = HttpDocument(contentType: "text/plain", body: "plain")
+    t.listen()
+    asyncCheck t.serve()
+    defer: waitFor t.close()
+    let conditional = t.call(HttpGet, "/mcp/plain", @[("If-None-Match", "*")])
+    check conditional.code == 200
+    check conditional.body == "plain"
+    check not conditional.headers.hasKey("ETag")
+    let unconditional = t.call(HttpGet, "/mcp/plain")
+    check unconditional.code == 200
+    check not unconditional.headers.hasKey("ETag")

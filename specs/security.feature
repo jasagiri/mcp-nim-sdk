@@ -327,3 +327,11 @@ Feature: Security properties
     When a destination is chosen under a policy that allows them
     Then it is loopback-only if all of its addresses are loopback, and not if any is not
     And the host written as an address is answered by the system resolver with that address
+
+  @spec:MCP-SEC-g2f-hs-c-1
+  Scenario: A failure inside the HTTP transport is logged and not told to the peer
+    Given a session whose end callback raises
+    When the client sends DELETE
+    Then the answer is a bare 500 with no body
+    And the log holds one line naming the failure
+    And the server goes on answering

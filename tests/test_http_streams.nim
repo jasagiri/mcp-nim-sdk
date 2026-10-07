@@ -1081,3 +1081,133 @@ suite "GET stream and session lifetime (mutation review, g2f-hs-b)":
       check reply.code == Http200
       waitFor sleepAsync(20)
       check script.notifications == @["notifications/a"]
+
+import std/[asynchttpserver, times]
+
+type Served = tuple[port: int, ended: Future[SseEnd]]
+  ## Where the server of `serveOnce` listens, and how its connection ended.
+
+proc serveOnce(stream: SseStream, afterSeq = 0, keepAliveMs = DefaultKeepAliveMs): Served =
+  ## A server that answers its first request with `stream`, as the
+  ## transport does.
+  let server = newAsyncHttpServer()
+  server.listen(Port(0))
+  let ended = newFuture[SseEnd]("serveOnce.ended")
+  proc handler(req: Request) {.async, gcsafe.} =
+    let gone = watchDisconnect(req.client)
+    ended.complete(await serveStream(req, stream, afterSeq, newHttpHeaders(),
+                                     gone, keepAliveMs))
+  asyncCheck server.acceptRequest(handler)
+  (port: server.getPort.int, ended: ended)
+
+proc connectTo(port: int): AsyncSocket =
+  ## A raw HTTP/1.1 client that has asked for the stream and sent no
+  ## `Connection: close`.
+  # Unbuffered: a buffered socket's `recv(n)` waits for all n bytes.
+  result = newAsyncSocket(buffered = false)
+  waitFor result.connect("127.0.0.1", Port(port))
+  waitFor result.send("GET / HTTP/1.1\c\LHost: localhost\c\L\c\L")
+
+proc receivedWithin(sock: AsyncSocket, marker: string, timeoutMs = 2000): bool =
+  ## Whether `marker` arrives within `timeoutMs`.
+  var seen = ""
+  let deadline = epochTime() + timeoutMs.float / 1000
+  while marker notin seen:
+    let left = int((deadline - epochTime()) * 1000)
+    if left <= 0:
+      return false
+    let chunk = sock.recv(1024)
+    if not waitFor withTimeout(chunk, left):
+      return false
+    if chunk.read.len == 0:
+      return false
+    seen.add chunk.read
+  true
+
+proc endsWithin(sock: AsyncSocket, timeoutMs = 2000): bool =
+  ## Whether the server closes the connection within `timeoutMs`.
+  let deadline = epochTime() + timeoutMs.float / 1000
+  while true:
+    let left = int((deadline - epochTime()) * 1000)
+    if left <= 0:
+      return false
+    let chunk = sock.recv(1024)
+    if not waitFor withTimeout(chunk, left):
+      return false
+    if chunk.read.len == 0:
+      return true
+
+suite "the buffer behind an event stream (mutation review, g2f-hs-c)":
+
+  test "Given a finished stream, when an event is pushed, then it is refused and not kept":
+    let stream = newSseStream("s")
+    check stream.push("one")
+    stream.finish()
+    check not stream.push("two")
+    check stream.lastSeq == 1
+
+  test "Given text that is not the id of an event, when it is parsed, then there is no id":
+    # A stream id is never empty, so an id that starts with the dash names no stream.
+    check parseEventId("-5").isNone
+    check parseEventId("s-").isNone
+    check parseEventId("s5").isNone
+    check parseEventId("s-x").isNone
+    check parseEventId("s-5").get == (streamId: "s", seqNo: 5)
+
+  test "Given a stream that has sent nothing, when asked whether it can resume, then only the start is possible":
+    let stream = newSseStream("s")
+    check stream.canResumeAfter(0)
+    check not stream.canResumeAfter(1)
+
+  test "Given a stream that remembers its last two of three events, when asked where it can resume, then from the last forgotten event on and no further":
+    let stream = newSseStream("s", maxEvents = 2)
+    for n in 1 .. 3:
+      check stream.push($n)
+    check not stream.canResumeAfter(0)
+    check stream.canResumeAfter(1)   # the next one, 2, is the oldest remembered
+    check stream.canResumeAfter(2)
+    check stream.canResumeAfter(3)   # everything was seen; wait for the next
+    check not stream.canResumeAfter(4)
+
+suite "the loop that writes an event stream (mutation review, g2f-hs-c)":
+
+  test "Given a stream with nothing to say, when a keep-alive period passes, then a comment goes out and the stream is still open":
+    let stream = newSseStream("s")
+    let served = serveOnce(stream, keepAliveMs = 50)
+    let sock = connectTo(served.port)
+    check sock.receivedWithin(": keep-alive\n\n")
+    check not served.ended.finished
+    sock.close()
+
+  test "Given a stream that finishes, when its events are written, then the server closes the connection of a client that asked to keep it":
+    let stream = newSseStream("s")
+    check stream.push("hello")
+    stream.finish()
+    let served = serveOnce(stream)
+    let sock = connectTo(served.port)
+    check sock.endsWithin()
+    check (waitFor served.ended) == seDrained
+    sock.close()
+
+  test "Given a client that sent a stray byte, when it then closes the connection, then the server notices":
+    let stream = newSseStream("s")
+    let served = serveOnce(stream)
+    let sock = connectTo(served.port)
+    check sock.receivedWithin("\c\L\c\L")  # the head
+    waitFor sock.send("x")
+    waitFor sleepAsync(50)
+    sock.close()
+    check waitFor withTimeout(served.ended, 1000)
+    check served.ended.read == seClientGone
+
+  test "Given events that no connection has written, when one resumes after the last of them, then the stream still reports nothing written":
+    let stream = newSseStream("s")
+    check stream.push("one")
+    check stream.push("two")
+    let served = serveOnce(stream, afterSeq = 2)
+    let sock = connectTo(served.port)
+    waitFor sleepAsync(100)
+    check stream.writtenUpTo == 0
+    stream.finish()
+    check waitFor withTimeout(served.ended, 1000)
+    sock.close()

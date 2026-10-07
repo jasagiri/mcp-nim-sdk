@@ -581,3 +581,39 @@ if ServesLegacySse:
       check reply.get.code == Http503
       check reply.get.headers.hasKey("Retry-After")
       stream.close()
+
+import std/os
+
+if ServesSessions:
+  suite "A failure inside the transport is logged and not told to the peer (mutation review, g2f-hs-c)":
+    proc loggedWhile(body: proc()): string =
+      ## Everything the code under test wrote to stderr.
+      let path = getTempDir() / "mcp-security-http-" & $getCurrentProcessId() & ".log"
+      let saved = stderr
+      stderr = open(path, fmWrite)
+      try:
+        body()
+      finally:
+        stderr.close()
+        stderr = saved
+      result = readFile(path)
+      removeFile(path)
+
+    test "Given a session whose end callback raises, when the client sends DELETE, then the answer is a bare 500, the log names the failure and the server goes on":
+      let version = latestLegacyVersion(Spoken).get
+      let env = startOpen(version)
+      env.transport.onSessionEnd = proc(session: string) {.closure, gcsafe.} =
+        raise newException(ValueError, "end callback failed")
+      let reply = send(env.base & "/mcp", HttpPost, initializeBody())
+      check reply.code == Http200
+      let session = $reply.headers["Mcp-Session-Id"]
+      var answer: tuple[code: HttpCode, headers: HttpHeaders, body: string]
+      let log = loggedWhile(proc() =
+        answer = send(env.base & "/mcp", HttpDelete, "", @[("Mcp-Session-Id", session)]))
+      check answer.code == Http500
+      check answer.body == ""
+      check "end callback failed" notin answer.body
+      check log.contains("[mcp-http-server] ValueError: end callback failed")
+      check send(env.base & "/mcp", HttpPost, initializeBody()).code == Http200
+      env.transport.onSessionEnd = nil  # close ends the second session too
+      waitFor env.transport.close()

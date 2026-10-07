@@ -153,3 +153,16 @@ Feature: Streamable HTTP transport
     When a batch is posted, even one whose first message is a complete 2026-07-28 request
     Then the answer is 400 invalid request
     And a notification is answered 202, whatever its method is named and whichever version it names
+
+  @spec:MCP-HTTP-g2f-hs-c-1
+  Scenario: A document without a validator is served whole whatever the client holds
+    Given a fixed document served without an ETag
+    When a client GETs it with If-None-Match
+    Then the answer is 200 with the body and no ETag header
+
+  @spec:MCP-HTTP-g2f-hs-c-2
+  Scenario: Starting a server transport binds it and serves until it is closed
+    Given a server transport that is not listening
+    When it is started
+    Then its port is bound at once and it answers requests
+    And the start ends only when the transport is closed

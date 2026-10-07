@@ -122,6 +122,8 @@ MCP-HTTP-9 | tests/test_streamable_http.nim | Given an event stream that ends wi
 MCP-HTTP-9 | tests/test_streamable_http.nim | Given an HTTP error with a JSON-RPC error body, when a request is sent, then the error arrives as the response
 MCP-HTTP-9 | tests/test_streamable_http.nim | Given an HTTP error whose JSON-RPC error names a placeholder id, when a request is sent, then the error arrives under the request's own id
 MCP-HTTP-9 | tests/test_streamable_http.nim | Given an HTTP error whose body is not a JSON-RPC error, when a request is sent, then McpTransportError names the status
+MCP-HTTP-g2f-hs-c-1 | tests/test_http_documents.nim | Given a document without an ETag, when a client GETs it with If-None-Match, then it is served whole and no ETag is sent
+MCP-HTTP-g2f-hs-c-2 | tests/test_streamable_http.nim | Given a transport that is not listening, when start is called, then it binds at once and serves until it is closed
 MCP-TOOLS-1 | tests/test_stdio.nim | Given a server started as a child, when the client connects and calls a tool, then the call succeeds in the build's default version
 MCP-TOOLS-1 | tests/test_streamable_http.nim | Given an HTTP server, when the client connects and calls a tool, then the call succeeds in the newest common version
 MCP-TOOLS-1 | tests/test_era_matrix.nim | Given no initialize, when a 2026-07-28 tools/list arrives, then it is served and the server keeps no handshake state
@@ -375,6 +377,14 @@ MCP-HTTPSTREAM-g2f-hs-a-5 | tests/test_http_streams.nim | Given an initialize an
 MCP-HTTPSTREAM-g2f-hs-a-6 | tests/test_version_floor.nim | Given a version the build does not speak, when a transport is made for it, then ValueError is raised
 MCP-HTTPSTREAM-g2f-hs-a-7 | tests/test_security_http.nim | Given a transport bound to loopback, when a request names the bare IPv6 loopback address, then it is served
 MCP-HTTPSTREAM-g2f-hs-a-7 | tests/test_security_http.nim | Given a transport bound to loopback, when a request carries no Host header at all, then the answer is 403
+MCP-HTTPSTREAM-g2f-hs-c-1 | tests/test_http_streams.nim | Given a finished stream, when an event is pushed, then it is refused and not kept
+MCP-HTTPSTREAM-g2f-hs-c-1 | tests/test_http_streams.nim | Given text that is not the id of an event, when it is parsed, then there is no id
+MCP-HTTPSTREAM-g2f-hs-c-1 | tests/test_http_streams.nim | Given a stream that has sent nothing, when asked whether it can resume, then only the start is possible
+MCP-HTTPSTREAM-g2f-hs-c-1 | tests/test_http_streams.nim | Given a stream that remembers its last two of three events, when asked where it can resume, then from the last forgotten event on and no further
+MCP-HTTPSTREAM-g2f-hs-c-2 | tests/test_http_streams.nim | Given a stream with nothing to say, when a keep-alive period passes, then a comment goes out and the stream is still open
+MCP-HTTPSTREAM-g2f-hs-c-2 | tests/test_http_streams.nim | Given a stream that finishes, when its events are written, then the server closes the connection of a client that asked to keep it
+MCP-HTTPSTREAM-g2f-hs-c-2 | tests/test_http_streams.nim | Given a client that sent a stray byte, when it then closes the connection, then the server notices
+MCP-HTTPSTREAM-g2f-hs-c-2 | tests/test_http_streams.nim | Given events that no connection has written, when one resumes after the last of them, then the stream still reports nothing written
 MCP-HTTPGET-1 | tests/test_http_streams.nim | Given a session, when the client opens GET, then the server's own notifications arrive on it
 MCP-HTTPGET-1 | tests/test_http_streams.nim | Given a notification sent to every client, when two sessions listen, then each hears it once
 MCP-HTTPGET-1 | tests/test_http_streams.nim | Given a notification sent before the client opened GET, when it opens, then the notification is waiting
@@ -454,6 +464,8 @@ MCP-HTTPSSE-10 | tests/test_http_sse_legacy.nim | Given a Streamable HTTP server
 MCP-HTTPSSE-10 | tests/test_http_sse_legacy.nim | Given headers set on the wrapper, when it falls back, then the old transport carries them too
 MCP-HTTPSSE-10 | tests/test_http_sse_legacy.nim | Given a server that is down, when a client connects, then the connection error is raised and no fallback is tried
 MCP-HTTPSSE-10 | tests/test_http_sse_legacy.nim | Given a full client and server, when the client connects through the wrapper to the old transport, then initialize and tools/list work
+MCP-HTTPSSE-g2f-hs-c-1 | tests/test_http_sse_legacy.nim | Given the SSE endpoint switched off, when a client posts to the messages path, then the answer is 404
+MCP-HTTPSSE-g2f-hs-c-1 | tests/test_http_sse_legacy.nim | Given the messages path, when a client sends GET, then the answer is 405 naming POST
 MCP-AUTH-1 | tests/test_auth_resource_server.nim | Given a request without a token and version <version>, when posted, then the answer is 401 with a Bearer challenge
 MCP-AUTH-1 | tests/test_auth_resource_server.nim | Given a token the verifier rejects and version <version>, when posted, then the answer is 401 invalid_token
 MCP-AUTH-2 | tests/test_auth_resource_server.nim | Given a token the verifier accepts and version <version>, when posted, then the request reaches the MCP server
@@ -1513,3 +1525,4 @@ MCP-SEC-SCHEMA-9 | tests/test_security_schema.nim | Given a schema whose pattern
 MCP-SEC-SWEEP-6 | tests/test_fuzz_regressions.nim | Given the seeds of every target, when handled, then nothing is wrong
 MCP-SEC-SWEEP-6 | tests/test_fuzz_regressions.nim | Given every input kept from fuzzing, when handled, then nothing is wrong
 MCP-SEC-SWEEP-6 | tests/test_fuzz_regressions.nim | Given the corpus directory, when listed, then every directory in it is a target
+MCP-SEC-g2f-hs-c-1 | tests/test_security_http.nim | Given a session whose end callback raises, when the client sends DELETE, then the answer is a bare 500, the log names the failure and the server goes on
