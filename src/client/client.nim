@@ -448,7 +448,13 @@ proc startRequest*(client: McpClient, methodName: string, params: JsonNode,
   let started = client.beginRequest(methodName, params, id)
   # Whichever comes first: the request is out, or sending failed and the
   # response carries the error.
-  await (started.sent or started.response)
+  try:
+    await (started.sent or started.response)
+  except CatchableError:
+    # `or` took over the callback of `sent` that fails and unregisters the
+    # response, so a request nobody will hear about stays in the table.
+    client.pendingRequests.del(started.id)
+    raise
   if started.response.failed:
     raise started.response.readError()
   return (id: started.id, response: started.response)

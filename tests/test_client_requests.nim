@@ -165,6 +165,36 @@ suite "cancelling a request":
     waitFor sleepAsync(5)
     check peer.requestsFor("notifications/cancelled").len == 0
 
+suite "starting a request without waiting for its response":
+
+  test "Given a request that is started, when the server has not answered, then it returns the id on the wire and a response that completes later":
+    let peer = silentPeer()
+    let client = peer.connectedClient(LegacyDefault)
+    let started = waitFor client.startRequest("tools/list", newJObject())
+    check started.id == peer.requestsFor("tools/list")[0]["id"].getStr()
+    check not started.response.finished
+    peer.reply(%started.id, %*{"tools": []})
+    check (waitFor started.response).result.isSome
+
+  test "Given a request started with an id, when it is sent, then that id is on the wire":
+    let peer = silentPeer()
+    let client = peer.connectedClient(LegacyDefault)
+    let started = waitFor client.startRequest("tools/list", newJObject(), "chosen-id")
+    check started.id == "chosen-id"
+    check peer.requestsFor("tools/list")[0]["id"].getStr() == "chosen-id"
+
+  test "Given sending that fails, when a request is started, then startRequest raises the transport's error":
+    let peer = silentPeer()
+    let client = peer.connectedClient(LegacyDefault)
+    let gate = peer.holdSending("tools/list")
+    let starting = client.startRequest("tools/list", newJObject())
+    waitFor sleepAsync(5)
+    check not starting.finished
+    gate.fail(newException(McpTransportError, "the connection broke"))
+    expect McpTransportError:
+      discard waitFor starting
+    check client.pendingRequests.len == 0
+
 suite "giving up a request over each transport":
 
   test "Given a legacy connection over HTTP, when a request that was sent times out, then notifications/cancelled is sent and the transport is not asked to cancel":
