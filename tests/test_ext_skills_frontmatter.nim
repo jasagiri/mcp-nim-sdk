@@ -171,6 +171,10 @@ suite "frontmatter: layout":
   test "Given a sequence written at the indent of its key, when it is the last field, then it is that key's value":
     check fieldsOf("name: x", "words:", "- x", "- y") == %*{"name": "x", "words": ["x", "y"]}
 
+  test "Given a sequence written at the indent of its key, when other fields follow it, then they are read":
+    check fieldsOf("words:", "- x", "- y", "next: 1", "more:", "- z") ==
+      %*{"words": ["x", "y"], "next": 1, "more": ["z"]}
+
   test "Given a sequence item that is not a scalar, when read, then FrontmatterError is raised":
     for bad in ["  - : x", "  - a: b", "  -"]:
       checkpoint bad

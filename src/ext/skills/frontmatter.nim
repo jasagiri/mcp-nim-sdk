@@ -288,8 +288,12 @@ proc parseSequence(r: var Reader, indent: int): JsonNode =
       continue
     if line.indent < indent:
       break
-    if line.indent > indent or not (line.text.startsWith("- ") or line.text == "-"):
-      raise fail(line.number, "expected a sequence item")
+    let isItem = line.text.startsWith("- ") or line.text == "-"
+    # A sequence written at the indent of its key ends at the key's next sibling.
+    if line.indent == indent and not isItem:
+      break
+    if line.indent > indent:
+      raise fail(line.number, "unexpected indentation")
     inc r.at
     let item = stripComment(line.text[1 .. ^1]).strip()
     if item.len == 0 or item.find(": ") >= 0 and item[0] notin {'"', '\''}:

@@ -2633,6 +2633,7 @@ MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given only comments a
 MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given whitespace after the content, when it is a tab, then it is not indentation
 MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given a tab in the indentation, when read, then FrontmatterError is raised
 MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given a refusal, when its message is read, then it names the line of the file
+MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given a sequence written at the indent of its key, when other fields follow it, then they are read
 MCP-EXT-SKILLS-2 | tests/test_ext_skills_model.nim | Given ordinary names, when validated, then they are accepted
 MCP-EXT-SKILLS-2 | tests/test_ext_skills_model.nim | Given names that break the Agent Skills rules, when validated, then each is refused
 MCP-EXT-SKILLS-2 | tests/test_ext_skills_model.nim | Given descriptions of 0, 1 and 1025 characters, when validated, then only the middle one is accepted
