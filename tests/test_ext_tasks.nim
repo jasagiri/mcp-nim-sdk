@@ -84,6 +84,23 @@ proc getTask(peer: Peer, id: string, extension = true): JsonNode =
 
 let elicitationDeclared = %*{"elicitation": {"form": {}}}
 
+let askForm = %*{"method": "elicitation/create",
+                 "params": {"mode": "form", "message": "q",
+                            "requestedSchema": {"type": "object", "properties": {}}}}
+
+proc loggedWhile(body: proc()): string =
+  ## Everything the code under test wrote to stderr.
+  let path = getTempDir() / "mcp-ext-tasks-" & $getCurrentProcessId() & ".log"
+  let saved = stderr
+  stderr = open(path, fmWrite)
+  try:
+    body()
+  finally:
+    stderr.close()
+    stderr = saved
+  result = readFile(path)
+  removeFile(path)
+
 if isSupported(mpv20260728):
 
   suite "Tasks extension: wire form":
@@ -368,6 +385,12 @@ if isSupported(mpv20260728):
       let f = fixture(decide = toolsNamed(["slow"]))
       check f.newPeer.call("report")["result"]["resultType"].getStr() == "complete"
 
+    test "Given a tools/call whose name is missing or not a string, when a client declaring the extension sends it, then the server's own -32602 answers":
+      let f = fixture()
+      let peer = f.newPeer
+      check peer.ask("tools/call", %*{"arguments": {}}, meta = caps()).errorCode == -32602
+      check peer.ask("tools/call", %*{"name": 5}, meta = caps()).errorCode == -32602
+
     test "Given a request already running as a task, when it reaches the server's own handling, then it is not made a task again":
       let f = fixture()
       let peer = f.newPeer
@@ -495,6 +518,115 @@ if isSupported(mpv20260728):
         first: {"action": "decline"}, secondKey: {"action": "decline"}}}, meta = caps())
       settle()
       check peer.getTask(id)["result"]["status"].getStr() == "completed"
+
+    test "Given a task that waits on two requests at once, when one is answered, then it stays input_required until the other is answered too":
+      let gate = newFuture[void]("gate")
+      let server = newServer(McpServerCapabilities(tools: some(McpToolsCapability())))
+      let tasks = server.enableTasksExtension(TasksExtensionConfig(decide: toolsNamed(["both"])))
+      server.onToolCall(proc(ctx: McpRequestContext, name: string,
+                             arguments: JsonNode): Future[JsonNode] {.async.} =
+        let first = tasks.requestInput(ctx, askForm, "a")
+        let second = tasks.requestInput(ctx, askForm, "b")
+        discard await first
+        discard await second
+        await gate
+        return %*{"content": []})
+      let peer = server.connect(server.attach(), mpv20260728)
+      let id = peer.ask("tools/call", %*{"name": "both"}, meta = caps(elicitationDeclared)).taskIdOf
+      settle()
+      check peer.getTask(id)["result"]["inputRequests"].len == 2
+      discard peer.ask("tasks/update", %*{"taskId": id, "inputResponses": {"a": {"action": "decline"}}},
+                       meta = caps())
+      settle()
+      let half = peer.getTask(id)["result"]
+      check half["status"].getStr() == "input_required"
+      check half["inputRequests"].len == 1
+      check half["inputRequests"].hasKey("b")
+      discard peer.ask("tasks/update", %*{"taskId": id, "inputResponses": {"b": {"action": "decline"}}},
+                       meta = caps())
+      settle()
+      let resumed = peer.getTask(id)["result"]
+      check resumed["status"].getStr() == "working"
+      check not resumed.hasKey("inputRequests")
+      gate.complete()
+      settle()
+      check peer.getTask(id)["result"]["status"].getStr() == "completed"
+
+    test "Given a working task, when tasks/update names only keys nobody asked for, then the task is left as it was":
+      let now = new int64
+      now[] = 1_764_067_800_000'i64
+      let f = fixture(store = newTaskStore(clock = proc(): int64 = now[]))
+      let peer = f.newPeer
+      let id = peer.call("slow").taskIdOf
+      settle()
+      let before = peer.getTask(id)["result"]
+      now[] += 5_000
+      let ack = peer.ask("tasks/update", %*{"taskId": id, "inputResponses": {
+        "nobody": {"action": "accept"}}}, meta = caps())
+      check not ack.hasKey("error")
+      let after = peer.getTask(id)["result"]
+      check after["status"].getStr() == "working"
+      check after["lastUpdatedAt"] == before["lastUpdatedAt"]
+      f.gate.complete()
+
+    test "Given a key a task used and had answered, when the tool asks again with that key, then it raises ValueError":
+      let server = newServer(McpServerCapabilities(tools: some(McpToolsCapability())))
+      let tasks = server.enableTasksExtension(TasksExtensionConfig(decide: toolsNamed(["again"])))
+      let raised = new string
+      server.onToolCall(proc(ctx: McpRequestContext, name: string,
+                             arguments: JsonNode): Future[JsonNode] {.async.} =
+        discard await tasks.requestInput(ctx, askForm, "k")
+        try:
+          discard await tasks.requestInput(ctx, askForm, "k")
+        except ValueError as e:
+          raised[] = e.msg
+        return %*{"content": []})
+      let peer = server.connect(server.attach(), mpv20260728)
+      let id = peer.ask("tools/call", %*{"name": "again"}, meta = caps(elicitationDeclared)).taskIdOf
+      settle()
+      discard peer.ask("tasks/update", %*{"taskId": id, "inputResponses": {"k": {"action": "decline"}}},
+                       meta = caps())
+      settle()
+      check "'k'" in raised[]
+      check peer.getTask(id)["result"]["status"].getStr() == "completed"
+
+    test "Given a task cancelled while its tool runs on, when the tool asks for input afterwards, then the task is no longer one the extension serves":
+      let gate = newFuture[void]("gate")
+      let server = newServer(McpServerCapabilities(tools: some(McpToolsCapability())))
+      let tasks = server.enableTasksExtension(TasksExtensionConfig(decide: toolsNamed(["late"])))
+      let raised = new string
+      server.onToolCall(proc(ctx: McpRequestContext, name: string,
+                             arguments: JsonNode): Future[JsonNode] {.async.} =
+        await gate
+        try:
+          discard await tasks.requestInput(ctx, askForm)
+        except ValueError as e:
+          raised[] = e.msg
+        return %*{"content": []})
+      let peer = server.connect(server.attach(), mpv20260728)
+      let id = peer.ask("tools/call", %*{"name": "late"}, meta = caps(elicitationDeclared)).taskIdOf
+      discard peer.ask("tasks/cancel", %*{"taskId": id}, meta = caps())
+      gate.complete()
+      settle()
+      check "running as a task" in raised[]
+
+    test "Given a tool whose request in a task ends asking for input the multi round-trip way, when the task is polled, then it failed with an internal error and the log points to requestInput":
+      let server = newServer(McpServerCapabilities(tools: some(McpToolsCapability())))
+      discard server.enableTasksExtension(TasksExtensionConfig(decide: toolsNamed(["multi"])))
+      server.onToolCall(proc(ctx: McpRequestContext, name: string,
+                             arguments: JsonNode): Future[JsonNode] {.async.} =
+        raise newInputRequired([(key: "confirm", methodName: "elicitation/create",
+          params: askForm["params"])]))
+      let peer = server.connect(server.attach(), mpv20260728)
+      var id = ""
+      let logged = loggedWhile(proc() =
+        id = peer.ask("tools/call", %*{"name": "multi"}, meta = caps(elicitationDeclared)).taskIdOf
+        settle())
+      let state = peer.getTask(id)["result"]
+      check state["status"].getStr() == "failed"
+      check state["error"]["code"].getInt() == -32603
+      check state["error"]["message"].getStr() == "Internal error"
+      check "requestInput" in logged
 
     test "Given a task cancelled while it waits for input, when it is polled, then it is cancelled and the work stopped":
       let f = fixture()

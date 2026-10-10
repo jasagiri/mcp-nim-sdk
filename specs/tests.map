@@ -2477,6 +2477,7 @@ MCP-EXT-TASKS-5 | tests/test_ext_tasks.nim | Given a server without a decider, w
 MCP-EXT-TASKS-5 | tests/test_ext_tasks.nim | Given a client that declared the extension, when the server makes a task of a call, then the answer is a CreateTaskResult it can poll at once
 MCP-EXT-TASKS-5 | tests/test_ext_tasks.nim | Given a tool that is not the one the server makes tasks of, when a declaring client calls it, then the answer is the plain result
 MCP-EXT-TASKS-5 | tests/test_ext_tasks.nim | Given a request already running as a task, when it reaches the server's own handling, then it is not made a task again
+MCP-EXT-TASKS-5 | tests/test_ext_tasks.nim | Given a tools/call whose name is missing or not a string, when a client declaring the extension sends it, then the server's own -32602 answers
 MCP-EXT-TASKS-6 | tests/test_ext_tasks.nim | Given a task that finished, when it is polled, then the result of the tool call is inlined without a resultType of its own
 MCP-EXT-TASKS-6 | tests/test_ext_tasks.nim | Given a tool call that returned isError, when the task is polled, then it is completed, not failed
 MCP-EXT-TASKS-6 | tests/test_ext_tasks.nim | Given a tool call that ended in a JSON-RPC error, when the task is polled, then it is failed with that error
@@ -2499,6 +2500,11 @@ MCP-EXT-TASKS-11 | tests/test_ext_tasks.nim | Given a task that asks twice, when
 MCP-EXT-TASKS-11 | tests/test_ext_tasks.nim | Given a task cancelled while it waits for input, when it is polled, then it is cancelled and the work stopped
 MCP-EXT-TASKS-11 | tests/test_ext_tasks.nim | Given a client that did not declare elicitation, when a task asks it for input, then the tool fails and the task is not input_required
 MCP-EXT-TASKS-11 | tests/test_ext_tasks.nim | Given a call outside a task, when the tool asks for input the task way, then it raises ValueError
+MCP-EXT-TASKS-11 | tests/test_ext_tasks.nim | Given a task that waits on two requests at once, when one is answered, then it stays input_required until the other is answered too
+MCP-EXT-TASKS-11 | tests/test_ext_tasks.nim | Given a working task, when tasks/update names only keys nobody asked for, then the task is left as it was
+MCP-EXT-TASKS-11 | tests/test_ext_tasks.nim | Given a key a task used and had answered, when the tool asks again with that key, then it raises ValueError
+MCP-EXT-TASKS-11 | tests/test_ext_tasks.nim | Given a task cancelled while its tool runs on, when the tool asks for input afterwards, then the task is no longer one the extension serves
+MCP-EXT-TASKS-11 | tests/test_ext_tasks.nim | Given a tool whose request in a task ends asking for input the multi round-trip way, when the task is polled, then it failed with an internal error and the log points to requestInput
 MCP-EXT-TASKS-11 | tests/test_ext_tasks_client.nim | Given a task that needs input, when the client waits, then it answers from its elicitation handler and the task finishes
 MCP-EXT-TASKS-11 | tests/test_ext_tasks_client.nim | Given an input request listed on several polls, when the client waits, then it answers a key once
 MCP-EXT-TASKS-11 | tests/test_ext_tasks_client.nim | Given a task that asks for something the client has no handler for, when it waits, then it raises McpUnsupportedError
