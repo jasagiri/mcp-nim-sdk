@@ -2513,6 +2513,7 @@ MCP-EXT-TASKS-13 | tests/test_ext_tasks.nim | Given tasks of two owners, when on
 MCP-EXT-TASKS-13 | tests/test_ext_tasks.nim | Given no ownerOf and no authorization, when two clients ask, then they are one owner and the unguessable task id is the only separation
 MCP-EXT-TASKS-13 | tests/test_ext_tasks.nim | Given no ownerOf and authorized requests, when another principal asks for a task, then it is unknown to them
 MCP-EXT-TASKS-13 | tests/test_ext_tasks_dual.nim | Given a task of each kind, when the other kind of client asks for it, then it is unknown
+MCP-EXT-TASKS-13 | tests/test_ext_tasks_dual.nim | Given an expiry hook set on the store before the extension, when a task of another owner expires, then that hook is still called
 MCP-EXT-TASKS-14 | tests/test_ext_tasks.nim | Given a listen filter with taskIds, when parsed and written, then the ids round-trip and a malformed list is rejected
 MCP-EXT-TASKS-14 | tests/test_ext_tasks.nim | Given a client that did not declare the extension, when it listens for task ids, then the answer is -32021
 MCP-EXT-TASKS-14 | tests/test_ext_tasks.nim | Given task ids of its own and unknown ones, when a client listens, then the acknowledgement lists only its own

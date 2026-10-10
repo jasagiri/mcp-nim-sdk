@@ -124,6 +124,18 @@ if isSupported(mpv20251125) and isSupported(mpv20260728):
       check old.ask("tasks/get", %*{"taskId": coreId}).errorCode == -32602
       check peer.ask("tasks/get", %*{"taskId": extId}, meta = withExtension).errorCode == -32602
 
+    test "Given an expiry hook set on the store before the extension, when a task of another owner expires, then that hook is still called":
+      let d = dual(enableCore = false, enableExtension = false)
+      var expired: seq[string]
+      d.store.onExpire = proc(owner: string, task: McpTask) =
+        expired.add owner
+      discard d.server.enableTasksExtension(
+        TasksExtensionConfig(decide: toolsNamed(["report"])), d.store)
+      discard d.store.create("the core's owner", some(1_000'i64))
+      d.now[] += 5_000
+      discard d.store.sweep()
+      check expired == @["the core's owner"]
+
     test "Given the extension was enabled after the core, when a core task changes status, then the core still announces it to its session":
       let d = dual()
       let old = d.legacy("s1")
