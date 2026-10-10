@@ -382,6 +382,29 @@ suite "GET stream (versions 2025-03-26 to 2025-11-25)":
       first.close()
       second.close()
 
+    test "Given a second GET that took the stream over, when a notification is sent, then the first connection ends without carrying it":
+      let (transport, url, _) = startRaw(version)
+      let session = initialize(url, version)
+      let first = open(url, HttpGet, "", legacyHeaders(session, version))
+      let second = open(url, HttpGet, "", legacyHeaders(session, version))
+      waitFor transport.sendNotification(
+        newJsonRpcNotification("notifications/tools/list_changed", newJObject()),
+        MessageRoute(session: session))
+      var event = second.next().get
+      while event.data.len == 0:
+        event = second.next().get
+      check parseJson(event.data).methodOf == "notifications/tools/list_changed"
+      var carriedByFirst: seq[string] = @[]
+      while true:
+        let left = first.next()
+        if left.isNone:
+          break
+        if left.get.data.len > 0:
+          carriedByFirst.add left.get.data
+      check carriedByFirst.len == 0
+      first.close()
+      second.close()
+
     test "Given a GET without a session id, when sent, then the answer is 400":
       let (_, url, _) = startRaw(version)
       discard initialize(url, version)
@@ -794,9 +817,14 @@ suite "the HTTP server transport's own rules (mutation review, g2f-hs-a)":
                               "Accept": "application/json, text/event-stream"})
     discard http.request("http://127.0.0.1:" & $transport.port & "/mcp", HttpPost,
                          $bareInitializeBody(version), all)
-    let message = waitFor transport.receiveMessage()
-    check message{"method"}.getStr() == "initialize"
-    check message{"id"}.getStr().startsWith("http-")
+    # A transport that drops the request must fail a check, not hang the test.
+    let taking = transport.receiveMessage()
+    let taken = waitFor withTimeout(taking, 2000)
+    check taken
+    if taken:
+      let message = taking.read()
+      check message{"method"}.getStr() == "initialize"
+      check message{"id"}.getStr().startsWith("http-")
     http.close()
     waitFor transport.close()
 
@@ -1176,6 +1204,14 @@ suite "the loop that writes an event stream (mutation review, g2f-hs-c)":
     let served = serveOnce(stream, keepAliveMs = 50)
     let sock = connectTo(served.port)
     check sock.receivedWithin(": keep-alive\n\n")
+    check not served.ended.finished
+    sock.close()
+
+  test "Given a stream with nothing to say, when two keep-alive periods pass, then a comment goes out in each":
+    let stream = newSseStream("s")
+    let served = serveOnce(stream, keepAliveMs = 50)
+    let sock = connectTo(served.port)
+    check sock.receivedWithin(": keep-alive\n\n: keep-alive\n\n")
     check not served.ended.finished
     sock.close()
 

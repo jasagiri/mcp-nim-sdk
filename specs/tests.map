@@ -382,6 +382,7 @@ MCP-HTTPSTREAM-19 | tests/test_http_streams.nim | Given text that is not the id 
 MCP-HTTPSTREAM-19 | tests/test_http_streams.nim | Given a stream that has sent nothing, when asked whether it can resume, then only the start is possible
 MCP-HTTPSTREAM-19 | tests/test_http_streams.nim | Given a stream that remembers its last two of three events, when asked where it can resume, then from the last forgotten event on and no further
 MCP-HTTPSTREAM-20 | tests/test_http_streams.nim | Given a stream with nothing to say, when a keep-alive period passes, then a comment goes out and the stream is still open
+MCP-HTTPSTREAM-20 | tests/test_http_streams.nim | Given a stream with nothing to say, when two keep-alive periods pass, then a comment goes out in each
 MCP-HTTPSTREAM-20 | tests/test_http_streams.nim | Given a stream that finishes, when its events are written, then the server closes the connection of a client that asked to keep it
 MCP-HTTPSTREAM-20 | tests/test_http_streams.nim | Given a client that sent a stray byte, when it then closes the connection, then the server notices
 MCP-HTTPSTREAM-20 | tests/test_http_streams.nim | Given events that no connection has written, when one resumes after the last of them, then the stream still reports nothing written
@@ -390,6 +391,7 @@ MCP-HTTPGET-1 | tests/test_http_streams.nim | Given a notification sent to every
 MCP-HTTPGET-1 | tests/test_http_streams.nim | Given a notification sent before the client opened GET, when it opens, then the notification is waiting
 MCP-HTTPGET-1 | tests/test_http_streams.nim | Given a request the server sends on the GET stream, when the client answers by POST, then the server receives the answer
 MCP-HTTPGET-2 | tests/test_http_streams.nim | Given a second GET on a session, when the first is still open, then the second takes the stream over
+MCP-HTTPGET-2 | tests/test_http_streams.nim | Given a second GET that took the stream over, when a notification is sent, then the first connection ends without carrying it
 MCP-HTTPGET-3 | tests/test_http_streams.nim | Given a GET without a session id, when sent, then the answer is 400
 MCP-HTTPGET-3 | tests/test_http_streams.nim | Given a GET naming an unknown session, when sent, then the answer is 404
 MCP-HTTPGET-3 | tests/test_http_streams.nim | Given a GET that does not accept an event stream, when sent, then the answer is 406
