@@ -2661,6 +2661,7 @@ MCP-EXT-SKILLS-19 | tests/test_ext_skills_client.nim | Given a server that repea
 MCP-EXT-SKILLS-19 | tests/test_ext_skills_client.nim | Given a skill the listing does not show, when the client gets it by URI, then it receives the entry
 MCP-EXT-SKILLS-19 | tests/test_ext_skills_client.nim | Given a skills/get answer for another URI or with a broken entry, when the client gets a skill, then McpProtocolError is raised
 MCP-EXT-SKILLS-19 | tests/test_ext_skills_client.nim | Given a server without the extension, when skills are listed, then McpUnsupportedError is raised and nothing is sent; a client that declared nothing lists a server that has it
+MCP-EXT-SKILLS-19 | tests/test_ext_skills_client.nim | Given a client that declared nothing, when it gets a skill by URI, then it is served
 MCP-EXT-SKILLS-20 | tests/test_ext_skills_client.nim | Given a file the entry lists, when it is read, then the verified bytes are returned
 MCP-EXT-SKILLS-20 | tests/test_ext_skills_client.nim | Given a SKILL.md that matches its entry, when the instructions are loaded, then they come with the verified frontmatter
 MCP-EXT-SKILLS-20 | tests/test_ext_skills_client.nim | Given a file whose bytes differ from the digest, when it is read, then SkillVerificationError is raised
@@ -2674,10 +2675,13 @@ MCP-EXT-SKILLS-20 | tests/test_ext_skills_client.nim | Given an answer that does
 MCP-EXT-SKILLS-21 | tests/test_ext_skills_client.nim | Given a dynamic skill the host did not allow, when it is read, then SkillsError is raised and nothing is sent
 MCP-EXT-SKILLS-21 | tests/test_ext_skills_client.nim | Given a dynamic skill the host allowed, when it is loaded, then its frontmatter is still compared and only its own files are read
 MCP-EXT-SKILLS-21 | tests/test_ext_skills_client.nim | Given a dynamic skill that serves more than 16 MiB, when it is read, then SkillsError is raised at the limit
+MCP-EXT-SKILLS-21 | tests/test_ext_skills_client.nim | Given a listed SKILL.md of exactly 16 MiB, when it is read, then the limit is not passed and the bytes come back
+MCP-EXT-SKILLS-21 | tests/test_ext_skills_client.nim | Given a listed file of 9 MiB read twice, when the second read would pass 16 MiB, then SkillsError is raised without a second request
 MCP-EXT-SKILLS-22 | tests/test_ext_skills_client.nim | Given a server without directoryRead, when a directory is read, then McpUnsupportedError is raised and nothing is sent
 MCP-EXT-SKILLS-22 | tests/test_ext_skills_client.nim | Given a server with directoryRead, when a directory is read over two pages, then all children arrive, directories marked
 MCP-EXT-SKILLS-22 | tests/test_ext_skills_client.nim | Given an unsafe directory URI or an unsafe child, when a directory is read, then it is refused
 MCP-EXT-SKILLS-22 | tests/test_ext_skills_client.nim | Given a directory read that lists a file the entry does not, when the children are filtered, then the unlisted file is left out
+MCP-EXT-SKILLS-22 | tests/test_ext_skills_client.nim | Given a client that declared nothing, when it reads a directory of a server with directoryRead, then it is served
 MCP-EXT-SKILLS-23 | tests/test_ext_skills_client.nim | Given an entry that changed on the server, when it is refreshed, then the new entry comes back marked changed
 MCP-EXT-SKILLS-23 | tests/test_ext_skills_client.nim | Given a dynamic entry, when it is refreshed, then it always counts as changed
 MCP-EXT-SKILLS-24 | tests/test_ext_skills_end_to_end.nim | Given a server that registered skills, when a client lists, gets and loads a skill, then the served instructions arrive verified

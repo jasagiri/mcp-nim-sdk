@@ -376,3 +376,47 @@ if SpeaksModern:
           peer.reply(message["id"], %*{"resultType": "complete", "skill": node}))
       let client = peer.connectedSkillsClient()
       check (waitFor client.refreshEntry(parseSkillEntry(node, "test"))).changed
+
+if SpeaksModern:
+  suite "client rules sharpened by the mutation run (g2x-skills-rest)":
+
+    proc sizedSkillMd(size: int): string =
+      let head = "---\nname: pdf-processing\ndescription: Extract, fill, and assemble PDF documents\n---\n"
+      head & 'x'.repeat(size - head.len)
+
+    test "Given a client that declared nothing, when it gets a skill by URI, then it is served":
+      let peer = skillsPeer(serving([]), extra = proc(peer: client_peer.Peer, message: JsonNode) =
+        if message{"method"}.getStr() == "skills/get":
+          peer.reply(message["id"], %*{"resultType": "complete", "ttlMs": 0,
+            "cacheScope": "private", "skill": entryNode({Pdf: SkillMd, InvoiceUri: Invoice})}))
+      let client = peer.connectedClient()
+      check (waitFor client.getSkill(Pdf)).skillName == "pdf-processing"
+      check peer.requestsFor("skills/get").len == 1
+
+    test "Given a client that declared nothing, when it reads a directory of a server with directoryRead, then it is served":
+      let peer = skillsPeer(serving([]), settings = %*{"directoryRead": true},
+        extra = proc(peer: client_peer.Peer, message: JsonNode) =
+          if message{"method"}.getStr() == "resources/directory/read":
+            peer.reply(message["id"], %*{"resultType": "complete", "resources": [
+              {"uri": InvoiceUri, "name": "invoice.md", "mimeType": "text/markdown"}]}))
+      let client = peer.connectedClient()
+      check (waitFor client.listDirectory("skill://pdf-processing/templates")).len == 1
+      check peer.requestsFor("resources/directory/read").len == 1
+
+    test "Given a listed SKILL.md of exactly 16 MiB, when it is read, then the limit is not passed and the bytes come back":
+      let big = sizedSkillMd(int(MaxSkillBytes))
+      let peer = skillsPeer(serving({Pdf: big}))
+      let client = peer.connectedSkillsClient()
+      let skill = client.openSkill(parseSkillEntry(entryNode({Pdf: big}, skillMd = big), "test"))
+      check (waitFor skill.readSkillFile(Pdf)).len == int(MaxSkillBytes)
+      check skill.retrievedBytes == MaxSkillBytes
+
+    test "Given a listed file of 9 MiB read twice, when the second read would pass 16 MiB, then SkillsError is raised without a second request":
+      let big = sizedSkillMd(9 * 1024 * 1024)
+      let peer = skillsPeer(serving({Pdf: big}))
+      let client = peer.connectedSkillsClient()
+      let skill = client.openSkill(parseSkillEntry(entryNode({Pdf: big}, skillMd = big), "test"))
+      discard waitFor skill.readSkillFile(Pdf)
+      expect SkillsError:
+        discard waitFor skill.readSkillFile(Pdf)
+      check peer.requestsFor("resources/read").len == 1
