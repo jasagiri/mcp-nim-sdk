@@ -6,7 +6,7 @@
     "src/auth/oauth/grants.nim",
     "src/auth/oauth/jwt.nim"
   ],
-  "testCommand": "nim c -r --hints:off tests/test_ext_auth_client_credentials.nim && nim c -r --hints:off tests/test_ext_auth_enterprise_managed.nim && nim c -r --hints:off tests/test_ext_auth_grants.nim && nim c -r --hints:off tests/test_security_ext_auth.nim",
+  "testCommand": "nim c -r --hints:off tests/test_ext_auth_client_credentials.nim && nim c -r --hints:off tests/test_ext_auth_enterprise_managed.nim && nim c -r --hints:off tests/test_ext_auth_grants.nim && nim c -r --hints:off tests/test_security_ext_auth.nim && nim c -r --hints:off -d:mcpDefaultProtocolVersion=2025-11-25 tests/test_ext_auth_client_credentials.nim && nim c -r --hints:off -d:mcpDefaultProtocolVersion=2025-11-25 tests/test_ext_auth_enterprise_managed.nim",
   "mutators": [
     "AOR",
     "ROR",
