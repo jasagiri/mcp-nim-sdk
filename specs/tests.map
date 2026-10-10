@@ -2350,6 +2350,7 @@ MCP-EXT-APPS-3 | tests/test_ext_apps_model.nim | Given the specification's origi
 MCP-EXT-APPS-3 | tests/test_ext_apps_model.nim | Given a source that could end or extend a directive, when checked, then it is refused
 MCP-EXT-APPS-3 | tests/test_ext_apps_model.nim | Given a declaration with a bad origin, when parsed, then McpAppsError
 MCP-EXT-APPS-3 | tests/test_ext_apps_model.nim | Given a domain with whitespace or an empty one, when checked, then it is refused
+MCP-EXT-APPS-3 | tests/test_ext_apps_model.nim | Given a host that starts, ends or continues with a digit, when checked, then it is accepted
 MCP-EXT-APPS-4 | tests/test_ext_apps_model.nim | Given the specification's tool example, when read, then resourceUri and visibility are read
 MCP-EXT-APPS-4 | tests/test_ext_apps_model.nim | Given an app-only tool, when read, then visibility is app alone
 MCP-EXT-APPS-4 | tests/test_ext_apps_model.nim | Given no visibility, when read, then it defaults to model and app
@@ -2365,6 +2366,7 @@ MCP-EXT-APPS-5 | tests/test_ext_apps_model.nim | Given the specification's examp
 MCP-EXT-APPS-5 | tests/test_ext_apps_model.nim | Given frame and base-uri origins, when the CSP is built, then they replace the 'none' and 'self' defaults
 MCP-EXT-APPS-5 | tests/test_ext_apps_model.nim | Given an origin nobody checked, when the CSP is built, then McpAppsError and no origin is let through
 MCP-EXT-APPS-5 | tests/test_ext_apps_model.nim | Given declared permissions, when the allow attribute is built, then each maps to its Permission Policy feature
+MCP-EXT-APPS-5 | tests/test_ext_apps_model.nim | Given only connect origins, when the CSP is built, then the resource directives are the plain ones
 MCP-EXT-APPS-6 | tests/test_ext_apps_model.nim | Given the specification's example, when parsed, then the mime types are read
 MCP-EXT-APPS-6 | tests/test_ext_apps_model.nim | Given a declaration without mimeTypes or with a wrong shape, when parsed, then it is none
 MCP-EXT-APPS-6 | tests/test_ext_apps_model.nim | Given a host that lists other mime types only, when asked, then it does not support HTML apps
@@ -2381,6 +2383,7 @@ MCP-EXT-APPS-8 | tests/test_ext_apps_server.nim | Given a resource registered as
 MCP-EXT-APPS-8 | tests/test_ext_apps_server.nim | Given a URI that was not registered, when read, then none
 MCP-EXT-APPS-8 | tests/test_ext_apps_server.nim | Given a server wired with the registry, when a client lists and reads resources, then it gets the UI resource and a not-found error for other URIs
 MCP-EXT-APPS-8 | tests/test_ext_apps_server.nim | Given a fallback read handler, when a non-UI URI is read, then the fallback answers
+MCP-EXT-APPS-8 | tests/test_ext_apps_server.nim | Given a UI resource registered without a description, when listed, then the entry has no description
 MCP-EXT-APPS-9 | tests/test_ext_apps_server.nim | Given a registered resource, when a tool is built for it, then _meta.ui has the resourceUri and visibility
 MCP-EXT-APPS-9 | tests/test_ext_apps_server.nim | Given an app-only tool, when built, then visibility is app
 MCP-EXT-APPS-9 | tests/test_ext_apps_server.nim | Given legacyKey, when built, then the deprecated flat key is added too
@@ -2398,6 +2401,7 @@ MCP-EXT-APPS-11 | tests/test_ext_apps_host.nim | Given several pages, when liste
 MCP-EXT-APPS-11 | tests/test_ext_apps_host.nim | Given tools with visibility, when the agent's list is made, then tools without model are left out
 MCP-EXT-APPS-11 | tests/test_ext_apps_host.nim | Given a View's tools/call, when the tool lacks app visibility or is unknown, then it is refused with a reason
 MCP-EXT-APPS-11 | tests/test_ext_apps_host.nim | Given a tool with an empty visibility, when asked, then neither the agent nor the app may use it
+MCP-EXT-APPS-11 | tests/test_ext_apps_host.nim | Given a server without the tools capability, when tools are listed, then McpUnsupportedError and nothing is sent
 MCP-EXT-APPS-12 | tests/test_ext_apps_host.nim | Given a server that serves the UI resource, when fetched, then the HTML and the declarations are returned
 MCP-EXT-APPS-12 | tests/test_ext_apps_host.nim | Given a blob, when fetched, then it is decoded
 MCP-EXT-APPS-12 | tests/test_ext_apps_host.nim | Given content items for several URIs, when fetched, then the item for the requested URI is used
@@ -2417,6 +2421,8 @@ MCP-EXT-APPS-12 | tests/test_ext_apps_host.nim | Given a client that did not dec
 MCP-EXT-APPS-12 | tests/test_ext_apps_host.nim | Given a server without the resources capability, when fetched, then McpUnsupportedError and nothing is sent
 MCP-EXT-APPS-12 | tests/test_ext_apps_host.nim | Given a server that answers with an error, when fetched, then McpRequestError
 MCP-EXT-APPS-12 | tests/test_ext_apps_host.nim | Given a fetched UI, when the host builds its CSP, then it is the one of the declared origins
+MCP-EXT-APPS-12 | tests/test_ext_apps_host.nim | Given a blob just over the limit once decoded, when fetched, then it is refused before it is decoded
+MCP-EXT-APPS-12 | tests/test_ext_apps_host.nim | Given an answer whose contents is missing or not an array, when checked, then McpAppsError
 MCP-EXT-APPS-13 | tests/test_ext_apps_messages.nim | Given a View's ui/initialize, when the host answers, then the result carries the version, host info, capabilities and context
 MCP-EXT-APPS-13 | tests/test_ext_apps_messages.nim | Given the View's initialize, when it declares display modes and tools, then they are remembered
 MCP-EXT-APPS-13 | tests/test_ext_apps_messages.nim | Given ui/initialize without appCapabilities or with a malformed field, when handled, then McpAppsError and the session stays unstarted
@@ -2432,11 +2438,19 @@ MCP-EXT-APPS-13 | tests/test_ext_apps_messages.nim | Given tool-input already se
 MCP-EXT-APPS-13 | tests/test_ext_apps_messages.nim | Given tool-input sent, when a partial follows, then McpAppsError
 MCP-EXT-APPS-13 | tests/test_ext_apps_messages.nim | Given a ready View, when the host sends a sandbox-reserved message to it, then McpAppsError
 MCP-EXT-APPS-13 | tests/test_ext_apps_messages.nim | Given a ready View, when the host cancels, changes context and tears down, then those pass
+MCP-EXT-APPS-13 | tests/test_ext_apps_messages.nim | Given a host context that is not an object or holds a section of the wrong kind, when validated, then each is a problem
+MCP-EXT-APPS-13 | tests/test_ext_apps_messages.nim | Given a host context with a list of modes and zero-pixel dimensions, when validated, then it passes
+MCP-EXT-APPS-13 | tests/test_ext_apps_messages.nim | Given host capabilities that are not an object, when the result is built, then McpAppsError
+MCP-EXT-APPS-13 | tests/test_ext_apps_messages.nim | Given ui/initialize without appInfo, when handled, then McpAppsError
+MCP-EXT-APPS-13 | tests/test_ext_apps_messages.nim | Given a View whose tools declaration omits listChanged, when initialized, then it does not announce list changes
+MCP-EXT-APPS-13 | tests/test_ext_apps_messages.nim | Given initialized sent twice or too early, when noted, then the error says which
 MCP-EXT-APPS-14 | tests/test_ext_apps_messages.nim | Given arguments and a result, when the notifications are built, then they have the specification's methods and params
 MCP-EXT-APPS-14 | tests/test_ext_apps_messages.nim | Given arguments or a result that are not objects, when built, then McpAppsError
 MCP-EXT-APPS-14 | tests/test_ext_apps_messages.nim | Given a reason, when cancellation and teardown are built, then it travels in params
 MCP-EXT-APPS-14 | tests/test_ext_apps_messages.nim | Given a partial context, when host-context-changed is built, then params are that context
 MCP-EXT-APPS-14 | tests/test_ext_apps_messages.nim | Given a denied request, when the error is built, then it has the implementation-defined code and the message
+MCP-EXT-APPS-14 | tests/test_ext_apps_messages.nim | Given no reason, when teardown is built, then params are empty
+MCP-EXT-APPS-14 | tests/test_ext_apps_messages.nim | Given a changed context that breaks the specification, when host-context-changed is built, then McpAppsError
 MCP-EXT-APPS-15 | tests/test_ext_apps_messages.nim | Given ui/open-link with an http or https URL, when parsed, then the URL is returned
 MCP-EXT-APPS-15 | tests/test_ext_apps_messages.nim | Given ui/open-link with a URL the host should not open, when parsed, then McpAppsError
 MCP-EXT-APPS-15 | tests/test_ext_apps_messages.nim | Given ui/message with a text block, when parsed, then the block is returned whether given as an object or an array
@@ -2446,6 +2460,9 @@ MCP-EXT-APPS-15 | tests/test_ext_apps_messages.nim | Given ui/update-model-conte
 MCP-EXT-APPS-15 | tests/test_ext_apps_messages.nim | Given ui/request-display-mode, when parsed, then the mode is returned; an unknown mode is McpAppsError
 MCP-EXT-APPS-15 | tests/test_ext_apps_messages.nim | Given a requested mode, when the host resolves it, then it is granted only if the host and a declaring View support it
 MCP-EXT-APPS-15 | tests/test_ext_apps_messages.nim | Given ui/notifications/size-changed, when parsed, then width and height are read, each optional
+MCP-EXT-APPS-15 | tests/test_ext_apps_messages.nim | Given ui/message with a resource block, when parsed, then it is returned; one without a resource object or a type is McpAppsError
+MCP-EXT-APPS-15 | tests/test_ext_apps_messages.nim | Given a mode the host or the View does not support, when resolved, then the current mode is kept, whichever it is
+MCP-EXT-APPS-15 | tests/test_ext_apps_messages.nim | Given a size of zero or a number that is not finite, when size-changed is parsed, then zero passes and the other is McpAppsError
 MCP-EXT-APPS-16 | tests/test_ext_apps_messages.nim | Given the ready and resource-ready messages, when built, then they have the specification's shape
 MCP-EXT-APPS-16 | tests/test_ext_apps_messages.nim | Given a csp with a bad origin, when sandbox-resource-ready is built, then McpAppsError
 MCP-EXT-APPS-16 | tests/test_ext_apps_messages.nim | Given methods, when routed, then the sandbox forwards all but ui/notifications/sandbox-* and the host forwards to the server only non-ui methods

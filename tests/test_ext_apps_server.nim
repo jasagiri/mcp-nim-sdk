@@ -77,6 +77,12 @@ suite "UI resources":
                       "description": "Interactive weather dashboard view",
                       "mimeType": ResourceMimeType}
 
+  test "Given a UI resource registered without a description, when listed, then the entry has no description":
+    let registry = newAppsRegistry()
+    registry.addUiResource(Uri, "weather_dashboard", Html)
+    check registry.listUiResources()[0] == %*{"uri": Uri, "name": "weather_dashboard",
+                                              "mimeType": ResourceMimeType}
+
   test "Given a registered UI resource, when read, then the content item has text, the mime type and _meta.ui on the item":
     let contents = weatherRegistry().readUiResource(Uri).get
     check contents.len == 1

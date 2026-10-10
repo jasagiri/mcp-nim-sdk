@@ -81,6 +81,11 @@ suite "origins in a CSP declaration":
                "https://cdn.jsdelivr.net", "http://localhost:3000", "https://x.example.com:8443"]:
       check cspProblem(UiCsp(connectDomains: @[ok])).isNone
 
+  test "Given a host that starts, ends or continues with a digit, when checked, then it is accepted":
+    for ok in ["https://127.0.0.1:8080", "https://1abc.example.com", "https://abc1.example.com",
+               "https://a1b.example.com"]:
+      check cspProblem(UiCsp(connectDomains: @[ok])).isNone
+
   test "Given a source that could end or extend a directive, when checked, then it is refused":
     for bad in ["https://a.com; script-src *", "https://a.com https://b.com", "'unsafe-eval'",
                 "*", "https://a.com,b", "https://a.com'", "data:", "blob:", "javascript:alert(1)",
@@ -174,6 +179,13 @@ suite "the CSP a host enforces":
     check "base-uri 'self'" in directives
     check "object-src 'none'" in directives
     check "default-src 'none'" in directives
+
+  test "Given only connect origins, when the CSP is built, then the resource directives are the plain ones":
+    let directives = contentSecurityPolicy(some(UiCsp(
+      connectDomains: @["https://api.example.com"]))).split("; ")
+    for directive in ["script-src 'self' 'unsafe-inline'", "style-src 'self' 'unsafe-inline'",
+                      "img-src 'self' data:", "font-src 'self'", "media-src 'self' data:"]:
+      check directive in directives
 
   test "Given frame and base-uri origins, when the CSP is built, then they replace the 'none' and 'self' defaults":
     let csp = contentSecurityPolicy(some(UiCsp(

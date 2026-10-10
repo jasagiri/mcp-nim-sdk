@@ -3,7 +3,7 @@
 ## specification/2026-01-26/apps.mdx ("Communication Protocol",
 ## "MCP Apps Specific Messages", "Sandbox proxy", "Lifecycle").
 
-import std/[unittest, json, options]
+import std/[unittest, json, options, strutils]
 import ext/apps/model
 import ext/apps/messages
 
@@ -80,6 +80,55 @@ suite "the handshake":
       check hostContextProblem(bad).isSome
       expect McpAppsError:
         discard initializeResult("h", "1", %*{}, bad)
+
+  test "Given a host context that is not an object or holds a section of the wrong kind, when validated, then each is a problem":
+    for bad in [newJNull(), %*[1], %*"theme", %*{"displayMode": 3},
+                %*{"availableDisplayModes": "inline"}, %*{"availableDisplayModes": [3]},
+                %*{"containerDimensions": 3}, %*{"containerDimensions": {"width": newJFloat(Inf)}},
+                %*{"containerDimensions": {"width": 400, "maxWidth": 500}},
+                %*{"safeAreaInsets": 3}, %*{"deviceCapabilities": 3},
+                %*{"styles": 3}, %*{"styles": {"variables": 3}}]:
+      check hostContextProblem(bad).isSome
+    check hostContextProblem(nil).isSome
+
+  test "Given a host context with a list of modes and zero-pixel dimensions, when validated, then it passes":
+    check hostContextProblem(%*{"availableDisplayModes": ["inline", "pip"]}).isNone
+    check hostContextProblem(%*{"containerDimensions": {"height": 0, "width": 0}}).isNone
+
+  test "Given host capabilities that are not an object, when the result is built, then McpAppsError":
+    for bad in [%*[1], %*"x", newJNull()]:
+      expect McpAppsError:
+        discard initializeResult("h", "1", bad, %*{})
+    expect McpAppsError:
+      discard initializeResult("h", "1", nil, %*{})
+
+  test "Given ui/initialize without appInfo, when handled, then McpAppsError":
+    let session = newViewSession()
+    expect McpAppsError:
+      discard session.handleInitialize(%*{"appCapabilities": {}, "protocolVersion": "2026-01-26"},
+                                       "h", "1", %*{}, %*{})
+    check session.phase == vpAwaitInitialize
+
+  test "Given a View whose tools declaration omits listChanged, when initialized, then it does not announce list changes":
+    let session = newViewSession()
+    discard session.handleInitialize(viewInit(%*{"appCapabilities": {"tools": {}}}),
+                                     "h", "1", %*{}, %*{})
+    check not session.init.get.toolsListChanged
+
+  test "Given initialized sent twice or too early, when noted, then the error says which":
+    var early = ""
+    try:
+      newViewSession().noteInitialized()
+    except McpAppsError as e:
+      early = e.msg
+    check "before ui/initialize" in early
+    var twice = ""
+    try:
+      let session = readySession()
+      session.noteInitialized()
+    except McpAppsError as e:
+      twice = e.msg
+    check "twice" in twice
 
   test "Given the specification's host context example, when validated, then it passes":
     check hostContextProblem(%*{"theme": "dark", "styles": {"variables": {
@@ -167,8 +216,15 @@ suite "messages the host builds":
     check teardown["method"].getStr() == "ui/resource-teardown"
     check teardown["params"]["reason"].getStr() == "re-allocation"
 
+  test "Given no reason, when teardown is built, then params are empty":
+    check resourceTeardownRequest(%3)["params"] == newJObject()
+
   test "Given a partial context, when host-context-changed is built, then params are that context":
     check hostContextChangedNotification(%*{"theme": "light"})["params"] == %*{"theme": "light"}
+
+  test "Given a changed context that breaks the specification, when host-context-changed is built, then McpAppsError":
+    expect McpAppsError:
+      discard hostContextChangedNotification(%*{"theme": "blue"})
 
   test "Given a denied request, when the error is built, then it has the implementation-defined code and the message":
     check uiErrorResponse(%2, "Link opening denied by user") ==
@@ -207,6 +263,13 @@ suite "requests of the View":
       expect McpAppsError:
         discard parseUiMessage(bad)
 
+  test "Given ui/message with a resource block, when parsed, then it is returned; one without a resource object or a type is McpAppsError":
+    let resourceBlock = %*{"type": "resource", "resource": {"uri": "file:///a", "text": "x"}}
+    check parseUiMessage(%*{"role": "user", "content": resourceBlock}) == @[resourceBlock]
+    for bad in [%*{"type": "resource", "resource": "file:///a"}, newJObject()]:
+      expect McpAppsError:
+        discard parseUiMessage(%*{"role": "user", "content": bad})
+
   test "Given ui/update-model-context, when parsed, then content blocks and structured content are returned":
     let update = parseUpdateModelContext(%*{"content": [{"type": "text", "text": "state"}],
                                             "structuredContent": {"a": 1}})
@@ -234,6 +297,19 @@ suite "requests of the View":
     check resolveDisplayMode(udPip, [udInline, udPip], undeclared, udInline) == udPip
     check displayModeResult(udInline) == %*{"mode": "inline"}
 
+  test "Given a mode the host or the View does not support, when resolved, then the current mode is kept, whichever it is":
+    let declared = ViewInit(availableDisplayModes: @[udInline, udFullscreen])
+    check resolveDisplayMode(udPip, [udInline, udFullscreen], declared, udFullscreen) == udFullscreen
+    check resolveDisplayMode(udPip, [udInline, udFullscreen, udPip], declared, udPip) == udPip
+    check resolveDisplayMode(udPip, [udInline, udFullscreen, udPip], declared, udFullscreen) == udFullscreen
+
+  test "Given a size of zero or a number that is not finite, when size-changed is parsed, then zero passes and the other is McpAppsError":
+    check parseSizeChanged(%*{"width": 0, "height": 0}) == (width: some(0.0), height: some(0.0))
+    expect McpAppsError:
+      discard parseSizeChanged(%*{"width": newJFloat(Inf)})
+    expect McpAppsError:
+      discard parseSizeChanged(%*{"height": newJFloat(NaN)})
+
   test "Given ui/notifications/size-changed, when parsed, then width and height are read, each optional":
     check parseSizeChanged(%*{"width": 400, "height": 250.5}) ==
       (width: some(400.0), height: some(250.5))
@@ -255,6 +331,7 @@ suite "sandbox proxy":
     check ready["params"]["permissions"].hasKey("camera")
     check ready["params"]["sandbox"].getStr() == "allow-scripts allow-same-origin"
     check not sandboxResourceReadyNotification("x")["params"].hasKey("csp")
+    check not sandboxResourceReadyNotification("x")["params"].hasKey("sandbox")
 
   test "Given a csp with a bad origin, when sandbox-resource-ready is built, then McpAppsError":
     expect McpAppsError:

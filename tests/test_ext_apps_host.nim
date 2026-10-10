@@ -165,6 +165,14 @@ suite "tools and their UI references":
       check "ui://" in tools[0].problem.get
       check tools[1].problem.isNone
 
+  test "Given a server without the tools capability, when tools are listed, then McpUnsupportedError and nothing is sent":
+    for v in eachVersion():
+      let peer = startPeer(nil, modern = isModern(peerVersion), capabilities = %*{"resources": {}})
+      let client = appsClient(peer, v)
+      expect McpUnsupportedError:
+        discard waitFor client.listAppTools()
+      check peer.requestsFor("tools/list").len == 0
+
   test "Given several pages, when listed, then every page is read":
     for v in eachVersion():
       let tools = waitFor appsClient(toolsPeer(@[both, appOnly, plain], pageSize = 1), v).listAppTools()
@@ -265,8 +273,22 @@ suite "fetching a UI resource":
     expectRefused(@[%*{"uri": Uri, "mimeType": ResourceMimeType,
                        "blob": repeat('A', 4 * 1024 * 1024)}], "the blob exceeds", limits)
 
+  test "Given a blob just over the limit once decoded, when fetched, then it is refused before it is decoded":
+    let limits = UiLimits(maxHtmlBytes: 1024)
+    # 1372 characters decode to 1029 bytes: the size estimate alone refuses it.
+    expectRefused(@[%*{"uri": Uri, "mimeType": ResourceMimeType,
+                       "blob": repeat('A', 1372)}], "the blob exceeds", limits)
+
   test "Given a non-positive limit, when fetched, then McpProtocolError":
     expectRefused(@[item()], "limit", UiLimits(maxHtmlBytes: 0))
+    expectRefused(@[item()], "must be positive", UiLimits(maxHtmlBytes: 0))
+    expectRefused(@[item()], "must be positive", UiLimits(maxHtmlBytes: -1))
+
+  test "Given an answer whose contents is missing or not an array, when checked, then McpAppsError":
+    expect McpAppsError:
+      discard uiResourceFromContents(Uri, nil)
+    expect McpAppsError:
+      discard uiResourceFromContents(Uri, %*{"uri": Uri})
 
   test "Given declarations with a bad origin or wrong types, when fetched, then McpProtocolError":
     for (meta, fragment) in [
