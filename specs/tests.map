@@ -2286,6 +2286,14 @@ MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given an ID-JAG like assertion
 MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given a subject token, when exchanged, then every RFC 8693 parameter is sent and the issued token is returned with its type and lifetime
 MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given an empty subject token, when exchanged, then nothing is sent
 MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given token exchange responses with a missing field, when parsed, then each is refused
+MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given a signer with no signing function or no algorithm, when signing, then OAuthError says it is not set up
+MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given a JWT whose signature is empty or not base64url, when decoded, then it is refused
+MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given a header whose alg is missing, not a string or empty, when decoded, then it is refused
+MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given a JWT of exactly the largest accepted length and one a byte longer, when decoded, then the first is read and the second refused
+MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given a client assertion without a client_id or without an audience, when made, then OAuthError refuses either
+MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given scopes, when the JWT bearer grant is requested, then they are sent as one scope parameter
+MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given a private_key_jwt client without a lifetime, when client credentials are requested, then the assertion lives one minute
+MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given a subject token and no scopes, when exchanged, then no scope parameter is sent
 MCP-EXT-AUTH-8 | tests/test_ext_auth_enterprise_managed.nim | Given a 401 and an ID token, when a request is sent, then the IdP exchanges it for an ID-JAG for this authorization server and resource, the server turns that into an access token, and the user is never sent anywhere
 MCP-EXT-AUTH-8 | tests/test_ext_auth_enterprise_managed.nim | Given the access token the server issued, when it is looked up, then it is restricted to the MCP server named by the ID-JAG's resource
 MCP-EXT-AUTH-8 | tests/test_ext_auth_enterprise_managed.nim | Given a SAML assertion or a refresh token instead of an ID token, when a request is sent, then subject_token_type says which

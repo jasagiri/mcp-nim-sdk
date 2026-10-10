@@ -2,7 +2,7 @@
 ## and the JWTs they carry (src/auth/oauth/jwt.nim and grants.nim). Nothing
 ## here is MCP: a fake token endpoint that authenticates clients strictly.
 
-import std/[unittest, asyncdispatch, httpcore, json, options, strutils, times, tables, sets]
+import std/[unittest, asyncdispatch, base64, httpcore, json, options, strutils, times, tables, sets]
 import auth/oauth/[errors, fetch, grants, jwt, tokens, urls]
 import ext_auth_fixtures
 
@@ -104,6 +104,50 @@ suite "JWTs":
     check a.claims{"jti"}.getStr().len >= 20
     check a.claims{"jti"}.getStr() != b.claims{"jti"}.getStr()
 
+  test "Given a signer with no signing function or no algorithm, when signing, then OAuthError says it is not set up":
+    expect OAuthError:
+      discard JwtSigner(alg: "HS256").signJwt(%*{"a": 1})
+    let noAlgorithm = JwtSigner(sign: proc(input: string): string {.closure, gcsafe.} = "x")
+    expect OAuthError:
+      discard noAlgorithm.signJwt(%*{"a": 1})
+
+  test "Given a JWT whose signature is empty or not base64url, when decoded, then it is refused":
+    let parts = hs256Signer("k").signJwt(%*{"a": 1}).split('.')
+    for signature in ["", "ab+d", "ab=="]:
+      expect OAuthError:
+        discard decodeJwtUnverified(parts[0] & "." & parts[1] & "." & signature)
+
+  test "Given a header whose alg is missing, not a string or empty, when decoded, then it is refused":
+    proc b64(text: string): string =
+      base64.encode(text, safe = true).strip(leading = false, chars = {'='})
+    for header in ["""{"typ":"JWT"}""", """{"alg":5}""", """{"alg":""}""", """{"alg":null}"""]:
+      expect OAuthError:
+        discard decodeJwtUnverified(b64(header) & "." & b64("{}") & "." & "c2ln")
+
+  test "Given a JWT of exactly the largest accepted length and one a byte longer, when decoded, then the first is read and the second refused":
+    let signer = hs256Signer("k")
+    var token = ""
+    for filler in 0 .. 8:
+      let parts = signer.signJwt(%*{"p": repeat('x', filler)}).split('.')
+      let rest = MaxJwtLength - parts[0].len - parts[1].len - 2
+      if rest mod 4 != 1:  # a base64 text cannot be 1 mod 4 characters long
+        token = parts[0] & "." & parts[1] & "." & repeat('A', rest)
+        break
+    check token.len == MaxJwtLength
+    check decodeJwtUnverified(token).header{"alg"}.getStr() == "HS256"
+    try:
+      discard decodeJwtUnverified(token & "A")
+      fail()
+    except OAuthError as e:
+      check "longer than" in e.msg
+
+  test "Given a client assertion without a client_id or without an audience, when made, then OAuthError refuses either":
+    let signer = hs256Signer("k")
+    expect OAuthError:
+      discard signer.clientAssertion("", "https://as.example", fromUnix(1_700_000_000))
+    expect OAuthError:
+      discard signer.clientAssertion("client-1", "", fromUnix(1_700_000_000))
+
 suite "grants at a token endpoint":
 
   proc setup(): (ClientRegistry, ref seq[GrantRequest], FakeAs) =
@@ -151,6 +195,7 @@ suite "grants at a token endpoint":
     check seen[][0].field("client_id") == some("svc")
     check seen[][0].field("client_secret") == some(Secret)
     check seen[][0].authorization == ""
+    check seen[][0].field("scope").isNone
 
   test "Given a signing key, when client credentials are requested with private_key_jwt, then the assertion authenticates and client_id is not sent":
     let (_, seen, a) = setup()
@@ -192,6 +237,23 @@ suite "grants at a token endpoint":
     check t.accessToken.len > 0
     check seen[][0].field("grant_type") == some("urn:ietf:params:oauth:grant-type:jwt-bearer")
     check seen[][0].field("assertion") == some("the.assertion.here")
+    check seen[][0].field("scope").isNone
+
+  test "Given scopes, when the JWT bearer grant is requested, then they are sent as one scope parameter":
+    let (_, seen, a) = setup()
+    defer: a.stop()
+    discard waitFor jwtBearerGrant(a.endpointOf, a.issuer, "the.assertion.here",
+                                   secretPost("svc", Secret), @["a", "b"], policy)
+    check seen[][0].field("scope") == some("a b")
+
+  test "Given a private_key_jwt client without a lifetime, when client credentials are requested, then the assertion lives one minute":
+    let (_, seen, a) = setup()
+    defer: a.stop()
+    let auth = privateKeyJwt("jwt-client", hs256Signer("jwt-key"), a.issuer, DurationZero)
+    discard waitFor clientCredentialsGrant(a.endpointOf, a.issuer, auth, @["s"], none(string),
+                                           policy, getTime())
+    let claims = decodeJwtUnverified(seen[][0].field("client_assertion").get).claims
+    check claims{"exp"}.getInt() - claims{"iat"}.getInt() == 60
 
   test "Given a subject token, when exchanged, then every RFC 8693 parameter is sent and the issued token is returned with its type and lifetime":
     let (_, seen, a) = setup()
@@ -213,6 +275,13 @@ suite "grants at a token endpoint":
     check f.field("audience") == some("https://as.example/")
     check f.field("resource") == some("https://mcp.example/")
     check f.field("scope") == some("a b")
+
+  test "Given a subject token and no scopes, when exchanged, then no scope parameter is sent":
+    let (_, seen, a) = setup()
+    defer: a.stop()
+    discard waitFor exchangeToken(a.endpointOf, TokenExchangeRequest(
+      subjectToken: "id-token-1", subjectTokenType: TokenTypeIdToken), secretPost("svc", Secret), policy)
+    check seen[][0].field("scope").isNone
 
   test "Given an empty subject token, when exchanged, then nothing is sent":
     let (_, seen, a) = setup()
