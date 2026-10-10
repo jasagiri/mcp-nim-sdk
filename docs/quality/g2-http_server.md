@@ -81,7 +81,7 @@ push の前の測り直しの対象。
 | 75 | http_server.nim:503 | ROR | `close < 0` → `<= 0` | 1 | `value.startsWith("[")` の後なので `value[0]` は `[` で、`]` は 0 番にならない。`find(']')` の結果は -1 か 1 以上で、`0` は出ない。両者は同じ結果になる |
 | 76 | http_server.nim:505 | ROR | `colon >= 0` → `> 0` | 6 | 受け入れ。違いが出るのは Host の値が `:` で始まる (名前が空の) ときだけで、どちらでも拒まれる。差が出る唯一の場合は `allowedHosts` に空文字列を入れたときで、原文は `:80` を通し、変異は通さない。空の名前を許す設定は意味がないので、その挙動は固定しない |
 | 143 | http_server.nim:505 | LOR | `colon >= 0 and value.count(':') == 1` → `or` | 3 | 角括弧のない IPv6 (`::1`) を名前として切り刻まない。`S` "Given a transport bound to loopback, when a request names the bare IPv6 loopback address, then it is served"。確認: 変異すると `::1` が `:` に切られて 403 |
-| 377 | http_server.nim:515 | RVR | `return false` → `return default` | 未判定 | **訂正 (2026-10-10)**: 同値ではない。nim-muter の RVR はリテラルの戻り値を反対の値にする (`return false` → `return true`。報告の表示だけが `<return default>`)。待ち行列の測り直し (76a08c6a) の結果で判定する。 |
+| 377 | http_server.nim:515 | RVR | `return false` → `return default` | 検出 (測り直し) | **訂正 (2026-10-10)**: 同値ではない。nim-muter の RVR はリテラルの戻り値を反対の値にする (`return false` → `return true`。報告の表示だけが `<return default>`)。測り直し (76a08c6a) で検出された。 |
 | 206 | http_server.nim:515 | BLR | `return false` → `return true` | 3 | Host のない要求は 403 (DNS rebinding の対策)。`S` "Given a transport bound to loopback, when a request carries no Host header at all, then the answer is 403"。確認: 変異すると 400 になる (通ってしまう) |
 | 150 | http_server.nim:576 | LOR | `owner == session and exchange.idNode == clientId` → `or` | 3 | 取り消しは、送り手のセッションの、その id の要求だけを名指す。`H` "Given two sessions that chose the same request ids, when one cancels its requests, then each notification names that session's own request"。既存の `test_security_http.nim` の同種のテストは `pendingExchangeCount` だけを見ていて、どの要求が取り消されたかは見ていなかった。新しいテストは、サーバーが受け取る通知の requestId が、どの交換 id かを見る。確認: 変異すると `http-3` を指す (正しくは `http-4`) |
 | 260 | http_server.nim:578 | SDL | `exchangeOf` の最後の `none(string)` → `discard` | 1 | 結果の `Option[string]` の既定値は none で、`none(string)` と同じ |
@@ -244,7 +244,7 @@ push の前の測り直しの対象。
 
 | id | 行 (測定時) | 変異 | 元 → 変異 | クラス | 理由と検出するテスト |
 |---|---|---|---|---|---|
-| 49 | 66 | RVR | `return false` → `<return default>` | 未判定 | **訂正 (2026-10-10)**: 同値ではない。nim-muter の RVR はリテラルの戻り値を反対の値にする (`return false` → `return true`。報告の表示だけが `<return default>`)。待ち行列の測り直し (76a08c6a) の結果で判定する。 |
+| 49 | 66 | RVR | `return false` → `<return default>` | 検出 (測り直し) | **訂正 (2026-10-10)**: 同値ではない。nim-muter の RVR はリテラルの戻り値を反対の値にする (`return false` → `return true`。報告の表示だけが `<return default>`)。測り直し (76a08c6a) で検出された。 |
 | 22 | 66 | BLR | `return false` の `false` → `true` | 3 | 終わったストリームへの `push` が真を返す。S (g2f-hs-c) の「finished stream ... refused」。 |
 | 23 | 72 | BLR | 末尾の `true` → `false` | 3 | 受け付けた `push` が偽を返す。同じテストと「remembers its last two of three」が落ちる。 |
 | 5 | 86 | ROR | `dash <= 0` → `< 0` | 3 | `-5` が空のストリーム id の event id になる。S (g2f-hs-c) の「not the id of an event」。 |
@@ -275,3 +275,31 @@ push の前の測り直しの対象。
 - 356 / 359 (許容): 書き込みに失敗した接続を `close()` する文。相手はすでに去っており、クライアントから見える違いは出ない。違いは記述子を手放す時機だけである。書き込みの失敗を決まった形で起こす方法が見つからなかった (相手が閉じた後の最初の書き込みは、カーネルの緩衝に入って成功することが多い)。記述子の数を測る検査は不安定になるので書かなかった。
 - 366 (許容): 記述子が上限に近いときの `sleepAsync(50)`。この文を消すと、枝が await のない空回りになり、イベントループが止まる。ただし枝に入るには、プロセスが `RLIMIT_NOFILE` の 5 つ手前まで記述子を使っていなければならない。`setrlimit` で上限を下げて試したが、下げた状態でソケットを作ると macOS の kqueue 側で `Bad file descriptor` になり、安定したテストにならなかったので外した (コミットしていない)。`asynchttpserver` の `maxFDs` は非公開で、トランスポートからは変えられない。公開された口を足すなら `http_server.nim` の変更になるので、リードの判断に任せる。
 - クラス 4 (死んだコード) と 5 (欠陥) はなかった。
+
+## 測り直し (本線 76a08c6a、2026-10-10)
+
+36a4c8a5 の測定のあとに足したテストと修正を入れたコミットで、同じジョブを測り直した。変異 391、検出 264、時間切れ 92、コンパイル不能 15、**生き残り 20** (前回 94)。所要 451 分。
+
+前回の生き残りとの突き合わせは変異の指紋で行った (指紋が変わった行は、ファイル・変異の文面・3 行以内の行番号で合わせた)。20 件のうち 18 件は前回も生き残っていて、この文書に分類と理由がある。「未判定」としていた 2 件 (g2f-hs-a の id 377 = `http_server.nim:516`、g2f-hs-c の id 49 = `sse_stream.nim:67`。どちらも `return false` → `return true`) は検出された。
+
+### 新しく現れた生き残り 2 件
+
+どちらも `sse_stream.nim` の `serveStream`。分類 3 (穴) で、テストを足した。変異を手で当てて、足したテストが落ちることを確かめた。
+
+| 場所 | 変異 | 何が起きるか | 足したテスト |
+|---|---|---|---|
+| `sse_stream.nim:141` | SDL `stream.wake()` → `discard` | 置き換えられた古い接続が、次の通知が来るまで気づかない。気づく前にその通知を自分でも書き出すので、同じメッセージが 2 本の接続に流れる。前からあるテストは古い接続が終わることしか見ていなかった | MCP-HTTPGET-2: Given a second GET that took the stream over, when a notification is sent, then the first connection ends without carrying it |
+| `sse_stream.nim:187` | SDL `bell.watch(idle)` → `discard` | keep-alive の時計を張り直したあと監視しないので、keep-alive のコメントが 1 回しか出ない。前からあるテストは 1 回目しか読んでいなかった | MCP-HTTPSTREAM-20: Given a stream with nothing to say, when two keep-alive periods pass, then a comment goes out in each |
+
+141 行は前回 (待ちを `Doorbell` に変える前) は検出されていた。187 行は `Doorbell` に変えたときに入った行で、前回の測定には無い。
+
+### 時間切れ 92 件
+
+上限は 218 秒 (基準の実行 43.6 秒から道具が決めた値)。92 件とも上限ちょうどで打ち切られていて、遅いだけで終わるものは無い。道具は、4 並列の通しで時間切れになった変異を、最後に 1 件ずつ単独で流し直す。92 件はその流し直しでも時間切れだった。
+
+- 62 件は前回も時間切れ。応答を返す文や待ちを解く文を消す変異 (SDL) が大半で、応答が来ないのでテストの側が待ち続ける。
+- 30 件は前回は時間切れではなかった (前回の結果: 検出 22、生き残り 7、前回の測定に無い行 1)。
+
+前回は検出だった変異が時間切れになった理由を、1 件 (`http_server.nim:851`、`methodName == "initialize"` → `!=`) を手で当てて調べた。`tests/test_http_streams.nim` は 60 件を超える検査で落ち (変異は検出されている)、そのあと、前回の測定のあとに足したテスト「Given a posted request, when the server takes it with receiveMessage, then it gets the message」が `receiveMessage` を上限なしで待って止まっていた。この待ちに 2 秒の上限を付けると、同じ変異でファイルは 5 秒で終わる (終了コード 1)。上限を付けたテストは、上の 2 本と同じコミットに入れた。
+
+残りの 29 件を 1 件ずつは調べていない。テストの補助 `post` (`waitFor http.request`) にも上限が無く、応答を返さなくなる変異ではここで止まると見ている (未確認)。時間切れは「テストが通らなかった」側の結果なので、生き残りの判定には影響しない。影響するのは測定の時間で、今回の 451 分のうち、単独の流し直しだけで 92 × 218 秒 = 334 分を使っている。

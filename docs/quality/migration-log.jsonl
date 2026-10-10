@@ -42,3 +42,17 @@
 {"kind": "mutation_run", "date": "2026-10-07", "module": "http_client", "commit": "36a4c8a5836f", "mutants": 369, "survived": 149, "minutes": 162}
 {"kind": "mutation_run", "date": "2026-10-07", "module": "jsonschema", "commit": "7d32c165e25e", "mutants": 483, "survived": 126}
 {"kind": "mutation_run", "date": "2026-10-07", "module": "base64_shape", "commit": "7d32c165e25e", "mutants": 14, "survived": 0}
+{"kind": "mutation_run", "date": "2026-10-09", "module": "client", "commit": "76a08c6a83eb", "mutants": 346, "survived": 9, "minutes": 169}
+{"kind": "mutation_run", "date": "2026-10-09", "module": "server", "commit": "76a08c6a83eb", "mutants": 442, "survived": 39, "minutes": 185}
+{"kind": "mutation_run", "date": "2026-10-09", "module": "lifecycle", "commit": "76a08c6a83eb", "mutants": 24, "survived": 2, "minutes": 10}
+{"kind": "mutation_run", "date": "2026-10-10", "module": "tasks", "commit": "76a08c6a83eb", "mutants": 297, "survived": 21, "minutes": 94}
+{"kind": "mutation_run", "date": "2026-10-10", "module": "trace_context", "commit": "76a08c6a83eb", "mutants": 96, "survived": 11, "minutes": 8}
+{"kind": "mutation_run", "date": "2026-10-10", "module": "modern", "commit": "76a08c6a83eb", "mutants": 94, "survived": 6, "minutes": 4}
+{"kind": "mutation_run", "date": "2026-10-10", "module": "mrtr", "commit": "76a08c6a83eb", "mutants": 105, "survived": 8, "minutes": 4}
+{"kind": "mutation_run", "date": "2026-10-10", "module": "diagnostic", "commit": "76a08c6a83eb", "mutants": 37, "survived": 2, "minutes": 3}
+{"kind": "mutation_run", "date": "2026-10-10", "module": "features", "commit": "76a08c6a83eb", "mutants": 57, "survived": 0, "minutes": 3}
+{"kind": "mutation_run", "date": "2026-10-10", "module": "address_policy", "commit": "76a08c6a83eb", "mutants": 212, "survived": 18, "minutes": 9}
+{"kind": "mutation_run", "date": "2026-10-10", "module": "auth_oauth", "commit": "76a08c6a83eb", "mutants": 326, "survived": 19, "minutes": 28}
+{"kind": "mutation_run", "date": "2026-10-10", "module": "sampling_tools", "commit": "76a08c6a83eb", "mutants": 168, "survived": 2, "minutes": 3}
+{"kind": "mutation_run", "date": "2026-10-10", "module": "subscriptions", "commit": "76a08c6a83eb", "mutants": 84, "survived": 2, "minutes": 15}
+{"kind": "mutation_run", "date": "2026-10-10", "module": "http_server", "commit": "76a08c6a83eb", "mutants": 391, "survived": 20, "minutes": 451}
