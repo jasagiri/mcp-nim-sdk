@@ -2242,11 +2242,16 @@ MCP-EXT-AUTH-1 | tests/test_ext_auth_client_credentials.nim | Given a server tha
 MCP-EXT-AUTH-1 | tests/test_ext_auth_client_credentials.nim | Given a stored token, when more requests are sent, then they reuse it and no second token is requested
 MCP-EXT-AUTH-1 | tests/test_ext_auth_client_credentials.nim | Given a token that has expired, when the next request is sent, then a new one is requested before it and the request needs no 401
 MCP-EXT-AUTH-1 | tests/test_ext_auth_client_credentials.nim | Given an access token, when requests are sent, then the token is in no URL and goes to the resource server only
+MCP-EXT-AUTH-1 | tests/test_ext_auth_client_credentials.nim | Given the default clock, when a signing client requests a token, then the assertion is dated now and the server accepts it
+MCP-EXT-AUTH-1 | tests/test_ext_auth_client_credentials.nim | Given an expired token and an authorization server that now refuses the client, when requests fail, then the stale token is dropped and the next request asks once
 MCP-EXT-AUTH-2 | tests/test_ext_auth_client_credentials.nim | Given a challenge with a scope, when the token is requested, then it asks for that scope
 MCP-EXT-AUTH-2 | tests/test_ext_auth_client_credentials.nim | Given no scope in the challenge but scopes_supported, when the token is requested, then it asks for those
 MCP-EXT-AUTH-2 | tests/test_ext_auth_client_credentials.nim | Given scopes in the config, when the token is requested, then they replace the challenge's
 MCP-EXT-AUTH-2 | tests/test_ext_auth_client_credentials.nim | Given a 403 insufficient_scope, when the request is sent, then the client asks again for the union and the request succeeds
 MCP-EXT-AUTH-2 | tests/test_ext_auth_client_credentials.nim | Given a 403 that names a scope the client already asked for, when it repeats, then the client does not ask again and the request fails
+MCP-EXT-AUTH-2 | tests/test_ext_auth_client_credentials.nim | Given a 403 that is no insufficient_scope challenge, or a status that is no challenge, when handled, then the answer is no and nothing is requested
+MCP-EXT-AUTH-2 | tests/test_ext_auth_client_credentials.nim | Given a 401 without any challenge header, when handled, then the token is requested for the scopes the resource supports
+MCP-EXT-AUTH-2 | tests/test_ext_auth_client_credentials.nim | Given a 403 that names a scope already requested, when handled, then the answer is no and no second token is requested
 MCP-EXT-AUTH-3 | tests/test_ext_auth_client_credentials.nim | Given metadata without token_endpoint_auth_methods_supported, when a request is sent, then no credential is sent
 MCP-EXT-AUTH-3 | tests/test_ext_auth_client_credentials.nim | Given metadata that lists neither private_key_jwt nor client_secret_basic, when a request is sent, then no credential is sent
 MCP-EXT-AUTH-3 | tests/test_ext_auth_client_credentials.nim | Given a signing client and metadata without private_key_jwt, when a request is sent, then no assertion is sent

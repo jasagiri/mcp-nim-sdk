@@ -237,6 +237,73 @@ when DefaultProtocolVersion.has(ftProtectedResourceMetadata):
         discard t.ping()
       check env.requests[].len == 1
 
+  suite "client credentials: how a challenge is answered":
+
+    test "Given a 403 that is no insufficient_scope challenge, or a status that is no challenge, when handled, then the answer is no and nothing is requested":
+      let env = startEnv()
+      defer: env.stop()
+      let auth = newClientCredentialsAuth(env.withSecret())
+      check not (waitFor auth.handleChallenge(403, @[]))
+      check not (waitFor auth.handleChallenge(403, @["Bearer"]))
+      check not (waitFor auth.handleChallenge(403, @["Bearer error=\"invalid_token\""]))
+      check not (waitFor auth.handleChallenge(500, @["Bearer"]))
+      check env.requests[].len == 0
+      check env.rs.log.len == 0
+      check env.authServer.log.len == 0
+
+    test "Given a 401 without any challenge header, when handled, then the token is requested for the scopes the resource supports":
+      let env = startEnv()
+      defer: env.stop()
+      env.rs.resourceMetadata["scopes_supported"] = %*["mcp:read"]
+      let auth = newClientCredentialsAuth(env.withSecret())
+      if ScopeChallenges:
+        check (waitFor auth.handleChallenge(401, @[]))
+        check env.requests[].len == 1
+        check env.requests[][0].field("scope") == some("mcp:read")
+      else:
+        # Before 2025-11-25 the metadata is found only through the challenge.
+        expect OAuthError:
+          discard waitFor auth.handleChallenge(401, @[])
+        check env.requests[].len == 0
+
+    test "Given a 403 that names a scope already requested, when handled, then the answer is no and no second token is requested":
+      let env = startEnv()
+      defer: env.stop()
+      let auth = newClientCredentialsAuth(env.withSecret())
+      let metadata = "http://127.0.0.1:" & $env.rs.port & "/.well-known/oauth-protected-resource/mcp"
+      check (waitFor auth.handleChallenge(401,
+        @["Bearer resource_metadata=\"" & metadata & "\", scope=\"mcp:read\""]))
+      check env.requests[].len == 1
+      check not (waitFor auth.handleChallenge(403,
+        @["Bearer error=\"insufficient_scope\", scope=\"mcp:read\""]))
+      check env.requests[].len == 1
+
+  suite "client credentials: the clock and a refused renewal":
+
+    test "Given the default clock, when a signing client requests a token, then the assertion is dated now and the server accepts it":
+      let env = startEnv()
+      defer: env.stop()
+      env.clock[] = getTime()
+      var config = newClientCredentialsConfig(env.rs.url, "jwt-client", env.authServer.issuer)
+      config.signer = some(hs256Signer(JwtKey))
+      let t = transportFor(newClientCredentialsAuth(config), env.rs.url)
+      check t.ping(){"result", "served"}.getBool()
+
+    test "Given an expired token and an authorization server that now refuses the client, when requests fail, then the stale token is dropped and the next request asks once":
+      let env = startEnv()
+      defer: env.stop()
+      env.lifetime[] = 100
+      let t = transportFor(newClientCredentialsAuth(env.withSecret()), env.rs.url)
+      discard t.ping()
+      env.clock[] = env.clock[] + initDuration(seconds = 200)
+      env.registry.secrets["svc"] = "rotated-" & Secret
+      expect McpTransportError:
+        discard t.ping()
+      let asked = env.requests[].len
+      expect McpTransportError:
+        discard t.ping()
+      check env.requests[].len == asked + 1
+
   suite "client credentials: what the authorization server must advertise":
 
     proc refused(env: Env, config: ClientCredentialsConfig): string =
