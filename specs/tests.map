@@ -1164,6 +1164,7 @@ MCP-SUBSCRIBE-10 | tests/test_subscriptions.nim | Given the transport fails whil
 MCP-SUBSCRIBE-11 | tests/test_subscriptions.nim | Given a server that rejects the listen request, when the client listens, then it raises McpRequestError
 MCP-SUBSCRIBE-11 | tests/test_subscriptions.nim | Given a server that never acknowledges, when the timeout passes, then the client raises McpTimeoutError and cancels
 MCP-SUBSCRIBE-11 | tests/test_subscriptions.nim | Given a listen and a request that share one token, when it is cancelled, then both end at once with McpCancelledError
+MCP-SUBSCRIBE-11 | tests/test_subscriptions.nim | Given a token cancelled while the listen request is still being sent, when the sending ends, then the listen raises McpCancelledError
 MCP-SUBSCRIBE-11 | tests/test_subscriptions.nim | Given a token used for several listens that were acknowledged, when they are done, then the token holds nothing of them
 MCP-SUBSCRIBE-11 | tests/test_subscriptions.nim | Given an acknowledgment that is malformed, when it arrives, then the client raises McpProtocolError and cancels
 MCP-SUBSCRIBE-12 | tests/test_subscriptions.nim | Given a client and a server over stdio-style transport, when the tool list changes and the server shuts down, then the client is told and the stream ends gracefully

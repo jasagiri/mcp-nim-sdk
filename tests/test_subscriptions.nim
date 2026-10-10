@@ -577,6 +577,25 @@ suite "subscriptions on the client":
         discard waitFor request
       check client.subscriptions.len == 0
 
+  test "Given a token cancelled while the listen request is still being sent, when the sending ends, then the listen raises McpCancelledError":
+    for v in versionsWith(ftSubscriptionsListen):
+      let peer = listenPeer(proc(peer: client_peer.Peer, message: JsonNode) = discard)
+      let client = peer.connectedClient(v)
+      let token = newMcpCancelToken()
+      peer.pair.client.holdSendsOf = "subscriptions/listen"
+      peer.pair.client.sendGate = newFuture[void]("test.sendGate")
+      let listening = client.listen(SubscriptionFilter(toolsListChanged: true),
+        McpRequestOptions(cancel: token, timeoutMs: some(1000)))
+      waitFor sleepAsync(5)
+      token.cancel("too late to matter to the sending")
+      peer.pair.client.sendGate.complete()
+      # Well before the timeout.
+      waitFor sleepAsync(50)
+      check listening.finished
+      expect McpCancelledError:
+        discard waitFor listening
+      check client.subscriptions.len == 0
+
   # An internal-implementation test (I): see the same kind of test in
   # test_client_requests.nim.
   test "Given a token used for several listens that were acknowledged, when they are done, then the token holds nothing of them":
