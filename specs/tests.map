@@ -2622,6 +2622,7 @@ MCP-EXT-SKILLS-7 | tests/test_ext_skills_server.nim | Given a server registered 
 MCP-EXT-SKILLS-7 | tests/test_ext_skills_server.nim | Given a registered catalog, when a legacy client initializes, then the capabilities do not mention extensions
 MCP-EXT-SKILLS-8 | tests/test_ext_skills_server.nim | Given a server that speaks no 2026-07-28, when skills are registered, then ValueError is raised and nothing is declared
 MCP-EXT-SKILLS-8 | tests/test_ext_skills_server.nim | Given skills already registered or a method already defined, when they are registered, then ValueError is raised
+MCP-EXT-SKILLS-8 | tests/test_ext_skills_server.nim | Given a server that already defines resources/directory/read, when skills are registered with directoryRead, then ValueError is raised and nothing is declared
 MCP-EXT-SKILLS-9 | tests/test_ext_skills_server.nim | Given the skills of the specification's example, when a client lists them, then each entry is a complete manifest with digests
 MCP-EXT-SKILLS-9 | tests/test_ext_skills_server.nim | Given a catalog with the default cache policy, when listed, then the result says do not reuse and do not share
 MCP-EXT-SKILLS-10 | tests/test_ext_skills_server.nim | Given a catalog of three skills and a page size of two, when a client follows nextCursor, then every skill arrives once
@@ -2632,19 +2633,27 @@ MCP-EXT-SKILLS-13 | tests/test_ext_skills_server.nim | Given a client that decla
 MCP-EXT-SKILLS-12 | tests/test_ext_skills_server.nim | Given a skill with text and binary files, when any client reads them, then text is text and binary is a base64 blob
 MCP-EXT-SKILLS-12 | tests/test_ext_skills_server.nim | Given a URI that is not a served skill file, when a client reads it, then the server's own handler answers
 MCP-EXT-SKILLS-12 | tests/test_ext_skills_server.nim | Given a catalog with another scheme, when its files are read, then that scheme is served and skill:// is not
+MCP-EXT-SKILLS-12 | tests/test_ext_skills_server.nim | Given text files with bytes that are not UTF-8 and a binary file whose bytes are valid UTF-8, when read, then each is a blob
+MCP-EXT-SKILLS-12 | tests/test_ext_skills_server.nim | Given a dynamic skill beside fixed ones, when a URI no skill serves is read, then the provider is not called
+MCP-EXT-SKILLS-12 | tests/test_ext_skills_server.nim | Given a resources/read without a string uri, when a client sends it, then the server's own handler answers invalid params
 MCP-EXT-SKILLS-14 | tests/test_ext_skills_server.nim | Given a server registered with directoryRead, when a client reads a skill root and a subdirectory, then direct children come back
 MCP-EXT-SKILLS-14 | tests/test_ext_skills_server.nim | Given a file, an unknown directory or a missing uri, when a client reads a directory, then each is invalid params
 MCP-EXT-SKILLS-14 | tests/test_ext_skills_server.nim | Given a server registered without directoryRead, when a client reads a directory, then the method is unknown
 MCP-EXT-SKILLS-14 | tests/test_ext_skills_server.nim | Given a directory with more children than a page, when a client follows the cursor, then all arrive
+MCP-EXT-SKILLS-14 | tests/test_ext_skills_server.nim | Given a server registered without saying anything about directoryRead, when a client discovers it, then the setting is absent and the method is unknown
 MCP-EXT-SKILLS-15 | tests/test_ext_skills_server.nim | Given a skill added with a file provider, when a client lists it and reads its files, then the entry is dynamic and the files are current
 MCP-EXT-SKILLS-16 | tests/test_ext_skills_server.nim | Given skills at acme/billing and acme/billing/refunds, when a client lists them, then the enclosing skill's manifest includes the nested files
 MCP-EXT-SKILLS-17 | tests/test_ext_skills_server.nim | Given a skill that cannot be served correctly, when it is added, then SkillsError is raised
 MCP-EXT-SKILLS-17 | tests/test_ext_skills_server.nim | Given a skill with more than 512 files or more than 16 MiB, when it is added, then SkillsError is raised and the limits themselves are accepted
 MCP-EXT-SKILLS-17 | tests/test_ext_skills_server.nim | Given a dynamic skill with a frontmatter that does not name it or no provider, when it is added, then SkillsError is raised
 MCP-EXT-SKILLS-17 | tests/test_ext_skills_server.nim | Given a scheme that is not one, when a catalog is made, then SkillsError is raised
+MCP-EXT-SKILLS-17 | tests/test_ext_skills_server.nim | Given schemes with digits, plus, hyphen and dot, when a catalog is made, then they are accepted
+MCP-EXT-SKILLS-17 | tests/test_ext_skills_server.nim | Given a dynamic skill with no frontmatter or one that is not an object, when it is added, then SkillsError says it must be an object
+MCP-EXT-SKILLS-17 | tests/test_ext_skills_server.nim | Given two dynamic skills and a dynamic skill added twice, when they are added, then the two are served and the repeat is refused
 MCP-EXT-SKILLS-18 | tests/test_ext_skills_server.nim | Given a directory with SKILL.md and a subdirectory, when it is added, then its files are served with their digests
 MCP-EXT-SKILLS-18 | tests/test_ext_skills_server.nim | Given a directory holding a symbolic link, when it is added, then SkillsError is raised and nothing is served
 MCP-EXT-SKILLS-18 | tests/test_ext_skills_server.nim | Given a path that is not a directory, when it is added, then SkillsError is raised
+MCP-EXT-SKILLS-18 | tests/test_ext_skills_server.nim | Given a file beyond 16 MiB that cannot be read, when its directory is added, then SkillsError names the limit before any read
 MCP-EXT-SKILLS-19 | tests/test_ext_skills_client.nim | Given a server that offers skills, when the client lists them, then the request declares the extension and the entries come back
 MCP-EXT-SKILLS-19 | tests/test_ext_skills_client.nim | Given a listing with a valid entry and entries that break the rules, when listed, then the valid one is returned and the others are reported with the reason
 MCP-EXT-SKILLS-19 | tests/test_ext_skills_client.nim | Given a listing over two pages, when the client lists all, then both pages are read

@@ -446,3 +446,124 @@ suite "skills kept in a directory":
     let catalog = newSkillCatalog()
     expect SkillsError:
       catalog.addSkillDirectory("pdf-processing", root / "missing")
+
+suite "server rules sharpened by the mutation run (g2x-skills-rest)":
+
+  test "Given schemes with digits, plus, hyphen and dot, when a catalog is made, then they are accepted":
+    for scheme in ["s3", "git+ssh", "a.b-c"]:
+      checkpoint scheme
+      check newSkillCatalog(scheme = scheme).skillCount == 0
+
+  test "Given a dynamic skill with no frontmatter or one that is not an object, when it is added, then SkillsError says it must be an object":
+    let catalog = newSkillCatalog()
+    let provider = proc(): Future[seq[SkillFile]] {.async.} = return @[]
+    expect SkillsError:
+      catalog.addDynamicSkill("daily", nil, provider)
+    try:
+      catalog.addDynamicSkill("daily", %"text", provider)
+      fail()
+    except SkillsError as e:
+      check "must be an object" in e.msg
+
+  test "Given two dynamic skills and a dynamic skill added twice, when they are added, then the two are served and the repeat is refused":
+    let catalog = newSkillCatalog()
+    let provider = proc(): Future[seq[SkillFile]] {.async.} = return @[]
+    catalog.addDynamicSkill("daily", %*{"name": "daily", "description": "d"}, provider)
+    catalog.addDynamicSkill("weekly", %*{"name": "weekly", "description": "d"}, provider)
+    check catalog.skillCount == 2
+    expect SkillsError:
+      catalog.addDynamicSkill("daily", %*{"name": "daily", "description": "d"}, provider)
+    check catalog.skillCount == 2
+
+  test "Given a server registered without saying anything about directoryRead, when a client discovers it, then the setting is absent and the method is unknown":
+    for v in versionsWith(ftExtensions):
+      let server = plainServer()
+      server.registerSkills(standardCatalog())
+      let peer = server.connect(server.attach(), v)
+      let capabilities = peer.ask("server/discover")["result"]["capabilities"]
+      check capabilities["extensions"][Ext] == newJObject()
+      check peer.ask("resources/directory/read", %*{"uri": "skill://pdf-processing"},
+                     meta = skillsDeclared()).errorCode == -32601
+
+  test "Given a server that already defines resources/directory/read, when skills are registered with directoryRead, then ValueError is raised and nothing is declared":
+    if isSupported(mpv20260728):
+      let other = plainServer()
+      other.registerRequestHandler("resources/directory/read",
+        proc(request: JsonRpcRequest): Future[JsonRpcResponse] {.async.} =
+          return newJsonRpcResponse(request.id, newJObject()))
+      expect ValueError:
+        other.registerSkills(standardCatalog(), directoryRead = true)
+      check other.capabilities.extensions.isNone
+
+  test "Given text files with bytes that are not UTF-8 and a binary file whose bytes are valid UTF-8, when read, then each is a blob":
+    for v in versionsWith(ftExtensions):
+      let server = plainServer()
+      let catalog = newSkillCatalog()
+      catalog.addSkill("git-workflow", @[SkillFile(path: "SKILL.md", content: GitMd),
+        SkillFile(path: "broken.md", content: "caf\xe9"),
+        SkillFile(path: "plain.png", content: "just ascii")])
+      server.registerSkills(catalog)
+      let peer = server.connect(server.attach(), v)
+      let broken = peer.ask("resources/read",
+        %*{"uri": "skill://git-workflow/broken.md"})["result"]["contents"][0]
+      check broken["blob"].getStr().decode() == "caf\xe9"
+      check not broken.hasKey("text")
+      let plain = peer.ask("resources/read",
+        %*{"uri": "skill://git-workflow/plain.png"})["result"]["contents"][0]
+      check plain["blob"].getStr().decode() == "just ascii"
+      check not plain.hasKey("text")
+
+  test "Given a dynamic skill beside fixed ones, when a URI no skill serves is read, then the provider is not called":
+    for v in versionsWith(ftExtensions):
+      let server = plainServer()
+      let catalog = newSkillCatalog()
+      catalog.addSkill("git-workflow", gitFiles())
+      var calls = 0
+      catalog.addDynamicSkill("reports/daily",
+        %*{"name": "daily", "description": "Assemble today's report"},
+        proc(): Future[seq[SkillFile]] {.async.} =
+          inc calls
+          return @[SkillFile(path: "SKILL.md",
+            content: "---\nname: daily\ndescription: Assemble today's report\n---\n\nx\n")])
+      server.registerSkills(catalog)
+      let peer = server.connect(server.attach(), v)
+      check peer.ask("resources/read",
+                     %*{"uri": "skill://git-workflow/missing.md"}).errorCode == -32602
+      check peer.ask("resources/read",
+                     %*{"uri": "skill://elsewhere/missing.md"}).errorCode == -32602
+      check calls == 0
+      check peer.ask("resources/read",
+        %*{"uri": "skill://reports/daily/SKILL.md"})["result"]["contents"][0]["text"].getStr().len > 0
+      check calls == 1
+
+  test "Given a resources/read without a string uri, when a client sends it, then the server's own handler answers invalid params":
+    for v in versionsWith(ftExtensions):
+      let server = skillsServer()
+      let peer = server.connect(server.attach(), v)
+      check peer.ask("resources/read", newJObject()).errorCode == -32602
+      check peer.ask("resources/read", %*{"uri": 5}).errorCode == -32602
+
+suite "a directory too large for a skill (g2x-skills-rest)":
+
+  let root = getTempDir() / ("mcp-skills-big-" & $getCurrentProcessId())
+  let big = root / "big.bin"
+
+  setup:
+    removeDir(root)
+    createDir(root)
+
+  teardown:
+    if fileExists(big):
+      setFilePermissions(big, {fpUserRead, fpUserWrite})
+    removeDir(root)
+
+  test "Given a file beyond 16 MiB that cannot be read, when its directory is added, then SkillsError names the limit before any read":
+    writeFile(big, 'x'.repeat(int(MaxSkillBytes) + 1))
+    setFilePermissions(big, {})
+    let catalog = newSkillCatalog()
+    try:
+      catalog.addSkillDirectory("big", root)
+      fail()
+    except SkillsError as e:
+      check "exceed the limit" in e.msg
+    check catalog.skillCount == 0
