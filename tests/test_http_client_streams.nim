@@ -1268,3 +1268,30 @@ if speaks >= mpv20250326:
       check transport.nothingMoreWithin(300)
       check gets == 0
       waitFor transport.close()
+
+    test "Given a request whose stream was cut after an event id, when the client cancels it before the stream is asked for again, then it is not asked for and no answer arrives":
+      var gets = 0
+      var postedId: JsonNode = nil
+      let url = startRawServer(proc(request: RawRequest, socket: AsyncSocket) {.async.} =
+        if request.httpMethod == "POST":
+          postedId = parseJson(request.body)["id"]
+          await eventStreamHead(socket)
+          await socket.send(formatSseEvent($notification(1), id = "a-1"))
+          socket.close()
+        else:
+          inc gets
+          await eventStreamHead(socket)
+          await socket.send(formatSseEvent($(%*{"jsonrpc": "2.0", "id": postedId, "result": {}}),
+                                           id = "a-2")))
+      let transport = newStreamableHttpTransport(url)
+      transport.sessionId = some("s-1")
+      transport.reconnectDelayMs = 200
+      transport.protocolVersionNegotiated(speaks)
+      transport.ask()
+      check transport.received()["method"].getStr() == "notifications/progress"
+      # The stream is down by now and the client waits before asking again.
+      waitFor sleepAsync(50)
+      transport.cancelRequest("r1")
+      check transport.nothingMoreWithin(500)
+      check gets == 0
+      waitFor transport.close()
