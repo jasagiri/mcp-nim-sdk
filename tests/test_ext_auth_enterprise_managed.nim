@@ -662,6 +662,122 @@ when DefaultProtocolVersion.has(ftProtectedResourceMetadata):
           refused = true
         check refused
 
+    test "Given an ID-JAG that expires at this very second, when checked, then it has expired":
+      var claims = good.copy()
+      claims["exp"] = %1_800_000_000
+      try:
+        discard checkIdentityAssertionGrant(jag(claims), "https://idp.example", "https://as.example",
+                                            none(string), "c", now)
+        fail()
+      except OAuthError as e:
+        check "expired" in e.msg
+
+    test "Given an ID-JAG without iss or without client_id, when checked, then it is refused as not from the IdP or not for the client":
+      for name in ["iss", "client_id"]:
+        var claims = good.copy()
+        claims.delete(name)
+        expect OAuthSecurityError:
+          discard checkIdentityAssertionGrant(jag(claims), "https://idp.example",
+                                              "https://as.example", none(string), "c", now)
+
+  suite "enterprise-managed authorization: how a challenge is answered":
+
+    test "Given a 403 that is no insufficient_scope challenge, or a status that is no challenge, when handled, then the answer is no and nothing is exchanged":
+      let env = startEnv()
+      defer: env.stop()
+      let auth = newEnterpriseManagedAuth(env.config())
+      check not (waitFor auth.handleChallenge(403, @[]))
+      check not (waitFor auth.handleChallenge(403, @["Bearer"]))
+      check not (waitFor auth.handleChallenge(403, @["Bearer error=\"invalid_token\""]))
+      check not (waitFor auth.handleChallenge(500, @["Bearer"]))
+      check env.providerCalls[] == 0
+      check env.idpRequests[].len == 0
+      check env.rasRequests[].len == 0
+      check env.rs.log.len == 0
+
+    test "Given a 401 without any challenge header, when handled, then the exchange asks for the scopes the resource supports":
+      let env = startEnv()
+      defer: env.stop()
+      env.rs.resourceMetadata["scopes_supported"] = %*["a"]
+      let auth = newEnterpriseManagedAuth(env.config())
+      if ScopeChallenges:
+        check (waitFor auth.handleChallenge(401, @[]))
+        check env.idpRequests[].len == 1
+        check env.idpRequests[][0].field("scope") == some("a")
+      else:
+        # Before 2025-11-25 the metadata is found only through the challenge.
+        expect OAuthError:
+          discard waitFor auth.handleChallenge(401, @[])
+        check env.idpRequests[].len == 0
+
+    test "Given a 403 that names a scope already requested, when handled, then the answer is no and no second exchange is made":
+      let env = startEnv()
+      defer: env.stop()
+      let auth = newEnterpriseManagedAuth(env.config())
+      let metadata = "http://127.0.0.1:" & $env.rs.port & "/.well-known/oauth-protected-resource/mcp"
+      check (waitFor auth.handleChallenge(401,
+        @["Bearer resource_metadata=\"" & metadata & "\", scope=\"chat.read\""]))
+      check env.idpRequests[].len == 1
+      check not (waitFor auth.handleChallenge(403,
+        @["Bearer error=\"insufficient_scope\", scope=\"chat.read\""]))
+      check env.idpRequests[].len == 1
+      check env.rasRequests[].len == 1
+
+  suite "enterprise-managed authorization: the clock, the ID-JAG's reuse and a refused renewal":
+
+    test "Given the default clock, when a request is sent, then the ID-JAG is judged against now and accepted":
+      let env = startEnv()
+      defer: env.stop()
+      env.clock[] = getTime()
+      let config = newEnterpriseManagedConfig(
+        env.rs.url, env.idp.issuer, env.ras.issuer,
+        secretBasic("sso-client", Secret), secretPost(McpClientId, "ras-secret-value"),
+        proc(): Future[IdentityAssertion] {.async.} =
+          return IdentityAssertion(kind: iakIdToken, token: IdToken))
+      check env.connect(config).ping(){"result", "served"}.getBool()
+
+    test "Given an access token that expires when the ID-JAG has 31 or 30 seconds left, when the next request is sent, then the first reuses the ID-JAG and the second asks the IdP for a new one":
+      for (left, exchanges) in [(31, 1), (30, 2)]:
+        let env = startEnv()
+        defer: env.stop()
+        env.behavior.lifetime = 7200            # the ID-JAG outlives the access token (3600 s)
+        let t = env.connect(env.config())
+        discard t.ping()
+        env.clock[] = env.clock[] + initDuration(seconds = 7200 - left)
+        check t.ping(){"result", "served"}.getBool()
+        check env.idpRequests[].len == exchanges
+
+    test "Given an expired access token and an IdP that now refuses, when requests fail, then the stale token is dropped and the next request exchanges once":
+      let env = startEnv()
+      defer: env.stop()
+      let t = env.connect(env.config())
+      discard t.ping()
+      env.clock[] = env.clock[] + initDuration(seconds = 3700)
+      env.behavior.refuse = true
+      discard t.failureOf()
+      let asked = env.idpRequests[].len
+      discard t.failureOf()
+      check env.idpRequests[].len == asked + 1
+
+    test "Given an authorization server that grants a narrower scope than was asked, when the access token is stored, then its scopes are the granted ones":
+      let env = startEnv()
+      defer: env.stop()
+      env.rs.challengeScope = "chat.read chat.history"
+      env.behavior.grantScope = some("chat.read")
+      let config = env.config()
+      discard env.connect(config).ping()
+      check config.tokenStore.load(canonicalResource(env.rs.url)).get.scopes == @["chat.read"]
+
+    test "Given an authorization server that names no scope in its answer, when the access token is stored, then its scopes are the ones asked for":
+      let env = startEnv()
+      defer: env.stop()
+      env.rs.challengeScope = "chat.read"
+      env.behavior.grantScope = some("")
+      let config = env.config()
+      discard env.connect(config).ping()
+      check config.tokenStore.load(canonicalResource(env.rs.url)).get.scopes ==
+            (if ScopeChallenges: @["chat.read"] else: @[])
+
   suite "enterprise-managed authorization: the extensions capability":
 
     test "Given a client that declares the extension, when it sends a 2026-07-28 request, then clientCapabilities carries the identifier with empty settings":
