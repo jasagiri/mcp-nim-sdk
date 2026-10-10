@@ -2457,7 +2457,10 @@ MCP-EXT-APPS-17 | tests/test_ext_apps_end_to_end.nim | Given a host that declare
 MCP-EXT-APPS-17 | tests/test_ext_apps_end_to_end.nim | Given a host that did not declare MCP Apps, when it lists tools in any version, then the server shows plain tools
 MCP-EXT-TASKS-1 | tests/test_ext_tasks.nim | Given the specification's CreateTaskResult example, when parsed and written, then it round-trips with ttlMs and pollIntervalMs
 MCP-EXT-TASKS-1 | tests/test_ext_tasks.nim | Given a task with unlimited lifetime, when written, then ttlMs is null
+MCP-EXT-TASKS-1 | tests/test_ext_tasks.nim | Given a failed task with error data, when written and parsed, then the data survives; without data the key is absent
 MCP-EXT-TASKS-2 | tests/test_ext_tasks.nim | Given a task of each status, when parsed as a DetailedTask, then the fields of the status are required
+MCP-EXT-TASKS-2 | tests/test_ext_tasks.nim | Given a Task with one field missing or of the wrong kind, when parsed, then the problem names that field
+MCP-EXT-TASKS-2 | tests/test_ext_tasks.nim | Given a failed task whose error lacks a code or a message of the right kind, when parsed, then it is a problem
 MCP-EXT-TASKS-3 | tests/test_ext_tasks.nim | Given the specification's capability example, when the extension is enabled, then the server declares exactly that
 MCP-EXT-TASKS-3 | tests/test_ext_tasks.nim | Given a server that did not enable the extension, when a client discovers it, then the extension is not declared
 MCP-EXT-TASKS-3 | tests/test_ext_tasks.nim | Given a build or a server that does not speak 2026-07-28, when the extension is enabled, then it raises

@@ -132,6 +132,56 @@ if isSupported(mpv20260728):
       check parseDetailedTask(with("input_required", %*{"inputRequests": {"k": {"method": "elicitation/create"}}})).problem.isNone
       check parseDetailedTask(with("exploded")).problem.isSome
 
+    test "Given a Task with one field missing or of the wrong kind, when parsed, then the problem names that field":
+      let good = %*{"taskId": "a", "status": "working", "createdAt": "2025-11-25T10:30:00Z",
+                    "lastUpdatedAt": "2025-11-25T10:30:00Z", "ttlMs": 1, "pollIntervalMs": 5}
+      check parseTask(good).problem.isNone
+      proc problemWith(key: string, value: JsonNode): string =
+        var task = good.copy()
+        if value.isNil:
+          task.delete(key)
+        else:
+          task[key] = value
+        let parsed = parseTask(task)
+        check parsed.problem.isSome
+        if parsed.problem.isSome:
+          result = parsed.problem.get
+      check "object" in parseTask(nil).problem.get
+      check "object" in parseTask(%*["a"]).problem.get
+      check "taskId" in problemWith("taskId", nil)
+      check "taskId" in problemWith("taskId", %"")
+      check "taskId" in problemWith("taskId", %5)
+      check "status" in problemWith("status", %"exploded")
+      check "createdAt" in problemWith("createdAt", %"yesterday")
+      check "lastUpdatedAt" in problemWith("lastUpdatedAt", %"yesterday")
+      check "lastUpdatedAt" in problemWith("lastUpdatedAt", nil)
+      check "ttlMs" in problemWith("ttlMs", nil)
+      check "ttlMs" in problemWith("ttlMs", %"60000")
+      check "pollIntervalMs" in problemWith("pollIntervalMs", %"5")
+
+    test "Given a failed task whose error lacks a code or a message of the right kind, when parsed, then it is a problem":
+      let base = %*{"taskId": "a", "status": "failed", "createdAt": "2025-11-25T10:30:00Z",
+                    "lastUpdatedAt": "2025-11-25T10:30:00Z", "ttlMs": 1}
+      proc failedWith(error: JsonNode): JsonNode =
+        result = base.copy()
+        result["error"] = error
+      check parseDetailedTask(failedWith(%*{"code": -32603, "message": "x"})).problem.isNone
+      check parseDetailedTask(failedWith(%"boom")).problem.isSome
+      check parseDetailedTask(failedWith(%*{"message": "x"})).problem.isSome
+      check parseDetailedTask(failedWith(%*{"code": "-32603", "message": "x"})).problem.isSome
+      check parseDetailedTask(failedWith(%*{"code": -32603})).problem.isSome
+      check parseDetailedTask(failedWith(%*{"code": -32603, "message": 5})).problem.isSome
+
+    test "Given a failed task with error data, when written and parsed, then the data survives; without data the key is absent":
+      let task = McpTask(taskId: "a", status: tsFailed, ttlMs: some(1'i64))
+      proc failedWith(data: JsonNode): DetailedTask =
+        DetailedTask(task: task, error: some(JsonRpcError(code: -32603, message: "x", data: data)))
+      let withData = failedWith(%*{"retryAfter": 3}).toWire()
+      check withData["error"]["data"] == %*{"retryAfter": 3}
+      check parseDetailedTask(withData).detailed.error.get.data == %*{"retryAfter": 3}
+      check not failedWith(nil).toWire()["error"].hasKey("data")
+      check not failedWith(newJNull()).toWire()["error"].hasKey("data")
+
     test "Given a listen filter with taskIds, when parsed and written, then the ids round-trip and a malformed list is rejected":
       let node = %*{"toolsListChanged": true, "taskIds": ["a", "b"]}
       let parsed = parseSubscriptionFilter(node)
