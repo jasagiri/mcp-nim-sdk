@@ -2596,19 +2596,26 @@ MCP-EXT-SKILLS-1 | tests/test_ext_skills_model.nim | Given a frontmatter that is
 MCP-EXT-SKILLS-2 | tests/test_ext_skills_model.nim | Given ordinary names, when validated, then they are accepted
 MCP-EXT-SKILLS-2 | tests/test_ext_skills_model.nim | Given names that break the Agent Skills rules, when validated, then each is refused
 MCP-EXT-SKILLS-2 | tests/test_ext_skills_model.nim | Given descriptions of 0, 1 and 1025 characters, when validated, then only the middle one is accepted
+MCP-EXT-SKILLS-2 | tests/test_ext_skills_model.nim | Given a name with a character that is neither ASCII nor a letter, when validated, then it is refused
 MCP-EXT-SKILLS-3 | tests/test_ext_skills_model.nim | Given URIs that could leave the skill, when split, then none is accepted
 MCP-EXT-SKILLS-3 | tests/test_ext_skills_model.nim | Given ordinary URIs, when split, then the scheme and path come out
 MCP-EXT-SKILLS-3 | tests/test_ext_skills_model.nim | Given a SKILL.md URI, when its root is taken, then the suffix goes and a bad URI has none
 MCP-EXT-SKILLS-3 | tests/test_ext_skills_model.nim | Given a skill root, when a file URI is resolved against it, then only files strictly inside resolve
 MCP-EXT-SKILLS-3 | tests/test_ext_skills_model.nim | Given file paths a server names inside a skill, when checked, then absolute and climbing paths are refused
+MCP-EXT-SKILLS-3 | tests/test_ext_skills_model.nim | Given schemes with digits, plus, hyphen and dot, when a URI is split, then the scheme is accepted
+MCP-EXT-SKILLS-3 | tests/test_ext_skills_model.nim | Given segments with a space, a percent escape of a plain character and a control character, when a URI is split, then only the control character and the escaped dot are refused
 MCP-EXT-SKILLS-4 | tests/test_ext_skills_model.nim | Given the same URI from two servers, when storage paths are computed, then they differ and stay under the root
 MCP-EXT-SKILLS-4 | tests/test_ext_skills_model.nim | Given a label or URI that climbs out of the root, when a storage path is computed, then SkillsError is raised
+MCP-EXT-SKILLS-4 | tests/test_ext_skills_model.nim | Given a label and a path segment with a space, when a storage path is computed, then each is percent-encoded with %20
 MCP-EXT-SKILLS-5 | tests/test_ext_skills_model.nim | Given the specification's entry, when parsed, then it is accepted and round-trips
 MCP-EXT-SKILLS-5 | tests/test_ext_skills_model.nim | Given an entry whose resources is dynamic, when parsed, then it is dynamic and has no files
 MCP-EXT-SKILLS-5 | tests/test_ext_skills_model.nim | Given entries that break one rule each, when parsed, then each raises SkillsError
 MCP-EXT-SKILLS-5 | tests/test_ext_skills_model.nim | Given the limits exactly, when an entry is parsed, then it is accepted
 MCP-EXT-SKILLS-5 | tests/test_ext_skills_model.nim | Given the files of the specification's example, when digested, then the digests match the published ones
 MCP-EXT-SKILLS-5 | tests/test_ext_skills_model.nim | Given entries with the same files in another order or another digest, when bound, then the binding follows the set
+MCP-EXT-SKILLS-5 | tests/test_ext_skills_model.nim | Given nothing or a value that is not an object, when an entry is parsed, then SkillsError names the rule
+MCP-EXT-SKILLS-5 | tests/test_ext_skills_model.nim | Given resources that lack a string uri or digest, when an entry is parsed, then the error says what a resource needs
+MCP-EXT-SKILLS-5 | tests/test_ext_skills_model.nim | Given a file of size 0, when an entry is parsed, then it is accepted
 MCP-EXT-SKILLS-6 | tests/test_ext_skills_server.nim | Given a catalog that was not registered, when a client asks for skills or reads a skill file, then nothing is served
 MCP-EXT-SKILLS-7 | tests/test_ext_skills_server.nim | Given a registered catalog, when a 2026-07-28 client discovers the server, then the extension and the resources capability are declared
 MCP-EXT-SKILLS-7 | tests/test_ext_skills_server.nim | Given a server registered with directoryRead, when a client discovers it, then the setting says so

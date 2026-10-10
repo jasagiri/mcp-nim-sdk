@@ -238,3 +238,58 @@ suite "entries from the network":
     var dynamic = specEntry()
     dynamic["resources"] = %"dynamic"
     check contentBinding(parseSkillEntry(dynamic, "test")) == ""
+
+suite "model rules sharpened by the mutation run (g2x-skills-rest)":
+
+  test "Given a name with a character that is neither ASCII nor a letter, when validated, then it is refused":
+    for name in ["a€b", "a b", "a😀b"]:
+      checkpoint name
+      check validateSkillName(name).isSome
+
+  test "Given schemes with digits, plus, hyphen and dot, when a URI is split, then the scheme is accepted":
+    for scheme in ["s3", "git+ssh", "a.b-c", "x1"]:
+      checkpoint scheme
+      check splitResourceUri(scheme & "://host/a/b").get.scheme == scheme
+
+  test "Given segments with a space, a percent escape of a plain character and a control character, when a URI is split, then only the control character and the escaped dot are refused":
+    check splitResourceUri("skill://a/my file.md").isSome
+    check splitResourceUri("skill://a/b%20c").isSome
+    check splitResourceUri("skill://a/%2e/b").isNone
+    check splitResourceUri("skill://a/b\x1fc").isNone
+    check splitResourceUri("skill://a/b\x7fc").isNone
+
+  test "Given a label and a path segment with a space, when a storage path is computed, then each is percent-encoded with %20":
+    let root = getTempDir() / "skills-store"
+    check skillStoragePath(root, "my server", "skill://a/my file.md") ==
+      normalizedPath(root) / "my%20server" / "skill" / "a" / "my%20file.md"
+
+  test "Given nothing or a value that is not an object, when an entry is parsed, then SkillsError names the rule":
+    expect SkillsError:
+      discard parseSkillEntry(nil, "test")
+    try:
+      discard parseSkillEntry(%"text", "test")
+      fail()
+    except SkillsError as e:
+      check "not an object" in e.msg
+
+  test "Given resources that lack a string uri or digest, when an entry is parsed, then the error says what a resource needs":
+    let cases = {
+      "no uri": proc(n: JsonNode) = n["resources"][1].delete("uri"),
+      "uri is a number": proc(n: JsonNode) = n["resources"][1]["uri"] = %5,
+      "no digest": proc(n: JsonNode) = n["resources"][1].delete("digest"),
+      "digest is a number": proc(n: JsonNode) = n["resources"][1]["digest"] = %5}
+    for (label, change) in cases:
+      checkpoint label
+      let node = specEntry()
+      change(node)
+      try:
+        discard parseSkillEntry(node, "test")
+        fail()
+      except SkillsError as e:
+        check "a resource needs" in e.msg
+
+  test "Given a file of size 0, when an entry is parsed, then it is accepted":
+    let node = specEntry()
+    node["resources"].add %*{"uri": "skill://pdf-processing/empty.md", "size": 0,
+                             "digest": digestOf("")}
+    check parseSkillEntry(node, "test").resources.len == 3
