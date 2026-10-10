@@ -2472,6 +2472,8 @@ MCP-EXT-TASKS-4 | tests/test_ext_tasks.nim | Given a client that did not declare
 MCP-EXT-TASKS-4 | tests/test_ext_tasks.nim | Given a client that did not declare the extension, when it calls a tool the server would make a task of, then it gets the result
 MCP-EXT-TASKS-4 | tests/test_ext_tasks.nim | Given a tool that exists only as a task, when a client that did not declare the extension calls it, then the answer is -32021
 MCP-EXT-TASKS-4 | tests/test_ext_tasks_client.nim | Given a client that did not enable the extension, when it calls a tool as a task, then it raises and sends nothing
+MCP-EXT-TASKS-4 | tests/test_ext_tasks_client.nim | Given a client that enabled the extension but negotiated an earlier version, when it calls a tool as a task, then it raises and sends nothing
+MCP-EXT-TASKS-4 | tests/test_ext_tasks_client.nim | Given a client that did not enable the extension, when it follows, answers, cancels or watches a task, then each raises McpUnsupportedError pointing to enableTasksExtension and sends nothing
 MCP-EXT-TASKS-5 | tests/test_ext_tasks.nim | Given a client that declared the extension, when the server decides against a task, then it gets the plain result
 MCP-EXT-TASKS-5 | tests/test_ext_tasks.nim | Given a server without a decider, when a client declaring the extension calls a tool, then no task is made
 MCP-EXT-TASKS-5 | tests/test_ext_tasks.nim | Given a client that declared the extension, when the server makes a task of a call, then the answer is a CreateTaskResult it can poll at once
@@ -2508,6 +2510,7 @@ MCP-EXT-TASKS-11 | tests/test_ext_tasks.nim | Given a tool whose request in a ta
 MCP-EXT-TASKS-11 | tests/test_ext_tasks_client.nim | Given a task that needs input, when the client waits, then it answers from its elicitation handler and the task finishes
 MCP-EXT-TASKS-11 | tests/test_ext_tasks_client.nim | Given an input request listed on several polls, when the client waits, then it answers a key once
 MCP-EXT-TASKS-11 | tests/test_ext_tasks_client.nim | Given a task that asks for something the client has no handler for, when it waits, then it raises McpUnsupportedError
+MCP-EXT-TASKS-11 | tests/test_ext_tasks_client.nim | Given a server that lists an answered input request again, when the client waits, then it neither answers it again nor sends an empty update
 MCP-EXT-TASKS-12 | tests/test_ext_tasks.nim | Given a decider that waits for input gathered with multi round-trip requests, when the retry arrives, then the task starts only then
 MCP-EXT-TASKS-13 | tests/test_ext_tasks.nim | Given tasks of two owners, when one asks for the other's task, then it is unknown to it
 MCP-EXT-TASKS-13 | tests/test_ext_tasks.nim | Given no ownerOf and no authorization, when two clients ask, then they are one owner and the unguessable task id is the only separation
@@ -2529,6 +2532,7 @@ MCP-EXT-TASKS-15 | tests/test_ext_tasks_client.nim | Given a server whose task i
 MCP-EXT-TASKS-15 | tests/test_ext_tasks_client.nim | Given an unknown task, when the client polls, then it raises McpRequestError with -32602
 MCP-EXT-TASKS-15 | tests/test_ext_tasks_client.nim | Given a task that finishes while the client waits, when it polls, then it waits the interval the task suggests between polls
 MCP-EXT-TASKS-15 | tests/test_ext_tasks_client.nim | Given a task that suggests no interval, when the client waits, then it uses its own default
+MCP-EXT-TASKS-15 | tests/test_ext_tasks_client.nim | Given a task that suggests an interval, when the client waits without a sleep of its own, then it really waits between polls
 MCP-EXT-TASKS-15 | tests/test_ext_tasks_client.nim | Given every status change, when the client waits, then the callback sees each status once
 MCP-EXT-TASKS-15 | tests/test_ext_tasks_client.nim | Given a tool that answers directly, when called with callToolAwaitingTask, then the result is returned
 MCP-EXT-TASKS-15 | tests/test_ext_tasks_client.nim | Given a tool the server makes a task of, when called with callToolAwaitingTask, then the final result is returned

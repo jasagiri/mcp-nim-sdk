@@ -3,7 +3,7 @@
 ## it declares, what a call returns when the server makes a task of it, how
 ## it polls, and how it answers the input a task asks for.
 
-import std/[asyncdispatch, json, options, strutils, unittest]
+import std/[asyncdispatch, json, monotimes, options, strutils, times, unittest]
 import server/server except McpRequestError
 import client/client
 import client/elicitation
@@ -59,6 +59,17 @@ proc connected(w: World, configure: proc(client: McpClient) = nil): McpClient =
   waitFor client.connect(pair.client)
   client
 
+proc taskJson(status: string, extra: JsonNode = nil): JsonNode =
+  ## What a server answers tasks/get with.
+  result = %*{"resultType": "complete", "taskId": "t1", "status": status,
+              "createdAt": "2025-11-25T10:30:00Z", "lastUpdatedAt": "2025-11-25T10:30:00Z",
+              "ttlMs": nil}
+  if not extra.isNil:
+    for key, value in extra.pairs:
+      result[key] = value
+
+let taskServer = %*{"tools": {}, "extensions": {TasksExtensionId: {}}}
+
 proc release(gate: Future[void]) =
   if not gate.finished:
     gate.complete()
@@ -101,6 +112,36 @@ if isSupported(mpv20260728):
         discard waitFor client.startToolCall("slow")
       expect McpUnsupportedError:
         discard waitFor client.getTask("x")
+      check pair.client.sent.len == before
+
+    test "Given a client that enabled the extension but negotiated an earlier version, when it calls a tool as a task, then it raises and sends nothing":
+      let peer = startPeer(proc(peer: client_peer.Peer, message: JsonNode) =
+        if message{"method"}.getStr() == "tools/call":
+          peer.reply(message["id"], %*{"content": []}))
+      let client = peer.connectedClient(mpv20260728, proc(c: McpClient) = c.enableTasksExtension())
+      let before = peer.received.len
+      expect McpUnsupportedError:
+        discard waitFor client.startToolCall("t")
+      check peer.received.len == before
+
+    test "Given a client that did not enable the extension, when it follows, answers, cancels or watches a task, then each raises McpUnsupportedError pointing to enableTasksExtension and sends nothing":
+      let w = world()
+      let pair = newLoopbackPair()
+      waitFor w.server.attachTransport(pair.server)
+      let client = newMcpClient(McpClientInfo(name: "c", version: "1"), mpv20260728)
+      waitFor client.connect(pair.client)
+      let before = pair.client.sent.len
+      proc refusal(call: proc()): string =
+        try:
+          call()
+          fail()
+        except McpUnsupportedError as e:
+          result = e.msg
+      check "enableTasksExtension" in refusal(proc() = discard waitFor client.getTask("x"))
+      check "enableTasksExtension" in refusal(proc() = waitFor client.updateTask("x", newJObject()))
+      check "enableTasksExtension" in refusal(proc() = waitFor client.cancelTask("x"))
+      check "enableTasksExtension" in refusal(proc() =
+        discard waitFor client.watchTasks(@["x"], proc(task: DetailedTask) = discard))
       check pair.client.sent.len == before
 
   suite "Tasks extension: starting a call":
@@ -199,6 +240,21 @@ if isSupported(mpv20260728):
       for ms in slept[]:
         check ms == 9
 
+    test "Given a task that suggests an interval, when the client waits without a sleep of its own, then it really waits between polls":
+      var polls = 0
+      let peer = startPeer(proc(peer: client_peer.Peer, message: JsonNode) =
+        if message{"method"}.getStr() == "tasks/get":
+          inc polls
+          peer.reply(message["id"], if polls < 3: taskJson("working", %*{"pollIntervalMs": 50})
+                                    else: taskJson("completed", %*{"result": {"content": []}})),
+        modern = true, capabilities = taskServer)
+      let client = peer.connectedClient(mpv20260728, proc(c: McpClient) = c.enableTasksExtension())
+      let started = getMonoTime()
+      let finished = waitFor client.awaitTask("t1")
+      check finished.task.status == tsCompleted
+      check polls == 3
+      check (getMonoTime() - started).inMilliseconds >= 90
+
     test "Given every status change, when the client waits, then the callback sees each status once":
       let w = world()
       let client = w.connected()
@@ -248,6 +304,35 @@ if isSupported(mpv20260728):
         sleep = recordingSleep(slept))
       check asked == 1
       check finished.result.get["content"][0]["text"].getStr() == "Hello, Mona!"
+
+    test "Given a server that lists an answered input request again, when the client waits, then it neither answers it again nor sends an empty update":
+      var polls = 0
+      let peer = startPeer(proc(peer: client_peer.Peer, message: JsonNode) =
+        case message{"method"}.getStr()
+        of "tasks/get":
+          inc polls
+          peer.reply(message["id"], if polls < 4:
+            taskJson("input_required", %*{"inputRequests": {"k": {
+              "method": "elicitation/create",
+              "params": {"mode": "form", "message": "q",
+                         "requestedSchema": {"type": "object", "properties": {}}}}}})
+            else: taskJson("completed", %*{"result": {"content": []}}))
+        of "tasks/update":
+          peer.reply(message["id"], newJObject())
+        else:
+          discard,
+        modern = true, capabilities = taskServer)
+      let client = peer.connectedClient(mpv20260728, proc(c: McpClient) = c.enableTasksExtension())
+      var asked = 0
+      let finished = waitFor client.awaitTask("t1",
+        onInput = proc(key: string, request: JsonNode): Future[JsonNode] {.async.} =
+          inc asked
+          return %*{"action": "decline"},
+        sleep = recordingSleep(new seq[int]))
+      check finished.task.status == tsCompleted
+      check polls == 4
+      check asked == 1
+      check peer.requestsFor("tasks/update").len == 1
 
     test "Given a task that asks for something the client has no handler for, when it waits, then it raises McpUnsupportedError":
       let w = world()
