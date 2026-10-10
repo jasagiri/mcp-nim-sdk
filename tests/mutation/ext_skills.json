@@ -6,7 +6,7 @@
     "src/ext/skills/model.nim",
     "src/ext/skills.nim"
   ],
-  "testCommand": "nim c -r --hints:off tests/test_ext_skills_client.nim && nim c -r --hints:off tests/test_ext_skills_end_to_end.nim && nim c -r --hints:off tests/test_ext_skills_model.nim && nim c -r --hints:off tests/test_ext_skills_server.nim",
+  "testCommand": "nim c -r --hints:off tests/test_ext_skills_client.nim && nim c -r --hints:off tests/test_ext_skills_end_to_end.nim && nim c -r --hints:off tests/test_ext_skills_frontmatter.nim && nim c -r --hints:off tests/test_ext_skills_model.nim && nim c -r --hints:off tests/test_ext_skills_server.nim",
   "mutators": [
     "AOR",
     "ROR",

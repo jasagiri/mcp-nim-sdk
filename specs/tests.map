@@ -2593,6 +2593,46 @@ MCP-EXT-SKILLS-1 | tests/test_ext_skills_model.nim | Given a SKILL.md with scala
 MCP-EXT-SKILLS-1 | tests/test_ext_skills_model.nim | Given the specification's SKILL.md, when read, then name and description come out
 MCP-EXT-SKILLS-1 | tests/test_ext_skills_model.nim | Given text outside the supported subset, when read, then FrontmatterError is raised
 MCP-EXT-SKILLS-1 | tests/test_ext_skills_model.nim | Given a frontmatter that is empty, when read, then there are no fields
+MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given the escapes of a double-quoted scalar, when read, then each becomes its character
+MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given hexadecimal escapes, when read, then each takes exactly its digits
+MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given the last code point, when escaped, then it is accepted and the one after it is refused
+MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given escapes that are cut short, malformed or not characters, when read, then FrontmatterError is raised
+MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given doubled quotes, when read, then each is one quote
+MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given empty quoted scalars, when read, then they are empty strings
+MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given quoted scalars that do not end on their line, when read, then FrontmatterError is raised
+MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given every spelling of null, when read, then it is JSON null
+MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given every spelling of a boolean, when read, then it is a JSON boolean
+MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given numbers and words that look like numbers, when read, then only numbers become numbers
+MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given a hash, when it does not follow a space, then it belongs to the scalar
+MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given a hash after a space, when read, then the rest of the line is a comment
+MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given a quote in the middle of a plain scalar, when a comment follows, then the quote opens nothing
+MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given a hash inside quotes, when a comment follows the quotes, then only the comment is dropped
+MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given empty, single and several items, when read, then the array has as many
+MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given a sequence that does not close on its line or nests, when read, then FrontmatterError is raised
+MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given quoted keys, when read, then they are unquoted the way their quotes say
+MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given a key with a space or a colon not followed by a space, when read, then the colon ends the key only before a space
+MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given lines that are not a key and a value, when read, then FrontmatterError is raised
+MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given a literal block with a blank line inside, when read, then the blank line stays
+MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given a block scalar that is the last field, when read, then it ends with the frontmatter
+MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given a block scalar with no lines, when read, then it is empty whether it is clipped or stripped
+MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given blank lines after a block scalar, when chomped, then clip keeps one newline, strip none and keep all
+MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given a block scalar header with more than a chomping indicator, when read, then FrontmatterError is raised
+MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given blank and comment lines between fields, when read, then they are ignored
+MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given a blank line between a key and its nested mapping, when read, then the mapping is the value
+MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given a key with nothing after it at the end, when read, then it is null
+MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given a comment before an indented mapping, when read, then the mapping is read at its own indent
+MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given a sequence indented under its key, when it has blank lines between items, then they are all items
+MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given a sequence written at the indent of its key, when it is the last field, then it is that key's value
+MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given a sequence item that is not a scalar, when read, then FrontmatterError is raised
+MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given a line in a sequence that is not an item or is indented further, when read, then FrontmatterError is raised
+MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given content left of the first field's indent, when read, then FrontmatterError is raised
+MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given text before the opening fence, when read, then it is refused
+MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given a fence with trailing spaces, when read, then it is a fence
+MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given an indented closing fence, when read, then it is not a fence
+MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given only comments and blank lines, when read, then there are no fields
+MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given whitespace after the content, when it is a tab, then it is not indentation
+MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given a tab in the indentation, when read, then FrontmatterError is raised
+MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given a refusal, when its message is read, then it names the line of the file
 MCP-EXT-SKILLS-2 | tests/test_ext_skills_model.nim | Given ordinary names, when validated, then they are accepted
 MCP-EXT-SKILLS-2 | tests/test_ext_skills_model.nim | Given names that break the Agent Skills rules, when validated, then each is refused
 MCP-EXT-SKILLS-2 | tests/test_ext_skills_model.nim | Given descriptions of 0, 1 and 1025 characters, when validated, then only the middle one is accepted
