@@ -186,7 +186,7 @@
 | 188 | http.nim:452 | SDL | `t.inflight.del requestId` → `discard` | 1 | `pumpAnswer` を足した後は、取り消された要求の表の項目は 380 行・407 行・`pumpAnswer` のどれかが必ず消す。`abandoned` は集合なので、同じ id の 2 回目の取り消しは何も変えない。当てても全部のテストが通ることを確認した |
 | 88 | http.nim:464 | ROR | `retries >= MaxAuthRetries` → `>` | 3 | 4 回目の再試行を許す。A "a hook that always says it improved things ... three times" |
 | 138 | http.nim:468 | BLR | `var retry = false` → `true` | 1 | 直後の `try` は `retry` に必ず代入するか、例外で抜ける |
-| 213 | http.nim:484 | RVR | `return false` → `<return default>` | 1 | `bool` の既定値は `false` |
+| 213 | http.nim:484 | RVR | `return false` → `<return default>` | 未判定 | **訂正 (2026-10-10)**: 同値ではない。nim-muter の RVR はリテラルの戻り値を反対の値にする (`return false` → `return true`。報告の表示だけが `<return default>`)。待ち行列の測り直し (76a08c6a) の結果で判定する。 |
 | 139 | http.nim:484 | BLR | `false` → `true` | 3 | `_meta` に版が無い・文字列でない呼び出しにも Mcp-Param が付く。P "a call that does not name 2026-07-28 ..." |
 | 124 | http.nim:486 | LOR | `parsed.isSome and ...` → `or` | 3 | 版 2025-11-25 の呼び出しに付く。知らない版では `parsed.get` が UnpackDefect。P 同上 |
 | 126 | http.nim:493 | LOR | `name.isNil or kind != JString` → `and` | 3 | 名前の無い tools/call で nil を参照して落ちる (テストプロセスがクラッシュ)。P "a 2026-07-28 tools/call without a tool name ..." |

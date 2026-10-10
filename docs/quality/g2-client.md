@@ -73,11 +73,11 @@
 | 218 | 273 | SDL | `logHandlerFailure(what)` → 削除 | 3 | `test_security_diagnostic_client`「Given a list-changed callback that raises, ...」(新)。例外を握りつぶさず、どのコールバックが何で落ちたかを stderr に出す |
 | 219 | 280 | SDL | `subscriptions.del(id)` → 削除 | 2 | `test_subscriptions` の「stdio の client が cancel する」ほか 4 件が `subscriptions.len == 0` で落ちる |
 | 220 | 283 | SDL | `ended.complete()` → 削除 | 2 | `test_subscriptions`「Given the server answers the listen request, ... then the stream ended gracefully」が `ended` を待って止まる |
-| 286 | 294 | RVR | `return false` → `return default` | 1 | `default(bool)` は `false` で、値が同じ |
+| 286 | 294 | RVR | `return false` → `return default` | 2 | **訂正 (2026-10-10)**: 同値ではない。nim-muter の RVR はリテラルの戻り値を反対の値にする (`return false` → `return true`。報告の表示だけが `<return default>`)。76a08c6a の測り直しで検出された (同じ行の BLR のために足したテスト)。 |
 | 197 | 294 | BLR | `return false` → `return true` | 2 | `test_subscriptions`「Given a notification tagged with an unknown subscription id, ...」 |
 | 117 | 295 | ROR | `method == AcknowledgedMethod` → `!=` | 2 | `test_subscriptions` の listen が acknowledgment を受け取れず落ちる (2 件) |
 | 221 | 302 | SDL | `acknowledgement.complete()` → 削除 | 2 | `test_subscriptions`「Given a modern server, when the client listens, ...」が acknowledgment を待って落ちる |
-| 287 | 303 | RVR | `return false` → `return default` | 1 | 294 と同じ |
+| 287 | 303 | RVR | `return false` → `return default` | 2 | **訂正 (2026-10-10)**: 同値ではない。nim-muter の RVR はリテラルの戻り値を反対の値にする (`return false` → `return true`。報告の表示だけが `<return default>`)。76a08c6a の測り直しで検出された (同じ行の BLR のために足したテスト)。 |
 | 198 | 303 | BLR | `return false` → `return true` | 3 | acknowledgment が購読ストリームのコールバックに届く。`test_subscriptions`「Given an acknowledged subscription, when a second acknowledgment arrives, then the first counts and the stream's callback does not see it」(新)。acknowledgment は client が消費する (ルーティングの doc コメント) |
 | 199 | 304 | BLR | `true` → `false` | 2 | `test_subscriptions`「Given an open subscription, when notifications arrive, ...」ほか |
 | 224 | 324 | SDL | `logHandlerFailure("progress callback")` → 削除 | 3 | `test_security_diagnostic_client`「Given a progress callback that raises, ...」(新) |
@@ -197,17 +197,17 @@
 | 172 | 585 | LOR | `… has(ftParameterHeaders) and kind != mtkStdio` → `or` | 3 | `or` にすると HTTP なら何を受けても true になり、成功した呼び出しのあとにも `tools/list` を読み直す。H「Given a tool call that the server answers, when it is sent over HTTP, then the client does not read the tool list again」 |
 | 134 | 586 | ROR | `kind != mtkStdio` → `==` | 2 | H の既存の再試行テスト(「…lists the tools again and retries…」ほか)が落ちる。job に H を足した |
 | 272 | 599 | SDL | `tools/list` 失敗の診断行 → `discard` | 3 | H「Given a header mismatch and a tool list that cannot be read…」が、診断行の存在と、相手の文章が制御文字を含まない 1 行になること(MCP-SEC-HTTP-7)を確かめる |
-| 290 | 601 | RVR | `return false` → `return default` | 1 | `default(bool)` は `false` で、元の式と同じ値 |
+| 290 | 601 | RVR | `return false` → `return default` | 2 | **訂正 (2026-10-10)**: 同値ではない。nim-muter の RVR はリテラルの戻り値を反対の値にする (`return false` → `return true`。報告の表示だけが `<return default>`)。76a08c6a の測り直しで検出された (同じ行の BLR のために足したテスト)。 |
 | 202 | 601 | BLR | `return false` → `return true` | 3 | 同上のテスト。一覧が読めないのに再試行して `calls == 2` になる |
 | 135 | 604 | ROR | `name == toolName` → `!=` | 2 | H の既存の再試行テストが落ちる |
 | 291 | 605 | RVR | `return true` → `return default` | 2 | 値は `false`(203 と同じ)。H の既存の再試行テストが落ちる |
 | 203 | 605 | BLR | `return true` → `return false` | 2 | 同上 |
 | 177 | 607 | LOR | `next.isNil or …` → `and` | 3 | `nextCursor` が無いとき `nil.kind` を読んで SIGSEGV。H「…a tool list without the tool…」(プロセスが落ちる) |
 | 136 | 607 | ROR | `next.kind != JString` → `==` | 3 | H「…a tool listed on the second page…」「…whose nextCursor is not a string…」「…never ends…」 |
-| 292 | 608 | RVR | `return false` → `return default` | 1 | 290 と同じ |
+| 292 | 608 | RVR | `return false` → `return default` | 2 | **訂正 (2026-10-10)**: 同値ではない。nim-muter の RVR はリテラルの戻り値を反対の値にする (`return false` → `return true`。報告の表示だけが `<return default>`)。76a08c6a の測り直しで検出された (同じ行の BLR のために足したテスト)。 |
 | 204 | 608 | BLR | `return false` → `return true` | 3 | H「…a tool list without the tool…」「…nextCursor is not a string…」が落ちる(再試行が起きる) |
 | 270 | 610 | SDL | 100 ページ超過の診断行 → `discard` | 3 | H「…a server whose tool list never ends…」が診断行を確かめる |
-| 293 | 612 | RVR | `return false` → `return default` | 1 | 290 と同じ |
+| 293 | 612 | RVR | `return false` → `return default` | 2 | **訂正 (2026-10-10)**: 同値ではない。nim-muter の RVR はリテラルの戻り値を反対の値にする (`return false` → `return true`。報告の表示だけが `<return default>`)。76a08c6a の測り直しで検出された (同じ行の BLR のために足したテスト)。 |
 | 205 | 612 | BLR | `return false` → `return true` | 3 | H「…never ends…」が落ちる(100 ページ読んだあとに再試行する) |
 | 206 | 634 | BLR | `toolsListedAgain = false` → `true` | 2 | H の既存の再試行テストが落ちる |
 | 208 | 640 | BLR | `toolsListedAgain = true` → `false` | 2 | 2 回目の拒否でも読み直しを繰り返して止まらない。H が止まる(timeout として検出される型) |

@@ -40,7 +40,7 @@ id 4, 10, 12, 14, 15, 26, 27, 28, 30, 31, 38, 41, 42, 46, 48。どれも変異�
 | 45 | stdio.nim:159 | SDL | `toChild.close()` → 削除 | 3 | 子の stdin が閉じられず、子が自分では終わらない。`Given a child that exits when its stdin closes, ...` ほか 1 件 |
 | 49 | stdio.nim:181 | SDL | 「無視した行」の診断 → 削除 | 3 | 無視した行が痕跡なく消える (エラーを黙殺しない原則)。診断の全文ではなく、「無視した」と名指す句が stderr に出ることを見る。`Given a line that is not JSON, when a server reads it, then the diagnostic names the line as ignored on stderr` |
 | 13 | stdio.nim:188 | ROR | `waited >= ms` → `> ms` | 6 | 待ちの上限が 20 ms (`ExitPollMs` 1 回分) 延びるだけ。時間の定数で、仕様はこの長さを定めていない。 |
-| 63 | stdio.nim:189 | RVR | `return false` → 既定値 | 1 | `bool` の既定値は false で、元の戻り値と同じ。 |
+| 63 | stdio.nim:189 | RVR | `return false` → 既定値 | 2 | **訂正 (2026-10-10)**: 同値ではない。nim-muter の RVR はリテラルの戻り値を反対の値にする (`return false` → `return true`。報告の表示だけが `<return default>`)。`return true` を手で当てると `tests/test_stdio.nim` が落ちる (本線 qzktpvsz、2026-10-10)。 |
 | 23 | stdio.nim:189 | BLR | `return false` → `return true` | 3 | 猶予が切れても終了したことにされ、terminate も kill もされない。`Given a child that ignores the closing of its stdin, ...` ほか 1 件 |
 | 54 | stdio.nim:198 | SDL | `terminate()` → 削除 | 3 | `Given a child that ignores the closing of its stdin, when the client closes the transport, then the child is terminated` (SIGTERM でなく SIGKILL で終わる) |
 | 55 | stdio.nim:200 | SDL | `kill()` → 削除 | 3 | `Given a child that also ignores SIGTERM, when the client closes the transport, then the child is killed` |

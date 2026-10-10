@@ -3,6 +3,21 @@
 `nim-muter` による測定は、実装が落ち着いてから push の前に 1 回流す。
 それまでは、変更したモジュールをここに「未測定」として足していく。
 
+## 記録の訂正: リテラルを返す `return` の変異 (2026-10-10)
+
+nim-muter 0.2.5 の RVR は、戻り値がリテラルのとき `default(typeof(X))` ではなく別の値にする: `true` と `false` は入れ替え、整数と小数は 0 なら 1・ほかは 0、文字列は `""`。報告の `replacement` はどの場合も `<return default>` と表示される (`foundation/nim-muter/src/nim_muter/mutators/return_value.nim`)。
+
+2026-10-07 の分類は、`return false` の生き残りを「`bool` の既定値は `false` だから同値」としていた。これは誤りで、実際の変異は `return true` である。該当は 10 文書の 29 行で、それぞれの行を訂正した。
+
+| ジョブ | 行数 | 訂正後 |
+|---|---:|---|
+| client、server、tasks | 9 | 76a08c6a の測り直しで検出 (同じ行の BLR のために足したテストが落ちる) |
+| elicitation、stdio、auth_client | 12 | 測り直しの対象外。`return true` を手で当て、ジョブのテストが落ちることを 1 件ずつ確かめた |
+| param_headers | 1 | 分類 4。`isToken` の空の名前の検査は、呼び出し元が先に断るので届かない |
+| http_client、http_server、jsonschema | 7 | 待ち行列の測り直しの結果で判定する |
+
+`return none(T)`、`return ""`、列挙値や構築子を返す `return` の「同値」は、この誤りに当たらない (`default(typeof(X))` になる)。各文書の冒頭にある分類ごとの件数の表は、2026-10-07 の時点のままにしてある。
+
 ## 未測定
 
 | モジュール | 対応する外部仕様テスト | 追加・変更した日 |

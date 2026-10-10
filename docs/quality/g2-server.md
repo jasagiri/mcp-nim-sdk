@@ -71,10 +71,10 @@
 
 | id | 場所 | 変異子 | 変異 | 分類 | 理由 | 検出するテスト |
 |---:|---|---|---|---:|---|---|
-| 328 | `server.nim:338` | RVR | `return false` → `<return default>` | 1 | `bool` の既定値は `false`。`return false` と `return default` は同じ。 |  |
+| 328 | `server.nim:338` | RVR | `return false` → `<return default>` | 2 | **訂正 (2026-10-10)**: 同値ではない。nim-muter の RVR はリテラルの戻り値を反対の値にする (`return false` → `return true`。報告の表示だけが `<return default>`)。76a08c6a の測り直しで検出された。 |  |
 | 162 | `server.nim:338` | BLR | `false` → `true` | 3 | 未知の要求の取り消しが `true` を返さないこと (docstring の第 1 句) を直接呼んで確かめる。 | test_server_progress_cancel `cancelRequest called directly` |
 | 87 | `server.nim:340` | LOR | `ctx.cancelled or ctx.finished` → `<or -> and>` | 3 | 同じ要求を 2 度取り消すと 2 度目は `false`。変異では `cancelSignal.complete()` を 2 度呼び FutureError になる。 | test_server_progress_cancel `cancelRequest called directly` |
-| 329 | `server.nim:341` | RVR | `return false` → `<return default>` | 1 | 同上。 |  |
+| 329 | `server.nim:341` | RVR | `return false` → `<return default>` | 2 | **訂正 (2026-10-10)**: 同値ではない。nim-muter の RVR はリテラルの戻り値を反対の値にする (`return false` → `return true`。報告の表示だけが `<return default>`)。76a08c6a の測り直しで検出された。 |  |
 | 163 | `server.nim:341` | BLR | `false` → `true` | 3 | 既に取り消した要求・initialize の取り消しが `false` であること。 | test_server_progress_cancel `cancelRequest called directly` |
 | 165 | `server.nim:345` | BLR | `true` → `false` | 3 | 生きている要求の取り消しが `true` を返すこと。 | test_server_progress_cancel `cancelRequest called directly` |
 | 191 | `server.nim:373` | SDL | `server.listenFilterHooks.add hook` → `discard` | 3 | 4 つの拡張口のうち listen hook・interceptor・transform は、どのテストにも登録されていなかった。登録順に効くことを確かめる。 | test_request_hooks `hooks run in the order they were added` の listen filter hooks |
