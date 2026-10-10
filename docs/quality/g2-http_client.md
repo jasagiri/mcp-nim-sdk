@@ -186,7 +186,7 @@
 | 188 | http.nim:452 | SDL | `t.inflight.del requestId` → `discard` | 1 | `pumpAnswer` を足した後は、取り消された要求の表の項目は 380 行・407 行・`pumpAnswer` のどれかが必ず消す。`abandoned` は集合なので、同じ id の 2 回目の取り消しは何も変えない。当てても全部のテストが通ることを確認した |
 | 88 | http.nim:464 | ROR | `retries >= MaxAuthRetries` → `>` | 3 | 4 回目の再試行を許す。A "a hook that always says it improved things ... three times" |
 | 138 | http.nim:468 | BLR | `var retry = false` → `true` | 1 | 直後の `try` は `retry` に必ず代入するか、例外で抜ける |
-| 213 | http.nim:484 | RVR | `return false` → `<return default>` | 未判定 | **訂正 (2026-10-10)**: 同値ではない。nim-muter の RVR はリテラルの戻り値を反対の値にする (`return false` → `return true`。報告の表示だけが `<return default>`)。待ち行列の測り直し (76a08c6a) の結果で判定する。 |
+| 213 | http.nim:484 | RVR | `return false` → `<return default>` | 検出 (測り直し) | **訂正 (2026-10-10)**: 同値ではない。nim-muter の RVR はリテラルの戻り値を反対の値にする (`return false` → `return true`。報告の表示だけが `<return default>`)。測り直し (76a08c6a) で検出された (現在の 505 行)。 |
 | 139 | http.nim:484 | BLR | `false` → `true` | 3 | `_meta` に版が無い・文字列でない呼び出しにも Mcp-Param が付く。P "a call that does not name 2026-07-28 ..." |
 | 124 | http.nim:486 | LOR | `parsed.isSome and ...` → `or` | 3 | 版 2025-11-25 の呼び出しに付く。知らない版では `parsed.get` が UnpackDefect。P 同上 |
 | 126 | http.nim:493 | LOR | `name.isNil or kind != JString` → `and` | 3 | 名前の無い tools/call で nil を参照して落ちる (テストプロセスがクラッシュ)。P "a 2026-07-28 tools/call without a tool name ..." |
@@ -365,3 +365,28 @@ id 33 は分類 4 の確認として変異を当て、全件が通ることを�
 - 受け入れとして残した変異は無い。
 - 観察 (欠陥とは判断しなかった): endpoint が時間内に来ず `connect` が自分でストリームを閉じたとき、`readLoop` は `t.closed` がまだ偽なので、読み取りの失敗を `[mcp-sse] event stream ... failed with ...: Bad file descriptor` として stderr に書く。`close()` による意図した終了は報告しない、というコメントと同じ扱いが、`connect` の中の `response.close()` には及んでいない。テストの出力にこの行が出る。直すなら `t.closed` とは別に「自分で閉じた」を表す状態が要るので、リードに任せる。
 - 既知で直さないもの: `sameOrigin` は port を書かれたまま比べる (`http://h:80/` は `http://h/` と別の生成元になる)。この件のために書いたテストは無い。この担当の生き残りに、既定 port の差でしか区別できないものは無かった。
+
+## 測り直し (本線 76a08c6a、2026-10-10)
+
+36a4c8a5 の測定のあとに足したテストと修正を入れたコミットで、同じジョブを測り直した。変異 386、検出 291、時間切れ 40、コンパイル不能 22、**生き残り 33** (前回 149)。所要 285 分。前回のあとに `first_of.nim` (変異 10) がジョブの対象に加わっている。
+
+前回の生き残りとの突き合わせは変異の指紋で行った (指紋が変わった行は、ファイル・変異の文面・近い行番号で合わせた)。33 件のうち 30 件は前回も生き残っていて、この文書に分類と理由がある。前回「穴」(分類 3) としてテストを足した変異は、1 件も残っていない。「未判定」としていた id 213 (`return false` → `return true`) は検出された。
+
+### 新しく現れた生き残り 3 件 (どれも前回の測定のあとに入った行)
+
+| 場所 | 変異 | 分類 | 理由 |
+|---|---|---|---|
+| `http.nim:306` | LOR `t.closed or idKey(requestId) in t.abandoned` → `and` | 3 穴 | 再開を待っている間 (ストリームが切れてから `GET` を出すまで) に取り消した要求を、再開してしまう。前からあるテストはストリームが開いている間に取り消していて、`resume` に入る前の検査で止まっていた。足したテスト (MCP-HTTP-41): Given a request whose stream was cut after an event id, when the client cancels it before the stream is asked for again, then it is not asked for and no answer arrives。変異を当てて落ちることを確かめた |
+| `first_of.nim:43` | BLR `bell.rung = true` → `false` | 6 許容 | 誰も待っていないときに鳴った分を、次の `wait` に持ち越さなくなる。外部仕様テストからは、2 つの future が同じ回の待ちのうちに終わる巡り合わせでしか通らず、狙って作れない。内部実装テスト `tests/test_first_of.nim` (Given a future that finished while nobody waited, when a wait starts, then it completes at once ほか 2 本) が、この変異で落ちることを確かめた |
+| `first_of.nim:55` | SDL `bell.deliver(result)` → `discard` | 6 許容 | 持ち越した分があるときの `wait` が終わらなくなる。上と同じ経路で、同じ 3 本の内部実装テストが落ちることを確かめた |
+
+`first_of.nim` の 2 件は、内部実装テストで確かめていて外部仕様テストでは確かめていない、という扱いでよいかが利用者の判断になる。
+
+### 時間切れ 40 件
+
+上限は 277 秒。27 件は前回も時間切れ。新しい 13 件:
+
+- `first_of.nim` の 5 件 (31、34、41、49、65 行)。待ちを起こす文そのものを消す・無効にする変異で、待っている側が起きなくなる。
+- 前回は検出だった 8 件 (`http.nim:246`、`http_wire.nim:190` の 3 件、`http_wire.nim:269`、`http_wire.nim:273`、`sse_legacy.nim:150`、`sse_legacy.nim:168`)。どのテストで止まっているかは調べていない。`http_server` の測り直しで見たのと同じく、前回のあとに足したテストが上限なしで待っている可能性がある (未確認)。
+
+時間切れは「テストが通らなかった」側の結果で、生き残りの判定には影響しない。

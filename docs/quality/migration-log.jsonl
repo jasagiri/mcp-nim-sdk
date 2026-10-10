@@ -56,3 +56,4 @@
 {"kind": "mutation_run", "date": "2026-10-10", "module": "sampling_tools", "commit": "76a08c6a83eb", "mutants": 168, "survived": 2, "minutes": 3}
 {"kind": "mutation_run", "date": "2026-10-10", "module": "subscriptions", "commit": "76a08c6a83eb", "mutants": 84, "survived": 2, "minutes": 15}
 {"kind": "mutation_run", "date": "2026-10-10", "module": "http_server", "commit": "76a08c6a83eb", "mutants": 391, "survived": 20, "minutes": 451}
+{"kind": "mutation_run", "date": "2026-10-10", "module": "http_client", "commit": "76a08c6a83eb", "mutants": 386, "survived": 33, "minutes": 285}
