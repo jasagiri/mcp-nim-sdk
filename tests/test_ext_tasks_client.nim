@@ -3,7 +3,7 @@
 ## it declares, what a call returns when the server makes a task of it, how
 ## it polls, and how it answers the input a task asks for.
 
-import std/[asyncdispatch, json, monotimes, options, strutils, times, unittest]
+import std/[asyncdispatch, json, monotimes, options, os, strutils, times, unittest]
 import server/server except McpRequestError
 import client/client
 import client/elicitation
@@ -69,6 +69,19 @@ proc taskJson(status: string, extra: JsonNode = nil): JsonNode =
       result[key] = value
 
 let taskServer = %*{"tools": {}, "extensions": {TasksExtensionId: {}}}
+
+proc loggedWhile(body: proc()): string =
+  ## Everything the code under test wrote to stderr.
+  let path = getTempDir() / "mcp-ext-tasks-client-" & $getCurrentProcessId() & ".log"
+  let saved = stderr
+  stderr = open(path, fmWrite)
+  try:
+    body()
+  finally:
+    stderr.close()
+    stderr = saved
+  result = readFile(path)
+  removeFile(path)
 
 proc release(gate: Future[void]) =
   if not gate.finished:
@@ -410,6 +423,24 @@ if isSupported(mpv20260728):
         seen.len > 0 and seen[^1].task.status == tsCompleted)
       check seen[0].task.status == tsWorking  # the state as of the subscription
       check seen[^1].result.get["content"][0]["text"].getStr() == "slow done"
+      waitFor subscription.cancel()
+
+    test "Given a stream the server cannot write to, when a watched task changes status, then the server logs that it could not announce it and the task goes on":
+      let w = world()
+      let pair = newLoopbackPair()
+      waitFor w.server.attachTransport(pair.server)
+      let client = newMcpClient(McpClientInfo(name: "c", version: "1"), mpv20260728)
+      client.enableTasksExtension()
+      waitFor client.connect(pair.client)
+      let taskId = waitFor(client.startToolCall("slow")).task.get.taskId
+      let subscription = waitFor client.watchTasks(@[taskId], proc(task: DetailedTask) = discard)
+      pair.server.brokenNotifications = true
+      let logged = loggedWhile(proc() =
+        w.gate.release()
+        waitFor sleepAsync(100))
+      check "could not announce the status of task " & taskId in logged
+      check waitFor(client.getTask(taskId)).task.status == tsCompleted
+      pair.server.brokenNotifications = false
       waitFor subscription.cancel()
 
     test "Given an id the server did not agree to, when the client watches, then unsupported names it":

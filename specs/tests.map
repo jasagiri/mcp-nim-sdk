@@ -2525,6 +2525,7 @@ MCP-EXT-TASKS-14 | tests/test_ext_tasks.nim | Given a task of another owner, whe
 MCP-EXT-TASKS-14 | tests/test_ext_tasks.nim | Given a task the client did not list, when its status changes, then the stream is not told
 MCP-EXT-TASKS-14 | tests/test_ext_tasks_client.nim | Given a task being watched, when it completes, then the callback gets the whole task
 MCP-EXT-TASKS-14 | tests/test_ext_tasks_client.nim | Given an id the server did not agree to, when the client watches, then unsupported names it
+MCP-EXT-TASKS-14 | tests/test_ext_tasks_client.nim | Given a stream the server cannot write to, when a watched task changes status, then the server logs that it could not announce it and the task goes on
 MCP-EXT-TASKS-15 | tests/test_ext_tasks_client.nim | Given a tool the server makes a task of, when the client calls it, then it learns the task and not a result
 MCP-EXT-TASKS-15 | tests/test_ext_tasks_client.nim | Given a tool the server answers directly, when the client calls it, then it gets the result
 MCP-EXT-TASKS-15 | tests/test_ext_tasks_client.nim | Given a server that answers with a task without having declared the extension, when the client calls, then it raises McpProtocolError
