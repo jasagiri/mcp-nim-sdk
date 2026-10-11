@@ -121,7 +121,7 @@
 | 390 | 50:44 | BLR | `false` → `true` | 1 | `stripComment` の三つの呼び出し側 (254・275・294 行) はどれも結果をもう一度 `.strip()` する。先頭側を削るかどうかは観測できない。 | - |
 | 392 | 115:41 | BLR | `false` → `true` | 3 | `false` `False` `FALSE` を偽と読む (同じ文を指す RVR と BLR で、同じ変異を 1 回当てた)。 | Given every spelling of a boolean |
 | 393 | 313:45 | BLR | `false` → `true` | 3 | `---` の前に空白があるものは開きの囲みではない。 | Given text before the opening fence |
-| 394 | 317:31 | BLR | `false` → `true` | 3 | 字下げした `---` は閉じの囲みではない。 | Given a fence with trailing spaces / an indented closing fence |
+| 394 | 317:31 | BLR | `false` → `true` | 3 | 開きの囲みの検査で、行頭の空白も落とすようになる。字下げした `---` で始まるファイルが受け入れられる。 | Given text before the opening fence, when read, then it is refused (2026-10-11 に変異を当て直して確かめた。以前の記載は閉じの囲みのテストを挙げていて誤り) |
 | 395 | 325:50 | BLR | `false` → `true` | 3 | 字下げ判定に使う `leading` は先頭の空白だけ数える。末尾の空白まで数えると、末尾のタブを字下げと取り違える (`a:\t\t\t`)。 | Given whitespace after the content, when it is a tab |
 | 397 | 329:41 | BLR | `false` → `true` | 1 | `text` は直前の行 328 で末尾の空白を取り除いてあるので、`trimmed` でもう一度末尾を削っても同じ。 | - |
 | 401 | 61:5 | SDL | `inc i` → `discard` | 3 | バックスラッシュの後と各エスケープの後で `i` を進める。消すと次の文字を読み直して余分な文字が入る。 | Given escapes of a double-quoted scalar |
