@@ -79,14 +79,14 @@
 | 17 | json_schema.nim:155 | ROR | `value >= -9.223372036854776e+18` → `<>= -> >>` | 3 | 2^63 の両端: 隣の整数と同じ文字列にならないこと | `tests/test_json_schema.nim` の "Given integers at the edge of 64 bits, ..." |
 | 18 | json_schema.nim:156 | ROR | `value < 9.223372036854776e+18` → `<< -> <=>` | 3 | 2^63 の両端: 隣の整数と同じ文字列にならないこと | `tests/test_json_schema.nim` の "Given integers at the edge of 64 bits, ..." |
 | 19 | json_schema.nim:164 | ROR | `a.kind == JInt` → `<== -> !=>` | 3 | JFloat と JInt の比較で `a.num` に触れて FieldDefect | `tests/test_json_schema.nim` の "Given 1 and 1.0, when compared by const and enum in either direction, ..." |
-| 261 | json_schema.nim:170 | RVR | `return false` → `<return default>` | 未判定 | **訂正 (2026-10-10)**: 同値ではない。nim-muter の RVR はリテラルの戻り値を反対の値にする (`return false` → `return true`。報告の表示だけが `<return default>`)。待ち行列の測り直し (e79ebbd8) の結果で判定する。 |  |
+| 261 | json_schema.nim:170 | RVR | `return false` → `<return default>` | 検出 (測り直し) | **訂正 (2026-10-10)**: 同値ではない。nim-muter の RVR はリテラルの戻り値を反対の値にする (`return false` → `return true`。報告の表示だけが `<return default>`)。測り直し (e79ebbd8) で検出された。 |  |
 | 132 | json_schema.nim:170 | BLR | `false` → `true` | 3 | 配列の長さが違うとき等しいと答える | `tests/test_json_schema.nim` の "Given const arrays, ..." |
-| 262 | json_schema.nim:172 | RVR | `return false` → `<return default>` | 未判定 | **訂正 (2026-10-10)**: 同値ではない。nim-muter の RVR はリテラルの戻り値を反対の値にする (`return false` → `return true`。報告の表示だけが `<return default>`)。待ち行列の測り直し (e79ebbd8) の結果で判定する。 |  |
+| 262 | json_schema.nim:172 | RVR | `return false` → `<return default>` | 検出 (測り直し) | **訂正 (2026-10-10)**: 同値ではない。nim-muter の RVR はリテラルの戻り値を反対の値にする (`return false` → `return true`。報告の表示だけが `<return default>`)。測り直し (e79ebbd8) で検出された。 |  |
 | 133 | json_schema.nim:172 | BLR | `false` → `true` | 3 | 配列の要素が違うとき等しいと答える | `tests/test_json_schema.nim` の "Given const arrays, ..." |
-| 263 | json_schema.nim:175 | RVR | `return false` → `<return default>` | 未判定 | **訂正 (2026-10-10)**: 同値ではない。nim-muter の RVR はリテラルの戻り値を反対の値にする (`return false` → `return true`。報告の表示だけが `<return default>`)。待ち行列の測り直し (e79ebbd8) の結果で判定する。 |  |
+| 263 | json_schema.nim:175 | RVR | `return false` → `<return default>` | 検出 (測り直し) | **訂正 (2026-10-10)**: 同値ではない。nim-muter の RVR はリテラルの戻り値を反対の値にする (`return false` → `return true`。報告の表示だけが `<return default>`)。測り直し (e79ebbd8) で検出された。 |  |
 | 135 | json_schema.nim:175 | BLR | `false` → `true` | 3 | オブジェクトの大きさが違うとき等しいと答える | `tests/test_json_schema.nim` の "Given const objects, ..." |
 | 98 | json_schema.nim:177 | LOR | `not b.hasKey(key) or not jsonEquals(value, b[key])` → `<or -> and>` | 3 | キーが無い・値が違うオブジェクトを等しいと答える (98 は無い鍵で KeyError) | `tests/test_json_schema.nim` の "Given const objects, ..." |
-| 264 | json_schema.nim:177 | RVR | `return false` → `<return default>` | 未判定 | **訂正 (2026-10-10)**: 同値ではない。nim-muter の RVR はリテラルの戻り値を反対の値にする (`return false` → `return true`。報告の表示だけが `<return default>`)。待ち行列の測り直し (e79ebbd8) の結果で判定する。 |  |
+| 264 | json_schema.nim:177 | RVR | `return false` → `<return default>` | 検出 (測り直し) | **訂正 (2026-10-10)**: 同値ではない。nim-muter の RVR はリテラルの戻り値を反対の値にする (`return false` → `return true`。報告の表示だけが `<return default>`)。測り直し (e79ebbd8) で検出された。 |  |
 | 136 | json_schema.nim:177 | BLR | `false` → `true` | 3 | キーが無い・値が違うオブジェクトを等しいと答える (98 は無い鍵で KeyError) | `tests/test_json_schema.nim` の "Given const objects, ..." |
 | 32 | json_schema.nim:205 | ROR | `depth <= 0` → `<<= -> <>` | 3 | uniqueItems の比較は maxDepth と同じ深さで SchemaLimitError。32 は境界 (深さ丁度)、1/2 は配列/オブジェクトで深さが減らない変異 | `tests/test_security_schema.nim` の "Given uniqueItems, when an item nests as deep as maxDepth, ..." と "..., however the nesting is built" |
 | 154 | json_schema.nim:208 | SDL | `into.add 'n'` → `discard` | 3 | canonical の文字列から一部を落とすと、異なる値が同じ文字列になる: `[null]` と `[]` | `tests/test_json_schema.nim` の "Given uniqueItems, when items of different type or content could be told apart only by a part of their text, then they are distinct" |
@@ -247,3 +247,35 @@ JSON Schema の `pattern` / `patternProperties` を支える正規表現エン�
 - 閉じていない `{`: `a{` と `a{x}` と `a{,3}` は文字として読むが (ECMA-262 Annex B と同じ)、`a{2` と `a{2,` と `a{2x` は RegexError で拒否する。Annex B ではこれらも文字として読まれる (u フラグ付きなら、`a{` も含めてすべて構文エラー)。どちらに寄せるかが決まっていないので、現在の挙動 (拒否) を `Given a repetition that is not closed or runs backwards` で固定した。Annex B に寄せるなら、このテストと 349, 418 の検出のしかたを変える。
 
 分類 6 (許容) はない。
+
+## 測り直し (本線 e79ebbd8、2026-10-11)
+
+7d32c165 の測定のあとに足したテストと修正を入れたコミットで、同じジョブを測り直した。変異 483、検出 440、時間切れ 8、コンパイル不能 18、**生き残り 17** (前回 126)。所要 45 分。測ったコミットと本線の先端で `src/jsonschema/` に差分は無い。
+
+変異の id と行番号は前回からずれているので、突き合わせはファイル・変異の文面・近い行で行った (下の表の「記録の行」が、この文書の上の表の id)。生き残りの 17 件はすべて前回も生き残っていて、分類と理由がある。新しい生き残りは無い。
+
+| 今回の id | 場所 | 変異 | 記録の行 | 分類 |
+|---:|---|---|---:|---|
+| 134 | json_schema.nim:92 | BLR `false` → `true` | 130 | 1 |
+| 14 | json_schema.nim:147 | ROR `value.fnum >= 9.2e+18` | 14 | 1 |
+| 160 | json_schema.nim:211 | SDL `into.add 'd'` | 156 | 1 |
+| 163 | json_schema.nim:215 | SDL `into.add 's'` | 159 | 1 |
+| 170 | json_schema.nim:225 | SDL `into.add '{'` | 166 | 1 |
+| 37 | json_schema.nim:251 | ROR `part.len <= 9` | 37 | 6 |
+| 42 | json_schema.nim:278 | ROR `v.regexBudget < 0` | 40 | 6 |
+| 185 | json_schema.nim:279 | SDL `overLimit(...)` | 181 | 6 |
+| 50 | json_schema.nim:326 | ROR 許容差の `>` | 48 | 6 |
+| 51 | json_schema.nim:333 | ROR `shortest >= 0` | 49 | 1 |
+| 53 | json_schema.nim:335 | ROR `shortest >= 0` | 51 | 1 |
+| 57 | json_schema.nim:346 | ROR `fewest >= 0` | 55 | 1 |
+| 69 | json_schema.nim:402 | ROR `fewest >= 0` | 67 | 1 |
+| 291 | json_schema_regex.nim:110 | ROR `c <= 0x7F` | 287 | 1 |
+| 292 | json_schema_regex.nim:118 | ROR `lo > next` | 288 | 1 |
+| 456 | json_schema_regex.nim:474 | SDL `pending.setLen 0` | 456 | 4 (残すと判断済み) |
+| 378 | json_schema_regex.nim:528 | BLR `else: false` | 378 | 4 (残すと判断済み) |
+
+同値 11、到達しない・冗長 2、許容 4。
+
+未判定だった 4 行 (記録の 261〜264、`jsonEquals` の `return false`。今回の id は 265〜268、行は同じ 170 / 172 / 175 / 177) は、今回すべて検出された。未判定の行は残っていない。
+
+時間切れの 8 件 (251、255、403、410、422、436、437、471) は、どれも変異がループを終わらなくするか、上限を外すもの: 位置や添字を進める `inc` を消す 6 件 (`inc p.pos` 4、`inc i` 1、`inc v.checks` 1)、検査の回数の上限を超えたときの `overLimit` を消す 1 件、繰り返しの中で子を足す文を消す 1 件。テストの待ちが原因のものは無い。 7 件は前回も時間切れで、471 (`json_schema_regex.nim:532` の `inc i`) だけが前回は検出、今回は時間切れになった。位置が進まなくなる変異で、どちらの結果でも生き残りではない。前回なぜ時間内に落ちたかは調べていない。
