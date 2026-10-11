@@ -14,9 +14,47 @@ nim-muter 0.2.5 の RVR は、戻り値がリテラルのとき `default(typeof(
 | client、server、tasks | 9 | 76a08c6a の測り直しで検出 (同じ行の BLR のために足したテストが落ちる) |
 | elicitation、stdio、auth_client | 12 | 測り直しの対象外。`return true` を手で当て、ジョブのテストが落ちることを 1 件ずつ確かめた |
 | param_headers | 1 | 分類 4。`isToken` の空の名前の検査は、呼び出し元が先に断るので届かない |
-| http_client、http_server、jsonschema | 7 | 待ち行列の測り直しの結果で判定する |
+| http_client、http_server、jsonschema | 7 | 76a08c6a (http_client 1、http_server 2) と e79ebbd8 (jsonschema 4) の測り直しで検出 |
 
 `return none(T)`、`return ""`、列挙値や構築子を返す `return` の「同値」は、この誤りに当たらない (`default(typeof(X))` になる)。各文書の冒頭にある分類ごとの件数の表は、2026-10-07 の時点のままにしてある。
+
+## 測定の現状 (2026-10-11)
+
+本線の 27 ジョブはすべて測定済みで、どのジョブも、最後に測ったコミットから本線の先端までに対象のソース (`tests/mutation/<ジョブ>.json` の `sources`) が変わっていない (`git diff --name-only <測ったコミット> <先端> -- <sources>` が空であることを、ジョブごとに確かめた)。下の「未測定」の各節に挙げたモジュールは、どれもこの 27 ジョブのどれかの対象に入っている (`src/server/prompts.nim`、`src/server/resources.nim`、`src/server/tool_output.nim` は `server.nim` に統合して削除済み)。節は経緯として残してある。
+
+| ジョブ | 最後に測ったコミット | 日付 | 変異 | 生き残り |
+|---|---|---|---:|---:|
+| address_policy | 76a08c6a | 2026-10-10 | 212 | 18 |
+| auth_client | 36a4c8a5 | 2026-10-07 | 77 | 21 |
+| auth_oauth | 76a08c6a | 2026-10-10 | 326 | 19 |
+| auth_resource_server | 36a4c8a5 | 2026-10-07 | 42 | 12 |
+| base64_shape | 7d32c165 | 2026-10-07 | 14 | 0 |
+| client | 76a08c6a | 2026-10-09 | 346 | 9 |
+| content | 36a4c8a5 | 2026-10-07 | 101 | 26 |
+| diagnostic | 76a08c6a | 2026-10-10 | 37 | 2 |
+| elicitation | 36a4c8a5 | 2026-10-07 | 324 | 103 |
+| event_stream | 36a4c8a5 | 2026-10-07 | 35 | 5 |
+| extensions | 36a4c8a5 | 2026-10-07 | 86 | 25 |
+| features | 76a08c6a | 2026-10-10 | 57 | 0 |
+| http_client | 76a08c6a | 2026-10-10 | 386 | 33 |
+| http_server | 76a08c6a | 2026-10-10 | 391 | 20 |
+| jsonschema | e79ebbd8 | 2026-10-11 | 483 | 17 |
+| lifecycle | 76a08c6a | 2026-10-09 | 24 | 2 |
+| modern | 76a08c6a | 2026-10-10 | 94 | 6 |
+| mrtr | 76a08c6a | 2026-10-10 | 105 | 8 |
+| param_headers | 36a4c8a5 | 2026-10-07 | 84 | 13 |
+| sampling_tools | 76a08c6a | 2026-10-10 | 168 | 2 |
+| server | 76a08c6a | 2026-10-09 | 442 | 39 |
+| stdio | 36a4c8a5 | 2026-10-07 | 64 | 26 |
+| subscriptions | 76a08c6a | 2026-10-10 | 84 | 2 |
+| tasks | 76a08c6a | 2026-10-10 | 297 | 21 |
+| trace_context | 76a08c6a | 2026-10-10 | 96 | 11 |
+| transport | 36a4c8a5 | 2026-10-07 | 21 | 6 |
+| version | 36a4c8a5 | 2026-10-07 | 23 | 5 |
+
+生き残りの分類と理由は各ジョブの `g2-<ジョブ>.md` にある。理由の無い生き残りと未判定の行は残っていない。利用者の判断を待っている行 (到達しないコード、仕様が決めていない挙動) は、各文書の「残っているもの」にある。
+
+拡張 (`mcp-2026-07-28-ext` になる系列) と下書き (`mcp-draft` になる系列) のジョブは、それぞれの系列の `g2-ext_*.md` と `g2-draft_*.md` に記録がある。どちらも初回の測定のあとに欠陥を 1 件ずつ直しているので、`ext_skills` (`frontmatter.nim`) と `draft_events` (`client.nim`) は測り直しが要る。
 
 ## 未測定
 

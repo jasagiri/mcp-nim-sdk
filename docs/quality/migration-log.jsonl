@@ -58,3 +58,12 @@
 {"kind": "mutation_run", "date": "2026-10-10", "module": "http_server", "commit": "76a08c6a83eb", "mutants": 391, "survived": 20, "minutes": 451}
 {"kind": "mutation_run", "date": "2026-10-10", "module": "http_client", "commit": "76a08c6a83eb", "mutants": 386, "survived": 33, "minutes": 285}
 {"kind": "mutation_run", "date": "2026-10-11", "module": "jsonschema", "commit": "e79ebbd81dbf", "mutants": 483, "survived": 17, "minutes": 45, "byClass": {"equivalent": 11, "unreached": 2, "accepted": 4}}
+{"kind": "mutation_run", "date": "2026-10-11", "module": "ext_tasks", "commit": "c9b5c264d809", "mutants": 149, "survived": 40, "minutes": 39}
+{"kind": "mutation_run", "date": "2026-10-11", "module": "ext_apps", "commit": "c9b5c264d809", "mutants": 315, "survived": 51, "minutes": 22}
+{"kind": "mutation_run", "date": "2026-10-11", "module": "ext_auth", "commit": "c9b5c264d809", "mutants": 204, "survived": 50, "minutes": 20}
+{"kind": "mutation_run", "date": "2026-10-11", "module": "ext_skills", "commit": "c9b5c264d809", "mutants": 495, "survived": 149, "minutes": 86}
+{"kind": "mutation_run", "date": "2026-10-11", "module": "draft_events", "commit": "c1afe70e9d6a", "mutants": 916, "survived": 259, "minutes": 444}
+{"kind": "mutation_run", "date": "2026-10-11", "module": "draft_interceptors", "commit": "c1afe70e9d6a", "mutants": 294, "survived": 81, "minutes": 23}
+{"kind": "mutation_run", "date": "2026-10-11", "module": "draft_server_card", "commit": "c1afe70e9d6a", "mutants": 237, "survived": 72, "minutes": 19}
+{"kind": "mutation_run", "date": "2026-10-11", "module": "draft_tool_annotations", "commit": "c1afe70e9d6a", "mutants": 143, "survived": 25, "minutes": 7}
+{"kind": "mutation_run", "date": "2026-10-11", "module": "draft_variants", "commit": "c1afe70e9d6a", "mutants": 159, "survived": 40, "minutes": 8}
