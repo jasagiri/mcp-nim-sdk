@@ -180,7 +180,7 @@ nim-muter 0.2.5 の RVR は、戻り値がリテラルのとき `default(typeof(
 | `src/jsonschema/json_schema_regex.nim` | 7d32c165 の測定の後: `[]` と `[^]` を ECMA-262 どおりに読む。読まれない `lazy` を削除 | `tests/test_json_schema.nim`、`tests/test_security_schema.nim` |
 | `src/jsonschema/json_schema.nim` | 7d32c165 の測定の後: `$ref` の先頭が 0 の添字を拒否 | `tests/test_security_schema.nim` |
 
-注 (利用者の判断待ち): `sse_legacy.nim` と `http_wire.nim` の `sameOrigin` は、既定のポートを書いた URL と省いた URL
+注 (2026-10-12 に今のままと決めた): `sse_legacy.nim` と `http_wire.nim` の `sameOrigin` は、既定のポートを書いた URL と省いた URL
 (`https://h/` と `https://h:443/`) を別のオリジンと見る。HTTP+SSE の `endpoint` イベントは拒否され、リダイレクトでは
 資格情報が外れる。どちらも安全側の誤りで、既定のポートで待つサーバーを立てないとテストできないため、直していない。
 削除した `port` は、この比較に使うつもりで書かれて使われていなかった関数。

@@ -338,7 +338,7 @@ MCP-RESOURCES-13・14、MCP-TOOLS-6、MCP-PROMPTS-5、MCP-TASKS-14 の追加行�
 
 ### 残っているもの
 
-- id 290 (`server.nim:1493`、分類 4): `inFlight` の肥大は公開 API から観測できない。`inFlight` の件数を返す公開手続きを足せば検査できる。リードの判断を待つ。
+- id 290 (`server.nim:1493`、分類 4): `inFlight` の肥大は公開 API から観測できない。`inFlight` の件数を返す公開手続きを足せば検査できる。2026-10-12 に、足さないと決めた。
 - id 296 と 239 (917 行) は timeout として検出済み。
 - 診断行 (分類 6) の 9 件は文面だけの差で、許容した。
 
@@ -486,4 +486,4 @@ runError はない。
 | `pagination.nim:43` | RVR `return none(int)` → `return default` | 1 | `default(Option[int])` は `none(int)`。同じ手続きのほかの 4 件と同じ |
 | `server.nim:504` | SDL `doAssert negotiated.isSome, …` → `discard` | 4 | 握手を持つ版を 1 つも話さないサーバーは、ここに来る前に `initialize` へエラーを返している。表明は、その前提が崩れたときに止めるためのもので、テストから真にできない |
 
-判断待ちは前回から変わらない: id 290 (`inFlight` の件数を外から見えるようにするか)。
+2026-10-12 に、id 290 (`inFlight` の件数を外から見えるようにするか) は、公開 API を足さないと決めた。次の測定でも生き残る。

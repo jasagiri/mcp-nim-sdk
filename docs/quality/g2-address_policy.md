@@ -24,7 +24,7 @@
 - **id 33** (`icons.nim` の `guardedGet` に渡す `followRedirects = true` → `false`): 第 1 節では「未確認」。**許容 (分類 6) とする。**
   アイコンは https だけなので、既定の経路でリダイレクトを追うことを見るには、試験用の証明書をクライアントに信頼させる口
   (`IconFetchOptions.caFile`) が要る。その口は今の公開 API に無く、テストのためだけには足さない。リダイレクト先の検査は
-  `guarded_wire` のテスト (`test_security_address`) が押さえている。口を利用者向けに足すかは利用者の判断待ち。
+  `guarded_wire` のテスト (`test_security_address`) が押さえている。口を利用者向けに足すかは、2026-10-12 に足さないと決めた (id 33 は許容のまま)。
 - システムの名前解決を呼ぶテスト 1 本 (第 2 節、id 174・176・113・114) は残す。渡すのは `127.0.0.1` と `::1` の数値だけで、
   問い合わせは外に出ない。
 
@@ -144,7 +144,7 @@ Scenario は `MCP-ICONS-7` `MCP-ICONS-8` `MCP-SEC-WIRE-10` `MCP-SEC-WIRE-11` を
 
 - id 33 (`icons.nim` の `guardedGet` の `followRedirects`): 既定の取得経路で同じ origin への redirect が追われることを確かめるには、https のサーバーとその証明書を信頼するクライアントが要る。
   `http_wire.request` は `caFile` を取るが、`IconFetchOptions` には `caFile` が無く、`guardedGet` は渡さない。`caFile` が空のときは Nim の `newContext(CVerifyPeer)` が OS の証明書を使い、環境変数 `SSL_CERT_FILE` は `CVerifyPeerUseEnvVars` でしか読まれない。
-  テスト用の CA を信頼させる道が公開 API (`IconFetchOptions.caFile` の追加) を変える以外に無いため、リードの判断に回す。
+  テスト用の CA を信頼させる道が公開 API (`IconFetchOptions.caFile` の追加) を変える以外に無いため、リードの判断に回していた。2026-10-12 に `caFile` は足さないと決めた。
   他の経路で代える案は無い (`options.get` を差し替えると `guardedGet` が通らない)。
 - id 14 は許容 (上の理由)。
 - クラス 4 (死んだコード) と 5 (欠陥) は無かった。

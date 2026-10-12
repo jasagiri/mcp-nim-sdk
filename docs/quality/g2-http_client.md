@@ -65,7 +65,7 @@
 
 - 許容 7 件と上の 2 件。理由は各節の行。
 - id 83 (`http.nim` の `key.len > 0`): 空文字列の id の要求は取り消せない。SDK のクライアントは空の id を作らない。
-- `sameOrigin` は既定のポートの明示と省略を別オリジンと見る (`g2-protocol-versions.md` の注)。
+- `sameOrigin` は既定のポートの明示と省略を別オリジンと見る (`g2-protocol-versions.md` の注)。2026-10-12 に今のままと決めた。
 - `http.nim:153` の `hasKey("id")` は `isResponse` に含まれる冗長な条件 (変異の対象外)。
 
 ## G2 変異検査: http_client (src/transport/http.nim 134-346 行、g2g-hc-a の担当分)
@@ -217,7 +217,7 @@
 
 ### 残っているもの
 
-- 83 (受容): `key.len > 0` は「id が無い (通知)」を「空の id」と区別しない。空文字列の id は JSON-RPC では正しいが、SDK のクライアントは作らず、`cancelRequest("")` を呼ぶ箇所もない。空の id の要求は取り消せない。直すなら条件を `not requestId.isNil` にする (3 か所)。リードの判断に任せる。
+- 83 (受容): `key.len > 0` は「id が無い (通知)」を「空の id」と区別しない。空文字列の id は JSON-RPC では正しいが、SDK のクライアントは作らず、`cancelRequest("")` を呼ぶ箇所もない。空の id の要求は取り消せない。直すなら条件を `not requestId.isNil` にする (3 か所)。2026-10-12 に今のままと決めた。
 - 203 (受容): DELETE が 5 秒返らないときの診断 1 行。
 - リードへ (本分担の外、`http.nim` 313〜323 行の `pump` と `resume`): (1) 通知の POST がイベントストリームで答えられると、`pump` の末尾 `t.abandoned.excl idKey(requestId)` が `requestId` の nil を引く疑い (読んだだけで、テストで再現していない)。(2) イベント id を受け取った後に取り消した要求は、`resume` が `Last-Event-ID` つきで GET をもう一度開き、取り消したはずの答えを配送し得る疑い (同じく未再現)。
 
@@ -363,7 +363,7 @@ id 33 は分類 4 の確認として変異を当て、全件が通ることを�
 
 - 分類 4 の 2 件は、削除するかどうかをリードが決める。`src/transport/sse_legacy.nim` の `await ready` (id 33、現在 135 行) と、`readLoop` の `event.data.len > t.maxResponseSize` の検査 (id 13、現在 96〜98 行)。同じ検査は `http.nim` の `readLoop` にもある (別の担当の範囲)。
 - 受け入れとして残した変異は無い。
-- 観察 (欠陥とは判断しなかった): endpoint が時間内に来ず `connect` が自分でストリームを閉じたとき、`readLoop` は `t.closed` がまだ偽なので、読み取りの失敗を `[mcp-sse] event stream ... failed with ...: Bad file descriptor` として stderr に書く。`close()` による意図した終了は報告しない、というコメントと同じ扱いが、`connect` の中の `response.close()` には及んでいない。テストの出力にこの行が出る。直すなら `t.closed` とは別に「自分で閉じた」を表す状態が要るので、リードに任せる。
+- 観察 (欠陥とは判断しなかった): endpoint が時間内に来ず `connect` が自分でストリームを閉じたとき、`readLoop` は `t.closed` がまだ偽なので、読み取りの失敗を `[mcp-sse] event stream ... failed with ...: Bad file descriptor` として stderr に書く。`close()` による意図した終了は報告しない、というコメントと同じ扱いが、`connect` の中の `response.close()` には及んでいない。テストの出力にこの行が出る。直すなら `t.closed` とは別に「自分で閉じた」を表す状態が要るので、リードに任せていた。2026-10-12 に今のままと決めた。
 - 既知で直さないもの: `sameOrigin` は port を書かれたまま比べる (`http://h:80/` は `http://h/` と別の生成元になる)。この件のために書いたテストは無い。この担当の生き残りに、既定 port の差でしか区別できないものは無かった。
 
 ## 測り直し (本線 76a08c6a、2026-10-10)
@@ -380,7 +380,7 @@ id 33 は分類 4 の確認として変異を当て、全件が通ることを�
 | `first_of.nim:43` | BLR `bell.rung = true` → `false` | 6 許容 | 誰も待っていないときに鳴った分を、次の `wait` に持ち越さなくなる。外部仕様テストからは、2 つの future が同じ回の待ちのうちに終わる巡り合わせでしか通らず、狙って作れない。内部実装テスト `tests/test_first_of.nim` (Given a future that finished while nobody waited, when a wait starts, then it completes at once ほか 2 本) が、この変異で落ちることを確かめた |
 | `first_of.nim:55` | SDL `bell.deliver(result)` → `discard` | 6 許容 | 持ち越した分があるときの `wait` が終わらなくなる。上と同じ経路で、同じ 3 本の内部実装テストが落ちることを確かめた |
 
-`first_of.nim` の 2 件は、内部実装テストで確かめていて外部仕様テストでは確かめていない、という扱いでよいかが利用者の判断になる。
+`first_of.nim` の 2 件は、内部実装テストで確かめていて外部仕様テストでは確かめていない、という扱いでよいかが利用者の判断になっていた。2026-10-12 に、内部実装テストの確認で許容すると決めた。
 
 ### 時間切れ 40 件
 

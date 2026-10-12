@@ -34,7 +34,7 @@ Scenario は `MCP-HTTP-24` と `-2` (`specs/streamable_http.feature`、対応は
 
 ## 残っているもの
 
-- 40 (`param_headers.nim:49`): `isToken` の空文字列の検査は、109 行目の検査と重なっている。コードは変えていない。リードの判断を待つ。
+- 40 (`param_headers.nim:49`): `isToken` の空文字列の検査は、109 行目の検査と重なっている。コードは変えていない。2026-10-12 に残すと決めた。
 - 20 (`param_headers.nim:181`): 診断の引用の長さの境界。受け入れ。
 
 ## リードの判断
