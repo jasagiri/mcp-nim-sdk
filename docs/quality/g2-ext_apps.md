@@ -106,5 +106,6 @@ id 137 (`host.nim:229`、`fetchUiResource` の `requireServerCapability(... reso
 ## 残っているもの
 
 - 分類 4・5 は無い。
+- id 218 の診断の語 (`twice`、`before ui/initialize`) を確かめるテスト `Given initialized sent twice or too early, when noted, then the error says which` は、残すと決めた (2026-10-12)。語は View に何を直すかを伝えるので、取り違えを検出する価値がある。
 - id 137 (timeout) は 133 からの推定で、当てて確かめていない。
 - 同値 16 件は読解で決めた (当てても落ちるテストが無いことは測定が示している)。
