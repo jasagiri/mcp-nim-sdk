@@ -89,7 +89,9 @@ suite "the address an icon is fetched from":
     options.timeoutMs = 200
     let outcome = failure(options)
     check outcome.len > 0
-    check "private" notin outcome
+    # The words of the refusal, not "private" alone: the failure carries an
+    # async traceback, and a checkout under /private/tmp has that in its paths.
+    check "a private network address" notin outcome
 
 suite "an icon fetch that ends (mutation review, g2f-ap-a)":
 
