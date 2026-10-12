@@ -1,7 +1,9 @@
 # G2 変異検出: ext_tasks ジョブ
 
 測定: `nim-muter`、ジョブ `tests/mutation/ext_tasks.json`、拡張ブランチの c9b5c264 (初回の測定。比べる記録は無い)。
-対象は `src/ext/tasks.nim` と `src/ext/tasks/{client,server,wire}.nim`。`src/ext/**` は測定後に変わっていないので、行番号は今のものと同じ。
+対象は `src/ext/tasks.nim` と `src/ext/tasks/{client,server,wire}.nim`。`src/ext/**` は測定後に変わっていないので、行番号は今のものと同じ。 (2026-10-12 より前の話。下記。)
+
+2026-10-12 に `src/ext/tasks/client.nim` と `src/ext/tasks/server.nim` を変えた (冗長な削除と届かない枝を消した)。次の測定で測り直す。以降の行番号はずれる。
 
 | 全変異 | killed | timeout | survived | runError | compileError |
 |---:|---:|---:|---:|---:|---:|
@@ -92,7 +94,9 @@
 
 ## 残っているもの
 
-- **分類 4 (リードの判断)**: `client.nim:139` (id 131、`_meta` の削除は冗長)、`server.nim:106` (id 14、`params` が nil か非オブジェクトの枝は版情報が `params._meta` にあるため到達しない)、
-  `server.nim:112` と `server.nim:113` (id 28・29、`internalError` は「結果もエラーも無い完了した task」を指す防御で、到達しない)。ソースは削除していない。
+- **分類 4 (決定 2026-10-12)**: 4 件のうち 2 件を消し、2 件を残した。
+  - 消した: `client.nim` の `task.delete("_meta")` (id 131)。`parseDetailedTask` と `parseTask` は名前を挙げたキーだけを読み、`_meta` を読まないので、消しても結果が同じ。`params.copy()` は残した (通知はこのあとクライアント自身のハンドラーにも渡るので、`onTask` に渡す節点を共有しない)。
+  - 消した: `server.nim` の `taskIdParam` の「`params` が nil か非オブジェクト」の枝 (id 14)。`params{"taskId"}` は nil と非オブジェクトでも nil を返すので、枝が無くても同じ -32602 になる。さらに、`tasks/get` などは `_meta` の無い要求を先に -32602 (`params._meta is required`) で退けることを、nil・配列・文字列・`_meta` の無いオブジェクトで確かめた (版を `_meta` から取る `-d:mcpOldestProtocolVersion=2026-07-28` のビルド。通常のビルドでは版が付かず -32601)。
+  - 残した: `server.nim` の `detailed` の 2 つの `internalError` (id 28・29、「結果の無い completed」「エラーの無い failed」)。届かないのではなく、公開の `TaskStore.finish` に `TaskOutcome()` (結果もエラーも無い) を `toolErrorsFail = false` で渡すと、結果の無い `completed` の task が作れる (コードを読んだ結論。実行では確かめていない)。消すと、結果の無い完了した task がそのままワイヤに出る。拡張自身の経路 (`task_methods.nim`) は必ずどちらかを持つ。
 - 分類 1 の id 35 と 68〜71 は同値として記録した。
 - 分類 5 (欠陥) と分類 6 (許容) は無い。確認できていない分類 3 も無い。

@@ -103,7 +103,7 @@ proc ownerOf(ext: TasksExtension, ctx: McpRequestContext): string =
   ExtOwnerPrefix
 
 proc taskIdParam(params: JsonNode, methodName: string): string =
-  let node = if params.isNil or params.kind != JObject: nil else: params{"taskId"}
+  let node = params{"taskId"}
   if node.isNil or node.kind != JString:
     raise newRequestError(ErrInvalidParams, methodName & " requires a string taskId")
   node.getStr()

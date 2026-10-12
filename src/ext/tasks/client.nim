@@ -135,9 +135,9 @@ proc watchTasks*(client: McpClient, taskIds: seq[string],
   subscription.onNotification = proc(methodName: string, params: JsonNode) =
     if methodName != TaskStatusMethod:
       return
-    var task = params.copy()
-    task.delete("_meta")
-    let parsed = parseDetailedTask(task)
+    # A copy: `onTask` is given nodes of it, and the notification goes on to
+    # the client's own handlers after this callback.
+    let parsed = parseDetailedTask(params.copy())
     if parsed.problem.isSome:
       stderr.writeLine("[mcp-tasks] ignored a malformed " & TaskStatusMethod & ": " &
                        peerText(parsed.problem.get))
