@@ -178,7 +178,14 @@ suite "fetching an icon (mutation review, g2f-ap-a)":
     check sniffIcon("<!-- a page --><html/>").isNone
 
   test "Given a data URI icon of exactly the allowed size, when fetched, then it is read; one byte more, refused":
-    let port = startServer(Seen())
+    # A data URI never reaches the network: the fetch runs with the default `get`.
     let uri = "data:image/png;base64," & encode(Png)
-    check port.fetch(uri, options = IconFetchOptions(maxBytes: Png.len)).kind == itPng
-    check "exceeds" in port.refused(uri, options = IconFetchOptions(maxBytes: Png.len - 1))
+    check waitFor(fetchIcon(McpIcon(src: uri), Origin,
+                            IconFetchOptions(maxBytes: Png.len))).kind == itPng
+    var refusal = ""
+    try:
+      discard waitFor fetchIcon(McpIcon(src: uri), Origin,
+                                IconFetchOptions(maxBytes: Png.len - 1))
+    except McpIconError as e:
+      refusal = e.msg
+    check "exceeds" in refusal

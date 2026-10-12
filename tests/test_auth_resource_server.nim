@@ -97,6 +97,33 @@ proc send(url: string, httpMethod: HttpMethod, body = "",
 proc wwwAuthenticate(reply: Reply): seq[string] =
   seq[string](reply.headers.getOrDefault("WWW-Authenticate"))
 
+type BearerParams = object
+  ## The `Bearer` challenge as the header line spells it: `name="value"`
+  ## pairs after the scheme, read here without the SDK's own parser.
+  scope, error, resourceMetadata: Option[string]
+
+proc bearerParam(line, name: string): Option[string] =
+  for lead in [" ", ", "]:
+    let key = lead & name & "=\""
+    let at = line.find(key)
+    if at < 0: continue
+    var i = at + key.len
+    var value = ""
+    while i < line.len and line[i] != '"':
+      if line[i] == '\\' and i + 1 < line.len: inc i
+      value.add line[i]
+      inc i
+    return some(value)
+  none(string)
+
+proc bearerOf(lines: seq[string]): Option[BearerParams] =
+  for line in lines:
+    if line.toLowerAscii().startsWith("bearer"):
+      return some(BearerParams(scope: bearerParam(line, "scope"),
+                               error: bearerParam(line, "error"),
+                               resourceMetadata: bearerParam(line, "resource_metadata")))
+  none(BearerParams)
+
 proc validVerdicts(): TableRef[string, TokenVerdict] =
   result = newTable[string, TokenVerdict]()
   result["good"] = TokenVerdict(kind: tvValid)
@@ -124,7 +151,7 @@ suite "Resource server, every version of the build":
       let env = startServer(v, validVerdicts())
       let reply = send(env.url, HttpPost, initializeBody)
       check reply.code == Http401
-      let bearer = bearerChallenge(reply.wwwAuthenticate)
+      let bearer = bearerOf(reply.wwwAuthenticate)
       check bearer.isSome
       check env.seen.calls.len == 0   # nothing to verify
       check (bearer.get.resourceMetadata.isSome) == v.has(ftProtectedResourceMetadata)
@@ -136,7 +163,7 @@ suite "Resource server, every version of the build":
       let env = startServer(v, validVerdicts())
       let reply = send(env.url, HttpPost, initializeBody, {"Authorization": "Bearer bogus"})
       check reply.code == Http401
-      check bearerChallenge(reply.wwwAuthenticate).get.error == some("invalid_token")
+      check bearerOf(reply.wwwAuthenticate).get.error == some("invalid_token")
       check env.seen.calls == @[("bogus", env.url)]
 
     test "Given the verifier is told the resource and version " & $v & ", when a token arrives, then it gets the canonical URI of this server to check the audience against":
@@ -154,7 +181,7 @@ suite "Resource server, every version of the build":
       let env = startServer(v, validVerdicts())
       let reply = send(env.url, HttpPost, initializeBody, {"Authorization": "Bearer narrow"})
       check reply.code == Http403
-      let bearer = bearerChallenge(reply.wwwAuthenticate).get
+      let bearer = bearerOf(reply.wwwAuthenticate).get
       check bearer.error == some("insufficient_scope")
       check bearer.scope == some("files:write files:read")
 
@@ -291,7 +318,7 @@ suite "Resource server, scopes in the challenge":
   for v in authVersions:
     test "Given challenge scopes configured and version " & $v & ", when a request has no token, then the scope appears exactly from 2025-11-25 on":
       let env = startServer(v, validVerdicts(), challengeScopes = @["files:read"])
-      let bearer = bearerChallenge(send(env.url, HttpPost, initializeBody).wwwAuthenticate).get
+      let bearer = bearerOf(send(env.url, HttpPost, initializeBody).wwwAuthenticate).get
       check bearer.scope == (if v.has(ftIncrementalScopeConsent): some("files:read") else: none(string))
 
 suite "Resource server, configuration":

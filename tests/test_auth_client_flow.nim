@@ -62,13 +62,18 @@ proc ping(t: StreamableHttpTransport): JsonNode =
   waitFor t.sendRequest(newJsonRpcRequest("1", "ping", newJObject()))
   waitFor t.receiveMessage()
 
+func queryPairs(url: string): seq[(string, string)] =
+  ## The query of an authorization URL as the user agent receives it.
+  for (k, v) in decodeQuery(parseUri(url).query):
+    result.add (k, v)
+
 func scopeOf(url: string): string =
-  for (k, v) in queryOf(url):
+  for (k, v) in queryPairs(url):
     if k == "scope":
       return v
 
 func queryValue(url, name: string): Option[string] =
-  for (k, v) in queryOf(url):
+  for (k, v) in queryPairs(url):
     if k == name:
       return some(v)
 

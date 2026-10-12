@@ -1197,14 +1197,32 @@ suite "the buffer behind an event stream (mutation review, g2f-hs-c)":
     check not stream.canResumeAfter(1)
 
   test "Given a stream that remembers its last two of three events, when asked where it can resume, then from the last forgotten event on and no further":
-    let stream = newSseStream("s", maxEvents = 2)
-    for n in 1 .. 3:
-      check stream.push($n)
-    check not stream.canResumeAfter(0)
-    check stream.canResumeAfter(1)   # the next one, 2, is the oldest remembered
-    check stream.canResumeAfter(2)
-    check stream.canResumeAfter(3)   # everything was seen; wait for the next
-    check not stream.canResumeAfter(4)
+    when mpv20250326 <= DefaultProtocolVersion:
+      let version = min(DefaultProtocolVersion, mpv20251125)
+      let (transport, url, _) = startRaw(version, maxStreamEvents = 2)
+      let session = initialize(url, version)
+      let listen = open(url, HttpGet, "", legacyHeaders(session, version))
+      for name in ["notifications/a", "notifications/b", "notifications/c"]:
+        waitFor transport.sendNotification(newJsonRpcNotification(name, newJObject()),
+                                           MessageRoute(session: session))
+      var seen = listen.next().get
+      while seen.data.len == 0:
+        seen = listen.next().get
+      listen.close()
+      waitFor sleepAsync(50)
+      let streamId = seen.id.rsplit('-', 1)[0]
+      proc resumeAfter(n: int): HttpCode =
+        let resumed = open(url, HttpGet, "",
+          legacyHeaders(session, version) & @[("Last-Event-ID", streamId & "-" & $n)])
+        result = resumed.code
+        resumed.close()
+      check resumeAfter(0) == Http400
+      check resumeAfter(1) == Http200   # the next one, 2, is the oldest remembered
+      check resumeAfter(2) == Http200
+      check resumeAfter(3) == Http200   # everything was seen; wait for the next
+      check resumeAfter(4) == Http400
+    else:
+      skip()
 
 suite "the loop that writes an event stream (mutation review, g2f-hs-c)":
 

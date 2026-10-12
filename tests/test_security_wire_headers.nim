@@ -2,8 +2,19 @@
 ## what it accepts from a response head: no line breaks or control
 ## characters smuggled in either direction.
 
-import std/[unittest, asyncdispatch, asyncnet, httpcore, nativesockets, strutils]
+import std/[unittest, asyncdispatch, asyncnet, httpcore, json, nativesockets, strutils]
 import transport/http_wire
+import transport/http
+import protocol/types
+
+proc notify(t: StreamableHttpTransport): Future[void] =
+  ## What a transport puts on the wire, as a caller sees it: one POST.
+  t.sendNotification(newJsonRpcNotification("notifications/roots/list_changed", newJObject()))
+
+proc transportTo(url: string, headers: HttpHeaders = nil): StreamableHttpTransport =
+  result = newStreamableHttpTransport(url)
+  if not headers.isNil:
+    result.headers = headers
 
 type Peer = ref object
   socket: AsyncSocket
@@ -49,47 +60,6 @@ proc outcome[T](future: Future[T]): string =
   else: "ok"
 
 const plain = "HTTP/1.1 200 OK\c\LContent-Length: 0\c\L\c\L"
-
-suite "line breaks and control characters in HTTP":
-
-  test "Given a header value with a line break, when a request is sent, then it is refused and nothing is connected":
-    let peer = startPeer(plain)
-    let headers = newHttpHeaders({"X-Note": "a\c\LX-Injected: yes"})
-    check "line break or control" in outcome(request(peer.url, HttpGet, headers))
-    check peer.connections == 0
-
-  test "Given a bare LF or a NUL in a header value, when a request is sent, then it is refused":
-    let peer = startPeer(plain)
-    check "line break or control" in outcome(request(peer.url, HttpGet, newHttpHeaders({"X-Note": "a\LX: b"})))
-    check "line break or control" in outcome(request(peer.url, HttpGet, newHttpHeaders({"X-Note": "a\x00b"})))
-    check peer.connections == 0
-
-  test "Given a header name that is not a token, when a request is sent, then it is refused":
-    let peer = startPeer(plain)
-    check "header name" in outcome(request(peer.url, HttpGet, newHttpHeaders({"X Bad": "1"})))
-    check "header name" in outcome(request(peer.url, HttpGet, newHttpHeaders({"X-Bad\c\LX-Injected": "1"})))
-    check peer.connections == 0
-
-  test "Given a URL whose path carries a line break, when a request is sent, then it is refused":
-    let peer = startPeer(plain)
-    check "line break or control" in outcome(request(peer.url("/a\c\LX-Injected: yes"), HttpGet))
-    check peer.connections == 0
-
-  test "Given ordinary headers including a tab in a value, when a request is sent, then it is answered":
-    let peer = startPeer(plain)
-    check outcome(request(peer.url("/a?b=c"), HttpGet, newHttpHeaders({"X-Note": "a\tb"}))) == "ok"
-    check peer.received.startsWith("GET /a?b=c HTTP/1.1\c\L")
-    check "x-note: a\tb\c\L" in peer.received.toLowerAscii()
-
-  test "Given a response header with a bare LF, when the head is read, then the response is refused":
-    let peer = startPeer("HTTP/1.1 302 Found\c\LLocation: /next\LSet-Cookie: stolen=1\c\L\c\L")
-    check "line break or control" in outcome(request(peer.url, HttpGet, followRedirects = false))
-
-  test "Given a response header with a NUL or a bare CR, when the head is read, then the response is refused":
-    let nul = startPeer("HTTP/1.1 200 OK\c\LMcp-Session-Id: a\x00b\c\LContent-Length: 0\c\L\c\L")
-    check "line break or control" in outcome(request(nul.url, HttpGet))
-    let cr = startPeer("HTTP/1.1 200 OK\c\LMcp-Session-Id: a\c" & "b\c\LContent-Length: 0\c\L\c\L")
-    check "line break or control" in outcome(request(cr.url, HttpGet))
 
 # ---- mutation review, g2g-hc-c ------------------------------------------
 
@@ -183,12 +153,53 @@ proc openDescriptors(): int =
   for _ in walkDir("/dev/fd"):
     inc result
 
+suite "line breaks and control characters in HTTP":
+
+  test "Given a header value with a line break, when a request is sent, then it is refused and nothing is connected":
+    let peer = startPeer(plain)
+    let headers = newHttpHeaders({"X-Note": "a\c\LX-Injected: yes"})
+    check "line break or control" in outcome(transportTo(peer.url, headers).notify())
+    check peer.connections == 0
+
+  test "Given a bare LF or a NUL in a header value, when a request is sent, then it is refused":
+    let peer = startPeer(plain)
+    check "line break or control" in outcome(transportTo(peer.url, newHttpHeaders({"X-Note": "a\LX: b"})).notify())
+    check "line break or control" in outcome(transportTo(peer.url, newHttpHeaders({"X-Note": "a\x00b"})).notify())
+    check peer.connections == 0
+
+  test "Given a header name that is not a token, when a request is sent, then it is refused":
+    let peer = startPeer(plain)
+    check "header name" in outcome(transportTo(peer.url, newHttpHeaders({"X Bad": "1"})).notify())
+    check "header name" in outcome(transportTo(peer.url, newHttpHeaders({"X-Bad\c\LX-Injected": "1"})).notify())
+    check peer.connections == 0
+
+  test "Given a URL whose path carries a line break, when a request is sent, then it is refused":
+    let peer = startPeer(plain)
+    check "line break or control" in outcome(transportTo(peer.url("/a\c\LX-Injected: yes")).notify())
+    check peer.connections == 0
+
+  test "Given ordinary headers including a tab in a value, when a request is sent, then it is answered":
+    let peer = startPeer(plain)
+    check outcome(request(peer.url("/a?b=c"), HttpGet, newHttpHeaders({"X-Note": "a\tb"}))) == "ok"
+    check peer.received.startsWith("GET /a?b=c HTTP/1.1\c\L")
+    check "x-note: a\tb\c\L" in peer.received.toLowerAscii()
+
+  test "Given a response header with a bare LF, when the head is read, then the response is refused":
+    let peer = startPeer("HTTP/1.1 302 Found\c\LLocation: /next\LSet-Cookie: stolen=1\c\L\c\L")
+    check "line break or control" in outcome(transportTo(peer.url).notify())
+
+  test "Given a response header with a NUL or a bare CR, when the head is read, then the response is refused":
+    let nul = startPeer("HTTP/1.1 200 OK\c\LMcp-Session-Id: a\x00b\c\LContent-Length: 0\c\L\c\L")
+    check "line break or control" in outcome(transportTo(nul.url).notify())
+    let cr = startPeer("HTTP/1.1 200 OK\c\LMcp-Session-Id: a\c" & "b\c\LContent-Length: 0\c\L\c\L")
+    check "line break or control" in outcome(transportTo(cr.url).notify())
+
 suite "the request on the wire (mutation review, g2g-hc-c)":
 
   test "Given a header name with digits, when a request is sent, then it is accepted and sent":
     let server = startScripted(ending(plain))
     let headers = newHttpHeaders({"X-Request-Id-2": "abc", "H2": "x"})
-    check outcome(request(server.scriptedUrl, HttpGet, headers)) == "ok"
+    check outcome(transportTo(server.scriptedUrl, headers).notify()) == "ok"
     let sent = server.requests[0].toLowerAscii()
     check "x-request-id-2: abc\c\L" in sent
     check "h2: x\c\L" in sent
@@ -196,16 +207,16 @@ suite "the request on the wire (mutation review, g2g-hc-c)":
   test "Given a header with an empty name, when a request is sent, then it is refused and nothing is connected":
     let server = startScripted(ending(plain))
     let headers = newHttpHeaders({"": "x"})
-    check "header name" in outcome(request(server.scriptedUrl, HttpGet, headers))
+    check "header name" in outcome(transportTo(server.scriptedUrl, headers).notify())
     check server.requests.len == 0
 
   test "Given a path with a NUL but no space, or a space but no control character, when a request is sent, then it is refused":
     let server = startScripted(ending(plain))
-    check "line break or control" in outcome(request(server.scriptedUrl("/a\x00b"), HttpGet))
-    check "line break or control" in outcome(request(server.scriptedUrl("/a\c\Lb"), HttpGet))
-    check "line break or control" in outcome(request(server.scriptedUrl("/a b"), HttpGet))
-    check "line break or control" in outcome(request(server.scriptedUrl("/a?b c"), HttpGet))
-    check "line break or control" in outcome(request(server.scriptedUrl("/a?b\x00c"), HttpGet))
+    check "line break or control" in outcome(transportTo(server.scriptedUrl("/a\x00b")).notify())
+    check "line break or control" in outcome(transportTo(server.scriptedUrl("/a\c\Lb")).notify())
+    check "line break or control" in outcome(transportTo(server.scriptedUrl("/a b")).notify())
+    check "line break or control" in outcome(transportTo(server.scriptedUrl("/a?b c")).notify())
+    check "line break or control" in outcome(transportTo(server.scriptedUrl("/a?b\x00c")).notify())
     check server.requests.len == 0
 
   test "Given a URL with neither path nor query, when a request is sent, then the request line asks for /":
@@ -237,7 +248,7 @@ suite "the request on the wire (mutation review, g2g-hc-c)":
   test "Given a Host header and a Content-Length of the caller, when a request is sent, then the SDK's own are the only ones":
     let server = startScripted(ending(plain))
     let headers = newHttpHeaders({"Host": "evil.example", "Content-Length": "999", "Connection": "keep-alive"})
-    check outcome(request(server.scriptedUrl, HttpPost, headers, body = "ab")) == "ok"
+    check outcome(transportTo(server.scriptedUrl, headers).notify()) == "ok"
     let sent = server.requests[0].toLowerAscii()
     check sent.count("host:") == 1
     check "host: 127.0.0.1:" & $server.port & "\c\L" in sent
@@ -246,12 +257,12 @@ suite "the request on the wire (mutation review, g2g-hc-c)":
     check "connection: close\c\L" in sent
 
   test "Given a URL with no port, when a request is sent, then the connection is attempted (the URL is not refused as malformed)":
-    let attempt = outcome(request("http://127.0.0.1/", HttpGet))
+    let attempt = outcome(transportTo("http://127.0.0.1/").notify())
     check "invalid integer" notin attempt
 
   test "Given a host that does not resolve and a server on loopback, when a request is sent, then the host named in the URL is the one that is connected to":
     let server = startScripted(ending(plain))
-    let attempt = outcome(request("http://no-such-host.invalid:" & $server.port & "/", HttpGet))
+    let attempt = outcome(transportTo("http://no-such-host.invalid:" & $server.port & "/").notify())
     check attempt != "ok"
     check server.requests.len == 0
 
@@ -264,11 +275,11 @@ when not defined(ssl):
       else:
         let server = startScripted(ending(plain))
         let url = "https://127.0.0.1:" & $server.port & "/"
-        check "https needs a build with -d:ssl" in outcome(request(url, HttpGet))
+        check "https needs a build with -d:ssl" in outcome(transportTo(url).notify())
         settle(100)
         let before = openDescriptors()
         for attempt in 1 .. 3:
-          check "https needs a build with -d:ssl" in outcome(request(url, HttpGet))
+          check "https needs a build with -d:ssl" in outcome(transportTo(url).notify())
         settle(200)
         check openDescriptors() == before
 
@@ -281,13 +292,13 @@ suite "the response head (mutation review, g2g-hc-c)":
 
   test "Given a status line that does not start with HTTP/, or has no status, when the head is read, then it is refused":
     let wrong = startScripted(ending("FOO/1.1 200 OK\c\LContent-Length: 0\c\L\c\L"))
-    check "not an HTTP response" in outcome(request(wrong.scriptedUrl, HttpGet))
+    check "not an HTTP response" in outcome(transportTo(wrong.scriptedUrl).notify())
     let bare = startScripted(ending("HTTP/1.1\c\LContent-Length: 0\c\L\c\L"))
-    check "not an HTTP response" in outcome(request(bare.scriptedUrl, HttpGet))
+    check "not an HTTP response" in outcome(transportTo(bare.scriptedUrl).notify())
 
   test "Given a head of nothing but the blank line, when it is read, then it is refused as not HTTP":
     let server = startScripted(ending("\c\L\c\L"))
-    check "not an HTTP response" in outcome(request(server.scriptedUrl, HttpGet))
+    check "not an HTTP response" in outcome(transportTo(server.scriptedUrl).notify())
 
   test "Given a header line that starts with a colon, when the head is read, then it is no header":
     let server = startScripted(ending("HTTP/1.1 200 OK\c\L: nameless\c\LContent-Length: 0\c\L\c\L"))
@@ -310,7 +321,7 @@ suite "the response head (mutation review, g2g-hc-c)":
 
   test "Given an answer that is not HTTP, when the request fails, then the connection is closed":
     let server = startScripted(keeping("FOO\c\L\c\L"))
-    check "not an HTTP response" in outcome(request(server.scriptedUrl, HttpGet))
+    check "not an HTTP response" in outcome(transportTo(server.scriptedUrl).notify())
     settle(100)
     check server.ended[0]
 
@@ -336,26 +347,26 @@ suite "redirects (mutation review, g2g-hc-c)":
 
   test "Given a redirect within the server, when it is followed, then the connection that gave it is closed":
     let server = startScripted(redirecting("/two"))
-    check outcome(request(server.scriptedUrl("/one"), HttpGet)) == "ok"
+    check outcome(transportTo(server.scriptedUrl("/one")).notify()) == "ok"
     settle(100)
     check server.requests.len == 2
     check server.ended[0]
 
   test "Given a redirect to another server, when it is refused, then the connection that gave it is closed":
     let server = startScripted(redirecting("http://evil.example/steal"))
-    check "redirects to another server" in outcome(request(server.scriptedUrl("/one"), HttpGet))
+    check "redirects to another server" in outcome(transportTo(server.scriptedUrl("/one")).notify())
     settle(100)
     check server.ended[0]
 
   test "Given a redirect to another host name on the same port, when a request is sent, then it is refused and nothing is sent there":
     let server = startScripted(redirecting("http://localhost:{port}/two"))
     let headers = newHttpHeaders({"Authorization": "Bearer secret"})
-    check "redirects to another server" in outcome(request(server.scriptedUrl("/one"), HttpGet, headers))
+    check "redirects to another server" in outcome(transportTo(server.scriptedUrl("/one"), headers).notify())
     check server.requests.len == 1
 
   test "Given a redirect to the same host and port under another scheme, when a request is sent, then it is refused":
     let server = startScripted(redirecting("https://127.0.0.1:{port}/two"))
-    check "redirects to another server" in outcome(request(server.scriptedUrl("/one"), HttpGet))
+    check "redirects to another server" in outcome(transportTo(server.scriptedUrl("/one")).notify())
     check server.requests.len == 1
 
 proc closeAfter(response: WireResponse, delayMs: int) {.async.} =
@@ -399,7 +410,9 @@ suite "what a server may send and how long (mutation review, g2g-hc-c)":
 
   test "Given a connect timeout of 0, when a request is sent, then there is no limit and the server is reached":
     let server = startScripted(ending(plain))
-    check outcome(request(server.scriptedUrl, HttpGet, connectTimeoutMs = 0)) == "ok"
+    let transport = transportTo(server.scriptedUrl)
+    transport.connectTimeoutMs = 0
+    check outcome(transport.notify()) == "ok"
 
   test "Given a head of exactly the limit before its end arrives, when the end arrives, then it is accepted":
     let prefix = "HTTP/1.1 200 OK\c\LContent-Length: 0\c\LX-Pad: "
@@ -499,4 +512,4 @@ suite "a Content-Length that cannot be a length (mutation review, g2g-hc-c)":
 
   test "Given a negative Content-Length, when the head is read, then the response is refused":
     let server = startScripted(ending("HTTP/1.1 200 OK\c\LContent-Length: -5\c\L\c\Labcde"))
-    check "bad Content-Length" in outcome(request(server.scriptedUrl, HttpGet))
+    check "bad Content-Length" in outcome(transportTo(server.scriptedUrl).notify())

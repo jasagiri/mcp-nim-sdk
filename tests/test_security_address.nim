@@ -37,6 +37,35 @@ proc refused[T](action: Future[T]): string =
   except CatchableError:
     return ""
 
+const
+  ChallengeVersion = block:
+    ## The newest version of the build that reads the metadata URL of a
+    ## challenge: 2025-03-26 looks at the server's own origin instead and
+    ## 2024-11-05 has no authorization. None where the build speaks no such
+    ## version; the tests that need one are skipped there.
+    var found = none(McpProtocolVersion)
+    for v in SupportedProtocolVersions:
+      if v.has(ftProtectedResourceMetadata):
+        found = some(v)
+    found
+  HasChallengeVersion = ChallengeVersion.isSome
+  RemoteServer = "https://mcp.example.test/mcp"
+    ## A server that is not on loopback: its challenge cannot lead to loopback.
+  LoopbackServer = "http://127.0.0.1:1/mcp"
+    ## The user's own development server, where nothing listens.
+
+proc refusalOf(policy: FetchPolicy, serverUrl, advertised: string): string =
+  ## The message of the security error the client answers a 401 with when the
+  ## challenge names `advertised` as the URL of the resource metadata, ""
+  ## when the answer is any other failure.
+  let authorize: UserAuthorizer = proc(url: string): Future[seq[(string, string)]] {.async.} =
+    raise newException(OAuthError, "no user in this test")
+  var config = newOAuthClientConfig(serverUrl, "http://127.0.0.1:53682/callback", authorize,
+                                    ChallengeVersion.get)
+  config.fetchPolicy = policy
+  refused(newOAuthClient(config).handleChallenge(401,
+    @["Bearer resource_metadata=\"" & advertised & "\""]))
+
 suite "the address a host stands for":
 
   test "Given a loopback address in any notation, when classified, then it is loopback":
@@ -75,11 +104,14 @@ suite "the address a host stands for":
 suite "what a URL may name":
 
   test "Given a loopback address in another notation, when the policy refuses loopback, then the URL is refused":
-    var policy = defaultFetchPolicy()
-    policy.allowLoopback = false
-    for host in ["2130706433", "0x7f.1", "[::ffff:7f00:1]", "[0:0:0:0:0:0:0:1]", "[::]", "0.0.0.0"]:
-      expect OAuthSecurityError:
-        checkFetchUrl("https://" & host & "/x", policy, "t")
+    when HasChallengeVersion:
+      var policy = defaultFetchPolicy()
+      policy.allowLoopback = false
+      for host in ["2130706433", "0x7f.1", "[::ffff:7f00:1]", "[0:0:0:0:0:0:0:1]", "[::]", "0.0.0.0"]:
+        checkpoint host
+        check refusalOf(policy, LoopbackServer, "https://" & host & "/x").len > 0
+    else:
+      skip()
 
   test "Given a link-local or reserved address in another notation, when the policy allows loopback and private networks, then the URL is still refused":
     var policy = defaultFetchPolicy()
@@ -98,10 +130,13 @@ suite "what a URL may name":
 suite "what a host name resolves to":
 
   test "Given a name that resolves to a loopback address, when the policy refuses loopback, then the request is refused before any connection":
-    var policy = defaultFetchPolicy()
-    policy.allowLoopback = false
-    policy.resolver = resolving({"rebind.example.test": @["127.0.0.1"]})
-    check "loopback" in refused(getJson("https://rebind.example.test/x", policy, "metadata"))
+    when HasChallengeVersion:
+      var policy = defaultFetchPolicy()
+      policy.allowLoopback = false
+      policy.resolver = resolving({"rebind.example.test": @["127.0.0.1"]})
+      check "loopback" in refusalOf(policy, RemoteServer, "https://rebind.example.test/x")
+    else:
+      skip()
 
   test "Given a name that resolves to a metadata service address, when the policy allows loopback and private networks, then the request is still refused":
     var policy = defaultFetchPolicy()
@@ -115,9 +150,12 @@ suite "what a host name resolves to":
     check "private" in refused(getJson("https://mixed.example.test/x", policy, "metadata"))
 
   test "Given a name that does not resolve, when a request is made, then the request is refused":
-    var policy = defaultFetchPolicy()
-    policy.resolver = resolving([])
-    check "cannot resolve" in refused(getJson("https://nowhere.example.test/x", policy, "metadata"))
+    when HasChallengeVersion:
+      var policy = defaultFetchPolicy()
+      policy.resolver = resolving([])
+      check "cannot resolve" in refusalOf(policy, RemoteServer, "https://nowhere.example.test/x")
+    else:
+      skip()
 
   test "Given a name that resolves to an allowed address, when a request is made, then the connection goes to that address":
     let listener = newAsyncSocket(buffered = false)

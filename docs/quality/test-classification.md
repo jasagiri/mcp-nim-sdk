@@ -191,3 +191,35 @@
 | MCP-SEC-WIRE-4 | 足場 7 | はい | `test_security_address.nim` |
 | MCP-SEC-WIRE-5 | 足場 5 | はい | `test_security_address.nim` |
 | MCP-SEC-WIRE-7 | 足場 1 | はい | `test_security_icons.nim` |
+
+## 2026-10-13: 呼び口を公開側へ移した
+
+上の表と本文は、分類した時点の数である。そのあと、E テストが 1 本も無い仕様 ID に結ばれた「呼び口を移せば E になる」テスト 216 本について、実際に呼び口を公開の口へ書き換えた (本線のテストファイル 11 本。`src/` と `export` は変えていない。テストは消さず、名前も変えていない)。
+
+| | 本数 |
+|---|---:|
+| 移した (E になった。TSV の印 `moved`) | 110 |
+| 移せなかった (足場のまま。TSV の印 `not-movable`、理由は reason の欄) | 106 |
+
+E テストが 1 本も結ばれていない仕様 ID は **17 件** になった (この系列の仕様 ID 469 件のうち): `MCP-AUTH-10`, `MCP-AUTH-34`, `MCP-AUTH-40`, `MCP-CONTENT-FIELDS-8`, `MCP-HTTP-24`, `MCP-HTTPSTREAM-20`, `MCP-SEC-SCHEMA-14`, `MCP-SEC-SWEEP-6`, `MCP-SEC-WIRE-1`, `MCP-SEC-WIRE-10`, `MCP-SEC-WIRE-11`, `MCP-SEC-WIRE-12`, `MCP-SEC-WIRE-13`, `MCP-SEC-WIRE-14`, `MCP-SEC-WIRE-19`, `MCP-SEC-WIRE-21`, `MCP-SEC-WIRE-7`。
+
+1 本ごとの記録 (使っていた非公開の部品、通すようにした公開の口、移せない理由) は [test-entry-moves.tsv](test-entry-moves.tsv)。
+
+決まりと確かめ方:
+
+- 確かめる値 (入力と期待) を変えずに書けるものだけを移した。公開の口を通すと検証の一部が書けない・形が変わるテストは、テスト全体を移していない。
+- 期待する例外の型が、内部の型から公開の口が返す型に替わったものがある (`RegexError` → `InvalidSchemaError`、`RegexLimitError` → `SchemaLimitError`)。
+- 「宣言が不正」を「`tools/list` に載らない」で、「分類が loopback」を「拒否される」で見るように、公開の口での現れ方に置き換えたものがある (TSV の reason に書いた)。
+- 外のアドレスへ接続を試みることになる書き換えは採らなかった (接続先の分類の「通る」側は、公開の口からは実際に接続しないと見えない)。
+- **移したテストは、公開の口がそのビルドに無いと流れない。** もとのテストは部品を直接呼んでいたので、どの版を既定にしたビルドでも流れていた。移したあとは、既定版が `2026-07-28` より古いビルドで `test_param_headers.nim` の 13 本が、`2024-11-05`・`2025-03-26` のビルドで `test_security_auth_tokens.nim` の 8 本と `test_security_address.nim` の 3 本が、`test_auth_oauth_basics.nim` は `2024-11-05` で 24 本、`2025-03-26` で 19 本、`2025-06-18` で 10 本が skip になる (認可が無い、protected resource metadata が無い、など。条件は各テストの注釈)。古い版のタグでは、これらの規則を確かめるテストがそのぶん減った。
+- 書き換えはワーカー (Claude Sonnet) 5 人。リードが 11 ファイルの差分をすべて読み、検証・入力が変わっていたもの、外のアドレスへ接続を試みるものなど 61 本を元に戻させた。移したテストの拒否が狙った理由で起きていることは、認可の 30 例ほどについて実際の文言を出して確かめた。各ファイルで、移したテストから数本を選び、期待値を誤らせると落ちることをワーカーが確かめた。
+- **確かめていないこと**: 移したテストの本体のうち差分に出なかった行 (もとから公開の口だけだったはずの行) は読み直していない。移せなかったテストについて、ほかの公開の口が無いかの再検討はしていない。
+
+移せなかった理由の型と、移すために export が要るもの (広げるかどうかは決めていない):
+
+- 応答の「読み終えた」状態や本文の値が、公開のクライアントからは見えない (`transport/http_wire` の `WireResponse`、`request`)。
+- 接続先の分類の結果、とくに「公開」「通る」側 (`transport/address_policy` の `classifyHost`・`classifyAddress`・`chooseDestination`・`parseHostLiteral`・`resolveHost`、`transport/guarded_wire` の `guardedRequest`、`auth/oauth/urls` の `checkFetchUrl`)。
+- 挑戦ヘッダの `realm`・`error_description` や解析の構造、認可の部品の戻り値 (`auth/oauth/challenge` の `parseChallenges`、`auth/oauth/{authcode,discovery,metadata,registration,jsonfield}`)。
+- 正規表現のプログラムの大きさと残りの歩数 (`jsonschema/json_schema_regex` の `Regex.size`、`isMatch` の予算)。
+- `x-mcp-header` の束縛の個数 (`protocol/param_headers` の `declaredParamHeaders`)、イベントストリームの終わり方の値 (`transport/sse_stream`)。
+- ツールの組み立ての手続き (`server/tools`。`src/` のどこからも呼ばれず、入口からも届かない)、アイコンの取得の差し替え口 (`IconFetchOptions.get`)。

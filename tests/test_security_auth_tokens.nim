@@ -2,62 +2,124 @@
 ## cannot overflow the clock, and a value that cannot be a lifetime is an
 ## error instead of a token that never expires.
 
-import std/[unittest, options, strutils, times]
+import std/[unittest, options, strutils, times, asyncdispatch, asynchttpserver, httpcore, json]
+import auth/client
+import protocol/[version, features]
 import auth/oauth/[errors, fetch, authcode, tokens]
+import auth_fixtures
+
+const
+  RedirectUri = "http://127.0.0.1:53682/callback"
+  ChallengeVersion = block:
+    ## The newest version of the build that reads the metadata URL of a
+    ## challenge: 2025-03-26 looks at the server's own origin instead and
+    ## 2024-11-05 has no authorization. None where the build speaks no such
+    ## version; the tests that need one are skipped there.
+    var found = none(McpProtocolVersion)
+    for v in SupportedProtocolVersions:
+      if v.has(ftProtectedResourceMetadata):
+        found = some(v)
+    found
+  HasChallengeVersion = ChallengeVersion.isSome
+
+proc expiryAfter(body: string, now: Time): Option[Time] =
+  ## What the client stores as the expiry after an authorization in which
+  ## the token endpoint answered with this body.
+  let authServer = startFakeAs()
+  let resourceServer = startFakeRs(authServer)
+  let tokenEndpoint = newAsyncHttpServer()
+  tokenEndpoint.listen(Port(0), "127.0.0.1")
+  defer:
+    tokenEndpoint.close()
+    resourceServer.stop()
+    authServer.stop()
+  authServer.metadata["token_endpoint"] =
+    %("http://127.0.0.1:" & $tokenEndpoint.getPort.int & "/token")
+  let answer = proc(req: Request) {.async, gcsafe.} =
+    await req.respond(Http200, body, newHttpHeaders({"Content-Type": "application/json"}))
+  asyncCheck tokenEndpoint.acceptRequest(answer)
+  let stored = new(Option[TokenSet])
+  let authorize = proc(url: string): Future[seq[(string, string)]] {.async.} =
+    return authServer.consent(url)
+  var config = newOAuthClientConfig(resourceServer.url, RedirectUri, authorize,
+                                    ChallengeVersion.get)
+  config.now = proc(): Time {.closure, gcsafe, raises: [].} = now
+  config.tokenStore.save = proc(key: string, value: TokenSet) {.closure, gcsafe, raises: [].} =
+    stored[] = some(value)
+  let challenge = @["Bearer resource_metadata=\"http://127.0.0.1:" & $resourceServer.port &
+                    "/.well-known/oauth-protected-resource/mcp\""]
+  check waitFor newOAuthClient(config).handleChallenge(401, challenge)
+  stored[].get.expiresAt
+
+proc expiryOf(expiresIn: string, now: Time): Option[Time] =
+  expiryAfter("""{"access_token":"a","token_type":"Bearer","expires_in":""" & expiresIn & "}", now)
 
 suite "token responses: lifetimes":
 
   let now = fromUnix(1_800_000_000)
 
-  func reply(body: string): HttpReply =
-    HttpReply(code: 200, body: body)
-
-  proc expiryOf(expiresIn: string): Option[Time] =
-    let body = """{"access_token":"a","token_type":"Bearer","expires_in":""" & expiresIn & "}"
-    parseTokenResponse(reply(body), "https://as.example", @[], none(string), now).expiresAt
-
   test "Given expires_in as an integer, when the response is parsed, then the token expires that many seconds from now":
-    check expiryOf("3600") == some(now + initDuration(seconds = 3600))
+    when HasChallengeVersion:
+      check expiryOf("3600", now) == some(now + initDuration(seconds = 3600))
+    else:
+      skip()
 
   test "Given no expires_in or null, when the response is parsed, then the expiry is unknown":
-    let body = """{"access_token":"a","token_type":"Bearer"}"""
-    check parseTokenResponse(reply(body), "https://as.example", @[], none(string), now)
-      .expiresAt.isNone
-    check expiryOf("null").isNone
+    when HasChallengeVersion:
+      let body = """{"access_token":"a","token_type":"Bearer"}"""
+      check expiryAfter(body, now).isNone
+      check expiryOf("null", now).isNone
+    else:
+      skip()
 
   test "Given expires_in as a decimal string, which some servers send, when the response is parsed, then it counts":
-    check expiryOf("\"3600\"") == some(now + initDuration(seconds = 3600))
+    when HasChallengeVersion:
+      check expiryOf("\"3600\"", now) == some(now + initDuration(seconds = 3600))
+    else:
+      skip()
 
   test "Given expires_in as a float, when the response is parsed, then it is rounded down to whole seconds":
-    check expiryOf("3599.9") == some(now + initDuration(seconds = 3599))
+    when HasChallengeVersion:
+      check expiryOf("3599.9", now) == some(now + initDuration(seconds = 3599))
+    else:
+      skip()
 
   test "Given an expires_in beyond the largest lifetime the client believes, when the response is parsed, then the expiry is unknown and nothing overflows":
-    for huge in ["9223372036854775807", "99999999999999999999", "1e300", "315360001",
-                 "\"9223372036854775807\"", "\"99999999999999999999999999\""]:
-      checkpoint huge
-      check expiryOf(huge).isNone
+    when HasChallengeVersion:
+      for huge in ["9223372036854775807", "99999999999999999999", "1e300", "315360001",
+                   "\"9223372036854775807\"", "\"99999999999999999999999999\""]:
+        checkpoint huge
+        check expiryOf(huge, now).isNone
+    else:
+      skip()
 
   test "Given expires_in at the largest lifetime, when the response is parsed, then it still counts":
-    check expiryOf($MaxTokenLifetimeSeconds) ==
-      some(now + initDuration(seconds = MaxTokenLifetimeSeconds))
+    when HasChallengeVersion:
+      check expiryOf($MaxTokenLifetimeSeconds, now) ==
+        some(now + initDuration(seconds = MaxTokenLifetimeSeconds))
+    else:
+      skip()
 
   test "Given a negative or non-numeric expires_in, when the response is parsed, then the response is refused":
-    for bad in ["-1", "-9223372036854775808", "-0.5", "\"-5\"", "\"soon\"", "\"\"", "\"1e3\"",
-                "true", "[3600]", "{}"]:
-      checkpoint bad
-      expect OAuthError:
-        discard expiryOf(bad)
+    when HasChallengeVersion:
+      for bad in ["-1", "-9223372036854775808", "-0.5", "\"-5\"", "\"soon\"", "\"\"", "\"1e3\"",
+                  "true", "[3600]", "{}"]:
+        checkpoint bad
+        expect OAuthError:
+          discard expiryOf(bad, now)
+    else:
+      skip()
 
   test "Given a refused expires_in, when the error is read, then it does not contain the token":
-    try:
-      discard expiryOf("-1")
-      fail()
-    except OAuthError as e:
-      check "-1" in e.msg
-      check "\"a\"" notin e.msg
-
-import std/json
-
+    when HasChallengeVersion:
+      try:
+        discard expiryOf("-1", now)
+        fail()
+      except OAuthError as e:
+        check "-1" in e.msg
+        check "\"a\"" notin e.msg
+    else:
+      skip()
 suite "token lifetimes and stores (mutation review, g2f-oauth-b)":
 
   let now = fromUnix(1_800_000_000)

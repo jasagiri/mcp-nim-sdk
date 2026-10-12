@@ -3,8 +3,223 @@
 ## taken from RFC 7636 (appendix B), RFC 8414 (3.1), RFC 9728 (3.1, 5.1) and
 ## the MCP authorization specification.
 
-import std/[unittest, json, options, strutils, asyncdispatch, asyncnet, httpcore, net, nativesockets]
-import auth/oauth/[pkce, challenge, urls, metadata, discovery, errors, fetch]
+import std/[unittest, json, options, strutils, asyncdispatch, asyncnet, asynchttpserver, httpcore, net,
+            nativesockets, times, uri]
+import protocol/version
+import protocol/features
+import auth/client
+import auth/resource_server
+import auth/oauth/[pkce, challenge, urls, metadata, discovery, errors, fetch, jsonfield, authcode, registration]
+import auth_fixtures
+
+type
+  ScriptedServer = ref object
+    ## A listener on 127.0.0.1 that reads one request head per connection,
+    ## answers it with what `answer` makes of the request line, and closes.
+    listener: AsyncSocket
+    port: int
+    origin: string
+    requestLines: seq[string]
+    closed: bool
+
+  HoldingServer = ref object
+    ## Reads one request head, sends `answer` (nothing when empty) and then
+    ## waits for the client to close the connection.
+    listener: AsyncSocket
+    port: int
+    peerClosed: bool
+
+  Outcome = object
+    kind: string  ## "none", "security", "server" (an OAuth error response) or "oauth"
+    msg: string
+
+proc requestHead(client: AsyncSocket): Future[string] {.async.} =
+  while not result.endsWith("\c\L\c\L"):
+    let chunk = await client.recv(1)
+    if chunk.len == 0:
+      break
+    result.add chunk
+
+proc jsonReply(code: int, reason, body: string, extra = ""): string =
+  "HTTP/1.1 " & $code & " " & reason & "\c\LContent-Type: application/json\c\LContent-Length: " &
+    $body.len & "\c\LConnection: close\c\L" & extra & "\c\L" & body
+
+proc startScripted(answer: proc(origin, requestLine: string): string): ScriptedServer =
+  let server = ScriptedServer(listener: newAsyncSocket(buffered = false))
+  server.listener.setSockOpt(OptReuseAddr, true)
+  server.listener.bindAddr(Port(0), "127.0.0.1")
+  server.listener.listen()
+  server.port = server.listener.getLocalAddr()[1].int
+  server.origin = "http://127.0.0.1:" & $server.port
+  proc serveOne(client: AsyncSocket) {.async.} =
+    let line = (await requestHead(client)).splitLines()[0]
+    server.requestLines.add line
+    await client.send(answer(server.origin, line))
+    client.close()
+  proc acceptLoop() {.async.} =
+    while not server.closed:
+      let client =
+        try:
+          await server.listener.accept()
+        except CatchableError:
+          if server.closed:
+            return
+          raise
+      asyncCheck serveOne(client)
+  asyncCheck acceptLoop()
+  server
+
+proc stop(server: ScriptedServer) =
+  server.closed = true
+  server.listener.close()
+
+proc startHolding(answer: string): HoldingServer =
+  let server = HoldingServer(listener: newAsyncSocket(buffered = false))
+  server.listener.setSockOpt(OptReuseAddr, true)
+  server.listener.bindAddr(Port(0), "127.0.0.1")
+  server.listener.listen()
+  server.port = server.listener.getLocalAddr()[1].int
+  proc serveOne() {.async.} =
+    let client = await server.listener.accept()
+    discard await requestHead(client)
+    if answer.len > 0:
+      await client.send(answer)
+    try:
+      # recv answers "" when the peer closed the connection.
+      let rest = await client.recv(1)
+      server.peerClosed = rest.len == 0
+    except OSError:
+      # a connection that is reset is a connection the peer is done with
+      server.peerClosed = true
+    client.close()
+  asyncCheck serveOne()
+  server
+
+proc closedWithin(server: HoldingServer, ms: int): bool =
+  var waited = 0
+  while not server.peerClosed and waited < ms:
+    waitFor sleepAsync(20)
+    waited += 20
+  server.peerClosed
+
+proc plain(msg: string): string =
+  ## A message of an exception that went through an async proc carries the
+  ## async traceback after its own text.
+  msg.split("\nAsync traceback:")[0]
+
+proc outcomeOf[T](action: Future[T]): Outcome =
+  try:
+    discard waitFor action
+  except OAuthSecurityError as e:
+    return Outcome(kind: "security", msg: e.msg)
+  except OAuthError as e:
+    return Outcome(kind: "oauth", msg: e.msg)
+  Outcome(kind: "none")
+
+proc reportedBy[T](action: Future[T]): Outcome =
+  ## Like `outcomeOf`, for what went through `OAuthClient`: an OAuth error
+  ## response is its own kind, and the message has no async traceback.
+  try:
+    discard waitFor action
+  except OAuthSecurityError as e:
+    return Outcome(kind: "security", msg: plain(e.msg))
+  except OAuthServerError as e:
+    return Outcome(kind: "server", msg: plain(e.msg))
+  except OAuthError as e:
+    return Outcome(kind: "oauth", msg: plain(e.msg))
+  Outcome(kind: "none")
+
+proc resolvingTo(name, address: string): typeof(defaultFetchPolicy().resolver) =
+  let parsed = parseIpAddress(address)
+  result = proc(host: string): seq[IpAddress] {.closure, gcsafe, raises: [CatchableError].} =
+    if host == name:
+      return @[parsed]
+    raise newException(OSError, "cannot resolve " & host)
+
+proc everyHostIsLoopback(): typeof(defaultFetchPolicy().resolver) =
+  ## A name resolves to the loopback address, so that a request a test expects
+  ## to be refused can reach nothing but this machine if it is not.
+  result = proc(host: string): seq[IpAddress] {.closure, gcsafe, raises: [CatchableError].} =
+    @[parseIpAddress("127.0.0.1")]
+
+proc asDocument(origin, issuer: string): string =
+  $(%*{"issuer": issuer, "authorization_endpoint": origin & "/authorize",
+       "token_endpoint": origin & "/token"})
+
+proc prmDocument(origin, resource: string): string =
+  $(%*{"resource": resource, "authorization_servers": [origin]})
+
+proc prmNaming(origin, issuer: string): string =
+  ## The protected resource metadata of `origin`/mcp that lists `issuer`.
+  $(%*{"resource": origin & "/mcp", "authorization_servers": [issuer]})
+
+proc stateOf(authorizationUrl: string): string =
+  for (name, value) in decodeQuery(parseUri(authorizationUrl).query):
+    if name == "state":
+      return value
+
+proc newRequest(redirectUri = "http://127.0.0.1:8080/cb"): AuthorizationRequest =
+  newAuthorizationRequest("https://auth.example.com/authorize", "client", redirectUri,
+    @[], none(string), "https://auth.example.com", false, false)
+
+proc registeredWith(status: HttpCode, body: string): ClientCredentials =
+  ## Runs a registration against a registration endpoint that answers `body`.
+  let server = newAsyncHttpServer()
+  server.listen(Port(0), "127.0.0.1")
+  defer: server.close()
+  proc handler(req: Request) {.async, gcsafe.} =
+    await req.respond(status, body, newHttpHeaders({"Content-Type": "application/json"}))
+  asyncCheck server.acceptRequest(handler)
+  waitFor registerClient("http://127.0.0.1:" & $server.getPort.int & "/register",
+    "https://auth.example.com",
+    ClientRegistrationRequest(clientName: "t", redirectUris: @["http://127.0.0.1:1/cb"]),
+    defaultFetchPolicy())
+
+# The public door: an OAuthClient and the challenge the server answered with.
+
+proc idleAuthorizer(): UserAuthorizer =
+  result = proc(url: string): Future[seq[(string, string)]] {.async.} =
+    doAssert false, "the user was sent to " & url
+
+proc configOf(serverUrl: string, authorize: UserAuthorizer = idleAuthorizer(),
+              version = DefaultProtocolVersion, fetchPolicy = defaultFetchPolicy()): OAuthClientConfig =
+  result = newOAuthClientConfig(serverUrl, "http://127.0.0.1:8080/cb", authorize, version)
+  result.fetchPolicy = fetchPolicy
+
+proc clientOf(serverUrl: string, authorize: UserAuthorizer = idleAuthorizer(),
+              version = DefaultProtocolVersion, fetchPolicy = defaultFetchPolicy()): OAuthClient =
+  newOAuthClient(configOf(serverUrl, authorize, version, fetchPolicy))
+
+proc loopbackOnlyClient(): OAuthClient =
+  var policy = defaultFetchPolicy()
+  policy.resolver = everyHostIsLoopback()
+  clientOf("http://127.0.0.1:1/mcp", fetchPolicy = policy)
+
+proc challengedWith(client: OAuthClient, metadataUrl: string): Future[bool] =
+  ## A 401 whose challenge names `metadataUrl` as the resource metadata.
+  client.handleChallenge(401, @["Bearer resource_metadata=\"" & metadataUrl & "\""])
+
+proc unchallenged(client: OAuthClient): Future[bool] =
+  client.handleChallenge(401, newSeq[string]())
+
+proc answering(authServer: FakeAs, code: HttpCode, body: string) =
+  ## What the authorization server answers on paths it has no behaviour for
+  ## (point a metadata field at one).
+  authServer.fallback = proc(req: Request): Future[void] {.closure, gcsafe.} =
+    req.respond(code, body, newHttpHeaders({"Content-Type": "application/json"}))
+
+proc pointAt(authServer: FakeAs, field, path: string) =
+  authServer.metadata[field] = %("http://127.0.0.1:" & $authServer.port & path)
+
+# The public door of the resource server.
+
+proc acceptAll(token, resource: string): Future[TokenVerdict] {.async.} =
+  return TokenVerdict(kind: tvValid)
+
+proc serverConfig(resource: string, challengeScopes: seq[string] = @[]): ResourceServerConfig =
+  ResourceServerConfig(resource: resource, authorizationServers: @["https://auth.example.com"],
+                       challengeScopes: challengeScopes, verify: acceptAll,
+                       version: DefaultProtocolVersion)
 
 suite "PKCE":
   test "Given the RFC 7636 appendix B verifier, when challenged with S256, then it is the appendix B challenge":
@@ -120,8 +335,12 @@ suite "Canonical resource":
     check canonicalResource("HTTPS://MCP.Example.COM/") == "https://mcp.example.com"
 
   test "Given the invalid examples of the specification, when canonicalized, then they are refused":
-    expect OAuthError: discard canonicalResource("mcp.example.com")
-    expect OAuthError: discard canonicalResource("https://mcp.example.com#fragment")
+    # The version of the build without authorization has no client or resource server.
+    if not (DefaultProtocolVersion.has(ftAuthorization)):
+      skip()
+    else:
+      expect OAuthError: discard newResourceServerAuth(serverConfig("mcp.example.com"))
+      expect OAuthError: discard newResourceServerAuth(serverConfig("https://mcp.example.com#fragment"))
 
   test "Given the resource, when form-encoded as the specification shows, then it matches &resource=https%3A%2F%2Fmcp.example.com":
     check formEncode({"resource": "https://mcp.example.com"}) ==
@@ -134,17 +353,27 @@ suite "Fetch policy":
     checkFetchUrl("https://auth.example.com/x", policy, "t")
 
   test "Given plain http to a remote host, when checked, then it is refused":
-    expect OAuthSecurityError: checkFetchUrl("http://auth.example.com/x", policy, "t")
+    # Before protected resource metadata the client ignores the resource_metadata of a challenge.
+    if not (DefaultProtocolVersion.has(ftProtectedResourceMetadata)):
+      skip()
+    else:
+      let client = loopbackOnlyClient()
+      expect OAuthSecurityError: discard waitFor client.challengedWith("http://auth.example.com/x")
 
   test "Given plain http to loopback hosts, when checked, then it passes":
     for url in ["http://localhost:1/x", "http://127.0.0.1:8080/x", "http://[::1]:8080/x"]:
       checkFetchUrl(url, policy, "t")
 
   test "Given loopback disallowed, when checking loopback, then it is refused":
-    var strict = policy
-    strict.allowLoopback = false
-    expect OAuthSecurityError: checkFetchUrl("http://127.0.0.1/x", strict, "t")
-    expect OAuthSecurityError: checkFetchUrl("https://localhost/x", strict, "t")
+    # Before protected resource metadata the client ignores the resource_metadata of a challenge.
+    if not (DefaultProtocolVersion.has(ftProtectedResourceMetadata)):
+      skip()
+    else:
+      var strict = policy
+      strict.allowLoopback = false
+      let client = clientOf("http://127.0.0.1:1/mcp", fetchPolicy = strict)
+      expect OAuthSecurityError: discard waitFor client.challengedWith("http://127.0.0.1/x")
+      expect OAuthSecurityError: discard waitFor client.challengedWith("https://localhost/x")
 
   test "Given the cloud metadata address, when checked, then it is always refused":
     var open = policy
@@ -164,11 +393,15 @@ suite "Fetch policy":
     checkFetchUrl("https://172.32.0.1/x", policy, "t")
 
   test "Given other schemes, fragments or credentials, when checked, then they are refused":
-    expect OAuthSecurityError: checkFetchUrl("ftp://auth.example.com/x", policy, "t")
-    expect OAuthSecurityError: checkFetchUrl("file:///etc/passwd", policy, "t")
-    expect OAuthSecurityError: checkFetchUrl("https://auth.example.com/x#a", policy, "t")
-    expect OAuthSecurityError: checkFetchUrl("https://user:pw@auth.example.com/x", policy, "t")
-    expect OAuthSecurityError: checkFetchUrl("/relative", policy, "t")
+    # Before protected resource metadata the client ignores the resource_metadata of a challenge.
+    if not (DefaultProtocolVersion.has(ftProtectedResourceMetadata)):
+      skip()
+    else:
+      let client = loopbackOnlyClient()
+      for url in ["ftp://auth.example.com/x", "file:///etc/passwd", "https://auth.example.com/x#a",
+                  "https://user:pw@auth.example.com/x", "/relative"]:
+        checkpoint url
+        expect OAuthSecurityError: discard waitFor client.challengedWith(url)
 
 const goodAs = """{"issuer": "https://auth.example.com/tenant1",
   "authorization_endpoint": "https://auth.example.com/authorize",
@@ -298,19 +531,31 @@ suite "Candidate URLs of an issuer with a trailing slash (mutation review, g2f-o
       "https://auth.example.com/tenant1/.well-known/openid-configuration"]
 
 suite "URL rules (mutation review, g2f-oauth-a)":
-  let policy = defaultFetchPolicy()
-
   test "Given URLs that name no host or no scheme, when checked, then they are refused":
-    expect OAuthSecurityError: checkFetchUrl("https:///x", policy, "t")
-    expect OAuthSecurityError: checkFetchUrl("//auth.example.com/x", policy, "t")
+    # Before protected resource metadata the client ignores the resource_metadata of a challenge.
+    if not (DefaultProtocolVersion.has(ftProtectedResourceMetadata)):
+      skip()
+    else:
+      let client = loopbackOnlyClient()
+      expect OAuthSecurityError: discard waitFor client.challengedWith("https:///x")
+      expect OAuthSecurityError: discard waitFor client.challengedWith("//auth.example.com/x")
 
   test "Given a user name alone or a password alone, when checked, then the URL is refused for its credentials":
-    expect OAuthSecurityError: checkFetchUrl("https://user@auth.example.com/x", policy, "t")
-    expect OAuthSecurityError: checkFetchUrl("https://:secret@auth.example.com/x", policy, "t")
+    # Before protected resource metadata the client ignores the resource_metadata of a challenge.
+    if not (DefaultProtocolVersion.has(ftProtectedResourceMetadata)):
+      skip()
+    else:
+      let client = loopbackOnlyClient()
+      expect OAuthSecurityError: discard waitFor client.challengedWith("https://user@auth.example.com/x")
+      expect OAuthSecurityError: discard waitFor client.challengedWith("https://:secret@auth.example.com/x")
 
   test "Given a resource without a host or without a scheme, when canonicalized, then it is refused":
-    expect OAuthError: discard canonicalResource("https:///mcp")
-    expect OAuthError: discard canonicalResource("//mcp.example.com/mcp")
+    # The version of the build without authorization has no client or resource server.
+    if not (DefaultProtocolVersion.has(ftAuthorization)):
+      skip()
+    else:
+      expect OAuthError: discard newResourceServerAuth(serverConfig("https:///mcp"))
+      expect OAuthError: discard newResourceServerAuth(serverConfig("//mcp.example.com/mcp"))
 
   test "Given a resource with a query, when canonicalized, then the query is kept (RFC 8707 2)":
     check canonicalResource("HTTPS://MCP.example.com/api?tenant=a%20b") ==
@@ -318,119 +563,6 @@ suite "URL rules (mutation review, g2f-oauth-a)":
 
   test "Given a field with a space, when form-encoded, then the space is %20":
     check formEncode([("scope", "read write")]) == "scope=read%20write"
-
-type
-  ScriptedServer = ref object
-    ## A listener on 127.0.0.1 that reads one request head per connection,
-    ## answers it with what `answer` makes of the request line, and closes.
-    listener: AsyncSocket
-    port: int
-    origin: string
-    requestLines: seq[string]
-    closed: bool
-
-  HoldingServer = ref object
-    ## Reads one request head, sends `answer` (nothing when empty) and then
-    ## waits for the client to close the connection.
-    listener: AsyncSocket
-    port: int
-    peerClosed: bool
-
-  Outcome = object
-    kind: string  ## "none", "security" or "oauth"
-    msg: string
-
-proc requestHead(client: AsyncSocket): Future[string] {.async.} =
-  while not result.endsWith("\c\L\c\L"):
-    let chunk = await client.recv(1)
-    if chunk.len == 0:
-      break
-    result.add chunk
-
-proc jsonReply(code: int, reason, body: string, extra = ""): string =
-  "HTTP/1.1 " & $code & " " & reason & "\c\LContent-Type: application/json\c\LContent-Length: " &
-    $body.len & "\c\LConnection: close\c\L" & extra & "\c\L" & body
-
-proc startScripted(answer: proc(origin, requestLine: string): string): ScriptedServer =
-  let server = ScriptedServer(listener: newAsyncSocket(buffered = false))
-  server.listener.setSockOpt(OptReuseAddr, true)
-  server.listener.bindAddr(Port(0), "127.0.0.1")
-  server.listener.listen()
-  server.port = server.listener.getLocalAddr()[1].int
-  server.origin = "http://127.0.0.1:" & $server.port
-  proc serveOne(client: AsyncSocket) {.async.} =
-    let line = (await requestHead(client)).splitLines()[0]
-    server.requestLines.add line
-    await client.send(answer(server.origin, line))
-    client.close()
-  proc acceptLoop() {.async.} =
-    while not server.closed:
-      let client =
-        try:
-          await server.listener.accept()
-        except CatchableError:
-          if server.closed:
-            return
-          raise
-      asyncCheck serveOne(client)
-  asyncCheck acceptLoop()
-  server
-
-proc stop(server: ScriptedServer) =
-  server.closed = true
-  server.listener.close()
-
-proc startHolding(answer: string): HoldingServer =
-  let server = HoldingServer(listener: newAsyncSocket(buffered = false))
-  server.listener.setSockOpt(OptReuseAddr, true)
-  server.listener.bindAddr(Port(0), "127.0.0.1")
-  server.listener.listen()
-  server.port = server.listener.getLocalAddr()[1].int
-  proc serveOne() {.async.} =
-    let client = await server.listener.accept()
-    discard await requestHead(client)
-    if answer.len > 0:
-      await client.send(answer)
-    try:
-      # recv answers "" when the peer closed the connection.
-      let rest = await client.recv(1)
-      server.peerClosed = rest.len == 0
-    except OSError:
-      # a connection that is reset is a connection the peer is done with
-      server.peerClosed = true
-    client.close()
-  asyncCheck serveOne()
-  server
-
-proc closedWithin(server: HoldingServer, ms: int): bool =
-  var waited = 0
-  while not server.peerClosed and waited < ms:
-    waitFor sleepAsync(20)
-    waited += 20
-  server.peerClosed
-
-proc outcomeOf[T](action: Future[T]): Outcome =
-  try:
-    discard waitFor action
-  except OAuthSecurityError as e:
-    return Outcome(kind: "security", msg: e.msg)
-  except OAuthError as e:
-    return Outcome(kind: "oauth", msg: e.msg)
-  Outcome(kind: "none")
-
-proc resolvingTo(name, address: string): HostResolver =
-  let parsed = parseIpAddress(address)
-  result = proc(host: string): seq[IpAddress] {.closure, gcsafe, raises: [CatchableError].} =
-    if host == name:
-      return @[parsed]
-    raise newException(OSError, "cannot resolve " & host)
-
-proc asDocument(origin, issuer: string): string =
-  $(%*{"issuer": issuer, "authorization_endpoint": origin & "/authorize",
-       "token_endpoint": origin & "/token"})
-
-proc prmDocument(origin, resource: string): string =
-  $(%*{"resource": resource, "authorization_servers": [origin]})
 
 suite "Authorization server discovery over a scripted server (mutation review, g2f-oauth-a)":
   let policy = defaultFetchPolicy()
@@ -440,44 +572,65 @@ suite "Authorization server discovery over a scripted server (mutation review, g
     appendedPath = "/tenant1/.well-known/openid-configuration"
 
   test "Given a 201 with a valid document, when discovering, then it is not used and every URL tried is named with its status":
-    # RFC 8414 3.2: a successful response uses 200.
-    let server = startScripted(proc(origin, line: string): string =
-      if oauthPath in line: jsonReply(201, "Created", asDocument(origin, origin & "/tenant1"))
-      else: jsonReply(404, "Not Found", "{}"))
-    defer: server.stop()
-    let outcome = outcomeOf(discoverAuthorizationServer(server.origin & "/tenant1", adsOAuthThenOidc, policy))
-    check outcome.kind == "oauth"
-    check (server.origin & oauthPath & ": HTTP 201") in outcome.msg
-    check (server.origin & oidcPath & ": HTTP 404") in outcome.msg
-    check (server.origin & appendedPath & ": HTTP 404") in outcome.msg
+    # The client probes the well-known URLs without a resource_metadata, and tries the OpenID Connect URLs, only from the version with both.
+    if not (DefaultProtocolVersion.has(ftIncrementalScopeConsent) and DefaultProtocolVersion.has(ftOidcDiscovery)):
+      skip()
+    else:
+      # RFC 8414 3.2: a successful response uses 200.
+      let server = startScripted(proc(origin, line: string): string =
+        if "oauth-protected-resource" in line: jsonReply(200, "OK", prmNaming(origin, origin & "/tenant1"))
+        elif oauthPath in line: jsonReply(201, "Created", asDocument(origin, origin & "/tenant1"))
+        else: jsonReply(404, "Not Found", "{}"))
+      defer: server.stop()
+      let outcome = reportedBy(clientOf(server.origin & "/mcp").unchallenged())
+      check outcome.kind == "oauth"
+      check (server.origin & oauthPath & ": HTTP 201") in outcome.msg
+      check (server.origin & oidcPath & ": HTTP 404") in outcome.msg
+      check (server.origin & appendedPath & ": HTTP 404") in outcome.msg
 
   test "Given a 200 whose body is not a JSON object, when discovering, then it is a failure of that URL":
-    let server = startScripted(proc(origin, line: string): string = jsonReply(200, "OK", "[1]"))
-    defer: server.stop()
-    let outcome = outcomeOf(discoverAuthorizationServer(server.origin & "/tenant1", adsOAuthThenOidc, policy))
-    check outcome.kind == "oauth"
-    check (server.origin & oauthPath & ": HTTP 200") in outcome.msg
+    # The client probes the well-known URLs without a resource_metadata only from the version with incremental scope consent.
+    if not (DefaultProtocolVersion.has(ftIncrementalScopeConsent)):
+      skip()
+    else:
+      let server = startScripted(proc(origin, line: string): string =
+        if "oauth-protected-resource" in line: jsonReply(200, "OK", prmNaming(origin, origin & "/tenant1"))
+        else: jsonReply(200, "OK", "[1]"))
+      defer: server.stop()
+      let outcome = reportedBy(clientOf(server.origin & "/mcp").unchallenged())
+      check outcome.kind == "oauth"
+      check (server.origin & oauthPath & ": HTTP 200") in outcome.msg
 
   test "Given a document that names another issuer, when discovering, then the failure is a security failure that says why":
-    let server = startScripted(proc(origin, line: string): string =
-      if oauthPath in line: jsonReply(200, "OK", asDocument(origin, "https://elsewhere.example"))
-      else: jsonReply(404, "Not Found", "{}"))
-    defer: server.stop()
-    let outcome = outcomeOf(discoverAuthorizationServer(server.origin & "/tenant1", adsOAuthThenOidc, policy))
-    check outcome.kind == "security"
-    check (server.origin & oauthPath & ": authorization server metadata names issuer https://elsewhere.example") in
-      outcome.msg
-    check (server.origin & oidcPath & ": HTTP 404") in outcome.msg
+    # The client probes the well-known URLs without a resource_metadata, and tries the OpenID Connect URLs, only from the version with both.
+    if not (DefaultProtocolVersion.has(ftIncrementalScopeConsent) and DefaultProtocolVersion.has(ftOidcDiscovery)):
+      skip()
+    else:
+      let server = startScripted(proc(origin, line: string): string =
+        if "oauth-protected-resource" in line: jsonReply(200, "OK", prmNaming(origin, origin & "/tenant1"))
+        elif oauthPath in line: jsonReply(200, "OK", asDocument(origin, "https://elsewhere.example"))
+        else: jsonReply(404, "Not Found", "{}"))
+      defer: server.stop()
+      let outcome = reportedBy(clientOf(server.origin & "/mcp").unchallenged())
+      check outcome.kind == "security"
+      check (server.origin & oauthPath & ": authorization server metadata names issuer https://elsewhere.example") in
+        outcome.msg
+      check (server.origin & oidcPath & ": HTTP 404") in outcome.msg
 
   test "Given a document without a token endpoint, when discovering, then the failure names the field and is not a security failure":
-    let server = startScripted(proc(origin, line: string): string =
-      if oauthPath in line: jsonReply(200, "OK", $(%*{"issuer": origin & "/tenant1",
-                                                       "authorization_endpoint": origin & "/authorize"}))
-      else: jsonReply(404, "Not Found", "{}"))
-    defer: server.stop()
-    let outcome = outcomeOf(discoverAuthorizationServer(server.origin & "/tenant1", adsOAuthThenOidc, policy))
-    check outcome.kind == "oauth"
-    check (server.origin & oauthPath & ": metadata field token_endpoint is missing") in outcome.msg
+    # The client probes the well-known URLs without a resource_metadata only from the version with incremental scope consent.
+    if not (DefaultProtocolVersion.has(ftIncrementalScopeConsent)):
+      skip()
+    else:
+      let server = startScripted(proc(origin, line: string): string =
+        if "oauth-protected-resource" in line: jsonReply(200, "OK", prmNaming(origin, origin & "/tenant1"))
+        elif oauthPath in line: jsonReply(200, "OK", $(%*{"issuer": origin & "/tenant1",
+                                                         "authorization_endpoint": origin & "/authorize"}))
+        else: jsonReply(404, "Not Found", "{}"))
+      defer: server.stop()
+      let outcome = reportedBy(clientOf(server.origin & "/mcp").unchallenged())
+      check outcome.kind == "oauth"
+      check (server.origin & oauthPath & ": metadata field token_endpoint is missing") in outcome.msg
 
   test "Given an issuer with a fragment, when discovering, then it is refused before any request is made":
     let server = startScripted(proc(origin, line: string): string = jsonReply(404, "Not Found", "{}"))
@@ -488,66 +641,90 @@ suite "Authorization server discovery over a scripted server (mutation review, g
     check server.requestLines.len == 0
 
   test "Given a server URL on plain http to a remote host, when discovering with the 2025-03-26 rules, then the error names the authorization base URL":
-    let outcome = outcomeOf(discoverOrDefault("http://remote.example.test/mcp", policy, @[]))
-    check outcome.kind == "security"
-    check "authorization base URL must be https" in outcome.msg
+    # The build has to speak 2025-03-26 for the client to follow its rules.
+    if not (mpv20250326.isSupported):
+      skip()
+    else:
+      var named = defaultFetchPolicy()
+      named.resolver = everyHostIsLoopback()
+      let outcome = reportedBy(clientOf("http://remote.example.test/mcp", version = mpv20250326,
+                                        fetchPolicy = named).unchallenged())
+      check outcome.kind == "security"
+      check "authorization base URL must be https" in outcome.msg
 
   test "Given the root of an origin that answers 201 or a non-object 200, when discovering with the 2025-03-26 rules, then it fails without defaults":
-    for (code, reason, body) in [(201, "Created", ""), (200, "OK", "[1]")]:
-      let server = startScripted(proc(origin, line: string): string =
-        jsonReply(code, reason, if body.len > 0: body else: asDocument(origin, origin)))
-      defer: server.stop()
-      let outcome = outcomeOf(discoverOrDefault(server.origin & "/mcp", policy, @[]))
-      check outcome.kind == "oauth"
-      check ("(HTTP " & $code & ")") in outcome.msg
+    # The build has to speak 2025-03-26 for the client to follow its rules.
+    if not (mpv20250326.isSupported):
+      skip()
+    else:
+      for (code, reason, body) in [(201, "Created", ""), (200, "OK", "[1]")]:
+        let server = startScripted(proc(origin, line: string): string =
+          jsonReply(code, reason, if body.len > 0: body else: asDocument(origin, origin)))
+        defer: server.stop()
+        let outcome = reportedBy(clientOf(server.origin & "/mcp", version = mpv20250326).unchallenged())
+        check outcome.kind == "oauth"
+        check ("(HTTP " & $code & ")") in outcome.msg
 
 suite "Protected resource metadata over a scripted server (mutation review, g2f-oauth-a)":
-  let policy = defaultFetchPolicy()
-
   test "Given a 201 with a valid document or a non-object 200, when fetching, then it is refused":
-    for (code, reason, useDocument) in [(201, "Created", true), (200, "OK", false)]:
-      let server = startScripted(proc(origin, line: string): string =
-        jsonReply(code, reason, if useDocument: prmDocument(origin, origin & "/mcp") else: "[1]"))
-      defer: server.stop()
-      let outcome = outcomeOf(fetchProtectedResourceMetadata(
-        server.origin & "/x", server.origin & "/mcp", policy))
-      check outcome.kind == "oauth"
-      check ("(HTTP " & $code & ")") in outcome.msg
+    # Before protected resource metadata the client ignores the resource_metadata of a challenge.
+    if not (DefaultProtocolVersion.has(ftProtectedResourceMetadata)):
+      skip()
+    else:
+      for (code, reason, useDocument) in [(201, "Created", true), (200, "OK", false)]:
+        let server = startScripted(proc(origin, line: string): string =
+          jsonReply(code, reason, if useDocument: prmDocument(origin, origin & "/mcp") else: "[1]"))
+        defer: server.stop()
+        let outcome = reportedBy(clientOf(server.origin & "/mcp").challengedWith(server.origin & "/x"))
+        check outcome.kind == "oauth"
+        check ("(HTTP " & $code & ")") in outcome.msg
 
   test "Given no document at either well-known URL, when probing, then the failure lists both with their status":
-    let server = startScripted(proc(origin, line: string): string = jsonReply(404, "Not Found", "{}"))
-    defer: server.stop()
-    let outcome = outcomeOf(discoverProtectedResource(server.origin & "/mcp", none(string), true, policy))
-    check outcome.kind == "oauth"
-    check outcome.msg.startsWith("no protected resource metadata: ")
-    check (server.origin & "/.well-known/oauth-protected-resource/mcp is not a JSON object (HTTP 404)") in
-      outcome.msg
-    check (server.origin & "/.well-known/oauth-protected-resource is not a JSON object (HTTP 404)") in
-      outcome.msg
+    # The client probes the well-known URLs without a resource_metadata only from the version with incremental scope consent.
+    if not (DefaultProtocolVersion.has(ftIncrementalScopeConsent)):
+      skip()
+    else:
+      let server = startScripted(proc(origin, line: string): string = jsonReply(404, "Not Found", "{}"))
+      defer: server.stop()
+      let outcome = reportedBy(clientOf(server.origin & "/mcp").unchallenged())
+      check outcome.kind == "oauth"
+      check outcome.msg.startsWith("no protected resource metadata: ")
+      check (server.origin & "/.well-known/oauth-protected-resource/mcp is not a JSON object (HTTP 404)") in
+        outcome.msg
+      check (server.origin & "/.well-known/oauth-protected-resource is not a JSON object (HTTP 404)") in
+        outcome.msg
 
   test "Given a document for another resource at the first URL, when probing, then the failure is a security failure that says why":
-    let server = startScripted(proc(origin, line: string): string =
-      if "/oauth-protected-resource/mcp" in line:
-        jsonReply(200, "OK", prmDocument(origin, "https://other.example/mcp"))
-      else: jsonReply(404, "Not Found", "{}"))
-    defer: server.stop()
-    let outcome = outcomeOf(discoverProtectedResource(server.origin & "/mcp", none(string), true, policy))
-    check outcome.kind == "security"
-    check outcome.msg.startsWith("no usable protected resource metadata: ")
-    check "describes https://other.example/mcp, not " & server.origin & "/mcp" in outcome.msg
+    # The client probes the well-known URLs without a resource_metadata only from the version with incremental scope consent.
+    if not (DefaultProtocolVersion.has(ftIncrementalScopeConsent)):
+      skip()
+    else:
+      let server = startScripted(proc(origin, line: string): string =
+        if "/oauth-protected-resource/mcp" in line:
+          jsonReply(200, "OK", prmDocument(origin, "https://other.example/mcp"))
+        else: jsonReply(404, "Not Found", "{}"))
+      defer: server.stop()
+      let outcome = reportedBy(clientOf(server.origin & "/mcp").unchallenged())
+      check outcome.kind == "security"
+      check outcome.msg.startsWith("no usable protected resource metadata: ")
+      check "describes https://other.example/mcp, not " & server.origin & "/mcp" in outcome.msg
 
 suite "Requests of the OAuth client over a scripted server (mutation review, g2f-oauth-a)":
   let policy = defaultFetchPolicy()
 
   test "Given an endpoint that answers 302, when requested, then the redirect is reported and its target is never requested":
-    let server = startScripted(proc(origin, line: string): string =
-      if "/moved" in line: jsonReply(302, "Found", "", "Location: " & origin & "/target\c\L")
-      else: jsonReply(200, "OK", "{}"))
-    defer: server.stop()
-    let outcome = outcomeOf(httpExchange(HttpGet, server.origin & "/moved", policy, "metadata"))
-    check outcome.kind == "oauth"
-    check "redirected (HTTP 302)" in outcome.msg
-    check server.requestLines.len == 1
+    # Before protected resource metadata the client ignores the resource_metadata of a challenge.
+    if not (DefaultProtocolVersion.has(ftProtectedResourceMetadata)):
+      skip()
+    else:
+      let server = startScripted(proc(origin, line: string): string =
+        if "/moved" in line: jsonReply(302, "Found", "", "Location: " & origin & "/target\c\L")
+        else: jsonReply(200, "OK", "{}"))
+      defer: server.stop()
+      let outcome = reportedBy(clientOf(server.origin & "/mcp").challengedWith(server.origin & "/moved"))
+      check outcome.kind == "oauth"
+      check "redirected (HTTP 302)" in outcome.msg
+      check server.requestLines.len == 1
 
   test "Given an endpoint that answers 304 to a conditional request, when requested, then the 304 is the reply":
     let server = startScripted(proc(origin, line: string): string =
@@ -558,15 +735,20 @@ suite "Requests of the OAuth client over a scripted server (mutation review, g2f
     check reply.code == 304
 
   test "Given plain http to a host name that resolves to loopback, when requested, then it is refused and nothing is sent":
-    # The text of the URL decides the scheme rule: a name is not "loopback".
-    let server = startScripted(proc(origin, line: string): string = jsonReply(200, "OK", "{}"))
-    defer: server.stop()
-    var named = policy
-    named.resolver = resolvingTo("auth.example.test", "127.0.0.1")
-    let outcome = outcomeOf(httpExchange(HttpGet, "http://auth.example.test:" & $server.port & "/x", named, "metadata"))
-    check outcome.kind == "security"
-    check "must be https" in outcome.msg
-    check server.requestLines.len == 0
+    # Before protected resource metadata the client ignores the resource_metadata of a challenge.
+    if not (DefaultProtocolVersion.has(ftProtectedResourceMetadata)):
+      skip()
+    else:
+      # The text of the URL decides the scheme rule: a name is not "loopback".
+      let server = startScripted(proc(origin, line: string): string = jsonReply(200, "OK", "{}"))
+      defer: server.stop()
+      var named = policy
+      named.resolver = resolvingTo("auth.example.test", "127.0.0.1")
+      let outcome = reportedBy(clientOf(server.origin & "/mcp", fetchPolicy = named).challengedWith(
+        "http://auth.example.test:" & $server.port & "/x"))
+      check outcome.kind == "security"
+      check "must be https" in outcome.msg
+      check server.requestLines.len == 0
 
   test "Given a keep-alive answer without a body, when the request is done, then the client has closed the connection":
     # A body that ends the connection closes it by itself; one that has no
@@ -579,49 +761,39 @@ suite "Requests of the OAuth client over a scripted server (mutation review, g2f
       check server.closedWithin(2000)
 
   test "Given an endpoint that never answers, when the time runs out, then the connection is closed as well as reported":
-    let server = startHolding("")
-    var quick = policy
-    quick.timeoutMs = 300
-    let outcome = outcomeOf(httpExchange(HttpGet, "http://127.0.0.1:" & $server.port & "/x", quick, "metadata"))
-    check outcome.kind == "oauth"
-    check "timed out after 300 ms" in outcome.msg
-    check server.closedWithin(2000)
-
-import std/[asyncdispatch, asynchttpserver, httpcore, nativesockets, times, uri]
-import auth/oauth/[authcode, fetch, jsonfield, registration, tokens]
-
-proc stateOf(authorizationUrl: string): string =
-  for (name, value) in decodeQuery(parseUri(authorizationUrl).query):
-    if name == "state":
-      return value
-
-proc newRequest(redirectUri = "http://127.0.0.1:8080/cb"): AuthorizationRequest =
-  newAuthorizationRequest("https://auth.example.com/authorize", "client", redirectUri,
-    @[], none(string), "https://auth.example.com", false, false)
-
-proc registeredWith(status: HttpCode, body: string): ClientCredentials =
-  ## Runs a registration against a registration endpoint that answers `body`.
-  let server = newAsyncHttpServer()
-  server.listen(Port(0), "127.0.0.1")
-  defer: server.close()
-  proc handler(req: Request) {.async, gcsafe.} =
-    await req.respond(status, body, newHttpHeaders({"Content-Type": "application/json"}))
-  asyncCheck server.acceptRequest(handler)
-  waitFor registerClient("http://127.0.0.1:" & $server.getPort.int & "/register",
-    "https://auth.example.com",
-    ClientRegistrationRequest(clientName: "t", redirectUris: @["http://127.0.0.1:1/cb"]),
-    defaultFetchPolicy())
+    # Before protected resource metadata the client ignores the resource_metadata of a challenge.
+    if not (DefaultProtocolVersion.has(ftProtectedResourceMetadata)):
+      skip()
+    else:
+      let server = startHolding("")
+      var quick = policy
+      quick.timeoutMs = 300
+      let origin = "http://127.0.0.1:" & $server.port
+      let outcome = reportedBy(clientOf(origin & "/mcp", fetchPolicy = quick).challengedWith(origin & "/x"))
+      check outcome.kind == "oauth"
+      check "timed out after 300 ms" in outcome.msg
+      check server.closedWithin(2000)
 
 suite "OAuth parsers and checks (mutation review, g2f-oauth-b)":
   let policy = defaultFetchPolicy()
 
   test "Given metadata with a plain http authorization or registration endpoint on a remote host, when parsed, then it is rejected":
-    for key in ["authorization_endpoint", "registration_endpoint"]:
-      checkpoint key
-      let doc = parseJson(goodAs)
-      doc[key] = %"http://auth.example.com/endpoint"
-      expect OAuthSecurityError:
-        discard parseAuthorizationServerMetadata(doc, "https://auth.example.com/tenant1", policy)
+    # The client probes the well-known URLs without a resource_metadata only from the version with incremental scope consent.
+    if not (DefaultProtocolVersion.has(ftIncrementalScopeConsent)):
+      skip()
+    else:
+      for key in ["authorization_endpoint", "registration_endpoint"]:
+        checkpoint key
+        let authServer = startFakeAs()
+        let resourceServer = startFakeRs(authServer)
+        defer:
+          resourceServer.stop()
+          authServer.stop()
+        authServer.metadata[key] = %"http://auth.example.com/endpoint"
+        var named = defaultFetchPolicy()
+        named.resolver = everyHostIsLoopback()
+        expect OAuthSecurityError:
+          discard waitFor clientOf(resourceServer.url, fetchPolicy = named).unchallenged()
 
   test "Given a registration endpoint that is missing or null, when parsed, then the server offers no registration":
     let missing = parseJson(goodAs)
@@ -642,28 +814,61 @@ suite "OAuth parsers and checks (mutation review, g2f-oauth-b)":
     check strField(%*{"a": "x"}, "a") == some("x")
 
   test "Given an error answer that is not JSON, when the error is built, then it names the HTTP status and is no OAuth error response":
-    let e = errorFrom(HttpReply(code: 502, body: "<html>bad gateway</html>"), "the token request")
-    check e.msg == "the token request failed with HTTP 502"
-    check not (e of OAuthServerError)
+    # The client probes the well-known URLs without a resource_metadata only from the version with incremental scope consent.
+    if not (DefaultProtocolVersion.has(ftIncrementalScopeConsent)):
+      skip()
+    else:
+      let authServer = startFakeAs()
+      let resourceServer = startFakeRs(authServer)
+      defer:
+        resourceServer.stop()
+        authServer.stop()
+      authServer.pointAt("token_endpoint", "/oauth/token")
+      authServer.answering(Http502, "<html>bad gateway</html>")
+      let outcome = reportedBy(clientOf(resourceServer.url, authorizerFor(authServer)).unchallenged())
+      check outcome.kind == "oauth"
+      check outcome.msg == "the token request failed with HTTP 502"
 
   test "Given an OAuth error answer, when the error is built, then the description follows only when there is one":
-    check errorFrom(HttpReply(code: 400, body: """{"error": "invalid_redirect_uri"}"""),
-      "client registration").msg == "client registration was refused: invalid_redirect_uri"
-    check errorFrom(HttpReply(code: 400, body: """{"error": "invalid_redirect_uri", "error_description": ""}"""),
-      "client registration").msg == "client registration was refused: invalid_redirect_uri"
-    check errorFrom(HttpReply(code: 400, body: """{"error": "invalid_redirect_uri", "error_description": "no fragments"}"""),
-      "client registration").msg ==
-      "client registration was refused: invalid_redirect_uri (no fragments)"
+    # The client probes the well-known URLs without a resource_metadata only from the version with incremental scope consent.
+    if not (DefaultProtocolVersion.has(ftIncrementalScopeConsent)):
+      skip()
+    else:
+      let authServer = startFakeAs(registration = false)
+      let resourceServer = startFakeRs(authServer)
+      defer:
+        resourceServer.stop()
+        authServer.stop()
+      authServer.pointAt("registration_endpoint", "/register")
+      for (body, message) in [
+          ("""{"error": "invalid_redirect_uri"}""",
+           "client registration was refused: invalid_redirect_uri"),
+          ("""{"error": "invalid_redirect_uri", "error_description": ""}""",
+           "client registration was refused: invalid_redirect_uri"),
+          ("""{"error": "invalid_redirect_uri", "error_description": "no fragments"}""",
+           "client registration was refused: invalid_redirect_uri (no fragments)")]:
+        checkpoint body
+        authServer.answering(Http400, body)
+        let outcome = reportedBy(clientOf(resourceServer.url).unchallenged())
+        check outcome.msg == message
 
   test "Given redirect URIs with a fragment, no host, plain http to a remote host or another scheme, when checked, then they are refused":
-    for bad in ["https://app.example/cb#frag", "https:///cb", "/cb", "http://app.example/cb",
-                "ftp://app.example/cb"]:
-      checkpoint bad
-      expect OAuthSecurityError:
-        checkRedirectUri(bad)
-    for good in ["https://app.example/cb", "http://127.0.0.1:8080/cb", "http://localhost/cb"]:
-      checkpoint good
-      checkRedirectUri(good)
+    # The version of the build without authorization has no client or resource server.
+    if not (DefaultProtocolVersion.has(ftAuthorization)):
+      skip()
+    else:
+      for bad in ["https://app.example/cb#frag", "https:///cb", "/cb", "http://app.example/cb",
+                  "ftp://app.example/cb"]:
+        checkpoint bad
+        var config = configOf("https://mcp.example.com/mcp")
+        config.redirectUri = bad
+        expect OAuthSecurityError:
+          discard newOAuthClient(config)
+      for good in ["https://app.example/cb", "http://127.0.0.1:8080/cb", "http://localhost/cb"]:
+        checkpoint good
+        var config = configOf("https://mcp.example.com/mcp")
+        config.redirectUri = good
+        discard newOAuthClient(config)
 
   test "Given a plain http redirect URI to a remote host, when an authorization request is made, then no request is made":
     expect OAuthSecurityError:
@@ -696,10 +901,21 @@ suite "OAuth parsers and checks (mutation review, g2f-oauth-b)":
           none(string), fromUnix(1_800_000_000))
 
   test "Given a registration response without a client_id or with an empty one, when read, then registration fails":
-    for body in ["""{"client_secret": "s"}""", """{"client_id": ""}""", """{"client_id": 5}"""]:
-      checkpoint body
-      expect OAuthError:
-        discard registeredWith(Http201, body)
+    # The client probes the well-known URLs without a resource_metadata only from the version with incremental scope consent.
+    if not (DefaultProtocolVersion.has(ftIncrementalScopeConsent)):
+      skip()
+    else:
+      let authServer = startFakeAs(registration = false)
+      let resourceServer = startFakeRs(authServer)
+      defer:
+        resourceServer.stop()
+        authServer.stop()
+      authServer.pointAt("registration_endpoint", "/register")
+      for body in ["""{"client_secret": "s"}""", """{"client_id": ""}""", """{"client_id": 5}"""]:
+        checkpoint body
+        authServer.answering(Http201, body)
+        expect OAuthError:
+          discard waitFor clientOf(resourceServer.url).unchallenged()
 
   test "Given a registration response with a client_id, when read, then the client is known by it":
     let credentials = registeredWith(Http201, """{"client_id": "abc"}""")

@@ -7,35 +7,48 @@ import std/[unittest, json, strutils, sequtils]
 import jsonschema/json_schema
 import jsonschema/json_schema_regex
 
+proc patternSchema(pattern: string): JsonNode =
+  result = newJObject()
+  result["pattern"] = %pattern
+
+proc matches(pattern, text: string, limits = DefaultSchemaLimits): bool =
+  ## Whether `text` conforms to a schema whose `pattern` is `pattern`.
+  validate(patternSchema(pattern), %text, limits).len == 0
+
+proc compiles(pattern: string, limits = DefaultSchemaLimits) =
+  ## Raises InvalidSchemaError (SchemaLimitError for a limit) when `pattern` is refused.
+  discard validate(patternSchema(pattern), %"", limits)
+
 suite "regular expressions against long text":
 
   test "Given a plain pattern, when 4 MiB of text is matched, then the process survives and answers":
     let text = 'a'.repeat(4 * 1024 * 1024)
-    check compileRegex("^[a-z]+$").isMatch(text)
+    check matches("^[a-z]+$", text)
     let shorter = text[0 ..< 512 * 1024]
-    check not compileRegex("^[a-z]+$").isMatch(shorter & "1")
-    check compileRegex("^(?:ab|a)*$").isMatch(shorter)
-    check compileRegex("^(a|b)+$").isMatch(shorter)
+    check not matches("^[a-z]+$", shorter & "1")
+    check matches("^(?:ab|a)*$", shorter)
+    check matches("^(a|b)+$", shorter)
 
   test "Given a lookahead, when long text is matched, then it is answered":
     let text = 'a'.repeat(1024 * 1024)
-    check compileRegex("^(?=[a-z]+$)(?!.*b).*$").isMatch(text)
-    check not compileRegex("^(?=[a-z]+$)(?!.*a).*$").isMatch(text)
+    check matches("^(?=[a-z]+$)(?!.*b).*$", text)
+    check not matches("^(?=[a-z]+$)(?!.*a).*$", text)
 
 suite "regular expressions against catastrophic patterns":
 
   test "Given patterns that backtrack exponentially, when matched, then each answers at once":
     let text = 'a'.repeat(100_000) & "b"
-    check compileRegex("(a|a)*$").isMatch(text)
-    check not compileRegex("^(a+)+$").isMatch(text)
-    check not compileRegex("^(a|aa)+$").isMatch(text)
-    check not compileRegex("^(a*)*$").isMatch(text)
-    check not compileRegex("^(.*a){20}$").isMatch(text[0 ..< 100] & "b")
+    check matches("(a|a)*$", text)
+    check not matches("^(a+)+$", text)
+    check not matches("^(a|aa)+$", text)
+    check not matches("^(a*)*$", text)
+    check not matches("^(.*a){20}$", text[0 ..< 100] & "b")
 
   test "Given a match that needs more steps than the budget, when matched, then the limit is reported, not a verdict":
-    let re = compileRegex("^[a-z]+$")
-    expect RegexLimitError:
-      discard re.isMatch('a'.repeat(1000), maxSteps = 100)
+    var limits = DefaultSchemaLimits
+    limits.maxRegexSteps = 100
+    expect SchemaLimitError:
+      discard matches("^[a-z]+$", 'a'.repeat(1000), limits)
 
   test "Given one budget for several matches, when they add up above it, then the later one is reported":
     let re = compileRegex("^[a-z]+$")
@@ -49,27 +62,27 @@ suite "regular expressions against catastrophic patterns":
 suite "regular expressions against huge patterns":
 
   test "Given a repetition count above the limit, when compiled, then the limit is reported":
-    expect RegexLimitError: discard compileRegex("a{1000000}")
-    expect RegexLimitError: discard compileRegex("a{1,1000000}")
-    expect RegexLimitError: discard compileRegex("a{99999999999999999999}")
-    check compileRegex("^a{1000}$").isMatch('a'.repeat(1000))
+    expect SchemaLimitError: compiles("a{1000000}")
+    expect SchemaLimitError: compiles("a{1,1000000}")
+    expect SchemaLimitError: compiles("a{99999999999999999999}")
+    check matches("^a{1000}$", 'a'.repeat(1000))
 
   test "Given repetitions nested inside each other, when compiled, then the expansion is stopped":
-    expect RegexLimitError: discard compileRegex("((((a{1000}){1000}){1000}){1000})")
-    expect RegexLimitError: discard compileRegex("(((?:){1000}){1000}){1000}")
+    expect SchemaLimitError: compiles("((((a{1000}){1000}){1000}){1000})")
+    expect SchemaLimitError: compiles("(((?:){1000}){1000}){1000}")
 
   test "Given a pattern longer than the limit, when compiled, then the limit is reported":
-    expect RegexLimitError: discard compileRegex("a".repeat(4097))
-    check compileRegex("a".repeat(4096)).isMatch("a".repeat(4096))
+    expect SchemaLimitError: compiles("a".repeat(4097))
+    check matches("a".repeat(4096), "a".repeat(4096))
 
   test "Given groups nested too deep, when compiled, then the limit is reported":
-    expect RegexLimitError: discard compileRegex("(".repeat(65) & ")".repeat(65))
-    check compileRegex("(".repeat(64) & "a" & ")".repeat(64)).isMatch("a")
+    expect SchemaLimitError: compiles("(".repeat(65) & ")".repeat(65))
+    check matches("(".repeat(64) & "a" & ")".repeat(64), "a")
 
   test "Given a limit raised by the caller, when compiled, then the larger pattern is accepted":
-    var limits = DefaultRegexLimits
-    limits.maxRepeat = 5000
-    check compileRegex("^a{5000}$", limits).isMatch('a'.repeat(5000))
+    var limits = DefaultSchemaLimits
+    limits.regex.maxRepeat = 5000
+    check matches("^a{5000}$", 'a'.repeat(5000), limits)
 
 proc nestedArrays(depth: int): JsonNode =
   result = newJInt(1)

@@ -440,14 +440,23 @@ suite "JSON Schema keywords (mutation review, g2h-js-a)":
 
 import std/unicode
 
+proc patternSchema(pattern: string): JsonNode =
+  result = newJObject()
+  result["pattern"] = %pattern
+
 proc matches(pattern, text: string): bool =
-  compileRegex(pattern).isMatch(text)
+  ## Whether `text` conforms to a schema whose `pattern` is `pattern`.
+  validate(patternSchema(pattern), %text).len == 0
+
+proc compiles(pattern: string) =
+  ## Raises InvalidSchemaError (SchemaLimitError for a limit) when `pattern` is refused.
+  discard validate(patternSchema(pattern), %"")
 
 proc refusal(pattern: string): string =
-  ## The message of the RegexError a pattern is refused with; "" if it compiles.
+  ## The message of the InvalidSchemaError a pattern is refused with; "" if it compiles.
   try:
-    discard compileRegex(pattern)
-  except RegexError as e:
+    compiles(pattern)
+  except InvalidSchemaError as e:
     result = e.msg
 
 suite "regular expressions of patterns (mutation review, g2h-js-b)":
@@ -507,8 +516,8 @@ suite "regular expressions of patterns (mutation review, g2h-js-b)":
 
   test "Given a class that is not well formed, when compiled, then it is refused":
     for bad in ["[b-a]", "[a-", "[a", "[\\", "[a-\\", "["]:
-      expect RegexError:
-        discard compileRegex(bad)
+      expect InvalidSchemaError:
+        compiles(bad)
 
   test "Given braces, when they are not a quantifier, then they stand for themselves":
     check matches("^a{,3}$", "a{,3}")
@@ -537,8 +546,8 @@ suite "regular expressions of patterns (mutation review, g2h-js-b)":
 
   test "Given a repetition that runs backwards, when compiled, then it is refused":
     for bad in ["a{3,2}", "a{2,0}"]:
-      expect RegexError:
-        discard compileRegex(bad)
+      expect InvalidSchemaError:
+        compiles(bad)
 
   test "Given a brace that is not closed or not a count, when matched, then ECMA-262 Annex B reads it as characters":
     for (pattern, text) in [("^a{$", "a{"), ("^a{2$", "a{2"), ("^a{2,$", "a{2,"),
@@ -553,8 +562,8 @@ suite "regular expressions of patterns (mutation review, g2h-js-b)":
 
   test "Given a repetition above the limit, when compiled, then the limit is reported whichever count is above":
     for big in ["a{1001}", "a{1001,}", "a{1,1001}", "a{1001,2000}"]:
-      expect RegexLimitError:
-        discard compileRegex(big)
+      expect SchemaLimitError:
+        compiles(big)
     check matches("^a{1000}$", "a".repeat(1000))
     check matches("^a{1000,}$", "a".repeat(1000))
     check matches("^a{0,1000}$", "")
@@ -569,8 +578,8 @@ suite "regular expressions of patterns (mutation review, g2h-js-b)":
 
   test "Given parentheses that do not match, when compiled, then the pattern is refused":
     for bad in ["a)", "(a))", "(a", "(?", "(?:", "x(?"]:
-      expect RegexError:
-        discard compileRegex(bad)
+      expect InvalidSchemaError:
+        compiles(bad)
 
   test "Given a group syntax that is not supported, when compiled, then the message names the group syntax":
     for bad in ["(?<n>x)", "(?x)", "(?i:x)"]:
@@ -578,13 +587,13 @@ suite "regular expressions of patterns (mutation review, g2h-js-b)":
 
   test "Given groups one after another, when compiled, then only nesting counts against the nesting limit":
     check matches("^" & "(a)".repeat(70) & "$", "a".repeat(70))
-    expect RegexLimitError:
-      discard compileRegex("(".repeat(65) & "a" & ")".repeat(65))
+    expect SchemaLimitError:
+      compiles("(".repeat(65) & "a" & ")".repeat(65))
 
   test "Given a backslash at the end of the pattern, when compiled, then the pattern is refused":
     for bad in ["a\\", "\\", "(\\", "[\\"]:
-      expect RegexError:
-        discard compileRegex(bad)
+      expect InvalidSchemaError:
+        compiles(bad)
 
   test "Given a hex escape that ends the pattern, when compiled, then it is read, and one with fewer digits is refused":
     check matches("^\\x41$", "A")
@@ -592,8 +601,8 @@ suite "regular expressions of patterns (mutation review, g2h-js-b)":
     check matches("\\x41", "xA")
     check matches("\\u0041", "A")
     for bad in ["\\x4", "\\x", "\\u004", "\\u00", "\\x4g", "\\u00zz"]:
-      expect RegexError:
-        discard compileRegex(bad)
+      expect InvalidSchemaError:
+        compiles(bad)
 
   test "Given word boundaries, when matched at both ends of the text, then the text edge counts as a non-word":
     check matches("\\bab", "ab")

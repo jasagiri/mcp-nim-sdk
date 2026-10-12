@@ -4,10 +4,12 @@
 ## Expectations follow server/tools "x-mcp-header" and
 ## basic/transports/streamable-http "Custom Headers from Tool Parameters".
 
-import std/[unittest, json, options, strutils]
+import std/[unittest, asyncdispatch, httpclient, json, options, strutils]
 import protocol/types
 import protocol/modern
 import protocol/param_headers
+import transport/http_server
+import server/server
 
 proc schema(properties: JsonNode): JsonNode =
   %*{"type": "object", "properties": properties}
@@ -19,6 +21,85 @@ proc headersOf(declarations: ParamDeclarations, arguments: JsonNode): seq[(strin
 proc mismatchOf(declarations: ParamDeclarations, arguments: JsonNode,
                 received: openArray[(string, string)]): Option[JsonRpcError] =
   checkParamHeaders(declarations.bindings, arguments, received)
+
+const SpeaksModern = isModern(DefaultProtocolVersion)
+
+template modernOnly(body: untyped) =
+  ## Parameter headers exist from 2026-07-28 on; a build whose default is
+  ## older has no server that checks them.
+  when SpeaksModern:
+    body
+  else:
+    skip()
+
+type Reply = tuple[code: HttpCode, body: string]
+
+proc startServerWith(inputSchema: JsonNode): string =
+  ## A server on 127.0.0.1 that lists one tool, "t", with this `inputSchema`
+  ## (none when nil), and answers its calls.
+  var tool = %*{"name": "t"}
+  if not inputSchema.isNil:
+    tool["inputSchema"] = inputSchema
+  let transport = newHttpServerTransport(port = 0)
+  transport.listen()
+  asyncCheck transport.serve()
+  let server = newMcpServer(McpServerInfo(name: "ExampleServer", version: "1.0.0"),
+    capabilities = McpServerCapabilities(tools: some(McpToolsCapability())))
+  let listTools: typeof(McpToolHandlers().listHandler.get) =
+    proc(): Future[seq[JsonNode]] {.async.} =
+      return @[tool]
+  let callTool: typeof(McpToolHandlers().callHandler.get) =
+    proc(name: string, arguments: JsonNode): Future[JsonNode] {.async.} =
+      return %*{"content": [{"type": "text", "text": name}], "isError": false}
+  server.setToolHandlers(McpToolHandlers(
+    listHandler: some(listTools), callHandler: some(callTool)))
+  waitFor server.attachTransport(transport)
+  "http://127.0.0.1:" & $transport.port & "/mcp"
+
+proc postJson(url: string, body: JsonNode, headers: openArray[(string, string)]): Reply =
+  let http = newAsyncHttpClient()
+  defer: http.close()
+  let response = waitFor http.request(url, HttpPost, $body, newHttpHeaders(headers))
+  (response.code, waitFor response.body)
+
+proc modernMeta(): JsonNode =
+  %*{"io.modelcontextprotocol/protocolVersion": "2026-07-28",
+     "io.modelcontextprotocol/clientInfo": {"name": "ExampleClient", "version": "1.0.0"},
+     "io.modelcontextprotocol/clientCapabilities": {}}
+
+proc isListed(url: string): bool =
+  ## Whether the server's tools/list publishes the tool "t".
+  let reply = postJson(url, %*{"jsonrpc": "2.0", "id": 1, "method": "tools/list",
+                               "params": {"_meta": modernMeta()}},
+                       {"Content-Type": "application/json",
+                        "MCP-Protocol-Version": "2026-07-28", "Mcp-Method": "tools/list"})
+  check reply.code == Http200
+  for tool in parseJson(reply.body)["result"]["tools"]:
+    if tool["name"].getStr() == "t":
+      return true
+
+proc isPublished(inputSchema: JsonNode): bool =
+  isListed(startServerWith(inputSchema))
+
+proc callOf(url: string, arguments: JsonNode,
+            received: openArray[(string, string)]): Reply =
+  ## A tools/call of "t" carrying exactly these `Mcp-Param-*` headers.
+  var headers = @[("Content-Type", "application/json"),
+                  ("MCP-Protocol-Version", "2026-07-28"),
+                  ("Mcp-Method", "tools/call"), ("Mcp-Name", "t")]
+  headers.add received
+  postJson(url, %*{"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+                   "params": {"_meta": modernMeta(), "name": "t", "arguments": arguments}},
+           headers)
+
+proc accepts(url: string, arguments: JsonNode,
+             received: openArray[(string, string)]): bool =
+  callOf(url, arguments, received).code == Http200
+
+proc rejectsAsMismatch(url: string, arguments: JsonNode,
+                       received: openArray[(string, string)]): bool =
+  let reply = callOf(url, arguments, received)
+  reply.code == Http400 and parseJson(reply.body){"error", "code"}.getInt() == ErrHeaderMismatch
 
 let sqlSchema = schema(%*{
   "region": {"type": "string", "x-mcp-header": "Region"},
@@ -38,8 +119,9 @@ suite "x-mcp-header: valid declarations":
     check declared.bindings.len == 0
 
   test "Given no schema at all, when declarations are read, then it is valid and binds nothing":
-    check declaredParamHeaders(nil).invalid.isNone
-    check declaredParamHeaders(%"not a schema").invalid.isNone
+    modernOnly:
+      check isPublished(nil)
+      check isPublished(%"not a schema")
 
   test "Given an annotated property in a nested object, when declarations are read, then the path follows the properties keys":
     let declared = declaredParamHeaders(schema(%*{
@@ -65,52 +147,62 @@ suite "x-mcp-header: valid declarations":
 suite "x-mcp-header: invalid declarations":
 
   proc invalid(properties: JsonNode): bool =
-    declaredParamHeaders(schema(properties)).invalid.isSome
+    not isPublished(schema(properties))
 
   test "Given an empty name, when declarations are read, then the tool is invalid":
-    check invalid(%*{"a": {"type": "string", "x-mcp-header": ""}})
+    modernOnly:
+      check invalid(%*{"a": {"type": "string", "x-mcp-header": ""}})
 
   test "Given a name that is not a token, when declarations are read, then the tool is invalid":
-    check invalid(%*{"a": {"type": "string", "x-mcp-header": "Bad Name"}})
-    check invalid(%*{"a": {"type": "string", "x-mcp-header": "Bad:Name"}})
-    check invalid(%*{"a": {"type": "string", "x-mcp-header": "Bad\r\nName"}})
-    check invalid(%*{"a": {"type": "string", "x-mcp-header": "Naïve"}})
+    modernOnly:
+      check invalid(%*{"a": {"type": "string", "x-mcp-header": "Bad Name"}})
+      check invalid(%*{"a": {"type": "string", "x-mcp-header": "Bad:Name"}})
+      check invalid(%*{"a": {"type": "string", "x-mcp-header": "Bad\r\nName"}})
+      check invalid(%*{"a": {"type": "string", "x-mcp-header": "Naïve"}})
 
   test "Given a name that is not a string, when declarations are read, then the tool is invalid":
-    check invalid(%*{"a": {"type": "string", "x-mcp-header": 7}})
-    check invalid(%*{"a": {"type": "string", "x-mcp-header": ["A"]}})
+    modernOnly:
+      check invalid(%*{"a": {"type": "string", "x-mcp-header": 7}})
+      check invalid(%*{"a": {"type": "string", "x-mcp-header": ["A"]}})
 
   test "Given two names that differ only in case, when declarations are read, then the tool is invalid":
-    check invalid(%*{
-      "a": {"type": "string", "x-mcp-header": "Region"},
-      "b": {"type": "string", "x-mcp-header": "REGION"}})
+    modernOnly:
+      check invalid(%*{
+        "a": {"type": "string", "x-mcp-header": "Region"},
+        "b": {"type": "string", "x-mcp-header": "REGION"}})
 
   test "Given a number property, when declarations are read, then the tool is invalid":
-    check invalid(%*{"a": {"type": "number", "x-mcp-header": "A"}})
+    modernOnly:
+      check invalid(%*{"a": {"type": "number", "x-mcp-header": "A"}})
 
   test "Given an object or array property, when declarations are read, then the tool is invalid":
-    check invalid(%*{"a": {"type": "object", "x-mcp-header": "A"}})
-    check invalid(%*{"a": {"type": "array", "x-mcp-header": "A"}})
+    modernOnly:
+      check invalid(%*{"a": {"type": "object", "x-mcp-header": "A"}})
+      check invalid(%*{"a": {"type": "array", "x-mcp-header": "A"}})
 
   test "Given an annotated property with no type, when declarations are read, then the tool is invalid":
-    check invalid(%*{"a": {"x-mcp-header": "A"}})
+    modernOnly:
+      check invalid(%*{"a": {"x-mcp-header": "A"}})
 
   test "Given an annotation on the schema root, when declarations are read, then the tool is invalid":
-    check declaredParamHeaders(%*{"type": "object", "x-mcp-header": "A"}).invalid.isSome
+    modernOnly:
+      check not isPublished(%*{"type": "object", "x-mcp-header": "A"})
 
   test "Given an annotation under items, when declarations are read, then the tool is invalid":
-    check invalid(%*{"list": {"type": "array", "items": {"type": "string", "x-mcp-header": "A"}}})
+    modernOnly:
+      check invalid(%*{"list": {"type": "array", "items": {"type": "string", "x-mcp-header": "A"}}})
 
   test "Given an annotation under composition, conditional or $ref keywords, when declarations are read, then the tool is invalid":
-    for keyword in ["oneOf", "anyOf", "allOf"]:
-      check invalid(%*{"a": {keyword: [{"type": "string", "x-mcp-header": "A"}]}})
-    check invalid(%*{"a": {"not": {"type": "string", "x-mcp-header": "A"}}})
-    check invalid(%*{"a": {"if": {"type": "string", "x-mcp-header": "A"}}})
-    check invalid(%*{"a": {"then": {"type": "string", "x-mcp-header": "A"}}})
-    check invalid(%*{"a": {"else": {"type": "string", "x-mcp-header": "A"}}})
-    let viaRef = %*{"type": "object", "properties": {"a": {"$ref": "#/$defs/p"}},
-                    "$defs": {"p": {"type": "string", "x-mcp-header": "A"}}}
-    check declaredParamHeaders(viaRef).invalid.isSome
+    modernOnly:
+      for keyword in ["oneOf", "anyOf", "allOf"]:
+        check invalid(%*{"a": {keyword: [{"type": "string", "x-mcp-header": "A"}]}})
+      check invalid(%*{"a": {"not": {"type": "string", "x-mcp-header": "A"}}})
+      check invalid(%*{"a": {"if": {"type": "string", "x-mcp-header": "A"}}})
+      check invalid(%*{"a": {"then": {"type": "string", "x-mcp-header": "A"}}})
+      check invalid(%*{"a": {"else": {"type": "string", "x-mcp-header": "A"}}})
+      let viaRef = %*{"type": "object", "properties": {"a": {"$ref": "#/$defs/p"}},
+                      "$defs": {"p": {"type": "string", "x-mcp-header": "A"}}}
+      check not isPublished(viaRef)
 
   test "Given keywords that hold schemas but no annotation, when declarations are read, then the tool stays valid":
     let declared = declaredParamHeaders(schema(%*{
@@ -264,14 +356,16 @@ suite "x-mcp-header: server validation":
     check mismatchOf(declared, %*{"n": 42}, [("Mcp-Param-N", "forty-two")]).isSome
 
   test "Given a body number written with a fraction part, when checked, then it agrees with the same integer in the header":
-    let declared = declaredParamHeaders(schema(%*{"n": {"type": "integer", "x-mcp-header": "N"}}))
-    check mismatchOf(declared, parseJson("""{"n": 42.0}"""), [("Mcp-Param-N", "42")]).isNone
-    check mismatchOf(declared, parseJson("""{"n": 42.0}"""), [("Mcp-Param-N", "43")]).isSome
+    modernOnly:
+      let url = startServerWith(schema(%*{"n": {"type": "integer", "x-mcp-header": "N"}}))
+      check accepts(url, parseJson("""{"n": 42.0}"""), [("Mcp-Param-N", "42")])
+      check rejectsAsMismatch(url, parseJson("""{"n": 42.0}"""), [("Mcp-Param-N", "43")])
 
   test "Given an object or array argument, when checked, then no header value agrees with it":
-    let declared = declaredParamHeaders(sqlSchema)
-    for body in [%*{"region": ["x"]}, %*{"region": {"x": 1}}]:
-      check mismatchOf(declared, body, [("Mcp-Param-Region", "x")]).get.code == ErrHeaderMismatch
+    modernOnly:
+      let url = startServerWith(sqlSchema)
+      for body in [%*{"region": ["x"]}, %*{"region": {"x": 1}}]:
+        check rejectsAsMismatch(url, body, [("Mcp-Param-Region", "x")])
 
   test "Given a boolean header, when checked, then only true and false in lowercase agree":
     let declared = declaredParamHeaders(schema(%*{"b": {"type": "boolean", "x-mcp-header": "B"}}))
