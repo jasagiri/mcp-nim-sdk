@@ -2744,3 +2744,9 @@ MCP-EXT-SKILLS-30 | tests/test_ext_skills_frontmatter.nim | Given empty, single 
 MCP-EXT-SKILLS-30 | tests/test_ext_skills_frontmatter.nim | Given a trailing comma, when read, then it ends the sequence without adding an item
 MCP-EXT-SKILLS-31 | tests/test_ext_skills_frontmatter.nim | Given an escape inside a double-quoted key, when read, then it reads as in a value
 MCP-EXT-SKILLS-31 | tests/test_ext_skills_frontmatter.nim | Given a double-quoted key ending in an unescaped backslash pair, when read, then the quote closes it
+MCP-EXT-SKILLS-32 | tests/test_ext_skills_frontmatter.nim | Given a folded block with lines indented deeper than the rest, when read, then the breaks next to them stay
+MCP-EXT-SKILLS-32 | tests/test_ext_skills_frontmatter.nim | Given two spaces inside a line of a folded block, when read, then both stay
+MCP-EXT-SKILLS-33 | tests/test_ext_skills_frontmatter.nim | Given a comment after a multi-line plain scalar, when another field follows, then the scalar ended before it
+MCP-EXT-SKILLS-33 | tests/test_ext_skills_frontmatter.nim | Given a comment in the middle of a multi-line plain scalar, when read, then FrontmatterError is raised
+MCP-EXT-SKILLS-34 | tests/test_ext_skills_frontmatter.nim | Given a comment indented less than the content of a block scalar, when read, then the scalar ends before it
+MCP-EXT-SKILLS-34 | tests/test_ext_skills_frontmatter.nim | Given content after a line that ended a block scalar, when read, then FrontmatterError is raised

@@ -184,6 +184,31 @@ suite "frontmatter: block scalars":
   test "Given a comment outside the block scalar, when read, then it is still a comment":
     check fieldsOf("a: |", "  text", "# comment", "b: 1") == %*{"a": "text\n", "b": 1}
 
+  test "Given a folded block with lines indented deeper than the rest, when read, then the breaks next to them stay":
+    check fieldsOf("a: >", "  one", "  two", "    deep", "  three", "  four", "b: 1") ==
+      %*{"a": "one two\n  deep\nthree four\n", "b": 1}
+    check fieldsOf("a: >", "  one", "    d1", "    d2", "  three")["a"] == %"one\n  d1\n  d2\nthree\n"
+    check fieldsOf("a: >", "  one", "", "    deep", "", "  three")["a"] == %"one\n\n  deep\n\nthree\n"
+    check fieldsOf("a: >", "  one", "   x", "", "", "  two")["a"] == %"one\n x\n\n\ntwo\n"
+    check fieldsOf("a: >-", "  one", "    deep")["a"] == %"one\n  deep"
+
+  test "Given two spaces inside a line of a folded block, when read, then both stay":
+    check fieldsOf("a: >", "  one  two", "  three")["a"] == %"one  two three\n"
+
+  test "Given a comment indented less than the content of a block scalar, when read, then the scalar ends before it":
+    check fieldsOf("a: |", "    one", "  # c", "b: 1") == %*{"a": "one\n", "b": 1}
+    check fieldsOf("a: |+", "  one", "", "# c", "", "b: 1") == %*{"a": "one\n\n", "b": 1}
+    check fieldsOf("a: |", "# c", "b: 1") == %*{"a": "", "b": 1}
+    check fieldsOf("m:", "  a: |", "    one", "  # c", "  b: 2") == %*{"m": {"a": "one\n", "b": 2}}
+
+  test "Given content after a line that ended a block scalar, when read, then FrontmatterError is raised":
+    for bad in [@["a: |", "    one", "  # c", "    two"], @["a: |", "  one", "# c", "  two"],
+                @["a: |", "# c", "  one"], @["a: >", "    one", "  # c", "    two"],
+                @["a: |", "    one", "  two"], @["m:", "  a: |", "    one", "# c", "    two"]]:
+      checkpoint $bad
+      expect FrontmatterError:
+        discard fieldsOf(bad)
+
   test "Given a block scalar header with more than a chomping indicator, when read, then FrontmatterError is raised":
     expect FrontmatterError:
       discard fieldsOf("a: |2", "  one")
@@ -201,6 +226,19 @@ suite "frontmatter: layout":
 
   test "Given blank lines after a multi-line plain scalar, when another field follows, then they add nothing":
     check fieldsOf("a: x", "  y", "", "", "b: 1") == %*{"a": "x y", "b": 1}
+
+  test "Given a comment after a multi-line plain scalar, when another field follows, then the scalar ended before it":
+    check fieldsOf("a: x", "  # c", "b: 1") == %*{"a": "x", "b": 1}
+    check fieldsOf("a: x", "  y", "", "  # c", "b: 1") == %*{"a": "x y", "b": 1}
+    check fieldsOf("a: x", "  y # c", "b: 1") == %*{"a": "x y", "b": 1}
+    check fieldsOf("a: x", "  y#c", "  z")["a"] == %"x y#c z"
+
+  test "Given a comment in the middle of a multi-line plain scalar, when read, then FrontmatterError is raised":
+    for bad in [@["a: x", "  # c", "  y"], @["a: x", "# c", "  y"], @["a: x", "", "# c", "", "  y"],
+                @["a: x # c", "  y"], @["a: x", "  y # c", "  z"]]:
+      checkpoint $bad
+      expect FrontmatterError:
+        discard fieldsOf(bad)
 
   test "Given a blank line between a key and its nested mapping, when read, then the mapping is the value":
     check fieldsOf("a:", "", "  b: 1", "c: 2") == %*{"a": {"b": 1}, "c": 2}

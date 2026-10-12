@@ -30,7 +30,8 @@ type
       ## Empty for a blank line and for a comment line.
     comment: string
       ## The text of a comment line. A block scalar owns it when it is
-      ## indented as the scalar's content, and the other readers skip it.
+      ## indented as the scalar's content, it ends a plain scalar, and the
+      ## other readers skip it.
     number: int
 
 const Fence = "---"
@@ -219,23 +220,25 @@ proc parseBlock(r: var Reader, indent: int): JsonNode
 
 func fold(owned: seq[string]): string {.raises: [].} =
   ## The lines of a `>` scalar: a line break between two lines is a space, and
-  ## n blank lines between them are n newlines. Lines indented deeper than the
-  ## rest are joined like the others (the old reading; YAML keeps their breaks).
-  var runs: seq[seq[string]]
-  var blanksBefore: seq[int]
+  ## n blank lines between them are n newlines. Next to a line indented deeper
+  ## than the rest nothing folds: its break and the blank lines all stay.
   var blanks = 0
+  var previous = ""
   for line in owned:
     if line.len == 0:
       inc blanks
+      continue
+    if previous.len == 0:
+      result.add '\n'.repeat(blanks)
+    elif previous[0] == ' ' or line[0] == ' ':
+      result.add '\n'.repeat(blanks + 1)
+    elif blanks == 0:
+      result.add ' '
     else:
-      if blanks > 0 or runs.len == 0:
-        runs.add @[]
-        blanksBefore.add blanks
-        blanks = 0
-      runs[^1].add line
-  for i, run in runs:
-    result.add '\n'.repeat(blanksBefore[i])
-    result.add run.join(" ").replace("  ", " ")
+      result.add '\n'.repeat(blanks)
+    result.add line
+    previous = line
+    blanks = 0
 
 proc blockScalar(r: var Reader, header: string, parentIndent: int, number: int): JsonNode =
   ## `|` and `>` with an optional chomping indicator; the lines it owns are
@@ -248,23 +251,19 @@ proc blockScalar(r: var Reader, header: string, parentIndent: int, number: int):
   var blockIndent = -1
   while r.at < r.lines.len:
     let line = r.lines[r.at]
-    if line.text.len == 0:
-      # A `#` line indented as the content is content; any other comment line
-      # counts as a blank one.
-      if line.comment.len > 0 and line.indent > parentIndent and
-         (blockIndent < 0 or line.indent >= blockIndent):
-        if blockIndent < 0:
-          blockIndent = line.indent
-        owned.add ' '.repeat(line.indent - blockIndent) & line.comment
-      else:
-        owned.add ""
+    # A `#` line indented as the content is content.
+    let content = if line.text.len > 0: line.text else: line.comment
+    if content.len == 0:
+      owned.add ""
       inc r.at
       continue
-    if line.indent <= parentIndent:
+    # The scalar ends at the first line indented less than its content. A
+    # comment there is a comment; the mapping refuses anything deeper after it.
+    if line.indent <= parentIndent or line.indent < blockIndent:
       break
     if blockIndent < 0:
       blockIndent = line.indent
-    owned.add ' '.repeat(max(0, line.indent - blockIndent)) & line.text
+    owned.add ' '.repeat(line.indent - blockIndent) & content
     inc r.at
   var trailing = 0
   while owned.len > 0 and owned[^1].len == 0:
@@ -315,7 +314,9 @@ proc parseMapping(r: var Reader, indent: int): JsonNode =
       # A plain scalar may continue on the following, deeper lines.
       if value[0] notin {'"', '\'', '['}:
         var blanks = 0
-        while r.at < r.lines.len and (r.lines[r.at].text.len == 0 or
+        # A comment ends the scalar: the mapping refuses a deeper line after it.
+        var open = value == rest.strip()
+        while open and r.at < r.lines.len and (r.lines[r.at].text.len == 0 or
               r.lines[r.at].indent > indent):
           let next = r.lines[r.at]
           if next.text.len > 0:
@@ -325,7 +326,10 @@ proc parseMapping(r: var Reader, indent: int): JsonNode =
             # A line break folds to a space; n blank lines before the line are n newlines.
             scalar.add (if blanks > 0: '\n'.repeat(blanks) else: " ") & continuation
             blanks = 0
-          elif next.comment.len == 0:
+            open = continuation == next.text
+          elif next.comment.len > 0:
+            break
+          else:
             inc blanks
           inc r.at
       result[key] = valueOf(scalar, line.number)

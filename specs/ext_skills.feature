@@ -195,3 +195,21 @@ Feature: Skills over MCP (extension io.modelcontextprotocol/skills)
     Given a key written as "a\"b"
     When its frontmatter is read
     Then the key is a"b
+
+  @spec:MCP-EXT-SKILLS-32
+  Scenario: A line indented deeper inside a folded block keeps its line breaks
+    Given a folded block with a line indented deeper than the others
+    When its frontmatter is read
+    Then the breaks before and after that line stay newlines, it keeps its extra indentation, and spaces inside a line are not collapsed
+
+  @spec:MCP-EXT-SKILLS-33
+  Scenario: A comment ends a multi-line plain scalar
+    Given a plain scalar that continues on deeper lines, with a comment on one of its lines or between them
+    When its frontmatter is read
+    Then the value ends before the comment, and a line that would continue it afterwards is refused with FrontmatterError
+
+  @spec:MCP-EXT-SKILLS-34
+  Scenario: A block scalar ends at the first line indented less than its content
+    Given a block scalar followed by a comment or another line indented less than its content
+    When its frontmatter is read
+    Then the value ends before that line, a comment there is a comment, and content indented deeper after it is refused with FrontmatterError
