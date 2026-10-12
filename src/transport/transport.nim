@@ -2,6 +2,8 @@
 
 import asyncdispatch, json, options
 import ../protocol/types
+from ../protocol/modern import ErrInternal
+import ../protocol/diagnostic
 
 type
   McpTransportKind* = enum
@@ -149,8 +151,14 @@ proc toJson*(response: JsonRpcResponse): JsonNode =
     if not error.data.isNil and error.data.kind != JNull:
       errorJson["data"] = error.data
     result["error"] = errorJson
+  elif response.result.isSome:
+    result["result"] = response.result.get
   else:
-    result["result"] = response.result.get(newJObject())
+    # Not an empty success: the handler that built this has a defect, and the
+    # peer is told only that, not where.
+    stderr.writeLine("[mcp-transport] response " & peerText(response.id) &
+                     " has neither a result nor an error; sent as an internal error")
+    result["error"] = %*{"code": ErrInternal, "message": "Internal error"}
 
 proc encodeMessage*(request: JsonRpcRequest): string = $request.toJson()
 proc encodeMessage*(notification: JsonRpcNotification): string = $notification.toJson()

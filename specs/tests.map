@@ -499,6 +499,10 @@ MCP-TRANSPORT-2 | tests/test_transport.nim | Given a notification, when classifi
 MCP-TRANSPORT-2 | tests/test_transport.nim | Given a result or an error with an id, when classified, then it is a response only
 MCP-TRANSPORT-2 | tests/test_transport.nim | Given a result without an id, when classified, then it is nothing
 MCP-TRANSPORT-2 | tests/test_transport.nim | Given JSON that is not an object, when classified, then it is nothing
+MCP-TRANSPORT-3 | tests/test_transport.nim | Given a response with a result, when encoded, then the result is on the wire
+MCP-TRANSPORT-3 | tests/test_transport.nim | Given a response with an empty object as result, when encoded, then it is an empty success
+MCP-TRANSPORT-3 | tests/test_transport.nim | Given a response with an error, when encoded, then the error is on the wire
+MCP-TRANSPORT-3 | tests/test_transport.nim | Given a response with neither result nor error, when encoded, then it is an internal error that tells the peer nothing, and one line is logged
 MCP-AUTH-1 | tests/test_auth_resource_server.nim | Given a request without a token and version <version>, when posted, then the answer is 401 with a Bearer challenge
 MCP-AUTH-1 | tests/test_auth_resource_server.nim | Given a token the verifier rejects and version <version>, when posted, then the answer is 401 invalid_token
 MCP-AUTH-2 | tests/test_auth_resource_server.nim | Given a token the verifier accepts and version <version>, when posted, then the request reaches the MCP server

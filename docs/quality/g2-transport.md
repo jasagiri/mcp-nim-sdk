@@ -1,6 +1,7 @@
 # G2 変異検出: `src/transport/transport.nim`
 
 測定: `nim-muter`、ジョブ `tests/mutation/transport.json`、mainline の 36a4c8a5 (2026-10-07)。
+2026-10-12 に `transport.nim` を変えた。次の測定で測り直す。
 
 | 全体 | killed | timeout | survived | runError | compileError |
 |---|---|---|---|---|---|

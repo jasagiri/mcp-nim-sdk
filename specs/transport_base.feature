@@ -19,3 +19,10 @@ Feature: What every transport shares
     Given a JSON-RPC message
     When it is classified
     Then an object with an id and a method is a request, one with a method and no id is a notification, one with an id and a result or an error is a response, and anything else, including a value that is not an object, is none of them
+
+  @spec:MCP-TRANSPORT-3
+  Scenario: A response carries a result or an error, and one with neither is not sent as a success
+    Given a response with a result, one with an error, and one with neither (a handler that returned a default response)
+    When it is encoded for the wire
+    Then the first carries its result, even an empty object, and the second its error
+    And the third is sent as the internal error -32603 with the message "Internal error" and no data, and one line on stderr says that the response had neither

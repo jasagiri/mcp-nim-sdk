@@ -39,9 +39,10 @@
 
 ## 気づいた点 (未対応)
 
-- 成功の応答で `result` も `error` も無いもの (ハンドラが既定値を返した場合) を、通信路の符号化が `"result": {}` として送る。
-  ハンドラの誤りが空の成功に見える。テスト用の `server_harness` には `jsonrpc` が "2.0" であることの検査を足して変異は検出できるようにしたが、
-  符号化そのものは変えていない。
+- 成功の応答で `result` も `error` も無いもの (ハンドラが既定値を返した場合) を、通信路の符号化が `"result": {}` として送っていた。
+  ハンドラの誤りが空の成功に見える。2026-10-12 に、符号化を内部エラー (-32603、"Internal error") にし、stderr に 1 行出すと決めて直した
+  (MCP-TRANSPORT-3、`transport.nim`)。本線の応答を作る経路 (`newJsonRpcResponse`、`newJsonRpcErrorResponse`) はすべて `result` か `error` を明示するので、
+  この枝に入るのは既定値の `JsonRpcResponse` を返したハンドラだけ。下の id 172 付近の「外から見える違い」の記述は、この変更の前のもの。
 
 測定の後に `src/server/server.nim` を変えた (上の `doAssert`)。push の前に、このジョブを測り直す。
 
