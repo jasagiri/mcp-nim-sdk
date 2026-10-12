@@ -95,6 +95,8 @@ proc startRaw(version: McpProtocolVersion,
 proc rpc(id: int, name: string): JsonNode =
   %*{"jsonrpc": "2.0", "id": id, "method": name, "params": {}}
 
+const PostLimitMs = 10_000
+
 proc post(url: string, body: JsonNode, headers: openArray[(string, string)] = []):
     tuple[code: HttpCode, headers: HttpHeaders, body: string] =
   let http = newAsyncHttpClient()
@@ -103,8 +105,15 @@ proc post(url: string, body: JsonNode, headers: openArray[(string, string)] = []
                                    "Accept": "application/json, text/event-stream"})
   for (name, value) in headers:
     allHeaders[name] = value
-  let response = waitFor http.request(url, HttpPost, $body, allHeaders)
-  (response.code, response.headers, waitFor response.body)
+  # A server that never answers must fail the test, not stall the run.
+  let requesting = http.request(url, HttpPost, $body, allHeaders)
+  doAssert waitFor withTimeout(requesting, PostLimitMs),
+    "no response to POST within " & $PostLimitMs & " ms"
+  let response = requesting.read()
+  let reading = response.body
+  doAssert waitFor withTimeout(reading, PostLimitMs),
+    "no end of the POST response body within " & $PostLimitMs & " ms"
+  (response.code, response.headers, reading.read())
 
 proc initialize(url: string, version: McpProtocolVersion): string =
   let reply = post(url, %*{"jsonrpc": "2.0", "id": 1, "method": "initialize",
