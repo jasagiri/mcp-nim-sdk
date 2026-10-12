@@ -101,7 +101,7 @@ proc newOAuthClientConfig*(serverUrl, redirectUri: string, authorize: UserAuthor
     now: proc(): Time {.closure, gcsafe, raises: [].} = getTime())
 
 proc newOAuthClient*(config: OAuthClientConfig): OAuthClient
-                    {.raises: [ValueError, OAuthError, OAuthSecurityError].} =
+                    {.raises: [ValueError, OAuthError].} =
   ## Raises for a version without authorization and for a configuration
   ## that could never succeed (a redirect URI that is neither https nor
   ## localhost, a server URL that is not absolute, a client secret that does

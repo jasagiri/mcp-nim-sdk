@@ -1,7 +1,7 @@
 # G2 変異検出: auth_oauth ジョブ
 
 測定: `nim-muter`、ジョブ `tests/mutation/auth_oauth.json`、本線の 36a4c8a5 (2026-10-07)。
-2026-10-12 に `tokens.nim` のコメントを変えた (コードは同じ)。次の測定で測り直す。
+2026-10-12 に `tokens.nim` のコメントと `metadata.nim` の raises を変えた (`OAuthSecurityError` は `OAuthError` の子で、Nim 2.2.12 の `XCannotRaiseY` が重複と指した)。次の測定で測り直す。
 
 | 全変異 | killed | timeout | survived | runError | compileError |
 |---:|---:|---:|---:|---:|---:|

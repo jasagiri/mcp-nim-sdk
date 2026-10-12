@@ -67,9 +67,10 @@ proc parseProtectedResourceMetadata*(doc: JsonNode, requestedResource: string,
                                      policy: FetchPolicy,
                                      alsoAccepted: openArray[string] = []
                                     ): ProtectedResourceMetadata
-                                    {.raises: [OAuthError, OAuthSecurityError].} =
+                                    {.raises: [OAuthError].} =
   ## RFC 9728 3.3: the `resource` of the document must be the resource the
-  ## client asked about, or a server could vouch for another one.
+  ## client asked about, or a server could vouch for another one; a document
+  ## that names another resource raises OAuthSecurityError, an OAuthError.
   ## `alsoAccepted` are other identifiers the document may name, for a
   ## document fetched from a URL that was not built from `requestedResource`.
   ## MCP additionally requires at least one authorization server.
@@ -93,10 +94,11 @@ proc parseProtectedResourceMetadata*(doc: JsonNode, requestedResource: string,
 
 proc parseAuthorizationServerMetadata*(doc: JsonNode, expectedIssuer: string,
                                        policy: FetchPolicy): AuthorizationServerMetadata
-                                      {.raises: [OAuthError, OAuthSecurityError].} =
+                                      {.raises: [OAuthError].} =
   ## RFC 8414 3.3: the `issuer` must be identical to the identifier the
   ## well-known URL was built from, or the document may belong to someone
-  ## else (the mix-up the specification names).
+  ## else (the mix-up the specification names); another issuer raises
+  ## OAuthSecurityError, an OAuthError.
   if doc.kind != JObject:
     raise newException(OAuthError, "authorization server metadata is not a JSON object")
   result.issuer = doc.requiredString("issuer")
