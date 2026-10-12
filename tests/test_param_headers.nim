@@ -4,7 +4,7 @@
 ## Expectations follow server/tools "x-mcp-header" and
 ## basic/transports/streamable-http "Custom Headers from Tool Parameters".
 
-import std/[unittest, asyncdispatch, httpclient, json, options, strutils]
+import std/[unittest, asyncdispatch, httpclient, json, options, strutils, unicode]
 import protocol/types
 import protocol/modern
 import protocol/param_headers
@@ -319,6 +319,17 @@ suite "x-mcp-header: server validation":
     let error = mismatchOf(declared, %*{"region": "us-west1"}, [("Mcp-Param-Region", "eu-1")])
     check error.isSome
     check error.get.code == ErrHeaderMismatch
+
+  test "Given a long Japanese header value that differs from the body, when checked, then the message quotes it without splitting a character":
+    let declared = declaredParamHeaders(sqlSchema)
+    # Two leading bytes, so that a cut at byte 64 would land inside a character.
+    let sent = headersOf(declared, %*{"region": "xy" & "東京リージョン".repeat(20)})
+    let error = mismatchOf(declared, %*{"region": "us-west1"}, sent)
+    check error.isSome
+    check error.get.code == ErrHeaderMismatch
+    check validateUtf8(error.get.message) == -1
+    check "xy東京リージョン" in error.get.message
+    check "..." in error.get.message
 
   test "Given a body value and no header, when checked, then the request is rejected":
     let declared = declaredParamHeaders(sqlSchema)

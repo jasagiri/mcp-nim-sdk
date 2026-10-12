@@ -9,7 +9,7 @@
 ## Specification: basic/transports/streamable-http, "Custom Headers from Tool
 ## Parameters", and server/tools, "x-mcp-header".
 
-import std/[json, options, strutils, sets]
+import std/[json, options, strutils, sets, unicode]
 import ./types
 import ./modern
 
@@ -178,7 +178,10 @@ func paramHeadersFor*(bindings: openArray[ParamBinding], arguments: JsonNode,
   none(string)
 
 func quoted(text: string): string {.raises: [].} =
-  if text.len > MaxQuotedValue: text[0 ..< MaxQuotedValue] & "..." else: text
+  ## At most `MaxQuotedValue` characters of a value, for an error message.
+  ## Counted in characters: a value can be any text, and a cut at a byte
+  ## position would split a multi-byte character.
+  if text.runeLen > MaxQuotedValue: text.runeSubStr(0, MaxQuotedValue) & "..." else: text
 
 func mismatch(message: string): Option[JsonRpcError] {.raises: [].} =
   some(JsonRpcError(code: ErrHeaderMismatch, message: "Header mismatch: " & message))
