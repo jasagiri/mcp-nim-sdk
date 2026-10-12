@@ -49,6 +49,17 @@ Interceptors の `traceparent`、Events の `suspendWindowMs` である。変異
   `server-sse-polling` (`2025-11-25` の仕様で 2 つのビルド)。
 - **`2024-11-05` は対象にできない** (道具が版を受け付けない。2026-10-12 の記録を参照)。
 
+## 取り直し: Skills の frontmatter の修正のあと (拡張と下書き)
+
+測ったあとに拡張の系列へ `fix(skills): read deeper lines of a folded block, comments in a plain scalar and the end of a block scalar as YAML does` を足した (テスト 6 本、仕様 ID 3 件)。本線は変えていないので、拡張と下書きだけを同じやり方で流し直した。
+
+| 系列 | コミット | 合格 | 失敗 | 警告 |
+|---|---|---:|---:|---:|
+| 拡張 | `5aebb49507dc` | 11602 | 0 | 0 |
+| 下書き | `1f1d56880cdd` | 13271 | 0 | 0 |
+
+増えた 30 は、足した 6 本が 5 版ぶん流れた数。適合性テストと相互接続は流し直していない (検査用のプログラムは本線の機能だけを登録し、Skills を通らない)。
+
 ## 公式 SDK との相互接続
 
 表は [interop-matrix-2026-10-13.md](interop-matrix-2026-10-13.md)。
