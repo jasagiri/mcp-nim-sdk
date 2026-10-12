@@ -403,6 +403,13 @@ Feature: Security properties
     When the TLS certificate is refused, https is asked of a build without TLS, or a handshake finishes after its connect timeout
     Then the client closes the connection, so that no descriptor is left open
 
+  @spec:MCP-SEC-WIRE-21
+  Scenario: An IPv6 address outside the global unicast block is reserved unless another class claims it
+    Given the global unicast block 2000::/3
+    When an IPv6 address outside it, such as fec0::1, ::ff:7f00:1 or 100:0:0:1::, is classified and no other class (loopback, link-local, unique local, IPv4-embedding, multicast) claims it
+    Then it is reserved, and so is refused in every notation, whatever the policy allows
+    And an address inside 2000::/3 that no block sets aside is public, to its first and last address
+
   @spec:MCP-SEC-HTTP-8
   Scenario: A failure inside the HTTP transport is logged and not told to the peer
     Given a session whose end callback raises

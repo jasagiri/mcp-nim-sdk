@@ -250,8 +250,8 @@ suite "the edges of the address blocks (mutation review, g2f-ap-b)":
     check classOfAddress("100::") == "acReserved"
     check classOfAddress("100::1") == "acReserved"
     check classOfAddress("100::ffff:ffff:ffff:ffff") == "acReserved"
-    # RFC 6666 sets aside 100::/64 only.
-    check classOfAddress("100:0:0:1::") == "acPublic"
+    # RFC 6666 sets aside 100::/64 only; the rest of 100::/8 is outside 2000::/3.
+    check classOfAddress("100:0:0:1::") == "acReserved"
 
   test "Given the IETF protocol assignments 2001::/23, when classified, then the whole block is reserved and its neighbours are not":
     check classOfAddress("2001::1") == "acReserved"
@@ -349,3 +349,29 @@ suite "what a destination is (mutation review, g2f-ap-b)":
     check "127.0.0.1" in systemAddresses("127.0.0.1")
     check parseIpAddress("127.0.0.1") in resolveHost("127.0.0.1")
     check parseIpAddress("::1") in resolveHost("::1")
+
+suite "the IPv6 space outside 2000::/3":
+
+  test "Given an IPv6 address outside the global unicast block 2000::/3 and in no other class, when classified, then it is reserved":
+    check classOfAddress("fec0::1") == "acReserved"
+    check classOfAddress("::ff:7f00:1") == "acReserved"
+    check classOfAddress("100:0:0:1::") == "acReserved"
+    check classOfAddress("400::1") == "acReserved"
+    check classOfAddress("1fff:ffff:ffff:ffff:ffff:ffff:ffff:ffff") == "acReserved"
+    check classOfAddress("4000::1") == "acReserved"
+    check classOfAddress("8000::1") == "acReserved"
+    check classOfAddress("e000::1") == "acReserved"
+    check classOfAddress("fbff::1") == "acReserved"
+
+  test "Given an address at either edge of 2000::/3, when classified, then it is public":
+    check classOfAddress("2000::") == "acPublic"
+    check classOfAddress("3ffe:ffff:ffff:ffff:ffff:ffff:ffff:ffff") == "acPublic"
+    check classOfAddress("2606:4700:4700::1111") == "acPublic"
+
+  test "Given an address outside 2000::/3 that another class already claims, when classified, then that class decides":
+    check classOfAddress("fd00::1") == "acPrivate"
+    check classOfAddress("fe80::1") == "acLinkLocal"
+    check classOfAddress("::1") == "acLoopback"
+    check classOfAddress("::ffff:10.0.0.1") == "acPrivate"
+    check classOfAddress("64:ff9b::808:808") == "acPublic"
+    check classOfAddress("ff02::1") == "acReserved"

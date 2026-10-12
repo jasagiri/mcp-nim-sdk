@@ -78,7 +78,8 @@ func embeddedV4(a: array[16, uint8], at: int): uint32 {.raises: [].} =
 
 func classifyAddress*(ip: IpAddress): AddressClass {.raises: [].} =
   ## The class of an address. An IPv6 address that embeds an IPv4 one
-  ## (mapped, NAT64, 6to4) is classified by the IPv4 address inside it.
+  ## (mapped, NAT64, 6to4) is classified by the IPv4 address inside it. An
+  ## IPv6 address in no other class is public only inside 2000::/3.
   case ip.family
   of IpAddressFamily.IPv4:
     return classifyV4(v4(int(ip.address_v4[0]), int(ip.address_v4[1]),
@@ -130,6 +131,11 @@ func classifyAddress*(ip: IpAddress): AddressClass {.raises: [].} =
     if a[0] == 0xfe and (a[1] and 0xc0'u8) == 0x80:
       return acLinkLocal
     if a[0] == 0xff:
+      return acReserved
+    # Only 2000::/3 is allocated as global unicast. The rest (fec0::/10, the
+    # unlisted parts of ::/8 and 100::/8, ...) is IETF-reserved, so a name that
+    # resolves there is refused rather than called public.
+    if (a[0] and 0xe0'u8) != 0x20:
       return acReserved
     acPublic
 

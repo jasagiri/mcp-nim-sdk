@@ -1723,6 +1723,9 @@ MCP-SEC-WIRE-19 | tests/test_http_wire_internals.nim | Given a response that has
 MCP-SEC-WIRE-20 | tests/test_security_wire_headers.nim | Given a build without -d:ssl, when https URLs are refused again and again, then no connection is left open
 MCP-SEC-WIRE-20 | tests/test_security_wire_tls.nim | Given a certificate for another host, when requests are refused again and again, then no connection is left open
 MCP-SEC-WIRE-20 | tests/test_security_wire_tls.nim | Given a handshake that ends after the connect timeout, when it ends, then the connection is closed by the client
+MCP-SEC-WIRE-21 | tests/test_security_address.nim | Given an IPv6 address outside the global unicast block 2000::/3 and in no other class, when classified, then it is reserved
+MCP-SEC-WIRE-21 | tests/test_security_address.nim | Given an address at either edge of 2000::/3, when classified, then it is public
+MCP-SEC-WIRE-21 | tests/test_security_address.nim | Given an address outside 2000::/3 that another class already claims, when classified, then that class decides
 MCP-SEC-AUTH-1 | tests/test_security_auth.nim | Given a client secret without an issuer and version <version>, when the client is made, then it is refused and the message says how to fix it
 MCP-SEC-AUTH-1 | tests/test_security_auth.nim | Given a client secret for one issuer and version <version>, when the resource names another, then nothing but metadata reaches it and the error names both
 MCP-SEC-AUTH-1 | tests/test_security_auth.nim | Given a public pre-registered client for one issuer and version <version>, when the resource names another, then the user is not sent there

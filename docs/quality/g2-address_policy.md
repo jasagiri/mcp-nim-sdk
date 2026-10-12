@@ -1,6 +1,7 @@
 # G2 変異検出: address_policy ジョブ
 
 測定: `nim-muter`、ジョブ `tests/mutation/address_policy.json`、本線の 36a4c8a5 (2026-10-07)。
+2026-10-12 に `address_policy.nim` を変えた。次の測定で測り直す。
 
 | 全変異 | killed | timeout | survived | runError | compileError |
 |---:|---:|---:|---:|---:|---:|
@@ -31,7 +32,8 @@
 
 - 許容 4 件 (14、33、102、175)。
 - **未割り当ての IPv6 空間が公開アドレスに分類される** (`fec0::/10` の旧サイトローカルなど。IANA の特殊用途の一覧には無いが、
-  アドレス空間の一覧では IETF 予約)。どの範囲を拒否に含めるかは利用者の判断待ち。変えていないし、テストでも固定していない。
+  アドレス空間の一覧では IETF 予約)。2026-10-12 に、`2000::/3` の外でほかの分類に当たらないものを `acReserved` にすると決め、
+  実装した (MCP-SEC-WIRE-21)。`2000::/3` の中は `acPublic` のまま。
 
 ## G2 変異検査: address_policy ジョブのうち icons.nim と guarded_wire.nim (g2f-ap-a)
 
@@ -241,7 +243,7 @@ id 49 (`embeddedV4` の 4 番目のオクテット) は、はじめ「どのブ�
 ### 残っているもの
 
 - 分類 6 の 2 件 (102, 175)。理由は表のとおり。
-- リードの判断を待つ点が 1 つある。`classifyAddress` は `::/8` のうち `::`、`::1`、`::ffff:0:0/96`、`64:ff9b::/96` 以外 (たとえば `::ff:7f00:1`)、`0100::/8` の `100::/64` 以外、`fec0::/10` (廃止されたサイトローカル、RFC 3879) などを public と返す。IANA の special-purpose registry に載っていないので、`acReserved` の文書 (registry が取り分けたもの) とは矛盾しない。ただし IANA の address space registry では `::/8` などは IETF の予約。厳しくするなら範囲の定義を決める必要があり、仕様にまだ無いので変えず、テストにも固定していない。
+- 2026-10-12 に決めて直した点が 1 つある。`classifyAddress` は `::/8` のうち `::`、`::1`、`::ffff:0:0/96`、`64:ff9b::/96` 以外 (たとえば `::ff:7f00:1`)、`0100::/8` の `100::/64` 以外、`fec0::/10` (廃止されたサイトローカル、RFC 3879) などを public と返していた。IANA の address space registry では `::/8` などは IETF の予約なので、`2000::/3` (割り当て済みの global unicast) の外でほかの分類に当たらないものを `acReserved` にした。仕様は MCP-SEC-WIRE-21、テストは `test_security_address.nim` の "the IPv6 space outside 2000::/3"。
 - `systemAddresses` / `resolveHost` のテスト (id 174, 176, 113, 114) は、数字で書いたアドレス (`127.0.0.1`、`::1`) を system resolver に渡す。getaddrinfo は数字の表記を DNS に問い合わせずに読むのでネットワークには出ないが、「system resolver に触れない」という指示には厳密には反する。名前の解決はテストしていない。不要ならこの 1 テストを外し、4 件を分類 6 にする。
 
 ## 測り直し (本線 76a08c6a、2026-10-10)
