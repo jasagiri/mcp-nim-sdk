@@ -463,7 +463,7 @@ runError はない。
 
 ### 残っているもの
 
-- `resources.nim` と `prompts.nim` (分類 4、60 件): リードの判断待ち。削除と `sources` からの除外を提案する。
+- `resources.nim` と `prompts.nim` (分類 4、60 件): 解消済み。どこからも import されていなかったので、`refactor(server): remove two modules nothing imported and a branch initialize cannot reach` で削除した。
 - 分類 1 の 6 件は式から読んだだけで、実行していない。439 は冗長なガードで、削除するかどうかはリードが決める。
 
 ## 測り直し (本線 76a08c6a、2026-10-10)
