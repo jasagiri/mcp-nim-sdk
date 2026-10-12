@@ -8,9 +8,17 @@
    "evidence": [
     {
      "supports": true,
-     "kind": "test",
-     "ref": "tests/test_spec_coverage.nim が 192f0a46 (2026-10-08) で通る (仕様 ID 467)",
-     "file": "../../tests/test_spec_coverage.nim"
+     "kind": "measurement",
+     "ref": "2026-10-13、本線 f508412bc5c1: nimble specCoverage (nim-spec-coverage --scenarios) で宣言 469、対応表に行のある ID 469、終了コード 0。tests/test_spec_coverage.nim が同じコミットの通しで通る",
+     "note": "これが言うのは「対応表に行があり、その名前のテストが実在する」まで。そのテストが外部仕様テストかどうかは言わない",
+     "file": "../quality/g1-spec-coverage.md"
+    },
+    {
+     "supports": false,
+     "kind": "review",
+     "ref": "2026-10-13、本線 f508412bc5c1: テスト 2080 件を E / I / 足場に分けると、469 の仕様 ID のうち 48 に外部仕様テストが 1 本も結ばれていない (結ばれているのは内部のモジュールを直接呼ぶテストだけ。45 は呼び口を公開側へ移せば E になる見立て)",
+     "note": "分類はワーカー (Claude Sonnet) が付け、件数・仕様 ID・ファイルの過不足を機械的に突き合わせた。全件の読み直しはしていない。「公開」は README の入口から export で届くもの (2026-10-13 に利用者が決めた)",
+     "file": "../quality/test-classification.md"
     }
    ]
   },
@@ -183,9 +191,9 @@
     {
      "supports": true,
      "kind": "measurement",
-     "ref": "2026-10-12、Nim 2.2.12: nimble testSsl と testAllVersions、本線 d6be71894897 で 9688 通過・失敗 0・警告 0 (拡張 1fc2f4e8e43f は 11462、下書き 287974bf660f は 13069、どちらも失敗 0・警告 0)",
-     "note": "このあと足したのは docs/quality と docs/assurance のファイルだけ。ソースかテストが変わったら取り直す",
-     "file": "../quality/release-check-2026-10-12.md"
+     "ref": "2026-10-13、Nim 2.2.12: nimble testSsl と testAllVersions、本線 f508412bc5c1 で 9733 通過・失敗 0・警告 0 (拡張 52f5bcd4d147 は 11572、下書き dcf89613233b は 13241、どちらも失敗 0・警告 0)",
+     "note": "このあと足したのは docs/quality と docs/assurance のファイルだけ (拡張と下書きはそのために載せ替えた)。ソースかテストが変わったら取り直す",
+     "file": "../quality/release-check-2026-10-13.md"
     }
    ]
   },
@@ -198,9 +206,9 @@
     {
      "supports": true,
      "kind": "measurement",
-     "ref": "2026-10-12、Nim 2.2.12: 5 版のコミットを git archive でリポジトリの外に展開して nimble test (examples のコンパイルを含む): 1583 / 1742 / 1832 / 2052 / 2507 通過、失敗 0、警告 0",
+     "ref": "2026-10-13、Nim 2.2.12: 5 版のコミットを git archive でリポジトリの外に展開して nimble test (examples のコンパイルを含む): 1592 / 1751 / 1841 / 2061 / 2516 通過、失敗 0、警告 0",
      "note": "展開したのはタグを付ける前のコミット。タグの先のコミットとの差は docs/quality と docs/assurance のファイルだけ",
-     "file": "../quality/release-check-2026-10-12.md"
+     "file": "../quality/release-check-2026-10-13.md"
     }
    ]
   },
@@ -236,8 +244,8 @@
     {
      "supports": true,
      "kind": "measurement",
-     "ref": "2026-10-12、Nim 2.2.12、本線 3cdab5856bfc: 総当たり 312 行、合格 312、不合格 0 (stdio 175、HTTP 112、HTTP+SSE 25)",
-     "file": "../quality/interop-matrix-2026-10-12.md"
+     "ref": "2026-10-13、Nim 2.2.12、本線 f508412bc5c1: 総当たり 312 行、合格 312、不合格 0 (stdio 175、HTTP 112、HTTP+SSE 25)",
+     "file": "../quality/interop-matrix-2026-10-13.md"
     }
    ]
   },
@@ -274,9 +282,9 @@
     {
      "supports": true,
      "kind": "measurement",
-     "ref": "@modelcontextprotocol/conformance 0.2.0-alpha.12、2026-10-12、Nim 2.2.12、本線 3cdab5856bfc: 212 シナリオ、合格 209、不合格 0、警告 0",
+     "ref": "@modelcontextprotocol/conformance 0.2.0-alpha.12、2026-10-13、Nim 2.2.12、本線 f508412bc5c1: 212 シナリオ、合格 209、不合格 0、警告 0",
      "note": "実行されず 1 (2026-07-28 のクライアント検査 http-standard-headers)、記録のみ 2。2024-11-05 は道具が版を受け付けない",
-     "file": "../quality/conformance-2026-10-12.md"
+     "file": "../quality/conformance-2026-10-13.md"
     }
    ]
   },

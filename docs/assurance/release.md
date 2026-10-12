@@ -1,6 +1,6 @@
 | claim | verdict | | layer | text | evidence |
 |---|---|---|---|---|---|
-| SPEC-01 | holds | required | specification | specs/ に宣言した仕様 ID のすべてに、それを確かめる外部仕様テストがある | 1 for, 0 against |
+| SPEC-01 | the evidence disagrees | required | specification | specs/ に宣言した仕様 ID のすべてに、それを確かめる外部仕様テストがある | 1 for, 1 against |
 | INP-01 | holds | required | input | 相手が選んだ文字列を読む 10 の入口 (tests/fuzz/targets.nim) は、種と、ファジングが見つけた入力で、文書にした拒否のほかに何も上げない | 1 for, 0 against |
 | INP-02 | nobody checked | required | input | ファジングの入口の一覧を、書いた者以外が見直した | 0 for, 0 against |
 | INP-03 | nobody checked | required | input | 一覧に無い入口 (HTTP の要求と応答の読み取り、JSON-RPC の振り分け、OAuth のメタデータ文書、stdio の行) もファジングした | 0 for, 0 against |
@@ -31,6 +31,6 @@ Not releasable: a required claim does not hold, is contradicted, or was not chec
 
 Nobody checked: INP-02, INP-03, INP-04, SEC-02, REV-01, REV-01b, DOWN-01
 
-The evidence disagrees: SEC-01
+The evidence disagrees: SPEC-01, SEC-01
 
 Does not hold: OPS-01
