@@ -27,6 +27,10 @@ type
   Line = object
     indent: int
     text: string
+      ## Empty for a blank line and for a comment line.
+    comment: string
+      ## The text of a comment line. A block scalar owns it when it is
+      ## indented as the scalar's content, and the other readers skip it.
     number: int
 
 const Fence = "---"
@@ -154,7 +158,9 @@ proc flowSequence(raw: string, number: int): JsonNode =
       item.add c
   if quote != '\0':
     raise fail(number, "an unterminated quote in a flow sequence")
-  if item.strip().len > 0 or items.len > 0:
+  # What follows the last comma is an item only when it says something: `[a, ]`
+  # is one item, as in YAML.
+  if item.strip().len > 0:
     items.add item
   for entry in items:
     result.add scalarOf(entry, number)
@@ -173,7 +179,13 @@ proc splitKey(text: string, number: int): tuple[key, rest: string] =
   if text.len > 0 and text[0] in {'"', '\''}:
     let quote = text[0]
     var j = 1
-    while j < text.len and text[j] != quote:
+    while j < text.len:
+      if text[j] == quote:
+        # In single quotes a doubled quote is one quote of the key, not its end.
+        if quote == '\'' and j + 1 < text.len and text[j + 1] == quote:
+          j += 2
+          continue
+        break
       inc j
     if j >= text.len:
       raise fail(number, "an unterminated quoted key")
@@ -198,6 +210,26 @@ type Reader = object
 
 proc parseBlock(r: var Reader, indent: int): JsonNode
 
+func fold(owned: seq[string]): string =
+  ## The lines of a `>` scalar: a line break between two lines is a space, and
+  ## n blank lines between them are n newlines. Lines indented deeper than the
+  ## rest are joined like the others (the old reading; YAML keeps their breaks).
+  var runs: seq[seq[string]]
+  var blanksBefore: seq[int]
+  var blanks = 0
+  for line in owned:
+    if line.len == 0:
+      inc blanks
+    else:
+      if blanks > 0 or runs.len == 0:
+        runs.add @[]
+        blanksBefore.add blanks
+        blanks = 0
+      runs[^1].add line
+  for i, run in runs:
+    result.add '\n'.repeat(blanksBefore[i])
+    result.add run.join(" ").replace("  ", " ")
+
 proc blockScalar(r: var Reader, header: string, parentIndent: int, number: int): JsonNode =
   ## `|` and `>` with an optional chomping indicator; the lines it owns are
   ## the following ones indented deeper than their key.
@@ -210,7 +242,15 @@ proc blockScalar(r: var Reader, header: string, parentIndent: int, number: int):
   while r.at < r.lines.len:
     let line = r.lines[r.at]
     if line.text.len == 0:
-      owned.add ""
+      # A `#` line indented as the content is content; any other comment line
+      # counts as a blank one.
+      if line.comment.len > 0 and line.indent > parentIndent and
+         (blockIndent < 0 or line.indent >= blockIndent):
+        if blockIndent < 0:
+          blockIndent = line.indent
+        owned.add ' '.repeat(line.indent - blockIndent) & line.comment
+      else:
+        owned.add ""
       inc r.at
       continue
     if line.indent <= parentIndent:
@@ -223,12 +263,10 @@ proc blockScalar(r: var Reader, header: string, parentIndent: int, number: int):
   while owned.len > 0 and owned[^1].len == 0:
     owned.setLen(owned.len - 1)
     inc trailing
-  var text =
-    if style == '|': owned.join("\n")
-    else: owned.join(" ").replace("  ", " ")
+  var text = if style == '|': owned.join("\n") else: fold(owned)
   case chomp
   of '-': discard
-  of '+': text.add '\n'.repeat(1 + trailing)
+  of '+': text.add '\n'.repeat(if owned.len > 0: 1 + trailing else: trailing)
   else:
     if owned.len > 0:
       text.add '\n'
@@ -269,13 +307,19 @@ proc parseMapping(r: var Reader, indent: int): JsonNode =
       var scalar = value
       # A plain scalar may continue on the following, deeper lines.
       if value[0] notin {'"', '\'', '['}:
+        var blanks = 0
         while r.at < r.lines.len and (r.lines[r.at].text.len == 0 or
               r.lines[r.at].indent > indent):
-          if r.lines[r.at].text.len > 0:
-            let continuation = stripComment(r.lines[r.at].text)
+          let next = r.lines[r.at]
+          if next.text.len > 0:
+            let continuation = stripComment(next.text)
             if ": " in continuation or continuation.endsWith(":"):
-              raise fail(r.lines[r.at].number, "a mapping value is not allowed here")
-            scalar.add " " & continuation
+              raise fail(next.number, "a mapping value is not allowed here")
+            # A line break folds to a space; n blank lines before the line are n newlines.
+            scalar.add (if blanks > 0: '\n'.repeat(blanks) else: " ") & continuation
+            blanks = 0
+          elif next.comment.len == 0:
+            inc blanks
           inc r.at
       result[key] = valueOf(scalar, line.number)
 
@@ -332,7 +376,8 @@ proc parseFrontmatter*(source: string): Frontmatter {.raises: [FrontmatterError]
     let text = raw.strip(leading = false)
     let trimmed = text.strip(trailing = false)
     if trimmed.len == 0 or trimmed[0] == '#':
-      reader.lines.add Line(indent: 0, text: "", number: i + 1)
+      reader.lines.add Line(indent: text.len - trimmed.len, text: "", comment: trimmed,
+                            number: i + 1)
     else:
       reader.lines.add Line(indent: text.len - trimmed.len, text: trimmed, number: i + 1)
   var fields = newJObject()

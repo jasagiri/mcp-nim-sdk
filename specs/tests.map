@@ -2729,3 +2729,11 @@ MCP-EXT-SKILLS-24 | tests/test_ext_skills_end_to_end.nim | Given a server that r
 MCP-EXT-SKILLS-24 | tests/test_ext_skills_end_to_end.nim | Given a server with directoryRead, when a client lists a directory, then the manifest and the directory agree
 MCP-EXT-SKILLS-24 | tests/test_ext_skills_end_to_end.nim | Given a server without directoryRead, when a client lists a directory, then it refuses before sending
 MCP-EXT-SKILLS-24 | tests/test_ext_skills_end_to_end.nim | Given a client that declared nothing, when it lists skills of a server that has them, then it is served
+MCP-EXT-SKILLS-25 | tests/test_ext_skills_frontmatter.nim | Given blank lines inside a multi-line plain scalar, when read, then n blank lines are n newlines
+MCP-EXT-SKILLS-25 | tests/test_ext_skills_frontmatter.nim | Given blank lines after a multi-line plain scalar, when another field follows, then they add nothing
+MCP-EXT-SKILLS-25 | tests/test_ext_skills_frontmatter.nim | Given a folded block with blank lines, when read, then n blank lines are n newlines and a plain break is a space
+MCP-EXT-SKILLS-26 | tests/test_ext_skills_frontmatter.nim | Given a trailing comma, when read, then it ends the sequence without adding an item
+MCP-EXT-SKILLS-27 | tests/test_ext_skills_frontmatter.nim | Given a keep-chomped block scalar with no lines, when read, then it is empty and each blank line is one newline
+MCP-EXT-SKILLS-28 | tests/test_ext_skills_frontmatter.nim | Given a doubled quote inside a single-quoted key, when read, then it is one quote of the key
+MCP-EXT-SKILLS-29 | tests/test_ext_skills_frontmatter.nim | Given a line starting with a hash inside a block scalar, when read, then it is content and not a comment
+MCP-EXT-SKILLS-29 | tests/test_ext_skills_frontmatter.nim | Given a comment outside the block scalar, when read, then it is still a comment

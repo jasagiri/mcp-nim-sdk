@@ -106,6 +106,10 @@ suite "frontmatter: flow sequences":
     check valueOf("[a]") == %*["a"]
     check valueOf("[\"a, b\", 'c']") == %*["a, b", "c"]
 
+  test "Given a trailing comma, when read, then it ends the sequence without adding an item":
+    check valueOf("[a, ]") == %*["a"]
+    check valueOf("[a, b,]") == %*["a", "b"]
+
   test "Given a sequence that does not close on its line or nests, when read, then FrontmatterError is raised":
     for bad in ["[a, b", "[a,", "[\"x]", "[a, [b]]", "[a, {b}]"]:
       checkpoint bad
@@ -117,6 +121,9 @@ suite "frontmatter: keys":
   test "Given quoted keys, when read, then they are unquoted the way their quotes say":
     check fieldsOf("\"k\\u00e9y\": 1", "'k\\n': 2", "\"a b\": 3", "\"k\\n\": 4") ==
       %*{"k\u00e9y": 1, "k\\n": 2, "a b": 3, "k\n": 4}
+
+  test "Given a doubled quote inside a single-quoted key, when read, then it is one quote of the key":
+    check fieldsOf("'it''s': v", "'a''': 1", "'''b': 2") == %*{"it's": "v", "a'": 1, "'b": 2}
 
   test "Given a key with a space or a colon not followed by a space, when read, then the colon ends the key only before a space":
     check fieldsOf("my key: v", "a:b: c", "url: http://x.y/z") ==
@@ -145,6 +152,26 @@ suite "frontmatter: block scalars":
     check fieldsOf("a: |-", "  one", "", "", "b: 1")["a"] == %"one"
     check fieldsOf("a: |+", "  one", "", "", "b: 1")["a"] == %"one\n\n\n"
 
+  test "Given a keep-chomped block scalar with no lines, when read, then it is empty and each blank line is one newline":
+    check fieldsOf("a: |+", "b: 1") == %*{"a": "", "b": 1}
+    check fieldsOf("a: |+")["a"] == %""
+    check fieldsOf("a: |+", "", "", "b: 1")["a"] == %"\n\n"
+
+  test "Given a folded block with blank lines, when read, then n blank lines are n newlines and a plain break is a space":
+    check fieldsOf("a: >", "  one", "  two", "next: 1") == %*{"a": "one two\n", "next": 1}
+    check fieldsOf("a: >", "  one", "", "  two", "next: 1")["a"] == %"one\ntwo\n"
+    check fieldsOf("a: >", "  one", "", "", "  two")["a"] == %"one\n\ntwo\n"
+    check fieldsOf("a: >", "", "  one")["a"] == %"\none\n"
+    check fieldsOf("a: >-", "  one", "", "  two", "", "b: 1")["a"] == %"one\ntwo"
+
+  test "Given a line starting with a hash inside a block scalar, when read, then it is content and not a comment":
+    check fieldsOf("a: |", "  # heading", "  text", "b: 1") == %*{"a": "# heading\ntext\n", "b": 1}
+    check fieldsOf("a: |", "  text", "  # tail", "b: 1")["a"] == %"text\n# tail\n"
+    check fieldsOf("a: >", "  one", "  # two", "  three")["a"] == %"one # two three\n"
+
+  test "Given a comment outside the block scalar, when read, then it is still a comment":
+    check fieldsOf("a: |", "  text", "# comment", "b: 1") == %*{"a": "text\n", "b": 1}
+
   test "Given a block scalar header with more than a chomping indicator, when read, then FrontmatterError is raised":
     expect FrontmatterError:
       discard fieldsOf("a: |2", "  one")
@@ -154,6 +181,14 @@ suite "frontmatter: layout":
   test "Given blank and comment lines between fields, when read, then they are ignored":
     check fieldsOf("a: \"x\"", "", "b: [1]", "# c", "c:", "", "d: 2", "e: 'y'", "", "f: 3") ==
       %*{"a": "x", "b": [1], "c": nil, "d": 2, "e": "y", "f": 3}
+
+  test "Given blank lines inside a multi-line plain scalar, when read, then n blank lines are n newlines":
+    check fieldsOf("a: x", "", "  y", "b: 1") == %*{"a": "x\ny", "b": 1}
+    check fieldsOf("a: x", "", "", "  y")["a"] == %"x\n\ny"
+    check fieldsOf("a: x", "  y", "", "  z")["a"] == %"x y\nz"
+
+  test "Given blank lines after a multi-line plain scalar, when another field follows, then they add nothing":
+    check fieldsOf("a: x", "  y", "", "", "b: 1") == %*{"a": "x y", "b": 1}
 
   test "Given a blank line between a key and its nested mapping, when read, then the mapping is the value":
     check fieldsOf("a:", "", "  b: 1", "c: 2") == %*{"a": {"b": 1}, "c": 2}

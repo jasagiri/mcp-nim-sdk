@@ -153,3 +153,33 @@ Feature: Skills over MCP (extension io.modelcontextprotocol/skills)
     Given a server that registered skills and a client that declared them, over one transport
     When the client lists, gets, loads a skill and lists a directory
     Then every step succeeds and the loaded instructions are the served ones
+
+  @spec:MCP-EXT-SKILLS-25
+  Scenario: Blank lines inside a multi-line value keep their line breaks
+    Given a plain scalar that continues on deeper lines, or a folded block, with blank lines inside
+    When its frontmatter is read
+    Then a line break is a space and n blank lines are n newlines; blank lines after the value add nothing
+
+  @spec:MCP-EXT-SKILLS-26
+  Scenario: A trailing comma in a flow sequence adds no item
+    Given a flow sequence written as [a, ]
+    When its frontmatter is read
+    Then the array has the one item
+
+  @spec:MCP-EXT-SKILLS-27
+  Scenario: A keep-chomped block scalar with no lines is empty
+    Given a block scalar with the + indicator and no lines
+    When its frontmatter is read
+    Then the value is the empty string, and each blank line adds one newline
+
+  @spec:MCP-EXT-SKILLS-28
+  Scenario: A doubled quote in a single-quoted key is one quote
+    Given a key written as 'it''s'
+    When its frontmatter is read
+    Then the key is it's
+
+  @spec:MCP-EXT-SKILLS-29
+  Scenario: A hash line inside a block scalar is content
+    Given a block scalar with a line that starts with # at the indent of its content
+    When its frontmatter is read
+    Then the line is part of the value, while a comment outside the block is still a comment
