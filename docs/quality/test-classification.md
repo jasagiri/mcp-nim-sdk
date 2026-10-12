@@ -224,7 +224,7 @@
 | 移した (E になった。TSV の印 `moved`) | 110 |
 | 移せなかった (足場のまま。TSV の印 `not-movable`、理由は reason の欄) | 106 |
 
-E テストが 1 本も結ばれていない仕様 ID は **17 件** になった (この系列の仕様 ID 469 件のうち): `MCP-AUTH-10`, `MCP-AUTH-34`, `MCP-AUTH-40`, `MCP-CONTENT-FIELDS-8`, `MCP-HTTP-24`, `MCP-HTTPSTREAM-20`, `MCP-SEC-SCHEMA-14`, `MCP-SEC-SWEEP-6`, `MCP-SEC-WIRE-1`, `MCP-SEC-WIRE-10`, `MCP-SEC-WIRE-11`, `MCP-SEC-WIRE-12`, `MCP-SEC-WIRE-13`, `MCP-SEC-WIRE-14`, `MCP-SEC-WIRE-19`, `MCP-SEC-WIRE-21`, `MCP-SEC-WIRE-7`。
+E テストが 1 本も結ばれていない仕様 ID は **18 件** になった (この系列の仕様 ID 553 件のうち): `MCP-AUTH-10`, `MCP-AUTH-34`, `MCP-AUTH-40`, `MCP-CONTENT-FIELDS-8`, `MCP-HTTP-24`, `MCP-HTTPSTREAM-20`, `MCP-SEC-AUTH-6`, `MCP-SEC-SCHEMA-14`, `MCP-SEC-SWEEP-6`, `MCP-SEC-WIRE-1`, `MCP-SEC-WIRE-10`, `MCP-SEC-WIRE-11`, `MCP-SEC-WIRE-12`, `MCP-SEC-WIRE-13`, `MCP-SEC-WIRE-14`, `MCP-SEC-WIRE-19`, `MCP-SEC-WIRE-21`, `MCP-SEC-WIRE-7`。
 
 1 本ごとの記録 (使っていた非公開の部品、通すようにした公開の口、移せない理由) は [test-entry-moves.tsv](test-entry-moves.tsv)。
 
@@ -253,6 +253,8 @@ E テストが 1 本も結ばれていない仕様 ID は **17 件** になっ�
 「同じ検証を、入口だけ替えて書く」ことはできなくても、**Then 節が言っていることを、公開の口から見える別の観測で確かめる**ことはできるものが 10 件あった。その 10 件に E テストを 53 行ぶん足した (あとで Scenario を書き直した `MCP-SEC-WIRE-14` の 3 行を加えて、11 件、56 行) (`specs/tests.map` の行の数。版ごとに展開されるテストは版の数だけ行がある)。`src/` と `export` は変えていない。もとのテストは消さず、書き換えてもいない。
 
 E テストが 1 本も結ばれていない仕様 ID は **5 件** になった (469 件のうち)。
+
+この系列では **6 件** (553 件のうち): 本線の 5 件と `MCP-SEC-AUTH-6`。この 1 件は読み直していない。
 
 | 仕様 ID | 足した行 | 公開の口からの観測 |
 |---|---:|---|
