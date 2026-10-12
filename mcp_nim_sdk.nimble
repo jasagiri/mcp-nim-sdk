@@ -172,6 +172,13 @@ task affectedTests, "List the tests that testAllVersions runs for the other vers
 task genDocs, "Regenerate README.md and docs/ from templates/":
   generateDocs("")
 
+task specCoverage, "Measure specification coverage (G1) with ../nim-spec-coverage and write docs/quality/g1-spec-coverage.md":
+  # Fails when a declared specification has no test in specs/tests.map.
+  # The tool is a sibling package; NIM_SPEC_COVERAGE names it from a checkout that has no such sibling.
+  let tool = getEnv("NIM_SPEC_COVERAGE", "../nim-spec-coverage")
+  exec "nim c --hints:off --nimcache:build/nimcache/spec_coverage -o:build/bin/spec_coverage " & tool & "/src/spec_coverage.nim"
+  exec "build/bin/spec_coverage . --scenarios specs > docs/quality/g1-spec-coverage.md"
+
 task docs, "Generate API documentation":
   exec "mkdir -p build/doc"
   exec "nim doc --project --index:on --outdir:build/doc src/mcp.nim"
