@@ -183,3 +183,9 @@ Feature: Skills over MCP (extension io.modelcontextprotocol/skills)
     Given a block scalar with a line that starts with # at the indent of its content
     When its frontmatter is read
     Then the line is part of the value, while a comment outside the block is still a comment
+
+  @spec:MCP-EXT-SKILLS-30
+  Scenario: An item missing before a comma in a flow sequence is refused
+    Given flow sequences written as [a,,], [,] and [,a]
+    When their frontmatter is read
+    Then each is refused with FrontmatterError, while [a, ] and [] are read

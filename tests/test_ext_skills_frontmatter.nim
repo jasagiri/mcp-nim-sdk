@@ -110,6 +110,12 @@ suite "frontmatter: flow sequences":
     check valueOf("[a, ]") == %*["a"]
     check valueOf("[a, b,]") == %*["a", "b"]
 
+  test "Given an item missing before a comma, when read, then FrontmatterError is raised":
+    for bad in ["[a,,]", "[,]", "[,a]", "[a,,b]"]:
+      checkpoint bad
+      expect FrontmatterError:
+        discard fieldsOf("v: " & bad)
+
   test "Given a sequence that does not close on its line or nests, when read, then FrontmatterError is raised":
     for bad in ["[a, b", "[a,", "[\"x]", "[a, [b]]", "[a, {b}]"]:
       checkpoint bad

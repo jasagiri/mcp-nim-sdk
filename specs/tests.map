@@ -2739,3 +2739,6 @@ MCP-EXT-SKILLS-27 | tests/test_ext_skills_frontmatter.nim | Given a keep-chomped
 MCP-EXT-SKILLS-28 | tests/test_ext_skills_frontmatter.nim | Given a doubled quote inside a single-quoted key, when read, then it is one quote of the key
 MCP-EXT-SKILLS-29 | tests/test_ext_skills_frontmatter.nim | Given a line starting with a hash inside a block scalar, when read, then it is content and not a comment
 MCP-EXT-SKILLS-29 | tests/test_ext_skills_frontmatter.nim | Given a comment outside the block scalar, when read, then it is still a comment
+MCP-EXT-SKILLS-30 | tests/test_ext_skills_frontmatter.nim | Given an item missing before a comma, when read, then FrontmatterError is raised
+MCP-EXT-SKILLS-30 | tests/test_ext_skills_frontmatter.nim | Given empty, single and several items, when read, then the array has as many
+MCP-EXT-SKILLS-30 | tests/test_ext_skills_frontmatter.nim | Given a trailing comma, when read, then it ends the sequence without adding an item

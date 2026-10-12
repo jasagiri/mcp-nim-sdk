@@ -163,6 +163,8 @@ proc flowSequence(raw: string, number: int): JsonNode =
   if item.strip().len > 0:
     items.add item
   for entry in items:
+    if entry.strip().len == 0:
+      raise fail(number, "a flow sequence has an empty item")
     result.add scalarOf(entry, number)
 
 proc valueOf(raw: string, number: int): JsonNode =
