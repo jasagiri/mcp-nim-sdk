@@ -315,9 +315,9 @@ Feature: Security properties
 
   @spec:MCP-SEC-SCHEMA-12
   Scenario: Quantifiers match as many times as their counts say
-    Given {0}, {0,0}, {1,}, {2,3}, a brace that is no quantifier, ??, a repetition that is not closed or runs backwards, and counts above the limit
+    Given {0}, {0,0}, {1,}, {2,3}, a brace that is no quantifier (including one that is not closed, as in a{2, a{2, or a{2x), ??, a repetition that runs backwards, and counts above the limit
     When patterns with them are matched or compiled
-    Then the number of repetitions at and around each edge is the one ECMA-262 gives, a malformed repetition is a RegexError and a count above the limit is a RegexLimitError
+    Then the number of repetitions at and around each edge is the one ECMA-262 gives, a brace that is no quantifier stands for itself as ECMA-262 Annex B reads it, a repetition that runs backwards is a RegexError and a count above the limit is a RegexLimitError
 
   @spec:MCP-SEC-SCHEMA-13
   Scenario: Alternation, groups, anchors, escapes and lookaheads follow ECMA-262

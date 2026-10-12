@@ -527,10 +527,21 @@ suite "regular expressions of patterns (mutation review, g2h-js-b)":
     check not matches("^a??$", "aa")
     check matches("^xa?$", "xa")
 
-  test "Given a repetition that is not closed or runs backwards, when compiled, then it is refused":
-    for bad in ["a{2", "a{2x", "a{2x}", "a{3,2}", "a{2,0}", "a{2,"]:
+  test "Given a repetition that runs backwards, when compiled, then it is refused":
+    for bad in ["a{3,2}", "a{2,0}"]:
       expect RegexError:
         discard compileRegex(bad)
+
+  test "Given a brace that is not closed or not a count, when matched, then ECMA-262 Annex B reads it as characters":
+    for (pattern, text) in [("^a{$", "a{"), ("^a{2$", "a{2"), ("^a{2,$", "a{2,"),
+                            ("^a{2x$", "a{2x"), ("^a{2x}$", "a{2x}"), ("^a{x}$", "a{x}"),
+                            ("^a{,3}$", "a{,3}")]:
+      check matches(pattern, text)
+    # The count before an unclosed brace is no repetition: one "a" is not "aa{2".
+    check not matches("^a{2$", "aa")
+    check not matches("^a{2$", "a")
+    # A closed repetition next to them is still a repetition.
+    check matches("^a{2}b{$", "aab{")
 
   test "Given a repetition above the limit, when compiled, then the limit is reported whichever count is above":
     for big in ["a{1001}", "a{1001,}", "a{1,1001}", "a{1001,2000}"]:

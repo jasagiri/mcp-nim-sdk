@@ -242,7 +242,8 @@ proc parseQuantifier(p: var Parser, atom: Node): Node =
       max = p.parseNumber()
       if max < 0: max = NoRepeatLimit
     if p.atEnd or p.peek != int32('}'):
-      p.fail("a repetition is not closed")
+      p.pos = start
+      return atom  # Annex B: a brace that is not closed is a literal, as is {2x}
     inc p.pos
     if max < min:
       p.fail("a repetition runs backwards")

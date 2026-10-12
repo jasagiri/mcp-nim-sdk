@@ -1794,7 +1794,8 @@ MCP-SEC-SCHEMA-11 | tests/test_json_schema.nim | Given a class that is not well 
 MCP-SEC-SCHEMA-12 | tests/test_json_schema.nim | Given braces, when they are not a quantifier, then they stand for themselves
 MCP-SEC-SCHEMA-12 | tests/test_json_schema.nim | Given a repetition, when its counts sit at the edges, then it matches exactly that many
 MCP-SEC-SCHEMA-12 | tests/test_json_schema.nim | Given a lazy quantifier after ?, when matched, then ?? is the lazy optional, not an error
-MCP-SEC-SCHEMA-12 | tests/test_json_schema.nim | Given a repetition that is not closed or runs backwards, when compiled, then it is refused
+MCP-SEC-SCHEMA-12 | tests/test_json_schema.nim | Given a repetition that runs backwards, when compiled, then it is refused
+MCP-SEC-SCHEMA-12 | tests/test_json_schema.nim | Given a brace that is not closed or not a count, when matched, then ECMA-262 Annex B reads it as characters
 MCP-SEC-SCHEMA-12 | tests/test_json_schema.nim | Given a repetition above the limit, when compiled, then the limit is reported whichever count is above
 MCP-SEC-SCHEMA-13 | tests/test_json_schema.nim | Given alternatives, when matched, then the last one is as required as the others
 MCP-SEC-SCHEMA-13 | tests/test_json_schema.nim | Given parentheses that do not match, when compiled, then the pattern is refused

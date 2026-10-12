@@ -1,6 +1,7 @@
 # G2 変異検出: jsonschema ジョブ
 
 測定: `nim-muter`、ジョブ `tests/mutation/jsonschema.json`、本線の 7d32c165 (2026-10-07)。
+2026-10-12 に `json_schema_regex.nim` を変えた。次の測定で測り直す。
 36a4c8a5 の測定ではこのジョブは 1 件も試せなかった (nim-muter の書き直しが `(inc p.pos; 8'i32)` をコンパイル不能にした。
 その 1 行を直して測り直した)。
 
@@ -36,9 +37,10 @@
 
 ## 残っているもの (利用者の判断待ち)
 
-- **閉じていない `{` の扱いが一貫していない**: `a{`、`a{x}`、`a{,3}` は文字として読む (ECMA-262 Annex B と同じ)。
-  `a{2`、`a{2,`、`a{2x` は RegexError で拒否する (Annex B では文字として読む。u フラグ付きならすべて構文エラー)。
-  今の挙動をテストで固定してある。揃えるなら、テスト `Given a repetition that is not closed or runs backwards` を変える。
+- **閉じていない `{` の扱い**: 2026-10-12 に、ECMA-262 Annex B に揃えると決めて直した。`a{`、`a{x}`、`a{,3}`、`a{2`、`a{2,`、`a{2x`、`a{2x}` は
+  文字として読む。逆順 (`a{3,2}`) は RegexError のまま。テストは `Given a repetition that runs backwards` と
+  `Given a brace that is not closed or not a count` (MCP-SEC-SCHEMA-12)。id 349、418 の検出のしかたは変わるので、測り直しで突き合わせる。
+  9 桁を超える数字を `{` のあとに書いたときは、閉じているかを見る前に RegexLimitError にする (今のまま)。
 - **draft-07 の `dependentSchemas`** (`json_schema.nim` の 446 行付近、直していない): 方言を問わず `dependentSchemas` を適用し、
   draft-07 で `dependentSchemas` があると `dependencies` を読まない。draft-07 にこのキーワードは無いので、本来は無視して
   `dependencies` を読む。変異の指摘ではなく、読んで気づいたもの。
