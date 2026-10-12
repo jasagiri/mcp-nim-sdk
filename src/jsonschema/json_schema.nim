@@ -444,9 +444,11 @@ proc checkObject(v: var Validator, schema, instance: JsonNode, path: seq[string]
           invalid("'dependentRequired' must map names to lists of names")
         if instance.hasKey(name) and not instance.hasKey(other.getStr()):
           v.add(path, "'" & name & "' requires property '" & other.getStr() & "'")
-  var dependentSchemas = schema.keyword("dependentSchemas", {JObject})
-  if dependentSchemas.isNil and v.dialect == sdDraft07:
-    # Draft-07 `dependencies` holds both forms.
+  # Draft-07 has no `dependentSchemas`: it is an unknown keyword there, and
+  # `dependencies` holds both forms.
+  let dependentSchemas =
+    if v.dialect == sdDraft07: nil else: schema.keyword("dependentSchemas", {JObject})
+  if v.dialect == sdDraft07:
     let old = schema.keyword("dependencies", {JObject})
     if not old.isNil:
       for name, dependency in old.pairs:

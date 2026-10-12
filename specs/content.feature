@@ -34,9 +34,9 @@ Feature: Content of tools, resources and prompts
 
   @spec:MCP-SCHEMA-6
   Scenario: The remaining keywords follow the dialect
-    Given multipleOf with a decimal divisor, a $ref with sibling keywords, a $ref into an array, patternProperties beside additionalProperties, dependencies, or minContains and maxContains without contains
+    Given multipleOf with a decimal divisor, a $ref with sibling keywords, a $ref into an array, patternProperties beside additionalProperties, dependencies, dependentSchemas in draft-07, or minContains and maxContains without contains
     When an instance is validated as 2020-12 and as draft-07
-    Then each dialect gives the verdict its specification gives
+    Then each dialect gives the verdict its specification gives, and draft-07 ignores dependentSchemas, which only later dialects have
 
   @spec:MCP-TOOLANN-1 @feature:ftToolAnnotations
   Scenario: A tool's annotations are listed

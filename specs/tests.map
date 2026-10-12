@@ -804,6 +804,7 @@ MCP-SCHEMA-6 | tests/test_json_schema.nim | Given minContains or maxContains wit
 MCP-SCHEMA-6 | tests/test_json_schema.nim | Given patternProperties, when a property matches a pattern, then additionalProperties does not apply to it
 MCP-SCHEMA-6 | tests/test_json_schema.nim | Given dependencies in 2020-12, when validated, then they assert nothing
 MCP-SCHEMA-6 | tests/test_json_schema.nim | Given draft-07 dependencies as a list of names, when validated, then a present key demands the others
+MCP-SCHEMA-6 | tests/test_json_schema.nim | Given dependentSchemas in draft-07, when validated, then the keyword is ignored and dependencies is read
 MCP-SCHEMA-2 | tests/test_json_schema.nim | Given a $schema that only contains a name after a leading #, when validated, then the dialect is unsupported
 MCP-TOOLANN-1 | tests/test_tool_annotations.nim | Given a version that has tool annotations, when tools are listed, then every hint is sent
 MCP-TOOLANN-1 | tests/test_tool_annotations.nim | Given only some hints, when annotations are built, then the hints left out are not sent

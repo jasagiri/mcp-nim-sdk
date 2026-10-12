@@ -1,7 +1,7 @@
 # G2 変異検出: jsonschema ジョブ
 
 測定: `nim-muter`、ジョブ `tests/mutation/jsonschema.json`、本線の 7d32c165 (2026-10-07)。
-2026-10-12 に `json_schema_regex.nim` を変えた。次の測定で測り直す。
+2026-10-12 に `json_schema_regex.nim` と `json_schema.nim` を変えた。次の測定で測り直す。
 36a4c8a5 の測定ではこのジョブは 1 件も試せなかった (nim-muter の書き直しが `(inc p.pos; 8'i32)` をコンパイル不能にした。
 その 1 行を直して測り直した)。
 
@@ -41,9 +41,8 @@
   文字として読む。逆順 (`a{3,2}`) は RegexError のまま。テストは `Given a repetition that runs backwards` と
   `Given a brace that is not closed or not a count` (MCP-SEC-SCHEMA-12)。id 349、418 の検出のしかたは変わるので、測り直しで突き合わせる。
   9 桁を超える数字を `{` のあとに書いたときは、閉じているかを見る前に RegexLimitError にする (今のまま)。
-- **draft-07 の `dependentSchemas`** (`json_schema.nim` の 446 行付近、直していない): 方言を問わず `dependentSchemas` を適用し、
-  draft-07 で `dependentSchemas` があると `dependencies` を読まない。draft-07 にこのキーワードは無いので、本来は無視して
-  `dependencies` を読む。変異の指摘ではなく、読んで気づいたもの。
+- **draft-07 の `dependentSchemas`**: 2026-10-12 に、draft-07 では `dependentSchemas` を無視して `dependencies` を読むと決めて直した
+  (MCP-SCHEMA-6、`Given dependentSchemas in draft-07`)。2019-09 以降は変わらない。id 124 は測り直しで突き合わせる。
 - 許容 4 件 (37、40、181、48)。理由は第 1 節の行。
 
 ## G2: jsonschema (`json_schema.nim`、g2h-js-a の分)

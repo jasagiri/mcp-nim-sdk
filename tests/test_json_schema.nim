@@ -424,6 +424,14 @@ suite "JSON Schema keywords (mutation review, g2h-js-a)":
     check not conforms(schema, """{"a": 1}""")
     check "requires property 'b'" in describe(violations(schema, """{"a": 1}"""))
 
+  test "Given dependentSchemas in draft-07, when validated, then the keyword is ignored and dependencies is read":
+    let ignored = "{" & draft07 & """, "dependentSchemas": {"a": {"required": ["b"]}}}"""
+    check conforms(ignored, """{"a": 1}""")
+    let both = "{" & draft07 & """, "dependentSchemas": {"a": {"required": ["c"]}}, "dependencies": {"a": ["b"]}}"""
+    check conforms(both, """{"a": 1, "b": 2}""")
+    check not conforms(both, """{"a": 1, "c": 2}""")
+    check "requires property 'b'" in describe(violations(both, """{"a": 1, "c": 2}"""))
+
   test "Given a $ref whose array index has a leading zero, when validated, then the schema is invalid (RFC 6901)":
     check conforms("""{"$defs": {"a": [{"type": "integer"}]}, "$ref": "#/$defs/a/0"}""", "5")
     for index in ["00", "01", "000000000"]:
