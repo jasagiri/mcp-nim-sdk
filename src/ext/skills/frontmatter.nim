@@ -37,10 +37,10 @@ const Fence = "---"
 
 {.push raises: [FrontmatterError].}
 
-func fail(number: int, message: string): ref FrontmatterError =
+func fail(number: int, message: string): ref FrontmatterError {.raises: [].} =
   newException(FrontmatterError, "frontmatter line " & $number & ": " & message)
 
-proc stripComment(text: string): string =
+proc stripComment(text: string): string {.raises: [].} =
   ## A ` #` that starts a comment, outside quotes.
   var quote = '\0'
   for i, c in text:
@@ -88,7 +88,7 @@ proc unquoteDouble(text: string, number: int): string =
       raise fail(number, "unsupported escape \\" & text[i])
     inc i
 
-proc unquoteSingle(text: string): string =
+proc unquoteSingle(text: string): string {.raises: [].} =
   var i = 1
   while i < text.len - 1:
     if text[i] == '\'' and text[i + 1] == '\'':
@@ -210,7 +210,7 @@ type Reader = object
 
 proc parseBlock(r: var Reader, indent: int): JsonNode
 
-func fold(owned: seq[string]): string =
+func fold(owned: seq[string]): string {.raises: [].} =
   ## The lines of a `>` scalar: a line break between two lines is a space, and
   ## n blank lines between them are n newlines. Lines indented deeper than the
   ## rest are joined like the others (the old reading; YAML keeps their breaks).

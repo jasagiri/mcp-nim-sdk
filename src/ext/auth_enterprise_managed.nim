@@ -134,7 +134,7 @@ proc newEnterpriseManagedConfig*(serverUrl, idpIssuer, resourceIssuer: string,
     now: proc(): Time {.closure, gcsafe, raises: [].} = getTime())
 
 proc newEnterpriseManagedAuth*(config: EnterpriseManagedConfig): EnterpriseManagedAuth
-                              {.raises: [ValueError, OAuthError, OAuthSecurityError].} =
+                              {.raises: [ValueError, OAuthError].} =
   ## Raises for a configuration that could never succeed.
   if config.identityAssertion.isNil:
     raise newException(ValueError, "an identityAssertion callback is required")
@@ -195,7 +195,7 @@ proc numericDate(claims: JsonNode, name: string): float {.raises: [OAuthError].}
 proc checkIdentityAssertionGrant*(jag: string, idpIssuer, authorizationServer: string,
                                   resource: Option[string], clientId: string,
                                   now: Time): DecodedJwt
-                                 {.raises: [OAuthError, OAuthSecurityError].} =
+                                 {.raises: [OAuthError].} =
   ## What the client can and should check before it hands an ID-JAG to an
   ## authorization server (draft 3.1, 4.4.1). The signature is NOT checked:
   ## it is for that server to check against the IdP's keys.

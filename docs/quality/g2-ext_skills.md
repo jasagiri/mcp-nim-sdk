@@ -20,6 +20,7 @@
 測定のあとに `frontmatter.nim` を直している (分類 5 の 1 件)。このジョブは、次の測定で測り直しになる。
 
 2026-10-12 に `src/ext/skills/model.nim` (`isSafeSegment` の `try` を消した) と `src/ext/skills/frontmatter.nim` (冗長な条件と死んだ読み飛ばしを消した。さらに、行の折りたたみ、末尾のカンマ、`|+`、単引用符の鍵、ブロックスカラの中の `#` の行)。次の測定で測り直す。
+さらに同じ日に、`frontmatter.nim` の `fail`、`stripComment`、`unquoteSingle`、`fold` に `{.raises: [].}` を付けた (`{.push raises: [FrontmatterError].}` の下で `XCannotRaiseY` の Hint が出ていたもの。Nim 2.2.12 で Hint が消えることを確かめた)。
 
 ## frontmatter.nim (担当 g2x-skills-fm)
 

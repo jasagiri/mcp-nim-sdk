@@ -4,6 +4,7 @@
 対象は `src/ext/auth_client_credentials.nim`、`src/ext/auth_enterprise_managed.nim`、`src/ext/auth_shared.nim`、
 `src/auth/oauth/grants.nim`、`src/auth/oauth/jwt.nim`。
 2026-10-12 に `src/auth/oauth/jwt.nim` を変えた (`decodeSegment` の埋めるループを消した)。次の測定で測り直す。
+同じ日に `src/ext/auth_enterprise_managed.nim` の `newEnterpriseManagedAuth` と `checkIdentityAssertionGrant` の `raises` から `OAuthSecurityError` を外した (親の `OAuthError` が覆う。`XCannotRaiseY` の Hint が出ることを Nim 2.2.12 で確かめた)。次の測定で測り直す。
 
 | 全変異 | killed | timeout | survived | runError | compileError |
 |---:|---:|---:|---:|---:|---:|
