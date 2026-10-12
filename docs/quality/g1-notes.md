@@ -7,8 +7,10 @@
 
 ## この表が言っていないこと
 
-- **「外部仕様テスト (E) のある ID」ではない。** テストを E / I / 足場に分ける作業はまだで、`tests.map` が
-  指すテストが外部仕様テストかどうかは確かめていない。表は「対応表に行があり、そのファイルが存在する ID」である。
+- **「外部仕様テスト (E) のある ID」ではない。** 表は「対応表に行があり、そのファイルが存在する ID」である。
+  テストを E / I / 足場に分けた結果は [test-classification.md](test-classification.md) にあり、本線では 469 件のうち
+  48 件に E テストが 1 本も結ばれていない (2026-10-13。表は系列ごとに作り直す)。
+  その分類で「公開」とした範囲と、説明の無い公開シンボルの数は [public-surface.md](public-surface.md)。
 - 行の名前のテストがそのファイルに実在するかは、道具ではなく `tests/test_spec_coverage.nim` が
   `nimble test` のたびに確かめる。
 - 行のテストが、その Scenario の言う振る舞いを実際に確かめているかは、どちらでも分からない。
@@ -23,4 +25,4 @@
 
 `test_auth_sha256.nim`、`test_docs_version.nim`、`test_features.nim`、`test_first_of.nim`、
 `test_http_error_propagation.nim`、`test_silent_dead.nim`、`test_spec_coverage.nim` (2026-10-12、3 系列で同じ)。
-E / I / 足場のどれに当たるかは分けていない。
+本線での分類は [test-classification.md](test-classification.md) にある。
