@@ -93,9 +93,12 @@ proc tokenExpiry*(body: JsonNode, field: string, now: Time): Option[Time]
       return none(Time)
     seconds = BiggestInt(floor(f))
   of JString:
-    # A digit string longer than any lifetime (the JSON parser hands an
-    # integer too large for 64 bits over as a string as well) is beyond the
-    # bound without being converted.
+    # A digit string of 19 characters or more is taken as beyond the bound
+    # without being converted (the JSON parser hands an integer too large for
+    # 64 bits over as a string as well). Its value is not looked at, so
+    # leading zeros do not shorten it: "0000000000000003600" is an unknown
+    # lifetime, which a 401 corrects. It was not trimmed because no
+    # authorization server sends such a string.
     let text = value.getStr()
     if text.len > 0 and text[0] == '-' and text.len > 1 and text[1 .. ^1].allCharsInSet(Digits):
       raise newException(OAuthError, field & " is negative")
