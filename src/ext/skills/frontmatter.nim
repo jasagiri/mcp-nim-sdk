@@ -182,6 +182,11 @@ proc splitKey(text: string, number: int): tuple[key, rest: string] =
     let quote = text[0]
     var j = 1
     while j < text.len:
+      # A backslash in double quotes takes the next character with it, so an
+      # escaped quote does not end the key; unquoteDouble reads the escape.
+      if quote == '"' and text[j] == '\\':
+        j += 2
+        continue
       if text[j] == quote:
         # In single quotes a doubled quote is one quote of the key, not its end.
         if quote == '\'' and j + 1 < text.len and text[j + 1] == quote:

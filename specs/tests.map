@@ -2742,3 +2742,5 @@ MCP-EXT-SKILLS-29 | tests/test_ext_skills_frontmatter.nim | Given a comment outs
 MCP-EXT-SKILLS-30 | tests/test_ext_skills_frontmatter.nim | Given an item missing before a comma, when read, then FrontmatterError is raised
 MCP-EXT-SKILLS-30 | tests/test_ext_skills_frontmatter.nim | Given empty, single and several items, when read, then the array has as many
 MCP-EXT-SKILLS-30 | tests/test_ext_skills_frontmatter.nim | Given a trailing comma, when read, then it ends the sequence without adding an item
+MCP-EXT-SKILLS-31 | tests/test_ext_skills_frontmatter.nim | Given an escape inside a double-quoted key, when read, then it reads as in a value
+MCP-EXT-SKILLS-31 | tests/test_ext_skills_frontmatter.nim | Given a double-quoted key ending in an unescaped backslash pair, when read, then the quote closes it

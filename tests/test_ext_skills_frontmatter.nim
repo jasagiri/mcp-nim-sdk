@@ -131,6 +131,12 @@ suite "frontmatter: keys":
   test "Given a doubled quote inside a single-quoted key, when read, then it is one quote of the key":
     check fieldsOf("'it''s': v", "'a''': 1", "'''b': 2") == %*{"it's": "v", "a'": 1, "'b": 2}
 
+  test "Given an escape inside a double-quoted key, when read, then it reads as in a value":
+    check fieldsOf("\"a\\\"b\": v", "\"c\\\\\": w", "\"d\\u00e9\": x") == %*{"a\"b": "v", "c\\": "w", "d\u00e9": "x"}
+
+  test "Given a double-quoted key ending in an unescaped backslash pair, when read, then the quote closes it":
+    check fieldsOf("\"a\\\\\": 1") == %*{"a\\": 1}
+
   test "Given a key with a space or a colon not followed by a space, when read, then the colon ends the key only before a space":
     check fieldsOf("my key: v", "a:b: c", "url: http://x.y/z") ==
       %*{"my key": "v", "a:b": "c", "url": "http://x.y/z"}

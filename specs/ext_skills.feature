@@ -189,3 +189,9 @@ Feature: Skills over MCP (extension io.modelcontextprotocol/skills)
     Given flow sequences written as [a,,], [,] and [,a]
     When their frontmatter is read
     Then each is refused with FrontmatterError, while [a, ] and [] are read
+
+  @spec:MCP-EXT-SKILLS-31
+  Scenario: A double-quoted key reads its escapes as a double-quoted value does
+    Given a key written as "a\"b"
+    When its frontmatter is read
+    Then the key is a"b
