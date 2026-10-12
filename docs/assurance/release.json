@@ -57,10 +57,9 @@
    "text": "nimble が求める Nim の下限は、base64.decode の欠陥 (nim-lang/Nim#25530) を直した版以上である",
    "evidence": [
     {
-     "supports": false,
+     "supports": true,
      "kind": "measurement",
-     "ref": "requires \"nim >= 2.2.2\" (2026-10-08)。この機体の Nim は 2.2.8",
-     "note": "2.2.12 への引き上げは 2026-10-12 の昼以降に行うと決まっている",
+     "ref": "requires \"nim >= 2.2.12\" (2026-10-12)。欠陥の修正は v2.2.10 以降 (nim-advisory-check の NIM-25530)",
      "file": "../../mcp_nim_sdk.nimble"
     }
    ]
@@ -90,7 +89,13 @@
    "layer": "dependency",
    "required": false,
    "text": "コンパイラと依存の版を、既知の欠陥の一覧 (nim-advisory-check) と突き合わせた",
-   "evidence": []
+   "evidence": [
+    {
+     "supports": true,
+     "kind": "measurement",
+     "ref": "2026-10-12: Nim 2.2.12 で advisory_check advisories.json を実行、\"no known defect among 1 listed\"、終了コード 0。一覧にあるのは Nim の 1 件だけで、uuids など依存パッケージの欠陥は一覧に無い"
+    }
+   ]
   },
   {
    "id": "SEC-01",

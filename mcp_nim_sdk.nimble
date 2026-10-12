@@ -10,7 +10,7 @@ srcDir        = "src"
 
 # Dependencies
 
-requires "nim >= 2.2.2"
+requires "nim >= 2.2.12"
 requires "uuids >= 0.1.12"  # UUID generation
 
 # Tasks
