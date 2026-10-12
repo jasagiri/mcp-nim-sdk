@@ -91,7 +91,7 @@ proc unquoteDouble(text: string, number: int): string =
 proc unquoteSingle(text: string): string =
   var i = 1
   while i < text.len - 1:
-    if text[i] == '\'' and i + 1 < text.len - 1 and text[i + 1] == '\'':
+    if text[i] == '\'' and text[i + 1] == '\'':
       result.add '\''
       i += 2
     else:
@@ -176,7 +176,7 @@ proc splitKey(text: string, number: int): tuple[key, rest: string] =
   ## `key: rest` or `key:`; the key may be quoted.
   var key: string
   var i = 0
-  if text.len > 0 and text[0] in {'"', '\''}:
+  if text[0] in {'"', '\''}:
     let quote = text[0]
     var j = 1
     while j < text.len:
@@ -376,8 +376,7 @@ proc parseFrontmatter*(source: string): Frontmatter {.raises: [FrontmatterError]
     let text = raw.strip(leading = false)
     let trimmed = text.strip(trailing = false)
     if trimmed.len == 0 or trimmed[0] == '#':
-      reader.lines.add Line(indent: text.len - trimmed.len, text: "", comment: trimmed,
-                            number: i + 1)
+      reader.lines.add Line(indent: text.len - trimmed.len, text: "", comment: trimmed)
     else:
       reader.lines.add Line(indent: text.len - trimmed.len, text: trimmed, number: i + 1)
   var fields = newJObject()
@@ -387,14 +386,12 @@ proc parseFrontmatter*(source: string): Frontmatter {.raises: [FrontmatterError]
       hasContent = true
       break
   if hasContent:
-    while reader.at < reader.lines.len and reader.lines[reader.at].text.len == 0:
+    while reader.lines[reader.at].text.len == 0:
       inc reader.at
     let rootIndent = reader.lines[reader.at].indent
     fields = parseBlock(reader, rootIndent)
     if fields.kind != JObject:
       raise newException(FrontmatterError, "the frontmatter must be a mapping")
-    while reader.at < reader.lines.len and reader.lines[reader.at].text.len == 0:
-      inc reader.at
     if reader.at < reader.lines.len:
       raise fail(reader.lines[reader.at].number, "unexpected content")
   result.fields = fields

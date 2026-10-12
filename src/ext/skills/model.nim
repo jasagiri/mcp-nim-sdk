@@ -114,11 +114,7 @@ func isSafeSegment(segment: string): bool {.raises: [].} =
       return false
   # An escaped form must not turn into a separator or a dot segment.
   if '%' in segment:
-    var decoded: string
-    try:
-      decoded = decodeUrl(segment, decodePlus = false)
-    except ValueError:
-      return false
+    let decoded = decodeUrl(segment, decodePlus = false)
     if decoded == "." or decoded == ".." or '/' in decoded or '\\' in decoded or
        '\0' in decoded:
       return false
