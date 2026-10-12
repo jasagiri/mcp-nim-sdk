@@ -179,14 +179,30 @@
    "required": true,
    "partOf": "VER-01",
    "text": "そのあとの修正 (HTTP クライアントの 2 件、JSON Schema の検証器) を含む公開するコミットで、通しを取り直した",
-   "evidence": []
+   "evidence": [
+    {
+     "supports": true,
+     "kind": "measurement",
+     "ref": "2026-10-12、Nim 2.2.12: nimble testSsl と testAllVersions、本線 d6be71894897 で 9688 通過・失敗 0・警告 0 (拡張 1fc2f4e8e43f は 11462、下書き 287974bf660f は 13069、どちらも失敗 0・警告 0)",
+     "note": "このあと足したのは docs/quality と docs/assurance のファイルだけ。ソースかテストが変わったら取り直す",
+     "file": "../quality/release-check-2026-10-12.md"
+    }
+   ]
   },
   {
    "id": "VER-02",
    "layer": "release",
    "required": true,
    "text": "版ごとのタグを展開したディレクトリで、nimble test と examples のコンパイルが通る",
-   "evidence": []
+   "evidence": [
+    {
+     "supports": true,
+     "kind": "measurement",
+     "ref": "2026-10-12、Nim 2.2.12: 5 版のコミットを git archive でリポジトリの外に展開して nimble test (examples のコンパイルを含む): 1583 / 1742 / 1832 / 2052 / 2507 通過、失敗 0、警告 0",
+     "note": "展開したのはタグを付ける前のコミット。タグの先のコミットとの差は docs/quality と docs/assurance のファイルだけ",
+     "file": "../quality/release-check-2026-10-12.md"
+    }
+   ]
   },
   {
    "id": "IOP-01",
@@ -216,7 +232,14 @@
    "required": true,
    "partOf": "IOP-01",
    "text": "公開するコミットで総当たりを測り直した",
-   "evidence": []
+   "evidence": [
+    {
+     "supports": true,
+     "kind": "measurement",
+     "ref": "2026-10-12、Nim 2.2.12、本線 3cdab5856bfc: 総当たり 312 行、合格 312、不合格 0 (stdio 175、HTTP 112、HTTP+SSE 25)",
+     "file": "../quality/interop-matrix-2026-10-12.md"
+    }
+   ]
   },
   {
    "id": "CNF-01",
@@ -247,7 +270,15 @@
    "required": true,
    "partOf": "CNF-01",
    "text": "公開するコミットで適合性テストを測り直した",
-   "evidence": []
+   "evidence": [
+    {
+     "supports": true,
+     "kind": "measurement",
+     "ref": "@modelcontextprotocol/conformance 0.2.0-alpha.12、2026-10-12、Nim 2.2.12、本線 3cdab5856bfc: 212 シナリオ、合格 209、不合格 0、警告 0",
+     "note": "実行されず 1 (2026-07-28 のクライアント検査 http-standard-headers)、記録のみ 2。2024-11-05 は道具が版を受け付けない",
+     "file": "../quality/conformance-2026-10-12.md"
+    }
+   ]
   },
   {
    "id": "REV-01",

@@ -3,3 +3,6 @@ build/
 
 # macOS
 .DS_Store
+
+# Python bytecode of the interop peers
+__pycache__/
