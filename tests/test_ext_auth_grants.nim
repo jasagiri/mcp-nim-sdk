@@ -117,6 +117,24 @@ suite "JWTs":
       expect OAuthError:
         discard decodeJwtUnverified(parts[0] & "." & parts[1] & "." & signature)
 
+  test "Given payloads and signatures of every length modulo three, when decoded, then the bytes come back from segments without padding":
+    proc b64(text: string): string =
+      base64.encode(text, safe = true).strip(leading = false, chars = {'='})
+    for width in 0 .. 5:
+      let claims = %*{"k": repeat('x', width)}
+      let signature = repeat('s', width + 1)
+      let token = b64("""{"alg":"HS256"}""") & "." & b64($claims) & "." & b64(signature)
+      checkpoint token
+      let decoded = decodeJwtUnverified(token)
+      check decoded.claims == claims
+      check decoded.signature == signature
+
+  test "Given a segment with one character more than whole groups, when decoded, then the character that makes no byte is left out":
+    let parts = hs256Signer("k").signJwt(%*{"a": 1}).split('.')
+    check decodeJwtUnverified(parts[0] & "." & parts[1] & ".YWJjZ").signature == "abc"
+    expect OAuthError:
+      discard decodeJwtUnverified("YWJjZ." & parts[1] & "." & parts[2])
+
   test "Given a header whose alg is missing, not a string or empty, when decoded, then it is refused":
     proc b64(text: string): string =
       base64.encode(text, safe = true).strip(leading = false, chars = {'='})

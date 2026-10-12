@@ -2293,6 +2293,8 @@ MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given an empty subject token, 
 MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given token exchange responses with a missing field, when parsed, then each is refused
 MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given a signer with no signing function or no algorithm, when signing, then OAuthError says it is not set up
 MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given a JWT whose signature is empty or not base64url, when decoded, then it is refused
+MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given payloads and signatures of every length modulo three, when decoded, then the bytes come back from segments without padding
+MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given a segment with one character more than whole groups, when decoded, then the character that makes no byte is left out
 MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given a header whose alg is missing, not a string or empty, when decoded, then it is refused
 MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given a JWT of exactly the largest accepted length and one a byte longer, when decoded, then the first is read and the second refused
 MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given a client assertion without a client_id or without an audience, when made, then OAuthError refuses either

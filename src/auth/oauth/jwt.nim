@@ -76,11 +76,8 @@ func decodeSegment(segment, what: string): string {.raises: [OAuthError].} =
   if segment.len == 0 or not segment.allCharsInSet(
        {'A'..'Z', 'a'..'z', '0'..'9', '-', '_'}):
     raise newException(OAuthError, "the JWT " & what & " is not base64url")
-  var standard = segment.replace('-', '+').replace('_', '/')
-  while standard.len mod 4 != 0:
-    standard.add '='
   try:
-    base64.decode(standard)
+    base64.decode(segment.replace('-', '+').replace('_', '/'))
   except ValueError:
     raise newException(OAuthError, "the JWT " & what & " is not base64url")
 
