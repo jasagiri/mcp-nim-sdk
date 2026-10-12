@@ -1,44 +1,45 @@
-# テストの分類: E / I / 足場 (本線の系列)
+# テストの分類: E / I / 足場 (拡張の系列)
 
-2026-10-13、コミット `f508412bc5c1 (vyvozmqp)` の `tests/test_*.nim` 88 ファイル、2080 件を、ADR-KURA-0008 の基準で 1 件ずつ分けた記録。
-**この記録は一覧までで、テストの削除も書き換えもしていない。** 系列ごとにテストと仕様の数が違うので、表は系列 (本線、拡張、下書き) ごとに作り直す。
+2026-10-13、コミット `52f5bcd4d147 (ovwlxoqv)` の `tests/test_*.nim` 109 ファイル、2601 件を、ADR-KURA-0008 の基準で 1 件ずつ分けた記録。
+**この記録は一覧までで、テストの削除も書き換えもしていない。** 系列ごとにテストと仕様の数が違うので、表は系列 (本線、拡張、下書き) ごとに作り直す。この系列は、本線のテスト (分類は本線と同じ) に、この系列で増えたテストを足したものである。
 
 | 分類 | 件数 | 意味 |
 |---|---:|---|
-| E (外部仕様テスト) | 1681 | 公開の API と、通信の上で見えるものだけで確かめている |
+| E (外部仕様テスト) | 2157 | 公開の API と、通信の上で見えるものだけで確かめている |
 | I (内部実装テスト) | 84 | 公開でないものを使うが、外から確かめない理由を書ける。うち 32 件は文書・台帳の整合を確かめる門 |
-| 足場 (S) | 315 | どちらでもない。うち 305 件は呼び口を公開側へ移せば E になる、10 件は消してよい |
+| 足場 (S) | 360 | どちらでもない。うち 349 件は呼び口を公開側へ移せば E になる、11 件は消してよい |
 
-仕様 ID 469 件のうち、**E テストが 1 本も結ばれていない ID は 48 件** (うち 45 件は、結ばれたテストの呼び口を移せば E になる)。一覧は末尾。
-`nimble specCoverage` の表 (g1-spec-coverage.md。2026-10-13 から追跡していない) の「469/469」は「対応表に行がある」の数で、E テストがあることまでは言っていない。この 48 件がその差である。
+仕様 ID 550 件のうち、**E テストが 1 本も結ばれていない ID は 49 件** (うち 46 件は、結ばれたテストの呼び口を移せば E になる)。一覧は末尾。
+`nimble specCoverage` の表 (g1-spec-coverage.md。2026-10-13 から追跡していない) の「550/550」は「対応表に行がある」の数で、E テストがあることまでは言っていない。この 49 件がその差である。
 
 1 件ごとの行 (E でないテスト全部と、印の付いた E のテスト) は [test-classification.tsv](test-classification.tsv) にある。
 
 ## 分け方 (この SDK での「外」)
 
-基準はリードが決めた。公開の範囲 (下の 1) は、E の数と上の 48 件を最も大きく動かす決定である。2026-10-13 に、利用者が「export で届くものを公開として進める」と決めた (進捗管理のセッション経由の連絡)。
+基準はリードが決めた。公開の範囲 (下の 1) は、E の数と上の 49 件を最も大きく動かす決定である。2026-10-13 に、利用者が「export で届くものを公開として進める」と決めた (進捗管理のセッション経由の連絡)。
 
 1. **公開の範囲**: README が言う入口 (`import mcp`、`import auth/resource_server`、`import auth/client`) から届くもの。入口のモジュールが `*` で定義するものと、`export` で再公開するモジュールのもの。README に個別の説明があるかは問わない。README が利用者に代入させる公開フィールドの型 (`HttpClientAuth`、`HttpServerAuth` など) と、README・公開モジュールの doc が import を案内するもの (`newSseLegacyTransport`、`newAutoHttpTransport`、`server/request_state`、`RegexLimits`) は公開。doc コメントが「テスト用」「内部用」と言うもの (`heldWaiters`、`IconFetchOptions.get` など) は公開でない。
    - 入口から届かず、公開でないと判定したモジュール: `auth/oauth/*` (`auth/client` が再公開する `errors`・`tokens`・`FetchPolicy` を除く)、`transport/http_wire`、`transport/address_policy`、`transport/guarded_wire`、`transport/first_of`、`transport/sse_stream`、`protocol/param_headers`、`protocol/diagnostic`、`protocol/base64_shape`、`protocol/hmac`、`protocol/features`、`jsonschema/json_schema_regex` (`compileRegex`・`isMatch`)、`server/tools`。
+   - 拡張の入口は、拡張ごとに 1 つの `import ext/<名前>` (`src/ext/<名前>.nim`)。入口が `*` で定義するものと `export` で再公開するものが公開。認可の拡張の入口 (`ext/auth_client_credentials`、`ext/auth_enterprise_managed`) は `auth/oauth/grants`・`jwt` の一部だけを再公開していて、残り (`signJwt`、`clientCredentialsGrant`、`exchangeToken` など) は公開でない。
 2. **E**: 公開のもの (1) と、通信の上で見えるもの (メッセージ、HTTP の状態・ヘッダ・本文、stderr の行) だけで確かめている。
 3. **E でない**: 公開でないものを 1 か所でも使って確かめている (補助の `check` 1 行でも)。外から確かめない理由が具体的に書ければ I、書けなければ足場。期待値が RFC や仕様から来ているかは、I と足場の区別に使っていない。
-4. **文言**: エラー文と stderr の行は外から見える出力なので、文言を固定していること自体では E から外さない。Scenario の約束を超えて固定しているテストは E のまま印 `wording` (65 件)。
-5. **機能表**: `protocol/features` を「どの版で何を期待するか」を選ぶためだけに使うテストは E のまま印 `features` (278 件)。機能表は README と `docs/versions.md` の版の表の元でもある。期待値の版ごとの選び方が SDK 自身の表に依っている、という弱みは残る。
+4. **文言**: エラー文と stderr の行は外から見える出力なので、文言を固定していること自体では E から外さない。Scenario の約束を超えて固定しているテストは E のまま印 `wording` (118 件)。
+5. **機能表**: `protocol/features` を「どの版で何を期待するか」を選ぶためだけに使うテストは E のまま印 `features` (319 件)。機能表は README と `docs/versions.md` の版の表の元でもある。期待値の版ごとの選び方が SDK 自身の表に依っている、という弱みは残る。
 6. `server/tools` の作成用の手続きをハンドラの戻り値の組み立てにだけ使うテストは E のまま印 `builder` (4 件)。
 7. 文書・台帳の整合を確かめるテスト (`test_spec_coverage`、`test_docs_version`、`test_features`) は I、印 `gate`。
 
-印: `unmapped` = E だが `specs/tests.map` に行が無い (237 件)。`movable` = 呼び口を公開側へ移せば E になる。`secondary` = 主な検証は外で、補助の検証だけが公開でないものを読む。
+印: `unmapped` = E だが `specs/tests.map` に行が無い (239 件)。`movable` = 呼び口を公開側へ移せば E になる。`secondary` = 主な検証は外で、補助の検証だけが公開でないものを読む。
 
 ## 確かめたこと、確かめていないこと
 
-- 分類はワーカー (Claude Sonnet) 5 人がテストと src の `export` 行・doc コメントを読んで付け、リードが基準を統一して当て直させた。
-- リードが機械的に確かめたこと: ファイルごとの件数がテストの `test "…"` の数と一致する (88 ファイル、不一致 0)。1 件ごとの行の仕様 ID が `specs/tests.map` と一致する (958 行中、E の 1 行を除き一致)。E とされたテストの本文に公開でないモジュールのシンボルが出ていないかを名前で探し、当たった 38 件は再公開されたシンボルか、同じファイルの後ろの suite を拾った誤検出だった。
+- 分類はワーカー (Claude Sonnet) が系列ごとにテストと src の `export` 行・doc コメントを読んで付け、リードが基準を統一して当て直させた。
+- リードが機械的に確かめたこと: ファイルごとの件数がテストの `test "…"` の数と一致する (109 ファイル、不一致 0)。E でないテストの仕様 ID が `specs/tests.map` と一致する (不一致 0)。本線のテストについては、E とされたテストの本文に公開でないモジュールのシンボルが出ていないかを名前で探した (当たった 38 件は誤検出)。この系列で増えたテストには、その確認をしていない。
 - **確かめていないこと**: 1 件ごとの分類をリードが全部読み直してはいない (抜き取りだけ)。「呼び口を移せば E になる」は、公開の API の形を読んでの見立てで、実際に書いて通してはいない。この作業ではコンパイルもテストの実行もしていない。
 
 ## 分類とは別に見つかったこと
 
 - `server/tools` (`createToolInfo`、`createToolResult` など) は `import mcp` から届かず、`src/` の中からも呼ばれていない。`tests/` はこれを import している。公開するのか、消すのかが決まっていない。`MCP-CONTENT-FIELDS-8` はこの手続きだけを確かめている。
-- E だが `specs/tests.map` に行が無いテストが 237 件ある (うち 47 件は `test_modern_protocol.nim`)。仕様 ID に結ぶか、仕様に無い振る舞いを固定しているのかは見ていない。
+- E だが `specs/tests.map` に行が無いテストが 239 件ある (うち 47 件は `test_modern_protocol.nim`)。仕様 ID に結ぶか、仕様に無い振る舞いを固定しているのかは見ていない。
 - `tests/test_server_errors.nim` の「name が欠けた tools/call」が `MCP-RESOURCES-14` に結ばれている (tools の話に見える。未確認)。
 
 
@@ -64,6 +65,23 @@
 | `test_elicitation_payload.nim` | 69 | 69 | 0 | 0 | E | 多数は E (server/elicit・client/elicitation が export する protocol/elicitation の純粋関数。)。E でない件は版選別の protocol/features・server/tools・auth/oauth の補助・transport/auth_hook など非公開シンボルを使う (not-e.tsv 参照)。 |  |  |
 | `test_era_matrix.nim` | 34 | 34 | 0 | 0 | E | loopback に流れる JSON-RPC と公開の connect/negotiatedVersion/pendingRequests。 |  |  |
 | `test_event_stream.nim` | 24 | 24 | 0 | 0 | E | mcp が export する transport/event_stream の公開手続き。 |  |  |
+| `test_ext_apps_end_to_end.nim` | 3 | 3 | 0 | 0 | E | SDK 自身の host と server をインプロセスのトランスポートで繋ぎ、公開 API (listAppTools、fetchToolUi、declareApps、serverExtension) と流れる内容だけを確かめている。 内部の部品には触れていない。 |  |  |
+| `test_ext_apps_host.nim` | 33 | 33 | 0 | 0 | E | 手書きの相手 (client_peer) に流れる JSON-RPC と、公開の ext/apps の host 側 API (declareApps、listAppTools、fetchUiResource、uiResourceFromContents) の戻り値・例外だけを見ている。 内部の部品には触れていない。 |  |  |
+| `test_ext_apps_messages.nim` | 43 | 43 | 0 | 0 | E | ext/apps/messages は ext/apps の入口が export する公開部品。ViewSession の公開フィールドと、host が組み立てる JSON のメッセージ・検査関数の戻り値だけを確かめている。 内部の部品には触れていない。 |  |  |
+| `test_ext_apps_model.nim` | 32 | 32 | 0 | 0 | E | ext/apps/model は入口が export する公開部品。URI・メタデータ・CSP・権限の純粋関数を公開 API として呼び、戻り値だけを確かめている。 内部の部品には触れていない。 |  |  |
+| `test_ext_apps_server.nim` | 18 | 18 | 0 | 0 | E | server_harness 越しに流れるメッセージ (resources/list・read、tools/list) と、公開の AppsRegistry の API だけを確かめている。 内部の部品には触れていない。 |  |  |
+| `test_ext_auth_client_credentials.nim` | 41 | 39 | 0 | 2 | mixed | client credentials 拡張の入口 (ext/auth_client_credentials) と実 HTTP の transport・偽の認可サーバーに届くリクエスト、ヘッダ、clientCapabilities、server/discover の応答だけで確かめている。assertion の aud を非公開の jwt.decodeJwtUnverified で読む 2 件だけが S。 |  | 足場 2 件は呼び口を移せば E |
+| `test_ext_auth_enterprise_managed.nim` | 63 | 50 | 0 | 13 | mixed | enterprise-managed 拡張の入口 (ext/auth_enterprise_managed) と偽の IdP・認可サーバーに届くリクエストだけで確かめるテストが大半。非公開の grants の定数・signJwt・canonicalResource を使う 13 件が S (どれも公開の口から確かめられる)。 |  | 足場 13 件は呼び口を移せば E |
+| `test_ext_auth_grants.nim` | 26 | 1 | 0 | 25 | mixed | auth/oauth/jwt と grants (入口が再公開するのは JwtSigner・newJwtSigner・ClientAuthMethod などだけ) の非公開の手続きを直接呼ぶ。公開の newJwtSigner だけを呼ぶ 1 件が E、残りは非公開の口を呼ぶ S で、いずれも拡張の入口を通して同じ内容を確かめられる。 |  | 足場 24 件は呼び口を移せば E、足場 1 件は消してよい |
+| `test_ext_skills_client.nim` | 30 | 30 | 0 | 0 | E | 手書きの相手に流れる JSON-RPC と、公開の ext/skills の consumer 側 API (listAllSkills、getSkill、openSkill、readSkillFile、listDirectory、refreshEntry) の戻り値・例外だけを見ている。 内部の部品には触れていない。 |  |  |
+| `test_ext_skills_end_to_end.nim` | 4 | 4 | 0 | 0 | E | SDK 自身の skills server と client をインプロセスのトランスポートで繋ぎ、公開 API とその戻り値だけを確かめている。 内部の部品には触れていない。 |  |  |
+| `test_ext_skills_frontmatter.nim` | 52 | 52 | 0 | 0 | E | ext/skills/frontmatter は入口が export する公開部品。parseFrontmatter を公開の純粋関数として呼び、戻り値と FrontmatterError だけを確かめている。 内部の部品には触れていない。 |  |  |
+| `test_ext_skills_model.nim` | 27 | 27 | 0 | 0 | E | ext/skills/model は入口が export する公開部品。名前・URI・パス・エントリの純粋関数と parseSkillEntry を公開 API として呼び、戻り値と SkillsError だけを確かめている。 内部の部品には触れていない。 |  |  |
+| `test_ext_skills_server.nim` | 38 | 38 | 0 | 0 | E | server_harness 越しに流れるメッセージ (skills/list・get、resources/read、directory/read) と、公開の SkillCatalog の API・公開フィールドだけを確かめている。 内部の部品には触れていない。 |  |  |
+| `test_ext_tasks.nim` | 55 | 55 | 0 | 0 | E | ext/tasks の server 側の公開の手続きと、2026-07-28 の peer に見える JSON-RPC のメッセージだけで確かめている (wire の parse・write、交渉、取り消し、入力、所有者、通知)。 |  |  |
+| `test_ext_tasks_client.nim` | 27 | 27 | 0 | 0 | E | ext/tasks のクライアント側の公開の手続きと、loopback の transport・手書きの peer に流れるメッセージだけで確かめている。 |  |  |
+| `test_ext_tasks_dual.nim` | 10 | 10 | 0 | 0 | E | 1 つの server・1 つの TaskStore に core の tasks と拡張の tasks を載せ、2 種類のクライアントに見えるメッセージだけで確かめている (store の公開の hook と sweep を含む)。 |  |  |
+| `test_ext_tasks_http.nim` | 2 | 2 | 0 | 0 | E | 実 HTTP の Streamable HTTP を通し、Mcp-Name のヘッダの検査を応答の状態とエラーコードで確かめている。 |  |  |
 | `test_extensions.nim` | 40 | 40 | 0 | 0 | E | 多数は E (SessionedTransport/loopback の JSON-RPC と公開の拡張 API (server/extensions・client/extensions が protocol/extensions を export)。)。E でない件は版選別の protocol/features・server/tools・auth/oauth の補助・transport/auth_hook など非公開シンボルを使う (not-e.tsv 参照)。 |  |  |
 | `test_features.nim` | 12 | 0 | 12 | 0 | I | 全件が機能表と上流の変更履歴の整合を確かめる門 (R5)。SDK の振る舞いは見ていない。 | SDK の振る舞いではなく、リポジトリの (機能表 src/protocol/features.nim と上流の変更履歴・仕様ページ名) の整合を確かめる門。protocol/features は入口から届かない。 |  |
 | `test_first_of.nim` | 10 | 0 | 4 | 6 | mixed | transport/first_of は入口から届かない内部部品。6 件は公開の口 (McpCancelToken を共有した要求など) から確かめられる S、4 件は『何も起きない』ことの観測不能・受信ループの競合で I。 | 完了した待ちのあとで残りの future が失敗しても『何も起きない』ことは、通信にも公開の戻り値にも現れず、外から観測できない。 / 誰も待っていない間に future が終わる競合 (受信ループが別の仕事をしている間) は、外からは非決定的にしか作れない。 / 鳴ったベルを聞いたあとの次の待ちが再び待つ、という内部ループの待ち合わせの順序は、外から決定的に再現できない。 ほか 1 通り | 足場 6 件は呼び口を移せば E |
@@ -93,7 +111,10 @@
 | `test_security_diagnostic.nim` | 13 | 3 | 0 | 10 | mixed | E の 3 件は loopback に注入したメッセージに対するサーバーの stderr。S の 10 件は非公開の protocol/diagnostic.peerText (9 件) と非公開定数 DefaultPeerTextLength (1 件) を使う movable。 |  | 足場 10 件は呼び口を移せば E |
 | `test_security_diagnostic_auth.nim` | 1 | 0 | 0 | 1 | S | auth/oauth/fetch.httpExchange (入口から届かない) を直接呼ぶ S movable。 |  | 足場 1 件は呼び口を移せば E |
 | `test_security_diagnostic_client.nim` | 10 | 10 | 0 | 0 | E | 公開クライアントと loopback/client_peer のメッセージ、stderr の行だけを見る E。7 件は Scenario が無く stderr の文言を固定 (wording, unmapped)。 |  |  |
+| `test_security_diagnostic_tasks.nim` | 1 | 1 | 0 | 0 | E | loopback に流れる通知と、stderr に出る診断の行だけで確かめている。 |  |  |
 | `test_security_expiry.nim` | 2 | 2 | 0 | 0 | E | 公開の TaskStore (protocol/tasks を server/tasks・client/tasks が export) の onExpire とストアの操作だけを見る E。 |  |  |
+| `test_security_ext_auth.nim` | 12 | 7 | 0 | 5 | mixed | 認可の拡張の入口と偽の認可サーバーへの到達の有無で、credential が 1 つの発行者にだけ送られることを確かめる 7 件は E。ID-JAG の数値と交換の応答の数値を非公開の signJwt・parseTokenExchangeResponse で確かめる 5 件が S。 |  | 足場 5 件は呼び口を移せば E |
+| `test_security_ext_tasks.nim` | 3 | 3 | 0 | 0 | E | 公開の awaitTask の待ち時間 (sleep フック) と、store の期限切れの後に requestInput が拒否されることを公開の口だけで確かめている。 |  |  |
 | `test_security_http.nim` | 35 | 35 | 0 | 0 | E | 実ソケットの公開 HttpServerTransport を素の HTTP クライアントで叩く E (sessionCount・pendingExchangeCount は公開アクセサ)。HttpServerAuth は transport.auth の型として公開と扱った。 |  |  |
 | `test_security_icons.nim` | 5 | 3 | 0 | 2 | mixed | E の 3 件は公開の fetchIcon と resolver。S movable の 2 件は doc が「テスト用」と言う IconFetchOptions.get を差し替える。 |  | 足場 2 件は呼び口を移せば E |
 | `test_security_pages.nim` | 4 | 4 | 0 | 0 | E | 公開の allPages (client/content を tools・resources・prompts が export) に偽の fetch を渡す E。1 件がエラー文を固定 (wording)。 |  |  |
@@ -101,6 +122,7 @@
 | `test_security_sampling.nim` | 3 | 3 | 0 | 0 | E | client/sampling が `*` で定義する parseSamplingRequest (公開) を呼ぶ E。 |  |  |
 | `test_security_schema.nim` | 48 | 31 | 0 | 17 | mixed | E は json_schema の validate と SchemaLimits。S movable の 16 件は入口から届かない json_schema_regex を直接呼ぶ。S の 1 件は命令数 4 を写す。 |  | 足場 16 件は呼び口を移せば E、足場 1 件は消してよい |
 | `test_security_tasks.nim` | 15 | 15 | 0 | 0 | E | 公開の TaskStore・parseTaskParam・McpTaskError と server_harness 越しの tasks/list・tools/call だけを見る E (1 件は tests.map に行無し)。 |  |  |
+| `test_security_tasks_shared_store.nim` | 1 | 1 | 0 | 0 | E | core と拡張が 1 つの store を共有するとき、拡張のクライアントに届く CreateTaskResult の ttlMs だけで確かめている。 |  |  |
 | `test_security_wire_headers.nim` | 47 | 0 | 6 | 41 | mixed | 入口から届かない transport/http_wire.request を直接呼ぶ。大半は公開の StreamableHttpTransport から確かめられる S movable。I の 6 件は応答オブジェクトの API や POST 以外の要求など公開の口に無いもの。 | 公開の transport は本文の無い POST を送らない (POST は常に JSON-RPC 本文を持つ) ので、Content-Length: 0 の規則に外から届く口が無い。 / 公開の transport は PUT を送らない (POST・GET・DELETE だけ) ので、この要求の組み立てに外から届く口が無い。 / 応答ヘッダの一覧そのもの (response.headers.len) は公開の transport から見えない。見えるのは Mcp-Session-Id などの特定のヘッダ値だけ。 ほか 3 通り | 足場 41 件は呼び口を移せば E |
 | `test_security_wire_limits.nim` | 6 | 4 | 0 | 2 | mixed | E は公開の initSseParser と newStreamableHttpTransport。S movable の 2 件は入口から届かない http_wire.request を直接呼ぶ。 |  | 足場 2 件は呼び口を移せば E |
 | `test_security_wire_tls.nim` | 8 | 0 | 7 | 1 | mixed | 入口から届かない http_wire.request に caFile・connectTo を渡す I (6 件、公開の transport に口が無い)。S は 2 件 (うち 1 件が movable、1 件は -d:ssl 無しで落とす足場)。 | [リードが変更] -d:ssl 無しのビルドでこのファイルのテストが黙って飛ばされるのを防ぐ門 / request の caFile (信頼する CA) と connectTo (接続先 IP の差し替え) を使う。公開の StreamableHttpTransport にはどちらの口も無く、自前の CA で作った証明書の検証は外から再現できない。 | 足場 1 件は呼び口を移せば E |
@@ -135,9 +157,9 @@
 | `test_version_build_config.nim` | 4 | 4 | 0 | 0 | E | nim check の終了コードと出力を見る。失敗 3 件は全文一致で wording。 |  |  |
 | `test_version_floor.nim` | 17 | 17 | 0 | 0 | E | HTTP の状態・ヘッダ・本文と公開 API (protocol/version は types.nim:6 の export) を見ている。4 件は版の選択に features を使うだけで E (印 features)。 |  |  |
 
-支援のファイル (テストを持たない。分類の対象外): `auth_fixtures.nim`、`client_peer.nim`、`loopback_transport.nim`、`server_harness.nim`、`sessioned_transport.nim`、`sse_reader.nim`、`stuck_transport.nim`。
+支援のファイル (テストを持たない。分類の対象外): `auth_fixtures.nim`、`client_peer.nim`、`ext_auth_fixtures.nim`、`ext_skills_fixtures.nim`、`loopback_transport.nim`、`server_harness.nim`、`sessioned_transport.nim`、`sse_reader.nim`、`stuck_transport.nim`。
 
-## E テストが 1 本も結ばれていない仕様 ID (48 件)
+## E テストが 1 本も結ばれていない仕様 ID (49 件)
 
 `specs/tests.map` がその ID に結んでいるテストが、すべて I か足場に分類されたもの。「移せば E」は、結ばれたテストに、呼び口を公開側へ移せば E になる足場が含まれることを言う。
 
@@ -166,6 +188,7 @@
 | MCP-HTTPSTREAM-20 | I 3、足場 2 | はい | `test_http_streams.nim` |
 | MCP-ICONS-8 | 足場 1 | はい | `test_icon_fetch.nim` |
 | MCP-SEC-AUTH-5 | 足場 8 | はい | `test_security_auth_tokens.nim` |
+| MCP-SEC-AUTH-6 | 足場 5 | はい | `test_security_ext_auth.nim` |
 | MCP-SEC-SCHEMA-1 | 足場 2 | はい | `test_security_schema.nim` |
 | MCP-SEC-SCHEMA-11 | 足場 4 | はい | `test_json_schema.nim` |
 | MCP-SEC-SCHEMA-12 | 足場 6 | はい | `test_json_schema.nim` |
