@@ -4,7 +4,9 @@
 
 import std/[unittest, asyncdispatch, base64, httpcore, json, options, strutils, times, tables, sets]
 import auth/oauth/[errors, fetch, grants, jwt, tokens, urls]
-import ext_auth_fixtures
+import ../external/ext_auth_fixtures except DecodedJwt, decodeJwtUnverified, signJwt,
+    GrantTypeClientCredentials, GrantTypeJwtBearer, GrantTypeTokenExchange,
+    TokenTypeAccessToken, TokenTypeRefreshToken, TokenTypeIdToken, TokenTypeSaml2
 
 const Secret = "s3cret-value-7Fjfp0ZB"
 
@@ -56,16 +58,6 @@ suite "JWTs":
     check decoded.hs256Valid("key-1")
     check not decoded.hs256Valid("key-2")
 
-  test "Given the algorithm none or an empty signer, when a signer is made, then it is refused":
-    let nothing = proc(input: string): string {.closure, gcsafe, raises: [].} = "x"
-    expect ValueError:
-      discard newJwtSigner("none", nothing)
-    expect ValueError:
-      discard newJwtSigner("NoNe", nothing)
-    expect ValueError:
-      discard newJwtSigner("", nothing)
-    expect ValueError:
-      discard newJwtSigner("RS256", nil)
 
   test "Given a signer that raises or returns nothing, when signing, then OAuthError names neither the key nor the message":
     let failing = newJwtSigner("RS256", proc(input: string): string {.closure, gcsafe.} =

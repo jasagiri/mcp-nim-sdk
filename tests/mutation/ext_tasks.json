@@ -5,7 +5,7 @@
     "src/ext/tasks/wire.nim",
     "src/ext/tasks.nim"
   ],
-  "testCommand": "nim c -r --hints:off tests/test_ext_tasks.nim && nim c -r --hints:off tests/test_ext_tasks_client.nim && nim c -r --hints:off tests/test_ext_tasks_dual.nim && nim c -r --hints:off tests/test_ext_tasks_http.nim && nim c -r --hints:off tests/test_security_ext_tasks.nim && nim c -r --hints:off tests/test_security_tasks_shared_store.nim && nim c -r --hints:off tests/test_security_diagnostic_tasks.nim",
+  "testCommand": "nim c -r --hints:off tests/external/test_ext_tasks.nim && nim c -r --hints:off tests/external/test_ext_tasks_client.nim && nim c -r --hints:off tests/external/test_ext_tasks_dual.nim && nim c -r --hints:off tests/external/test_ext_tasks_http.nim && nim c -r --hints:off tests/external/test_security_ext_tasks.nim && nim c -r --hints:off tests/external/test_security_tasks_shared_store.nim && nim c -r --hints:off tests/external/test_security_diagnostic_tasks.nim",
   "mutators": [
     "AOR",
     "ROR",

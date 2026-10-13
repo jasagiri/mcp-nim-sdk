@@ -1929,7 +1929,7 @@ MCP-SEC-HTTP-7 | tests/external/test_security_diagnostic_client.nim | Given a se
 MCP-SEC-HTTP-7 | tests/external/test_security_diagnostic_client.nim | Given a server message that is no JSON-RPC message and very long, when the client logs it, then the log line is short
 MCP-SEC-HTTP-7 | tests/external/test_security_diagnostic_client.nim | Given a request whose method name is hostile and whose handler fails with a hostile message, when the client logs it, then both are shown as escapes
 MCP-SEC-HTTP-7 | tests/internal/test_security_diagnostic_auth.nim | Given an endpoint with a very long URL that never answers, when the request is abandoned and ends, then the log line is short
-MCP-SEC-HTTP-7 | tests/test_security_diagnostic_tasks.nim | Given a status notification whose input request key is hostile, when the client logs that it ignored it, then the log holds one line of escapes
+MCP-SEC-HTTP-7 | tests/external/test_security_diagnostic_tasks.nim | Given a status notification whose input request key is hostile, when the client logs that it ignored it, then the log holds one line of escapes
 MCP-SEC-WIRE-1 | tests/internal/test_security_wire_tls.nim | Given a certificate for the host named in the URL, when the request is sent, then it is answered
 MCP-SEC-WIRE-1 | tests/internal/test_security_wire_tls.nim | Given a certificate for another host than the URL names, when the request is sent, then it is refused
 MCP-SEC-WIRE-1 | tests/internal/test_security_wire_tls.nim | Given a certificate for the IP address in the URL, when the request is sent, then it is answered
@@ -1967,8 +1967,8 @@ MCP-SEC-WIRE-5 | tests/external/test_security_address.nim | Given a name that do
 MCP-SEC-WIRE-5 | tests/internal/test_security_address_internal.nim | Given a name that resolves to an allowed address, when a request is made, then the connection goes to that address
 MCP-SEC-WIRE-6 | tests/internal/test_security_address_internal.nim | Given a policy and a server URL, when narrowed, then loopback stays allowed only for a loopback server
 MCP-SEC-WIRE-6 | tests/external/test_security_address.nim | Given a remote server that names a loopback metadata URL, when the client answers its 401, then OAuthSecurityError is raised and nothing is requested
-MCP-SEC-WIRE-6 | tests/test_security_ext_auth.nim | Given a remote server that names a loopback metadata URL, when the client credentials client answers its 401, then OAuthSecurityError is raised and nothing is requested
-MCP-SEC-WIRE-6 | tests/test_security_ext_auth.nim | Given a remote server that names a loopback metadata URL, when the enterprise-managed client answers its 401, then OAuthSecurityError is raised and the assertion is not read
+MCP-SEC-WIRE-6 | tests/external/test_security_ext_auth.nim | Given a remote server that names a loopback metadata URL, when the client credentials client answers its 401, then OAuthSecurityError is raised and nothing is requested
+MCP-SEC-WIRE-6 | tests/external/test_security_ext_auth.nim | Given a remote server that names a loopback metadata URL, when the enterprise-managed client answers its 401, then OAuthSecurityError is raised and the assertion is not read
 MCP-SEC-WIRE-7 | tests/internal/test_security_icons_internal.nim | Given an answer that comes after the timeout, when the fetch has failed, then the connection is closed
 MCP-SEC-WIRE-7 | tests/external/test_security_trusted_ca.nim | Given an answer that comes after the timeout, when the fetch has failed, then the client closes that connection
 MCP-SEC-WIRE-10 | tests/internal/test_security_icons_internal.nim | Given an answer that is not 200, when the fetch is refused, then the connection is closed
@@ -2097,7 +2097,7 @@ MCP-SEC-TASKS-1 | tests/external/test_security_tasks.nim | Given a task asked fo
 MCP-SEC-TASKS-1 | tests/external/test_security_tasks.nim | Given a store that grants any ttl, when the largest is asked for, then the task never expires and the others are untouched
 MCP-SEC-TASKS-1 | tests/external/test_security_tasks.nim | Given a client that asks for the largest ttl, when another client lists its tasks, then it is answered
 MCP-SEC-TASKS-2 | tests/external/test_security_tasks.nim | Given the default store, when a ttl beyond the maximum is asked for, then the task gets the maximum
-MCP-SEC-TASKS-2 | tests/test_security_tasks_shared_store.nim | Given a core client that asked for the largest ttl, when an extension client uses the store, then it is answered
+MCP-SEC-TASKS-2 | tests/external/test_security_tasks_shared_store.nim | Given a core client that asked for the largest ttl, when an extension client uses the store, then it is answered
 MCP-SEC-TASKS-3 | tests/external/test_security_tasks.nim | Given a whole number written as a float, when parsed, then it is that many milliseconds
 MCP-SEC-TASKS-3 | tests/external/test_security_tasks.nim | Given a float beyond what a ttl can be, when parsed, then it is the largest and the store grants its maximum
 MCP-SEC-TASKS-3 | tests/external/test_security_tasks.nim | Given a fraction, a negative number, a string or a boolean, when parsed, then it is invalid params
@@ -2113,11 +2113,11 @@ MCP-SEC-SWEEP-1 | tests/external/test_security_poll.nim | Given a task that sugg
 MCP-SEC-SWEEP-1 | tests/external/test_security_poll.nim | Given a task that suggests days, when polled, then the wait is the maximum
 MCP-SEC-SWEEP-1 | tests/external/test_security_poll.nim | Given a task that suggests a reasonable interval, when polled, then it is respected
 MCP-SEC-SWEEP-1 | tests/external/test_security_poll.nim | Given a task that suggests none, when polled, then the caller's default is used as given
-MCP-SEC-SWEEP-1 | tests/test_security_ext_tasks.nim | Given a server that suggests a poll interval of 0, when the client waits for a task, then it waits the minimum
-MCP-SEC-SWEEP-1 | tests/test_security_ext_tasks.nim | Given a server that suggests days, when the client waits for a task, then it waits the maximum
+MCP-SEC-SWEEP-1 | tests/external/test_security_ext_tasks.nim | Given a server that suggests a poll interval of 0, when the client waits for a task, then it waits the minimum
+MCP-SEC-SWEEP-1 | tests/external/test_security_ext_tasks.nim | Given a server that suggests days, when the client waits for a task, then it waits the maximum
 MCP-SEC-SWEEP-2 | tests/external/test_security_expiry.nim | Given a task that expires while it works, when the store is used, then the expiry hook sees it once
 MCP-SEC-SWEEP-2 | tests/external/test_security_expiry.nim | Given an expiry hook that raises, when a task expires, then the others are still removed and heard
-MCP-SEC-SWEEP-2 | tests/test_security_ext_tasks.nim | Given a task that expires while its tool runs, when the tool asks for input afterwards, then the task is unknown to the extension
+MCP-SEC-SWEEP-2 | tests/external/test_security_ext_tasks.nim | Given a task that expires while its tool runs, when the tool asks for input afterwards, then the task is unknown to the extension
 MCP-SEC-SWEEP-3 | tests/external/test_security_sampling.nim | Given a temperature that is a string, when parsed, then it is a protocol error and not 0.0
 MCP-SEC-SWEEP-3 | tests/external/test_security_sampling.nim | Given a priority that is a string, when parsed, then it is a protocol error and not 0.0
 MCP-SEC-SWEEP-3 | tests/external/test_security_sampling.nim | Given numbers and nulls, when parsed, then they are read as sent, a null as absent
@@ -2180,16 +2180,16 @@ MCP-SEC-SCHEMA-14 | tests/external/test_security_schema.nim | Given a pattern wh
 MCP-SEC-SCHEMA-14 | tests/external/test_security_schema.nim | Given a pattern whose parts emit nothing, when it does as much work as the limit allows, then it is applied, and one step more is a SchemaLimitError
 MCP-SEC-SCHEMA-14 | tests/external/test_security_schema.nim | Given a step budget that is exactly what a pattern and its match need, when validated, then it is answered, and with one step less it is a SchemaLimitError
 MCP-SEC-HTTP-8 | tests/external/test_security_http.nim | Given a session whose end callback raises, when the client sends DELETE, then the answer is a bare 500, the log names the failure and the server goes on
-MCP-SEC-AUTH-3 | tests/test_security_ext_auth.nim | Given no issuer for the credential, when the auth is made, then it is refused and the message says how to fix it
-MCP-SEC-AUTH-3 | tests/test_security_ext_auth.nim | Given a client secret for one issuer, when the resource names another, then no request reaches that server and the error names both
-MCP-SEC-AUTH-3 | tests/test_security_ext_auth.nim | Given a signing key for one issuer, when the resource names another, then no assertion is made out to that server
-MCP-SEC-AUTH-4 | tests/test_security_ext_auth.nim | Given no authorization server for the resource client, when the auth is made, then it is refused and the message says how to fix it
-MCP-SEC-AUTH-4 | tests/test_security_ext_auth.nim | Given credentials for one authorization server, when the resource names another, then neither the IdP nor that server is contacted and the assertion is not read
-MCP-SEC-AUTH-6 | tests/test_security_ext_auth.nim | Given an exp or iat that is a fractional number, which a NumericDate may be, when checked, then it is accepted
-MCP-SEC-AUTH-6 | tests/test_security_ext_auth.nim | Given a fractional exp that has passed, when checked, then the ID-JAG has expired
-MCP-SEC-AUTH-6 | tests/test_security_ext_auth.nim | Given an exp beyond what a grant can plausibly live, when checked, then it is refused and nothing overflows
-MCP-SEC-AUTH-6 | tests/test_security_ext_auth.nim | Given an exp at the largest lifetime or a negative one, when checked, then the first is accepted and the second has expired
-MCP-SEC-AUTH-6 | tests/test_security_ext_auth.nim | Given an expires_in that is huge, negative or not a number in a token exchange response, when parsed, then it is no expiry, an error, an error
+MCP-SEC-AUTH-3 | tests/external/test_security_ext_auth.nim | Given no issuer for the credential, when the auth is made, then it is refused and the message says how to fix it
+MCP-SEC-AUTH-3 | tests/external/test_security_ext_auth.nim | Given a client secret for one issuer, when the resource names another, then no request reaches that server and the error names both
+MCP-SEC-AUTH-3 | tests/external/test_security_ext_auth.nim | Given a signing key for one issuer, when the resource names another, then no assertion is made out to that server
+MCP-SEC-AUTH-4 | tests/external/test_security_ext_auth.nim | Given no authorization server for the resource client, when the auth is made, then it is refused and the message says how to fix it
+MCP-SEC-AUTH-4 | tests/external/test_security_ext_auth.nim | Given credentials for one authorization server, when the resource names another, then neither the IdP nor that server is contacted and the assertion is not read
+MCP-SEC-AUTH-6 | tests/internal/test_security_ext_auth_internal.nim | Given an exp or iat that is a fractional number, which a NumericDate may be, when checked, then it is accepted
+MCP-SEC-AUTH-6 | tests/internal/test_security_ext_auth_internal.nim | Given a fractional exp that has passed, when checked, then the ID-JAG has expired
+MCP-SEC-AUTH-6 | tests/internal/test_security_ext_auth_internal.nim | Given an exp beyond what a grant can plausibly live, when checked, then it is refused and nothing overflows
+MCP-SEC-AUTH-6 | tests/internal/test_security_ext_auth_internal.nim | Given an exp at the largest lifetime or a negative one, when checked, then the first is accepted and the second has expired
+MCP-SEC-AUTH-6 | tests/internal/test_security_ext_auth_internal.nim | Given an expires_in that is huge, negative or not a number in a token exchange response, when parsed, then it is no expiry, an error, an error
 MCP-ERRORS-1 | tests/external/test_error_message_g0f.nim | Given requests that fail in each standard way, when the server answers, then every message is one concise sentence
 MCP-ERRORS-1 | tests/external/test_error_message_g0f.nim | Given a handler that fails with a long message of its own, when the server answers, then the peer is told 'Internal error' and nothing the handler wrote
 MCP-ERRORS-1 | tests/external/test_error_message_g0f.nim | Given bodies that are not requests, when posted, then each answer carries one concise sentence
@@ -2235,518 +2235,518 @@ MCP-SEC-WIRE-23 | tests/external/test_security_wire_shapes.nim | Given a well-fo
 MCP-SEC-WIRE-23 | tests/external/test_security_wire_shapes.nim | Given an item that is not an object, when its icons are read, then it is a shape error
 MCP-TASKS-7 | tests/external/test_tasks_store.nim | Given a time whose minute or second is out of range, when a task is read, then none is returned
 MCP-TASKS-7 | tests/external/test_tasks_store.nim | Given a time that is not RFC 3339, such as a signed year, when a task is read, then none is returned
-MCP-EXT-AUTH-1 | tests/test_ext_auth_client_credentials.nim | Given a 401 and a client secret, when a request is sent, then one client_credentials request carries resource and the secret in Basic, and the retry succeeds without any user step
-MCP-EXT-AUTH-1 | tests/test_ext_auth_client_credentials.nim | Given a signing key, when a request is sent, then the assertion names the issuer as audience, client_id is not in the body, and the retry succeeds
-MCP-EXT-AUTH-1 | tests/test_ext_auth_client_credentials.nim | Given a server that expects the token endpoint as audience, when the config asks for it, then the assertion carries the token endpoint URL
-MCP-EXT-AUTH-1 | tests/test_ext_auth_client_credentials.nim | Given a server that lists only client_secret_post besides private_key_jwt, when the client has a secret, then the secret goes in the body
-MCP-EXT-AUTH-1 | tests/test_ext_auth_client_credentials.nim | Given a stored token, when more requests are sent, then they reuse it and no second token is requested
-MCP-EXT-AUTH-1 | tests/test_ext_auth_client_credentials.nim | Given a token that has expired, when the next request is sent, then a new one is requested before it and the request needs no 401
-MCP-EXT-AUTH-1 | tests/test_ext_auth_client_credentials.nim | Given an access token, when requests are sent, then the token is in no URL and goes to the resource server only
-MCP-EXT-AUTH-1 | tests/test_ext_auth_client_credentials.nim | Given the default clock, when a signing client requests a token, then the assertion is dated now and the server accepts it
-MCP-EXT-AUTH-1 | tests/test_ext_auth_client_credentials.nim | Given an expired token and an authorization server that now refuses the client, when requests fail, then the stale token is dropped and the next request asks once
-MCP-EXT-AUTH-2 | tests/test_ext_auth_client_credentials.nim | Given a challenge with a scope, when the token is requested, then it asks for that scope
-MCP-EXT-AUTH-2 | tests/test_ext_auth_client_credentials.nim | Given no scope in the challenge but scopes_supported, when the token is requested, then it asks for those
-MCP-EXT-AUTH-2 | tests/test_ext_auth_client_credentials.nim | Given scopes in the config, when the token is requested, then they replace the challenge's
-MCP-EXT-AUTH-2 | tests/test_ext_auth_client_credentials.nim | Given a 403 insufficient_scope, when the request is sent, then the client asks again for the union and the request succeeds
-MCP-EXT-AUTH-2 | tests/test_ext_auth_client_credentials.nim | Given a 403 that names a scope the client already asked for, when it repeats, then the client does not ask again and the request fails
-MCP-EXT-AUTH-2 | tests/test_ext_auth_client_credentials.nim | Given a 403 that is no insufficient_scope challenge, or a status that is no challenge, when handled, then the answer is no and nothing is requested
-MCP-EXT-AUTH-2 | tests/test_ext_auth_client_credentials.nim | Given a 401 without any challenge header, when handled, then the token is requested for the scopes the resource supports
-MCP-EXT-AUTH-2 | tests/test_ext_auth_client_credentials.nim | Given a 403 that names a scope already requested, when handled, then the answer is no and no second token is requested
-MCP-EXT-AUTH-3 | tests/test_ext_auth_client_credentials.nim | Given metadata without token_endpoint_auth_methods_supported, when a request is sent, then no credential is sent
-MCP-EXT-AUTH-3 | tests/test_ext_auth_client_credentials.nim | Given metadata that lists neither private_key_jwt nor client_secret_basic, when a request is sent, then no credential is sent
-MCP-EXT-AUTH-3 | tests/test_ext_auth_client_credentials.nim | Given a signing client and metadata without private_key_jwt, when a request is sent, then no assertion is sent
-MCP-EXT-AUTH-3 | tests/test_ext_auth_client_credentials.nim | Given a signer whose algorithm the server does not list, when a request is sent, then no assertion is sent
-MCP-EXT-AUTH-3 | tests/test_ext_auth_client_credentials.nim | Given metadata without token_endpoint_auth_signing_alg_values_supported, when a signing client sends a request, then no assertion is sent
-MCP-EXT-AUTH-3 | tests/test_ext_auth_client_credentials.nim | Given a secret client and metadata that lists only private_key_jwt, when a request is sent, then the secret is not sent
-MCP-EXT-AUTH-3 | tests/test_ext_auth_client_credentials.nim | Given a grant_types_supported without client_credentials, when a request is sent, then nothing is sent
-MCP-EXT-AUTH-3 | tests/test_ext_auth_client_credentials.nim | Given metadata whose token_endpoint_auth_methods_supported is not an array, when a request is sent, then it is refused
-MCP-EXT-AUTH-4 | tests/test_ext_auth_client_credentials.nim | Given a wrong secret, when a request is sent, then the failure names the error and neither the secret nor the assertion key
-MCP-EXT-AUTH-4 | tests/test_ext_auth_client_credentials.nim | Given an assertion signed with a wrong key, when a request is sent, then the failure does not contain the key
-MCP-EXT-AUTH-4 | tests/test_ext_auth_client_credentials.nim | Given a signer that fails, when a request is sent, then the failure is reported without the signer's message
-MCP-EXT-AUTH-4 | tests/test_ext_auth_client_credentials.nim | Given an authorization server that is not the one the resource lists, when the config chooses it, then the client refuses
-MCP-EXT-AUTH-4 | tests/test_ext_auth_client_credentials.nim | Given metadata that names another issuer, when a request is sent, then the client refuses and sends no credential
-MCP-EXT-AUTH-4 | tests/test_ext_auth_client_credentials.nim | Given metadata with a token endpoint that is plain http on a public host, when a request is sent, then the client refuses and sends no credential
-MCP-EXT-AUTH-4 | tests/test_ext_auth_client_credentials.nim | Given a token response that is not Bearer, when a request is sent, then the client refuses it
-MCP-EXT-AUTH-5 | tests/test_ext_auth_client_credentials.nim | Given a transport without the extension's auth, when the server answers 401, then the request fails and no token is requested
-MCP-EXT-AUTH-5 | tests/test_ext_auth_client_credentials.nim | Given a config that could never succeed, when the auth is made, then ValueError says why
-MCP-EXT-AUTH-6 | tests/test_ext_auth_client_credentials.nim | Given a client that declares the extension, when it sends a 2026-07-28 request, then clientCapabilities carries the identifier with empty settings
-MCP-EXT-AUTH-6 | tests/test_ext_auth_client_credentials.nim | Given a client that did not declare the extension, when it sends a request, then clientCapabilities has no extensions
-MCP-EXT-AUTH-6 | tests/test_ext_auth_client_credentials.nim | Given a server that advertises the extension, when a 2026-07-28 client discovers it, then the capabilities list the identifier
-MCP-EXT-AUTH-6 | tests/test_ext_auth_client_credentials.nim | Given a server that did not advertise it, when a client discovers it, then the capabilities do not list the identifier
-MCP-EXT-AUTH-6 | tests/test_ext_auth_client_credentials.nim | Given a build that speaks no version with the extensions capability, when the extension is declared or advertised, then ValueError names the limit and nothing is registered
-MCP-EXT-AUTH-6 | tests/test_ext_auth_client_credentials.nim | Given enableClientCredentials, when called, then the transport authorizes with it and the extension is declared
-MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given RFC 4231 test case 1, when HMAC-SHA256 of the fixtures is computed, then it matches (the signer the other tests rely on is right)
-MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given claims and a signer, when signed and decoded, then header, claims and signature come back and verify
-MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given the algorithm none or an empty signer, when a signer is made, then it is refused
-MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given a signer that raises or returns nothing, when signing, then OAuthError names neither the key nor the message
-MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given malformed JWTs, when decoded, then each is refused
-MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given a client assertion, when decoded, then iss and sub are the client, aud the server, and every one is fresh
-MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given a client secret sent with HTTP Basic, when client credentials are requested, then the secret is in the header only and a token comes back
-MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given a client id and secret with characters that need form encoding, when sent with Basic, then the server decodes them as RFC 6749 2.3.1 says
-MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given a client secret sent in the body, when client credentials are requested, then client_id and client_secret are form fields and there is no Authorization header
-MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given a signing key, when client credentials are requested with private_key_jwt, then the assertion authenticates and client_id is not sent
-MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given an assertion signed with another key, when client credentials are requested, then the server refuses and the error shows no secret
-MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given a wrong client secret, when requested, then OAuthServerError carries the error and not the secret
-MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given an ID-JAG like assertion, when the JWT bearer grant is requested, then grant_type and assertion are sent and the client authenticates separately
-MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given a subject token, when exchanged, then every RFC 8693 parameter is sent and the issued token is returned with its type and lifetime
-MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given an empty subject token, when exchanged, then nothing is sent
-MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given token exchange responses with a missing field, when parsed, then each is refused
-MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given a signer with no signing function or no algorithm, when signing, then OAuthError says it is not set up
-MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given a JWT whose signature is empty or not base64url, when decoded, then it is refused
-MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given payloads and signatures of every length modulo three, when decoded, then the bytes come back from segments without padding
-MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given a segment with one character more than whole groups, when decoded, then the character that makes no byte is left out
-MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given a header whose alg is missing, not a string or empty, when decoded, then it is refused
-MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given a JWT of exactly the largest accepted length and one a byte longer, when decoded, then the first is read and the second refused
-MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given a client assertion without a client_id or without an audience, when made, then OAuthError refuses either
-MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given scopes, when the JWT bearer grant is requested, then they are sent as one scope parameter
-MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given a private_key_jwt client without a lifetime, when client credentials are requested, then the assertion lives one minute
-MCP-EXT-AUTH-7 | tests/test_ext_auth_grants.nim | Given a subject token and no scopes, when exchanged, then no scope parameter is sent
-MCP-EXT-AUTH-8 | tests/test_ext_auth_enterprise_managed.nim | Given a 401 and an ID token, when a request is sent, then the IdP exchanges it for an ID-JAG for this authorization server and resource, the server turns that into an access token, and the user is never sent anywhere
-MCP-EXT-AUTH-8 | tests/test_ext_auth_enterprise_managed.nim | Given the access token the server issued, when it is looked up, then it is restricted to the MCP server named by the ID-JAG's resource
-MCP-EXT-AUTH-8 | tests/test_ext_auth_enterprise_managed.nim | Given a SAML assertion or a refresh token instead of an ID token, when a request is sent, then subject_token_type says which
-MCP-EXT-AUTH-8 | tests/test_ext_auth_enterprise_managed.nim | Given a signing key at the IdP and a public client with a metadata document URL at the authorization server, when a request is sent, then both authenticate as the draft says
-MCP-EXT-AUTH-8 | tests/test_ext_auth_enterprise_managed.nim | Given a stored token, when more requests are sent, then no second exchange happens
-MCP-EXT-AUTH-8 | tests/test_ext_auth_enterprise_managed.nim | Given an access token and an ID-JAG that both outlive a clock step, when the access token expires first, then the ID-JAG is reused
-MCP-EXT-AUTH-8 | tests/test_ext_auth_enterprise_managed.nim | Given an access token and an ID-JAG that have both expired, when the next request is sent, then the identity assertion is asked for again and the IdP issues a new ID-JAG
-MCP-EXT-AUTH-8 | tests/test_ext_auth_enterprise_managed.nim | Given a refresh token from the authorization server, when the access token is stored, then it is not kept (the ID-JAG renews access)
-MCP-EXT-AUTH-8 | tests/test_ext_auth_enterprise_managed.nim | Given a config without a resource, when a request is sent, then the exchange carries none
-MCP-EXT-AUTH-8 | tests/test_ext_auth_enterprise_managed.nim | Given the default clock, when a request is sent, then the ID-JAG is judged against now and accepted
-MCP-EXT-AUTH-8 | tests/test_ext_auth_enterprise_managed.nim | Given an access token that expires when the ID-JAG has 31 or 30 seconds left, when the next request is sent, then the first reuses the ID-JAG and the second asks the IdP for a new one
-MCP-EXT-AUTH-8 | tests/test_ext_auth_enterprise_managed.nim | Given an expired access token and an IdP that now refuses, when requests fail, then the stale token is dropped and the next request exchanges once
-MCP-EXT-AUTH-9 | tests/test_ext_auth_enterprise_managed.nim | Given scopes in the config, when the exchange is made, then they replace the challenge's
-MCP-EXT-AUTH-9 | tests/test_ext_auth_enterprise_managed.nim | Given no scope in the challenge but scopes_supported, when the exchange is made, then it asks for those
-MCP-EXT-AUTH-9 | tests/test_ext_auth_enterprise_managed.nim | Given a 403 insufficient_scope, when the request is sent, then a new ID-JAG for the union is requested and the request succeeds
-MCP-EXT-AUTH-9 | tests/test_ext_auth_enterprise_managed.nim | Given a 403 that names a scope already asked for, when it repeats, then the client does not ask again
-MCP-EXT-AUTH-9 | tests/test_ext_auth_enterprise_managed.nim | Given a 403 that is no insufficient_scope challenge, or a status that is no challenge, when handled, then the answer is no and nothing is exchanged
-MCP-EXT-AUTH-9 | tests/test_ext_auth_enterprise_managed.nim | Given a 401 without any challenge header, when handled, then the exchange asks for the scopes the resource supports
-MCP-EXT-AUTH-9 | tests/test_ext_auth_enterprise_managed.nim | Given a 403 that names a scope already requested, when handled, then the answer is no and no second exchange is made
-MCP-EXT-AUTH-9 | tests/test_ext_auth_enterprise_managed.nim | Given an authorization server that grants a narrower scope than was asked, when the access token is stored, then its scopes are the granted ones
-MCP-EXT-AUTH-9 | tests/test_ext_auth_enterprise_managed.nim | Given an authorization server that names no scope in its answer, when the access token is stored, then its scopes are the ones asked for
-MCP-EXT-AUTH-10 | tests/test_ext_auth_enterprise_managed.nim | Given an authorization server that does not list the ID-JAG profile, when a request is sent, then no identity assertion is used
-MCP-EXT-AUTH-10 | tests/test_ext_auth_enterprise_managed.nim | Given an authorization server that lists other profiles only, when a request is sent, then no identity assertion is used
-MCP-EXT-AUTH-10 | tests/test_ext_auth_enterprise_managed.nim | Given an authorization server that lists the profile but not the jwt-bearer grant, when a request is sent, then no identity assertion is used
-MCP-EXT-AUTH-10 | tests/test_ext_auth_enterprise_managed.nim | Given an IdP that lists identity chaining token types without id-jag, when a request is sent, then the identity assertion is not sent to it
-MCP-EXT-AUTH-10 | tests/test_ext_auth_enterprise_managed.nim | Given an IdP that does not advertise identity chaining token types, when a request is sent, then the exchange is tried (the draft says SHOULD)
-MCP-EXT-AUTH-11 | tests/test_ext_auth_enterprise_managed.nim | Given an ID-JAG whose typ is not oauth-id-jag+jwt, when it arrives, then it is not sent to the authorization server
-MCP-EXT-AUTH-11 | tests/test_ext_auth_enterprise_managed.nim | Given an ID-JAG issued by someone other than the IdP, when it arrives, then it is not sent on
-MCP-EXT-AUTH-11 | tests/test_ext_auth_enterprise_managed.nim | Given an ID-JAG for another audience, when it arrives, then it is not sent on
-MCP-EXT-AUTH-11 | tests/test_ext_auth_enterprise_managed.nim | Given an ID-JAG whose aud is an array with another entry too, when it arrives, then it is not sent on
-MCP-EXT-AUTH-11 | tests/test_ext_auth_enterprise_managed.nim | Given an ID-JAG whose aud is an array of exactly this authorization server, when it arrives, then it is accepted
-MCP-EXT-AUTH-11 | tests/test_ext_auth_enterprise_managed.nim | Given an ID-JAG for another client, when it arrives, then it is not sent on
-MCP-EXT-AUTH-11 | tests/test_ext_auth_enterprise_managed.nim | Given an ID-JAG without the resource that was asked for, when it arrives, then it is not sent on
-MCP-EXT-AUTH-11 | tests/test_ext_auth_enterprise_managed.nim | Given an ID-JAG for another resource, when it arrives, then it is not sent on
-MCP-EXT-AUTH-11 | tests/test_ext_auth_enterprise_managed.nim | Given an ID-JAG whose resource is an array that includes this server, when it arrives, then it is accepted
-MCP-EXT-AUTH-11 | tests/test_ext_auth_enterprise_managed.nim | Given an ID-JAG that has already expired, when it arrives, then it is not sent on
-MCP-EXT-AUTH-11 | tests/test_ext_auth_enterprise_managed.nim | Given an ID-JAG without sub, jti, iat or exp, when it arrives, then it is not sent on
-MCP-EXT-AUTH-11 | tests/test_ext_auth_enterprise_managed.nim | Given an exchange response that is not an ID-JAG by its issued_token_type or token_type, when it arrives, then it is not sent on
-MCP-EXT-AUTH-11 | tests/test_ext_auth_enterprise_managed.nim | Given a granted scope narrower than the request, when the ID-JAG arrives, then the exchange still succeeds
-MCP-EXT-AUTH-12 | tests/test_ext_auth_enterprise_managed.nim | Given an IdP that refuses by policy, when a request is sent, then the failure names the error, nothing reaches the authorization server, and no token or secret is in the message
-MCP-EXT-AUTH-12 | tests/test_ext_auth_enterprise_managed.nim | Given a wrong client secret at the IdP, when a request is sent, then the failure does not contain the secret
-MCP-EXT-AUTH-12 | tests/test_ext_auth_enterprise_managed.nim | Given an authorization server that refuses the ID-JAG, when a request is sent, then the failure contains neither the ID-JAG nor the identity assertion
-MCP-EXT-AUTH-12 | tests/test_ext_auth_enterprise_managed.nim | Given single sign-on that has to be repeated, when the provider raises, then the request fails with that reason and nothing is sent to the IdP
-MCP-EXT-AUTH-12 | tests/test_ext_auth_enterprise_managed.nim | Given an empty identity assertion, when a request is sent, then nothing is sent to the IdP
-MCP-EXT-AUTH-12 | tests/test_ext_auth_enterprise_managed.nim | Given a whole flow, when the logs are read, then the identity assertion went to the IdP only and the ID-JAG to the authorization server only
-MCP-EXT-AUTH-12 | tests/test_ext_auth_enterprise_managed.nim | Given an IdP issuer that is plain http on a public host, when the auth is made, then it is refused
-MCP-EXT-AUTH-12 | tests/test_ext_auth_enterprise_managed.nim | Given IdP metadata that names another issuer, when a request is sent, then the identity assertion is not sent
-MCP-EXT-AUTH-12 | tests/test_ext_auth_enterprise_managed.nim | Given IdP metadata with a plain-http token endpoint on a public host, when a request is sent, then the identity assertion is not sent
-MCP-EXT-AUTH-13 | tests/test_ext_auth_enterprise_managed.nim | Given a transport without the extension's auth, when the server answers 401, then the request fails and neither the IdP nor the authorization server is contacted
-MCP-EXT-AUTH-13 | tests/test_ext_auth_enterprise_managed.nim | Given a config that could never succeed, when the auth is made, then ValueError says why
-MCP-EXT-AUTH-11 | tests/test_ext_auth_enterprise_managed.nim | Given a well-formed ID-JAG, when checked, then the claims come back
-MCP-EXT-AUTH-11 | tests/test_ext_auth_enterprise_managed.nim | Given a resource written with a trailing slash on a bare origin, when checked, then it matches the canonical resource
-MCP-EXT-AUTH-11 | tests/test_ext_auth_enterprise_managed.nim | Given no resource expected, when the ID-JAG has none, then it is accepted
-MCP-EXT-AUTH-11 | tests/test_ext_auth_enterprise_managed.nim | Given an ID-JAG that is not a JWT or has the wrong typ, when checked, then it is refused
-MCP-EXT-AUTH-11 | tests/test_ext_auth_enterprise_managed.nim | Given claims of the wrong JSON type, when checked, then they are refused
-MCP-EXT-AUTH-11 | tests/test_ext_auth_enterprise_managed.nim | Given an ID-JAG that expires at this very second, when checked, then it has expired
-MCP-EXT-AUTH-11 | tests/test_ext_auth_enterprise_managed.nim | Given an ID-JAG without iss or without client_id, when checked, then it is refused as not from the IdP or not for the client
-MCP-EXT-AUTH-14 | tests/test_ext_auth_enterprise_managed.nim | Given a client that declares the extension, when it sends a 2026-07-28 request, then clientCapabilities carries the identifier with empty settings
-MCP-EXT-AUTH-14 | tests/test_ext_auth_enterprise_managed.nim | Given a client that did not declare the extension, when it sends a request, then clientCapabilities has no extensions
-MCP-EXT-AUTH-14 | tests/test_ext_auth_enterprise_managed.nim | Given a server that advertises the extension, when a 2026-07-28 client discovers it, then the capabilities list the identifier
-MCP-EXT-AUTH-14 | tests/test_ext_auth_enterprise_managed.nim | Given a build that speaks no version with the extensions capability, when the extension is declared or advertised, then ValueError names the limit and nothing is registered
-MCP-EXT-AUTH-14 | tests/test_ext_auth_enterprise_managed.nim | Given enableEnterpriseManaged, when called, then the transport authorizes with it and the extension is declared
-MCP-EXT-APPS-1 | tests/test_ext_apps_model.nim | Given the specification's example URIs, when checked, then they are UI resource URIs
-MCP-EXT-APPS-1 | tests/test_ext_apps_model.nim | Given URIs that are not ui:// or name nothing, when checked, then each is refused
-MCP-EXT-APPS-1 | tests/test_ext_apps_model.nim | Given a URI with whitespace or a control character, when checked, then it is refused
-MCP-EXT-APPS-2 | tests/test_ext_apps_model.nim | Given the specification's resources/read example, when parsed and written, then it round-trips
-MCP-EXT-APPS-2 | tests/test_ext_apps_model.nim | Given every field, when parsed, then csp lists, permissions, domain and prefersBorder are read
-MCP-EXT-APPS-2 | tests/test_ext_apps_model.nim | Given nothing declared, when parsed, then csp is none and the permission set is empty
-MCP-EXT-APPS-2 | tests/test_ext_apps_model.nim | Given fields of the wrong type, when parsed, then McpAppsError names the field
-MCP-EXT-APPS-2 | tests/test_ext_apps_model.nim | Given a permission the SDK does not know, when parsed, then it is not granted
-MCP-EXT-APPS-3 | tests/test_ext_apps_model.nim | Given the specification's origin forms, when checked, then they are accepted
-MCP-EXT-APPS-3 | tests/test_ext_apps_model.nim | Given a source that could end or extend a directive, when checked, then it is refused
-MCP-EXT-APPS-3 | tests/test_ext_apps_model.nim | Given a declaration with a bad origin, when parsed, then McpAppsError
-MCP-EXT-APPS-3 | tests/test_ext_apps_model.nim | Given a domain with whitespace or an empty one, when checked, then it is refused
-MCP-EXT-APPS-3 | tests/test_ext_apps_model.nim | Given a host that starts, ends or continues with a digit, when checked, then it is accepted
-MCP-EXT-APPS-4 | tests/test_ext_apps_model.nim | Given the specification's tool example, when read, then resourceUri and visibility are read
-MCP-EXT-APPS-4 | tests/test_ext_apps_model.nim | Given an app-only tool, when read, then visibility is app alone
-MCP-EXT-APPS-4 | tests/test_ext_apps_model.nim | Given no visibility, when read, then it defaults to model and app
-MCP-EXT-APPS-4 | tests/test_ext_apps_model.nim | Given an explicit empty visibility, when read, then neither may use the tool
-MCP-EXT-APPS-4 | tests/test_ext_apps_model.nim | Given only the deprecated flat key, when read, then it supplies the resourceUri
-MCP-EXT-APPS-4 | tests/test_ext_apps_model.nim | Given both forms, when read, then the nested one wins
-MCP-EXT-APPS-4 | tests/test_ext_apps_model.nim | Given no UI reference, when read, then none
-MCP-EXT-APPS-4 | tests/test_ext_apps_model.nim | Given malformed references, when read, then McpAppsError
-MCP-EXT-APPS-4 | tests/test_ext_apps_model.nim | Given csp or permissions on a tool, when read, then McpAppsError because they belong to the resource
-MCP-EXT-APPS-4 | tests/test_ext_apps_model.nim | Given a tool meta, when written, then it reads back the same
-MCP-EXT-APPS-5 | tests/test_ext_apps_model.nim | Given no csp declared, when the CSP is built, then it is the restrictive default
-MCP-EXT-APPS-5 | tests/test_ext_apps_model.nim | Given the specification's example declaration, when the CSP is built, then the origins land in their directives
-MCP-EXT-APPS-5 | tests/test_ext_apps_model.nim | Given frame and base-uri origins, when the CSP is built, then they replace the 'none' and 'self' defaults
-MCP-EXT-APPS-5 | tests/test_ext_apps_model.nim | Given an origin nobody checked, when the CSP is built, then McpAppsError and no origin is let through
-MCP-EXT-APPS-5 | tests/test_ext_apps_model.nim | Given declared permissions, when the allow attribute is built, then each maps to its Permission Policy feature
-MCP-EXT-APPS-5 | tests/test_ext_apps_model.nim | Given only connect origins, when the CSP is built, then the resource directives are the plain ones
-MCP-EXT-APPS-6 | tests/test_ext_apps_model.nim | Given the specification's example, when parsed, then the mime types are read
-MCP-EXT-APPS-6 | tests/test_ext_apps_model.nim | Given a declaration without mimeTypes or with a wrong shape, when parsed, then it is none
-MCP-EXT-APPS-6 | tests/test_ext_apps_model.nim | Given a host that lists other mime types only, when asked, then it does not support HTML apps
-MCP-EXT-APPS-6 | tests/test_ext_apps_host.nim | Given declareApps, when the host connects in any version, then its capabilities list the extension with the HTML mime type
-MCP-EXT-APPS-6 | tests/test_ext_apps_host.nim | Given empty or malformed mime types, when declareApps is called, then ValueError and nothing is declared
-MCP-EXT-APPS-6 | tests/test_ext_apps_host.nim | Given a connected client, when it declares apps, then it raises because capabilities are fixed at connect
-MCP-EXT-APPS-7 | tests/test_ext_apps_server.nim | Given a registry, when it is made in any build, then the server declares no extension for it
-MCP-EXT-APPS-7 | tests/test_ext_apps_host.nim | Given a client that never called declareApps, when it connects in any version, then no extensions are declared
-MCP-EXT-APPS-7 | tests/test_ext_apps_end_to_end.nim | Given a server that registered MCP Apps, when a client connects in any version, then the server declares no extension
-MCP-EXT-APPS-8 | tests/test_ext_apps_server.nim | Given bad registrations, when made, then each raises ValueError
-MCP-EXT-APPS-8 | tests/test_ext_apps_server.nim | Given a registered UI resource, when listed, then the entry has the uri, name, description and the MCP Apps mime type
-MCP-EXT-APPS-8 | tests/test_ext_apps_server.nim | Given a registered UI resource, when read, then the content item has text, the mime type and _meta.ui on the item
-MCP-EXT-APPS-8 | tests/test_ext_apps_server.nim | Given a resource registered as a blob, when read, then blob is the base64 of the HTML and there is no text
-MCP-EXT-APPS-8 | tests/test_ext_apps_server.nim | Given a URI that was not registered, when read, then none
-MCP-EXT-APPS-8 | tests/test_ext_apps_server.nim | Given a server wired with the registry, when a client lists and reads resources, then it gets the UI resource and a not-found error for other URIs
-MCP-EXT-APPS-8 | tests/test_ext_apps_server.nim | Given a fallback read handler, when a non-UI URI is read, then the fallback answers
-MCP-EXT-APPS-8 | tests/test_ext_apps_server.nim | Given a UI resource registered without a description, when listed, then the entry has no description
-MCP-EXT-APPS-9 | tests/test_ext_apps_server.nim | Given a registered resource, when a tool is built for it, then _meta.ui has the resourceUri and visibility
-MCP-EXT-APPS-9 | tests/test_ext_apps_server.nim | Given an app-only tool, when built, then visibility is app
-MCP-EXT-APPS-9 | tests/test_ext_apps_server.nim | Given legacyKey, when built, then the deprecated flat key is added too
-MCP-EXT-APPS-9 | tests/test_ext_apps_server.nim | Given a resource that is not registered, when a tool is built for it, then ValueError because the resource must exist
-MCP-EXT-APPS-10 | tests/test_ext_apps_server.nim | Given a host that declared MCP Apps, when it lists tools in any version, then the UI references are there
-MCP-EXT-APPS-10 | tests/test_ext_apps_server.nim | Given a client that declared nothing, when it lists tools in any version, then they are plain tools without _meta
-MCP-EXT-APPS-10 | tests/test_ext_apps_server.nim | Given a host that declared the extension without the HTML mime type, when it lists tools, then they are plain
-MCP-EXT-APPS-10 | tests/test_ext_apps_server.nim | Given a tool with other _meta keys, when listed to a plain client, then only the UI keys are removed
-MCP-EXT-APPS-10 | tests/test_ext_apps_server.nim | Given a handler, when it asks whether the host supports apps, then it is true only for the declared HTML mime type
-MCP-EXT-APPS-10 | tests/test_ext_apps_end_to_end.nim | Given a host that declared MCP Apps, when it lists tools and fetches the UI, then it gets the references, the HTML and the declarations
-MCP-EXT-APPS-10 | tests/test_ext_apps_end_to_end.nim | Given a host that did not declare MCP Apps, when it lists tools in any version, then the server shows plain tools
-MCP-EXT-APPS-11 | tests/test_ext_apps_host.nim | Given tools with UI references, when listed, then each keeps its _meta and the parsed reference
-MCP-EXT-APPS-11 | tests/test_ext_apps_host.nim | Given a tool with a malformed UI reference, when listed, then the tool is kept as a plain tool with the reason
-MCP-EXT-APPS-11 | tests/test_ext_apps_host.nim | Given several pages, when listed, then every page is read
-MCP-EXT-APPS-11 | tests/test_ext_apps_host.nim | Given tools with visibility, when the agent's list is made, then tools without model are left out
-MCP-EXT-APPS-11 | tests/test_ext_apps_host.nim | Given a View's tools/call, when the tool lacks app visibility or is unknown, then it is refused with a reason
-MCP-EXT-APPS-11 | tests/test_ext_apps_host.nim | Given a tool with an empty visibility, when asked, then neither the agent nor the app may use it
-MCP-EXT-APPS-11 | tests/test_ext_apps_host.nim | Given a server without the tools capability, when tools are listed, then McpUnsupportedError and nothing is sent
-MCP-EXT-APPS-12 | tests/test_ext_apps_host.nim | Given a server that serves the UI resource, when fetched, then the HTML and the declarations are returned
-MCP-EXT-APPS-12 | tests/test_ext_apps_host.nim | Given a blob, when fetched, then it is decoded
-MCP-EXT-APPS-12 | tests/test_ext_apps_host.nim | Given content items for several URIs, when fetched, then the item for the requested URI is used
-MCP-EXT-APPS-12 | tests/test_ext_apps_host.nim | Given a tool that points at a UI resource, when its UI is fetched, then the resource it names is read
-MCP-EXT-APPS-12 | tests/test_ext_apps_host.nim | Given a content item with the wrong mime type, when fetched, then McpProtocolError
-MCP-EXT-APPS-12 | tests/test_ext_apps_host.nim | Given an answer with no item for the URI, when fetched, then McpProtocolError
-MCP-EXT-APPS-12 | tests/test_ext_apps_host.nim | Given text and blob together or neither, when fetched, then McpProtocolError
-MCP-EXT-APPS-12 | tests/test_ext_apps_host.nim | Given text or blob of the wrong type or invalid base64, when fetched, then McpProtocolError
-MCP-EXT-APPS-12 | tests/test_ext_apps_host.nim | Given empty HTML, when fetched, then McpProtocolError
-MCP-EXT-APPS-12 | tests/test_ext_apps_host.nim | Given HTML over the limit as text or as blob, when fetched, then McpProtocolError; at the limit it passes
-MCP-EXT-APPS-12 | tests/test_ext_apps_host.nim | Given a huge blob, when fetched, then it is refused before it is decoded
-MCP-EXT-APPS-12 | tests/test_ext_apps_host.nim | Given a non-positive limit, when fetched, then McpProtocolError
-MCP-EXT-APPS-12 | tests/test_ext_apps_host.nim | Given declarations with a bad origin or wrong types, when fetched, then McpProtocolError
-MCP-EXT-APPS-12 | tests/test_ext_apps_host.nim | Given metadata on the listing entry only, when fetched with it, then it is used; the item's own wins
-MCP-EXT-APPS-12 | tests/test_ext_apps_host.nim | Given a URI that is not ui://, when fetched, then ValueError and nothing is sent
-MCP-EXT-APPS-12 | tests/test_ext_apps_host.nim | Given a client that did not declare MCP Apps, when it fetches, then McpUnsupportedError and nothing is sent
-MCP-EXT-APPS-12 | tests/test_ext_apps_host.nim | Given a server without the resources capability, when fetched, then McpUnsupportedError and nothing is sent
-MCP-EXT-APPS-12 | tests/test_ext_apps_host.nim | Given a server that answers with an error, when fetched, then McpRequestError
-MCP-EXT-APPS-12 | tests/test_ext_apps_host.nim | Given a fetched UI, when the host builds its CSP, then it is the one of the declared origins
-MCP-EXT-APPS-12 | tests/test_ext_apps_host.nim | Given a blob just over the limit once decoded, when fetched, then it is refused before it is decoded
-MCP-EXT-APPS-12 | tests/test_ext_apps_host.nim | Given an answer whose contents is missing or not an array, when checked, then McpAppsError
-MCP-EXT-APPS-13 | tests/test_ext_apps_messages.nim | Given a View's ui/initialize, when the host answers, then the result carries the version, host info, capabilities and context
-MCP-EXT-APPS-13 | tests/test_ext_apps_messages.nim | Given the View's initialize, when it declares display modes and tools, then they are remembered
-MCP-EXT-APPS-13 | tests/test_ext_apps_messages.nim | Given ui/initialize without appCapabilities or with a malformed field, when handled, then McpAppsError and the session stays unstarted
-MCP-EXT-APPS-13 | tests/test_ext_apps_messages.nim | Given a second ui/initialize, when handled, then McpAppsError
-MCP-EXT-APPS-13 | tests/test_ext_apps_messages.nim | Given initialized before ui/initialize or twice, when noted, then McpAppsError
-MCP-EXT-APPS-13 | tests/test_ext_apps_messages.nim | Given a host context that breaks the specification, when the result is built, then McpAppsError
-MCP-EXT-APPS-13 | tests/test_ext_apps_messages.nim | Given the specification's host context example, when validated, then it passes
-MCP-EXT-APPS-13 | tests/test_ext_apps_messages.nim | Given a View that has not sent initialized, when the host sends a notification or request, then McpAppsError
-MCP-EXT-APPS-13 | tests/test_ext_apps_messages.nim | Given a response, when the host sends it at any time, then it passes
-MCP-EXT-APPS-13 | tests/test_ext_apps_messages.nim | Given an initialized View, when the host sends tool-input then tool-result, then both pass
-MCP-EXT-APPS-13 | tests/test_ext_apps_messages.nim | Given tool-result before tool-input, when sent, then McpAppsError
-MCP-EXT-APPS-13 | tests/test_ext_apps_messages.nim | Given tool-input already sent, when it is sent again, then McpAppsError
-MCP-EXT-APPS-13 | tests/test_ext_apps_messages.nim | Given tool-input sent, when a partial follows, then McpAppsError
-MCP-EXT-APPS-13 | tests/test_ext_apps_messages.nim | Given a ready View, when the host sends a sandbox-reserved message to it, then McpAppsError
-MCP-EXT-APPS-13 | tests/test_ext_apps_messages.nim | Given a ready View, when the host cancels, changes context and tears down, then those pass
-MCP-EXT-APPS-13 | tests/test_ext_apps_messages.nim | Given a host context that is not an object or holds a section of the wrong kind, when validated, then each is a problem
-MCP-EXT-APPS-13 | tests/test_ext_apps_messages.nim | Given a host context with a list of modes and zero-pixel dimensions, when validated, then it passes
-MCP-EXT-APPS-13 | tests/test_ext_apps_messages.nim | Given host capabilities that are not an object, when the result is built, then McpAppsError
-MCP-EXT-APPS-13 | tests/test_ext_apps_messages.nim | Given ui/initialize without appInfo, when handled, then McpAppsError
-MCP-EXT-APPS-13 | tests/test_ext_apps_messages.nim | Given a View whose tools declaration omits listChanged, when initialized, then it does not announce list changes
-MCP-EXT-APPS-13 | tests/test_ext_apps_messages.nim | Given initialized sent twice or too early, when noted, then the error says which
-MCP-EXT-APPS-14 | tests/test_ext_apps_messages.nim | Given arguments and a result, when the notifications are built, then they have the specification's methods and params
-MCP-EXT-APPS-14 | tests/test_ext_apps_messages.nim | Given arguments or a result that are not objects, when built, then McpAppsError
-MCP-EXT-APPS-14 | tests/test_ext_apps_messages.nim | Given a reason, when cancellation and teardown are built, then it travels in params
-MCP-EXT-APPS-14 | tests/test_ext_apps_messages.nim | Given a partial context, when host-context-changed is built, then params are that context
-MCP-EXT-APPS-14 | tests/test_ext_apps_messages.nim | Given a denied request, when the error is built, then it has the implementation-defined code and the message
-MCP-EXT-APPS-14 | tests/test_ext_apps_messages.nim | Given no reason, when teardown is built, then params are empty
-MCP-EXT-APPS-14 | tests/test_ext_apps_messages.nim | Given a changed context that breaks the specification, when host-context-changed is built, then McpAppsError
-MCP-EXT-APPS-15 | tests/test_ext_apps_messages.nim | Given ui/open-link with an http or https URL, when parsed, then the URL is returned
-MCP-EXT-APPS-15 | tests/test_ext_apps_messages.nim | Given ui/open-link with a URL the host should not open, when parsed, then McpAppsError
-MCP-EXT-APPS-15 | tests/test_ext_apps_messages.nim | Given ui/message with a text block, when parsed, then the block is returned whether given as an object or an array
-MCP-EXT-APPS-15 | tests/test_ext_apps_messages.nim | Given ui/message that is malformed, when parsed, then McpAppsError
-MCP-EXT-APPS-15 | tests/test_ext_apps_messages.nim | Given ui/update-model-context, when parsed, then content blocks and structured content are returned
-MCP-EXT-APPS-15 | tests/test_ext_apps_messages.nim | Given ui/update-model-context that is malformed, when parsed, then McpAppsError
-MCP-EXT-APPS-15 | tests/test_ext_apps_messages.nim | Given ui/request-display-mode, when parsed, then the mode is returned; an unknown mode is McpAppsError
-MCP-EXT-APPS-15 | tests/test_ext_apps_messages.nim | Given a requested mode, when the host resolves it, then it is granted only if the host and a declaring View support it
-MCP-EXT-APPS-15 | tests/test_ext_apps_messages.nim | Given ui/notifications/size-changed, when parsed, then width and height are read, each optional
-MCP-EXT-APPS-15 | tests/test_ext_apps_messages.nim | Given ui/message with a resource block, when parsed, then it is returned; one without a resource object or a type is McpAppsError
-MCP-EXT-APPS-15 | tests/test_ext_apps_messages.nim | Given a mode the host or the View does not support, when resolved, then the current mode is kept, whichever it is
-MCP-EXT-APPS-15 | tests/test_ext_apps_messages.nim | Given a size of zero or a number that is not finite, when size-changed is parsed, then zero passes and the other is McpAppsError
-MCP-EXT-APPS-16 | tests/test_ext_apps_messages.nim | Given the ready and resource-ready messages, when built, then they have the specification's shape
-MCP-EXT-APPS-16 | tests/test_ext_apps_messages.nim | Given a csp with a bad origin, when sandbox-resource-ready is built, then McpAppsError
-MCP-EXT-APPS-16 | tests/test_ext_apps_messages.nim | Given methods, when routed, then the sandbox forwards all but ui/notifications/sandbox-* and the host forwards to the server only non-ui methods
-MCP-EXT-APPS-17 | tests/test_ext_apps_server.nim | Given a host that declared MCP Apps, when it lists tools in any version, then the UI references are there
-MCP-EXT-APPS-17 | tests/test_ext_apps_server.nim | Given a client that declared nothing, when it lists tools in any version, then they are plain tools without _meta
-MCP-EXT-APPS-17 | tests/test_ext_apps_host.nim | Given declareApps, when the host connects in any version, then its capabilities list the extension with the HTML mime type
-MCP-EXT-APPS-17 | tests/test_ext_apps_host.nim | Given a client that declared another extension besides apps, when it initializes in a legacy version, then only apps is sent
-MCP-EXT-APPS-17 | tests/test_ext_apps_end_to_end.nim | Given a host that declared MCP Apps, when it lists tools and fetches the UI, then it gets the references, the HTML and the declarations
-MCP-EXT-APPS-17 | tests/test_ext_apps_end_to_end.nim | Given a host that did not declare MCP Apps, when it lists tools in any version, then the server shows plain tools
-MCP-EXT-TASKS-1 | tests/test_ext_tasks.nim | Given the specification's CreateTaskResult example, when parsed and written, then it round-trips with ttlMs and pollIntervalMs
-MCP-EXT-TASKS-1 | tests/test_ext_tasks.nim | Given a task with unlimited lifetime, when written, then ttlMs is null
-MCP-EXT-TASKS-1 | tests/test_ext_tasks.nim | Given a failed task with error data, when written and parsed, then the data survives; without data the key is absent
-MCP-EXT-TASKS-2 | tests/test_ext_tasks.nim | Given a task of each status, when parsed as a DetailedTask, then the fields of the status are required
-MCP-EXT-TASKS-2 | tests/test_ext_tasks.nim | Given a Task with one field missing or of the wrong kind, when parsed, then the problem names that field
-MCP-EXT-TASKS-2 | tests/test_ext_tasks.nim | Given a failed task whose error lacks a code or a message of the right kind, when parsed, then it is a problem
-MCP-EXT-TASKS-3 | tests/test_ext_tasks.nim | Given the specification's capability example, when the extension is enabled, then the server declares exactly that
-MCP-EXT-TASKS-3 | tests/test_ext_tasks.nim | Given a server that did not enable the extension, when a client discovers it, then the extension is not declared
-MCP-EXT-TASKS-3 | tests/test_ext_tasks.nim | Given a build or a server that does not speak 2026-07-28, when the extension is enabled, then it raises
-MCP-EXT-TASKS-3 | tests/test_ext_tasks_client.nim | Given enableTasksExtension, when the client calls, then every request declares the extension and the task result type
-MCP-EXT-TASKS-3 | tests/test_ext_tasks_client.nim | Given a client limited to a version before 2026-07-28, when it enables the extension, then it raises
-MCP-EXT-TASKS-3 | tests/test_ext_tasks_dual.nim | Given a server with both, when each client discovers it, then the 2025-11-25 client sees tasks and the 2026-07-28 client sees the extension
-MCP-EXT-TASKS-4 | tests/test_ext_tasks.nim | Given a server that did not enable the extension, when a client declaring it asks for a task, then the answer is method not found
-MCP-EXT-TASKS-4 | tests/test_ext_tasks.nim | Given a client that did not declare the extension, when it uses tasks/get, tasks/update or tasks/cancel, then the answer is -32021 naming the extension
-MCP-EXT-TASKS-4 | tests/test_ext_tasks.nim | Given a client that did not declare the extension, when it calls a tool the server would make a task of, then it gets the result
-MCP-EXT-TASKS-4 | tests/test_ext_tasks.nim | Given a tool that exists only as a task, when a client that did not declare the extension calls it, then the answer is -32021
-MCP-EXT-TASKS-4 | tests/test_ext_tasks_client.nim | Given a client that did not enable the extension, when it calls a tool as a task, then it raises and sends nothing
-MCP-EXT-TASKS-4 | tests/test_ext_tasks_client.nim | Given a client that enabled the extension but negotiated an earlier version, when it calls a tool as a task, then it raises and sends nothing
-MCP-EXT-TASKS-4 | tests/test_ext_tasks_client.nim | Given a client that did not enable the extension, when it follows, answers, cancels or watches a task, then each raises McpUnsupportedError pointing to enableTasksExtension and sends nothing
-MCP-EXT-TASKS-5 | tests/test_ext_tasks.nim | Given a client that declared the extension, when the server decides against a task, then it gets the plain result
-MCP-EXT-TASKS-5 | tests/test_ext_tasks.nim | Given a server without a decider, when a client declaring the extension calls a tool, then no task is made
-MCP-EXT-TASKS-5 | tests/test_ext_tasks.nim | Given a client that declared the extension, when the server makes a task of a call, then the answer is a CreateTaskResult it can poll at once
-MCP-EXT-TASKS-5 | tests/test_ext_tasks.nim | Given a tool that is not the one the server makes tasks of, when a declaring client calls it, then the answer is the plain result
-MCP-EXT-TASKS-5 | tests/test_ext_tasks.nim | Given a request already running as a task, when it reaches the server's own handling, then it is not made a task again
-MCP-EXT-TASKS-5 | tests/test_ext_tasks.nim | Given a tools/call whose name is missing or not a string, when a client declaring the extension sends it, then the server's own -32602 answers
-MCP-EXT-TASKS-6 | tests/test_ext_tasks.nim | Given a task that finished, when it is polled, then the result of the tool call is inlined without a resultType of its own
-MCP-EXT-TASKS-6 | tests/test_ext_tasks.nim | Given a tool call that returned isError, when the task is polled, then it is completed, not failed
-MCP-EXT-TASKS-6 | tests/test_ext_tasks.nim | Given a tool call that ended in a JSON-RPC error, when the task is polled, then it is failed with that error
-MCP-EXT-TASKS-6 | tests/test_ext_tasks.nim | Given a task that is working, when the work finishes between polls, then the next poll shows completed
-MCP-EXT-TASKS-7 | tests/test_ext_tasks.nim | Given an unknown or malformed taskId, when tasks/get, tasks/update or tasks/cancel is sent, then the answer is -32602
-MCP-EXT-TASKS-7 | tests/test_ext_tasks.nim | Given a task whose ttl elapsed, when it is polled, then it is gone: -32602
-MCP-EXT-TASKS-7 | tests/test_ext_tasks.nim | Given an owner limit of one active task, when a second task is asked for, then the answer is an error and no task is made
-MCP-EXT-TASKS-8 | tests/test_ext_tasks.nim | Given a working task, when tasks/cancel is sent, then the answer is an empty acknowledgement and the work is told to stop
-MCP-EXT-TASKS-8 | tests/test_ext_tasks.nim | Given a task that is over, when tasks/cancel is sent, then it is acknowledged and the task keeps its status
-MCP-EXT-TASKS-8 | tests/test_ext_tasks.nim | Given a cancelled task, when the work finishes anyway, then the task stays cancelled
-MCP-EXT-TASKS-8 | tests/test_ext_tasks_client.nim | Given a working task, when the client polls and cancels, then it sees the state and the acknowledgement
-MCP-EXT-TASKS-9 | tests/test_ext_tasks.nim | Given the methods the extension reserves, when another extension registers one, then it raises
-MCP-EXT-TASKS-9 | tests/test_ext_tasks.nim | Given tasks/result and tasks/list, when a client that declared the extension asks, then both are method not found
-MCP-EXT-TASKS-10 | tests/test_ext_tasks.nim | Given tasks/get, tasks/update and tasks/cancel over Streamable HTTP, when the headers are built and checked, then Mcp-Name carries the taskId
-MCP-EXT-TASKS-11 | tests/test_ext_tasks.nim | Given a task that needs input, when it is polled, then it is input_required with the outstanding requests
-MCP-EXT-TASKS-11 | tests/test_ext_tasks.nim | Given an input_required task, when the client answers with tasks/update, then it is acknowledged and the task finishes with the answer
-MCP-EXT-TASKS-11 | tests/test_ext_tasks.nim | Given responses for keys that are not outstanding, when tasks/update is sent, then they are ignored and the task stays input_required
-MCP-EXT-TASKS-11 | tests/test_ext_tasks.nim | Given inputResponses that are not an object of objects or missing, when tasks/update is sent, then the answer is -32602
-MCP-EXT-TASKS-11 | tests/test_ext_tasks.nim | Given a task that asks twice, when each request is answered, then the keys differ and a key already answered is not outstanding again
-MCP-EXT-TASKS-11 | tests/test_ext_tasks.nim | Given a task cancelled while it waits for input, when it is polled, then it is cancelled and the work stopped
-MCP-EXT-TASKS-11 | tests/test_ext_tasks.nim | Given a client that did not declare elicitation, when a task asks it for input, then the tool fails and the task is not input_required
-MCP-EXT-TASKS-11 | tests/test_ext_tasks.nim | Given a call outside a task, when the tool asks for input the task way, then it raises ValueError
-MCP-EXT-TASKS-11 | tests/test_ext_tasks.nim | Given a task that waits on two requests at once, when one is answered, then it stays input_required until the other is answered too
-MCP-EXT-TASKS-11 | tests/test_ext_tasks.nim | Given a working task, when tasks/update names only keys nobody asked for, then the task is left as it was
-MCP-EXT-TASKS-11 | tests/test_ext_tasks.nim | Given a key a task used and had answered, when the tool asks again with that key, then it raises ValueError
-MCP-EXT-TASKS-11 | tests/test_ext_tasks.nim | Given a task cancelled while its tool runs on, when the tool asks for input afterwards, then the task is no longer one the extension serves
-MCP-EXT-TASKS-11 | tests/test_ext_tasks.nim | Given a tool whose request in a task ends asking for input the multi round-trip way, when the task is polled, then it failed with an internal error and the log points to requestInput
-MCP-EXT-TASKS-11 | tests/test_ext_tasks_client.nim | Given a task that needs input, when the client waits, then it answers from its elicitation handler and the task finishes
-MCP-EXT-TASKS-11 | tests/test_ext_tasks_client.nim | Given an input request listed on several polls, when the client waits, then it answers a key once
-MCP-EXT-TASKS-11 | tests/test_ext_tasks_client.nim | Given a task that asks for something the client has no handler for, when it waits, then it raises McpUnsupportedError
-MCP-EXT-TASKS-11 | tests/test_ext_tasks_client.nim | Given a server that lists an answered input request again, when the client waits, then it neither answers it again nor sends an empty update
-MCP-EXT-TASKS-12 | tests/test_ext_tasks.nim | Given a decider that waits for input gathered with multi round-trip requests, when the retry arrives, then the task starts only then
-MCP-EXT-TASKS-13 | tests/test_ext_tasks.nim | Given tasks of two owners, when one asks for the other's task, then it is unknown to it
-MCP-EXT-TASKS-13 | tests/test_ext_tasks.nim | Given no ownerOf and no authorization, when two clients ask, then they are one owner and the unguessable task id is the only separation
-MCP-EXT-TASKS-13 | tests/test_ext_tasks.nim | Given no ownerOf and authorized requests, when another principal asks for a task, then it is unknown to them
-MCP-EXT-TASKS-13 | tests/test_ext_tasks_dual.nim | Given a task of each kind, when the other kind of client asks for it, then it is unknown
-MCP-EXT-TASKS-13 | tests/test_ext_tasks_dual.nim | Given an expiry hook set on the store before the extension, when a task of another owner expires, then that hook is still called
-MCP-EXT-TASKS-14 | tests/test_ext_tasks.nim | Given a listen filter with taskIds, when parsed and written, then the ids round-trip and a malformed list is rejected
-MCP-EXT-TASKS-14 | tests/test_ext_tasks.nim | Given a client that did not declare the extension, when it listens for task ids, then the answer is -32021
-MCP-EXT-TASKS-14 | tests/test_ext_tasks.nim | Given task ids of its own and unknown ones, when a client listens, then the acknowledgement lists only its own
-MCP-EXT-TASKS-14 | tests/test_ext_tasks.nim | Given a task the client listened for, when its status changes, then the stream gets notifications/tasks with the whole task
-MCP-EXT-TASKS-14 | tests/test_ext_tasks.nim | Given a task of another owner, when a client listens for its id, then it is not acknowledged and gets nothing
-MCP-EXT-TASKS-14 | tests/test_ext_tasks.nim | Given a task the client did not list, when its status changes, then the stream is not told
-MCP-EXT-TASKS-14 | tests/test_ext_tasks_client.nim | Given a task being watched, when it completes, then the callback gets the whole task
-MCP-EXT-TASKS-14 | tests/test_ext_tasks_client.nim | Given an id the server did not agree to, when the client watches, then unsupported names it
-MCP-EXT-TASKS-14 | tests/test_ext_tasks_client.nim | Given a stream the server cannot write to, when a watched task changes status, then the server logs that it could not announce it and the task goes on
-MCP-EXT-TASKS-15 | tests/test_ext_tasks_client.nim | Given a tool the server makes a task of, when the client calls it, then it learns the task and not a result
-MCP-EXT-TASKS-15 | tests/test_ext_tasks_client.nim | Given a tool the server answers directly, when the client calls it, then it gets the result
-MCP-EXT-TASKS-15 | tests/test_ext_tasks_client.nim | Given a server that answers with a task without having declared the extension, when the client calls, then it raises McpProtocolError
-MCP-EXT-TASKS-15 | tests/test_ext_tasks_client.nim | Given a server whose task is malformed, when the client calls, then it raises McpProtocolError
-MCP-EXT-TASKS-15 | tests/test_ext_tasks_client.nim | Given an unknown task, when the client polls, then it raises McpRequestError with -32602
-MCP-EXT-TASKS-15 | tests/test_ext_tasks_client.nim | Given a task that finishes while the client waits, when it polls, then it waits the interval the task suggests between polls
-MCP-EXT-TASKS-15 | tests/test_ext_tasks_client.nim | Given a task that suggests no interval, when the client waits, then it uses its own default
-MCP-EXT-TASKS-15 | tests/test_ext_tasks_client.nim | Given a task that suggests an interval, when the client waits without a sleep of its own, then it really waits between polls
-MCP-EXT-TASKS-15 | tests/test_ext_tasks_client.nim | Given every status change, when the client waits, then the callback sees each status once
-MCP-EXT-TASKS-15 | tests/test_ext_tasks_client.nim | Given a tool that answers directly, when called with callToolAwaitingTask, then the result is returned
-MCP-EXT-TASKS-15 | tests/test_ext_tasks_client.nim | Given a tool the server makes a task of, when called with callToolAwaitingTask, then the final result is returned
-MCP-EXT-TASKS-15 | tests/test_ext_tasks_client.nim | Given a task that failed, when called with callToolAwaitingTask, then it raises McpRequestError with the task's error
-MCP-EXT-TASKS-15 | tests/test_ext_tasks_client.nim | Given a task that was cancelled, when called with callToolAwaitingTask, then it raises McpTaskCancelledError
-MCP-EXT-TASKS-15 | tests/test_ext_tasks_client.nim | Given a task the server made, when called with callToolAwaitingTask, then the caller is given the task id first
-MCP-EXT-TASKS-16 | tests/test_ext_tasks_dual.nim | Given a 2025-11-25 client that asks for a task, when the call is made, then it gets the core's nested task with ttl and pollInterval
-MCP-EXT-TASKS-16 | tests/test_ext_tasks_dual.nim | Given a 2026-07-28 client that declared the extension, when the call is made, then it gets the extension's flat task with ttlMs and pollIntervalMs
-MCP-EXT-TASKS-16 | tests/test_ext_tasks_dual.nim | Given one store, when its clock passes the ttl, then the tasks of both kinds expire
-MCP-EXT-TASKS-16 | tests/test_ext_tasks_dual.nim | Given the extension was enabled after the core, when a core task changes status, then the core still announces it to its session
-MCP-EXT-TASKS-16 | tests/test_ext_tasks_dual.nim | Given a 2025-11-25 client that declares an extensions capability, when it calls a tool, then the extension does not apply
-MCP-EXT-TASKS-16 | tests/test_ext_tasks_dual.nim | Given a server with only the extension, when a 2025-11-25 client asks for a task, then the task parameter is ignored
-MCP-EXT-TASKS-16 | tests/test_ext_tasks_dual.nim | Given a server with only the core's tasks, when a 2026-07-28 client declares the extension and asks, then it gets the result and no tasks methods
-MCP-EXT-TASKS-10 | tests/test_ext_tasks_http.nim | Given a task over HTTP, when the client polls, cancels and updates it, then every request passes the header check
-MCP-EXT-TASKS-10 | tests/test_ext_tasks_http.nim | Given a task over HTTP, when tasks/get carries another Mcp-Name than its taskId, then the server answers a header mismatch
-MCP-EXT-SKILLS-1 | tests/test_ext_skills_model.nim | Given a SKILL.md with scalars, quotes, block scalars, lists and a mapping, when its frontmatter is read, then the fields are JSON
-MCP-EXT-SKILLS-1 | tests/test_ext_skills_model.nim | Given the specification's SKILL.md, when read, then name and description come out
-MCP-EXT-SKILLS-1 | tests/test_ext_skills_model.nim | Given text outside the supported subset, when read, then FrontmatterError is raised
-MCP-EXT-SKILLS-1 | tests/test_ext_skills_model.nim | Given a frontmatter that is empty, when read, then there are no fields
-MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given the escapes of a double-quoted scalar, when read, then each becomes its character
-MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given hexadecimal escapes, when read, then each takes exactly its digits
-MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given the last code point, when escaped, then it is accepted and the one after it is refused
-MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given escapes that are cut short, malformed or not characters, when read, then FrontmatterError is raised
-MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given doubled quotes, when read, then each is one quote
-MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given empty quoted scalars, when read, then they are empty strings
-MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given quoted scalars that do not end on their line, when read, then FrontmatterError is raised
-MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given every spelling of null, when read, then it is JSON null
-MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given every spelling of a boolean, when read, then it is a JSON boolean
-MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given numbers and words that look like numbers, when read, then only numbers become numbers
-MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given a hash, when it does not follow a space, then it belongs to the scalar
-MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given a hash after a space, when read, then the rest of the line is a comment
-MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given a quote in the middle of a plain scalar, when a comment follows, then the quote opens nothing
-MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given a hash inside quotes, when a comment follows the quotes, then only the comment is dropped
-MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given empty, single and several items, when read, then the array has as many
-MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given a sequence that does not close on its line or nests, when read, then FrontmatterError is raised
-MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given quoted keys, when read, then they are unquoted the way their quotes say
-MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given a key with a space or a colon not followed by a space, when read, then the colon ends the key only before a space
-MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given lines that are not a key and a value, when read, then FrontmatterError is raised
-MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given a literal block with a blank line inside, when read, then the blank line stays
-MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given a block scalar that is the last field, when read, then it ends with the frontmatter
-MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given a block scalar with no lines, when read, then it is empty whether it is clipped or stripped
-MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given blank lines after a block scalar, when chomped, then clip keeps one newline, strip none and keep all
-MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given a block scalar header with more than a chomping indicator, when read, then FrontmatterError is raised
-MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given blank and comment lines between fields, when read, then they are ignored
-MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given a blank line between a key and its nested mapping, when read, then the mapping is the value
-MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given a key with nothing after it at the end, when read, then it is null
-MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given a comment before an indented mapping, when read, then the mapping is read at its own indent
-MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given a sequence indented under its key, when it has blank lines between items, then they are all items
-MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given a sequence written at the indent of its key, when it is the last field, then it is that key's value
-MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given a sequence item that is not a scalar, when read, then FrontmatterError is raised
-MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given a line in a sequence that is not an item or is indented further, when read, then FrontmatterError is raised
-MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given content left of the first field's indent, when read, then FrontmatterError is raised
-MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given text before the opening fence, when read, then it is refused
-MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given a fence with trailing spaces, when read, then it is a fence
-MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given an indented closing fence, when read, then it is not a fence
-MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given only comments and blank lines, when read, then there are no fields
-MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given whitespace after the content, when it is a tab, then it is not indentation
-MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given a tab in the indentation, when read, then FrontmatterError is raised
-MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given a refusal, when its message is read, then it names the line of the file
-MCP-EXT-SKILLS-1 | tests/test_ext_skills_frontmatter.nim | Given a sequence written at the indent of its key, when other fields follow it, then they are read
-MCP-EXT-SKILLS-2 | tests/test_ext_skills_model.nim | Given ordinary names, when validated, then they are accepted
-MCP-EXT-SKILLS-2 | tests/test_ext_skills_model.nim | Given names that break the Agent Skills rules, when validated, then each is refused
-MCP-EXT-SKILLS-2 | tests/test_ext_skills_model.nim | Given descriptions of 0, 1 and 1025 characters, when validated, then only the middle one is accepted
-MCP-EXT-SKILLS-2 | tests/test_ext_skills_model.nim | Given a name with a character that is neither ASCII nor a letter, when validated, then it is refused
-MCP-EXT-SKILLS-3 | tests/test_ext_skills_model.nim | Given URIs that could leave the skill, when split, then none is accepted
-MCP-EXT-SKILLS-3 | tests/test_ext_skills_model.nim | Given ordinary URIs, when split, then the scheme and path come out
-MCP-EXT-SKILLS-3 | tests/test_ext_skills_model.nim | Given a SKILL.md URI, when its root is taken, then the suffix goes and a bad URI has none
-MCP-EXT-SKILLS-3 | tests/test_ext_skills_model.nim | Given a skill root, when a file URI is resolved against it, then only files strictly inside resolve
-MCP-EXT-SKILLS-3 | tests/test_ext_skills_model.nim | Given file paths a server names inside a skill, when checked, then absolute and climbing paths are refused
-MCP-EXT-SKILLS-3 | tests/test_ext_skills_model.nim | Given schemes with digits, plus, hyphen and dot, when a URI is split, then the scheme is accepted
-MCP-EXT-SKILLS-3 | tests/test_ext_skills_model.nim | Given segments with a space, a percent escape of a plain character and a control character, when a URI is split, then only the control character and the escaped dot are refused
-MCP-EXT-SKILLS-4 | tests/test_ext_skills_model.nim | Given the same URI from two servers, when storage paths are computed, then they differ and stay under the root
-MCP-EXT-SKILLS-4 | tests/test_ext_skills_model.nim | Given a label or URI that climbs out of the root, when a storage path is computed, then SkillsError is raised
-MCP-EXT-SKILLS-4 | tests/test_ext_skills_model.nim | Given a label and a path segment with a space, when a storage path is computed, then each is percent-encoded with %20
-MCP-EXT-SKILLS-5 | tests/test_ext_skills_model.nim | Given the specification's entry, when parsed, then it is accepted and round-trips
-MCP-EXT-SKILLS-5 | tests/test_ext_skills_model.nim | Given an entry whose resources is dynamic, when parsed, then it is dynamic and has no files
-MCP-EXT-SKILLS-5 | tests/test_ext_skills_model.nim | Given entries that break one rule each, when parsed, then each raises SkillsError
-MCP-EXT-SKILLS-5 | tests/test_ext_skills_model.nim | Given the limits exactly, when an entry is parsed, then it is accepted
-MCP-EXT-SKILLS-5 | tests/test_ext_skills_model.nim | Given the files of the specification's example, when digested, then the digests match the published ones
-MCP-EXT-SKILLS-5 | tests/test_ext_skills_model.nim | Given entries with the same files in another order or another digest, when bound, then the binding follows the set
-MCP-EXT-SKILLS-5 | tests/test_ext_skills_model.nim | Given nothing or a value that is not an object, when an entry is parsed, then SkillsError names the rule
-MCP-EXT-SKILLS-5 | tests/test_ext_skills_model.nim | Given resources that lack a string uri or digest, when an entry is parsed, then the error says what a resource needs
-MCP-EXT-SKILLS-5 | tests/test_ext_skills_model.nim | Given a file of size 0, when an entry is parsed, then it is accepted
-MCP-EXT-SKILLS-6 | tests/test_ext_skills_server.nim | Given a catalog that was not registered, when a client asks for skills or reads a skill file, then nothing is served
-MCP-EXT-SKILLS-7 | tests/test_ext_skills_server.nim | Given a registered catalog, when a 2026-07-28 client discovers the server, then the extension and the resources capability are declared
-MCP-EXT-SKILLS-7 | tests/test_ext_skills_server.nim | Given a server registered with directoryRead, when a client discovers it, then the setting says so
-MCP-EXT-SKILLS-7 | tests/test_ext_skills_server.nim | Given a registered catalog, when a legacy client initializes, then the capabilities do not mention extensions
-MCP-EXT-SKILLS-8 | tests/test_ext_skills_server.nim | Given a server that speaks no 2026-07-28, when skills are registered, then ValueError is raised and nothing is declared
-MCP-EXT-SKILLS-8 | tests/test_ext_skills_server.nim | Given skills already registered or a method already defined, when they are registered, then ValueError is raised
-MCP-EXT-SKILLS-8 | tests/test_ext_skills_server.nim | Given a server that already defines resources/directory/read, when skills are registered with directoryRead, then ValueError is raised and nothing is declared
-MCP-EXT-SKILLS-9 | tests/test_ext_skills_server.nim | Given the skills of the specification's example, when a client lists them, then each entry is a complete manifest with digests
-MCP-EXT-SKILLS-9 | tests/test_ext_skills_server.nim | Given a catalog with the default cache policy, when listed, then the result says do not reuse and do not share
-MCP-EXT-SKILLS-10 | tests/test_ext_skills_server.nim | Given a catalog of three skills and a page size of two, when a client follows nextCursor, then every skill arrives once
-MCP-EXT-SKILLS-10 | tests/test_ext_skills_server.nim | Given a cursor the server did not issue or one that is not a string, when a client lists skills, then it is invalid params
-MCP-EXT-SKILLS-11 | tests/test_ext_skills_server.nim | Given a served skill, when skills/get names its SKILL.md, then the entry is returned with cache fields
-MCP-EXT-SKILLS-11 | tests/test_ext_skills_server.nim | Given a file of a skill, an unknown URI or no string, when skills/get is called, then each is invalid params
-MCP-EXT-SKILLS-13 | tests/test_ext_skills_server.nim | Given a client that declared nothing, when it asks for skills, then it is served: the specification asks no declaration of the client
-MCP-EXT-SKILLS-12 | tests/test_ext_skills_server.nim | Given a skill with text and binary files, when any client reads them, then text is text and binary is a base64 blob
-MCP-EXT-SKILLS-12 | tests/test_ext_skills_server.nim | Given a URI that is not a served skill file, when a client reads it, then the server's own handler answers
-MCP-EXT-SKILLS-12 | tests/test_ext_skills_server.nim | Given a catalog with another scheme, when its files are read, then that scheme is served and skill:// is not
-MCP-EXT-SKILLS-12 | tests/test_ext_skills_server.nim | Given text files with bytes that are not UTF-8 and a binary file whose bytes are valid UTF-8, when read, then each is a blob
-MCP-EXT-SKILLS-12 | tests/test_ext_skills_server.nim | Given a dynamic skill beside fixed ones, when a URI no skill serves is read, then the provider is not called
-MCP-EXT-SKILLS-12 | tests/test_ext_skills_server.nim | Given a resources/read without a string uri, when a client sends it, then the server's own handler answers invalid params
-MCP-EXT-SKILLS-14 | tests/test_ext_skills_server.nim | Given a server registered with directoryRead, when a client reads a skill root and a subdirectory, then direct children come back
-MCP-EXT-SKILLS-14 | tests/test_ext_skills_server.nim | Given a file, an unknown directory or a missing uri, when a client reads a directory, then each is invalid params
-MCP-EXT-SKILLS-14 | tests/test_ext_skills_server.nim | Given a server registered without directoryRead, when a client reads a directory, then the method is unknown
-MCP-EXT-SKILLS-14 | tests/test_ext_skills_server.nim | Given a directory with more children than a page, when a client follows the cursor, then all arrive
-MCP-EXT-SKILLS-14 | tests/test_ext_skills_server.nim | Given a server registered without saying anything about directoryRead, when a client discovers it, then the setting is absent and the method is unknown
-MCP-EXT-SKILLS-15 | tests/test_ext_skills_server.nim | Given a skill added with a file provider, when a client lists it and reads its files, then the entry is dynamic and the files are current
-MCP-EXT-SKILLS-16 | tests/test_ext_skills_server.nim | Given skills at acme/billing and acme/billing/refunds, when a client lists them, then the enclosing skill's manifest includes the nested files
-MCP-EXT-SKILLS-17 | tests/test_ext_skills_server.nim | Given a skill that cannot be served correctly, when it is added, then SkillsError is raised
-MCP-EXT-SKILLS-17 | tests/test_ext_skills_server.nim | Given a skill with more than 512 files or more than 16 MiB, when it is added, then SkillsError is raised and the limits themselves are accepted
-MCP-EXT-SKILLS-17 | tests/test_ext_skills_server.nim | Given a dynamic skill with a frontmatter that does not name it or no provider, when it is added, then SkillsError is raised
-MCP-EXT-SKILLS-17 | tests/test_ext_skills_server.nim | Given a scheme that is not one, when a catalog is made, then SkillsError is raised
-MCP-EXT-SKILLS-17 | tests/test_ext_skills_server.nim | Given schemes with digits, plus, hyphen and dot, when a catalog is made, then they are accepted
-MCP-EXT-SKILLS-17 | tests/test_ext_skills_server.nim | Given a dynamic skill with no frontmatter or one that is not an object, when it is added, then SkillsError says it must be an object
-MCP-EXT-SKILLS-17 | tests/test_ext_skills_server.nim | Given two dynamic skills and a dynamic skill added twice, when they are added, then the two are served and the repeat is refused
-MCP-EXT-SKILLS-18 | tests/test_ext_skills_server.nim | Given a directory with SKILL.md and a subdirectory, when it is added, then its files are served with their digests
-MCP-EXT-SKILLS-18 | tests/test_ext_skills_server.nim | Given a directory holding a symbolic link, when it is added, then SkillsError is raised and nothing is served
-MCP-EXT-SKILLS-18 | tests/test_ext_skills_server.nim | Given a path that is not a directory, when it is added, then SkillsError is raised
-MCP-EXT-SKILLS-18 | tests/test_ext_skills_server.nim | Given a file beyond 16 MiB that cannot be read, when its directory is added, then SkillsError names the limit before any read
-MCP-EXT-SKILLS-19 | tests/test_ext_skills_client.nim | Given a server that offers skills, when the client lists them, then the request declares the extension and the entries come back
-MCP-EXT-SKILLS-19 | tests/test_ext_skills_client.nim | Given a listing with a valid entry and entries that break the rules, when listed, then the valid one is returned and the others are reported with the reason
-MCP-EXT-SKILLS-19 | tests/test_ext_skills_client.nim | Given a listing over two pages, when the client lists all, then both pages are read
-MCP-EXT-SKILLS-19 | tests/test_ext_skills_client.nim | Given a server that repeats a cursor, when the client lists all, then it raises instead of looping
-MCP-EXT-SKILLS-19 | tests/test_ext_skills_client.nim | Given a skill the listing does not show, when the client gets it by URI, then it receives the entry
-MCP-EXT-SKILLS-19 | tests/test_ext_skills_client.nim | Given a skills/get answer for another URI or with a broken entry, when the client gets a skill, then McpProtocolError is raised
-MCP-EXT-SKILLS-19 | tests/test_ext_skills_client.nim | Given a server without the extension, when skills are listed, then McpUnsupportedError is raised and nothing is sent; a client that declared nothing lists a server that has it
-MCP-EXT-SKILLS-19 | tests/test_ext_skills_client.nim | Given a client that declared nothing, when it gets a skill by URI, then it is served
-MCP-EXT-SKILLS-20 | tests/test_ext_skills_client.nim | Given a file the entry lists, when it is read, then the verified bytes are returned
-MCP-EXT-SKILLS-20 | tests/test_ext_skills_client.nim | Given a SKILL.md that matches its entry, when the instructions are loaded, then they come with the verified frontmatter
-MCP-EXT-SKILLS-20 | tests/test_ext_skills_client.nim | Given a file whose bytes differ from the digest, when it is read, then SkillVerificationError is raised
-MCP-EXT-SKILLS-20 | tests/test_ext_skills_client.nim | Given a file whose length differs from the size, when it is read, then SkillVerificationError is raised
-MCP-EXT-SKILLS-20 | tests/test_ext_skills_client.nim | Given a file the entry does not list, when it is read, then SkillVerificationError is raised and no read is sent
-MCP-EXT-SKILLS-20 | tests/test_ext_skills_client.nim | Given a SKILL.md whose frontmatter differs from the entry's, when its instructions are loaded, then SkillVerificationError is raised
-MCP-EXT-SKILLS-20 | tests/test_ext_skills_client.nim | Given a SKILL.md whose extra frontmatter field the entry lacks, when its instructions are loaded, then SkillVerificationError is raised
-MCP-EXT-SKILLS-20 | tests/test_ext_skills_client.nim | Given a SKILL.md whose frontmatter cannot be read, when its instructions are loaded, then SkillVerificationError is raised
-MCP-EXT-SKILLS-20 | tests/test_ext_skills_client.nim | Given a binary file served as a blob, when it is read, then the decoded bytes are verified
-MCP-EXT-SKILLS-20 | tests/test_ext_skills_client.nim | Given an answer that does not hold the requested URI or no content, when a file is read, then McpProtocolError is raised
-MCP-EXT-SKILLS-21 | tests/test_ext_skills_client.nim | Given a dynamic skill the host did not allow, when it is read, then SkillsError is raised and nothing is sent
-MCP-EXT-SKILLS-21 | tests/test_ext_skills_client.nim | Given a dynamic skill the host allowed, when it is loaded, then its frontmatter is still compared and only its own files are read
-MCP-EXT-SKILLS-21 | tests/test_ext_skills_client.nim | Given a dynamic skill that serves more than 16 MiB, when it is read, then SkillsError is raised at the limit
-MCP-EXT-SKILLS-21 | tests/test_ext_skills_client.nim | Given a listed SKILL.md of exactly 16 MiB, when it is read, then the limit is not passed and the bytes come back
-MCP-EXT-SKILLS-21 | tests/test_ext_skills_client.nim | Given a listed file of 9 MiB read twice, when the second read would pass 16 MiB, then SkillsError is raised without a second request
-MCP-EXT-SKILLS-22 | tests/test_ext_skills_client.nim | Given a server without directoryRead, when a directory is read, then McpUnsupportedError is raised and nothing is sent
-MCP-EXT-SKILLS-22 | tests/test_ext_skills_client.nim | Given a server with directoryRead, when a directory is read over two pages, then all children arrive, directories marked
-MCP-EXT-SKILLS-22 | tests/test_ext_skills_client.nim | Given an unsafe directory URI or an unsafe child, when a directory is read, then it is refused
-MCP-EXT-SKILLS-22 | tests/test_ext_skills_client.nim | Given a directory read that lists a file the entry does not, when the children are filtered, then the unlisted file is left out
-MCP-EXT-SKILLS-22 | tests/test_ext_skills_client.nim | Given a client that declared nothing, when it reads a directory of a server with directoryRead, then it is served
-MCP-EXT-SKILLS-23 | tests/test_ext_skills_client.nim | Given an entry that changed on the server, when it is refreshed, then the new entry comes back marked changed
-MCP-EXT-SKILLS-23 | tests/test_ext_skills_client.nim | Given a dynamic entry, when it is refreshed, then it always counts as changed
-MCP-EXT-SKILLS-24 | tests/test_ext_skills_end_to_end.nim | Given a server that registered skills, when a client lists, gets and loads a skill, then the served instructions arrive verified
-MCP-EXT-SKILLS-24 | tests/test_ext_skills_end_to_end.nim | Given a server with directoryRead, when a client lists a directory, then the manifest and the directory agree
-MCP-EXT-SKILLS-24 | tests/test_ext_skills_end_to_end.nim | Given a server without directoryRead, when a client lists a directory, then it refuses before sending
-MCP-EXT-SKILLS-24 | tests/test_ext_skills_end_to_end.nim | Given a client that declared nothing, when it lists skills of a server that has them, then it is served
-MCP-EXT-SKILLS-25 | tests/test_ext_skills_frontmatter.nim | Given blank lines inside a multi-line plain scalar, when read, then n blank lines are n newlines
-MCP-EXT-SKILLS-25 | tests/test_ext_skills_frontmatter.nim | Given blank lines after a multi-line plain scalar, when another field follows, then they add nothing
-MCP-EXT-SKILLS-25 | tests/test_ext_skills_frontmatter.nim | Given a folded block with blank lines, when read, then n blank lines are n newlines and a plain break is a space
-MCP-EXT-SKILLS-26 | tests/test_ext_skills_frontmatter.nim | Given a trailing comma, when read, then it ends the sequence without adding an item
-MCP-EXT-SKILLS-27 | tests/test_ext_skills_frontmatter.nim | Given a keep-chomped block scalar with no lines, when read, then it is empty and each blank line is one newline
-MCP-EXT-SKILLS-28 | tests/test_ext_skills_frontmatter.nim | Given a doubled quote inside a single-quoted key, when read, then it is one quote of the key
-MCP-EXT-SKILLS-29 | tests/test_ext_skills_frontmatter.nim | Given a line starting with a hash inside a block scalar, when read, then it is content and not a comment
-MCP-EXT-SKILLS-29 | tests/test_ext_skills_frontmatter.nim | Given a comment outside the block scalar, when read, then it is still a comment
-MCP-EXT-SKILLS-30 | tests/test_ext_skills_frontmatter.nim | Given an item missing before a comma, when read, then FrontmatterError is raised
-MCP-EXT-SKILLS-30 | tests/test_ext_skills_frontmatter.nim | Given empty, single and several items, when read, then the array has as many
-MCP-EXT-SKILLS-30 | tests/test_ext_skills_frontmatter.nim | Given a trailing comma, when read, then it ends the sequence without adding an item
-MCP-EXT-SKILLS-31 | tests/test_ext_skills_frontmatter.nim | Given an escape inside a double-quoted key, when read, then it reads as in a value
-MCP-EXT-SKILLS-31 | tests/test_ext_skills_frontmatter.nim | Given a double-quoted key ending in an unescaped backslash pair, when read, then the quote closes it
-MCP-EXT-SKILLS-32 | tests/test_ext_skills_frontmatter.nim | Given a folded block with lines indented deeper than the rest, when read, then the breaks next to them stay
-MCP-EXT-SKILLS-32 | tests/test_ext_skills_frontmatter.nim | Given two spaces inside a line of a folded block, when read, then both stay
-MCP-EXT-SKILLS-33 | tests/test_ext_skills_frontmatter.nim | Given a comment after a multi-line plain scalar, when another field follows, then the scalar ended before it
-MCP-EXT-SKILLS-33 | tests/test_ext_skills_frontmatter.nim | Given a comment in the middle of a multi-line plain scalar, when read, then FrontmatterError is raised
-MCP-EXT-SKILLS-34 | tests/test_ext_skills_frontmatter.nim | Given a comment indented less than the content of a block scalar, when read, then the scalar ends before it
-MCP-EXT-SKILLS-34 | tests/test_ext_skills_frontmatter.nim | Given content after a line that ended a block scalar, when read, then FrontmatterError is raised
+MCP-EXT-AUTH-1 | tests/external/test_ext_auth_client_credentials.nim | Given a 401 and a client secret, when a request is sent, then one client_credentials request carries resource and the secret in Basic, and the retry succeeds without any user step
+MCP-EXT-AUTH-1 | tests/internal/test_ext_auth_client_credentials_internal.nim | Given a signing key, when a request is sent, then the assertion names the issuer as audience, client_id is not in the body, and the retry succeeds
+MCP-EXT-AUTH-1 | tests/internal/test_ext_auth_client_credentials_internal.nim | Given a server that expects the token endpoint as audience, when the config asks for it, then the assertion carries the token endpoint URL
+MCP-EXT-AUTH-1 | tests/external/test_ext_auth_client_credentials.nim | Given a server that lists only client_secret_post besides private_key_jwt, when the client has a secret, then the secret goes in the body
+MCP-EXT-AUTH-1 | tests/external/test_ext_auth_client_credentials.nim | Given a stored token, when more requests are sent, then they reuse it and no second token is requested
+MCP-EXT-AUTH-1 | tests/external/test_ext_auth_client_credentials.nim | Given a token that has expired, when the next request is sent, then a new one is requested before it and the request needs no 401
+MCP-EXT-AUTH-1 | tests/external/test_ext_auth_client_credentials.nim | Given an access token, when requests are sent, then the token is in no URL and goes to the resource server only
+MCP-EXT-AUTH-1 | tests/external/test_ext_auth_client_credentials.nim | Given the default clock, when a signing client requests a token, then the assertion is dated now and the server accepts it
+MCP-EXT-AUTH-1 | tests/external/test_ext_auth_client_credentials.nim | Given an expired token and an authorization server that now refuses the client, when requests fail, then the stale token is dropped and the next request asks once
+MCP-EXT-AUTH-2 | tests/external/test_ext_auth_client_credentials.nim | Given a challenge with a scope, when the token is requested, then it asks for that scope
+MCP-EXT-AUTH-2 | tests/external/test_ext_auth_client_credentials.nim | Given no scope in the challenge but scopes_supported, when the token is requested, then it asks for those
+MCP-EXT-AUTH-2 | tests/external/test_ext_auth_client_credentials.nim | Given scopes in the config, when the token is requested, then they replace the challenge's
+MCP-EXT-AUTH-2 | tests/external/test_ext_auth_client_credentials.nim | Given a 403 insufficient_scope, when the request is sent, then the client asks again for the union and the request succeeds
+MCP-EXT-AUTH-2 | tests/external/test_ext_auth_client_credentials.nim | Given a 403 that names a scope the client already asked for, when it repeats, then the client does not ask again and the request fails
+MCP-EXT-AUTH-2 | tests/external/test_ext_auth_client_credentials.nim | Given a 403 that is no insufficient_scope challenge, or a status that is no challenge, when handled, then the answer is no and nothing is requested
+MCP-EXT-AUTH-2 | tests/external/test_ext_auth_client_credentials.nim | Given a 401 without any challenge header, when handled, then the token is requested for the scopes the resource supports
+MCP-EXT-AUTH-2 | tests/external/test_ext_auth_client_credentials.nim | Given a 403 that names a scope already requested, when handled, then the answer is no and no second token is requested
+MCP-EXT-AUTH-3 | tests/external/test_ext_auth_client_credentials.nim | Given metadata without token_endpoint_auth_methods_supported, when a request is sent, then no credential is sent
+MCP-EXT-AUTH-3 | tests/external/test_ext_auth_client_credentials.nim | Given metadata that lists neither private_key_jwt nor client_secret_basic, when a request is sent, then no credential is sent
+MCP-EXT-AUTH-3 | tests/external/test_ext_auth_client_credentials.nim | Given a signing client and metadata without private_key_jwt, when a request is sent, then no assertion is sent
+MCP-EXT-AUTH-3 | tests/external/test_ext_auth_client_credentials.nim | Given a signer whose algorithm the server does not list, when a request is sent, then no assertion is sent
+MCP-EXT-AUTH-3 | tests/external/test_ext_auth_client_credentials.nim | Given metadata without token_endpoint_auth_signing_alg_values_supported, when a signing client sends a request, then no assertion is sent
+MCP-EXT-AUTH-3 | tests/external/test_ext_auth_client_credentials.nim | Given a secret client and metadata that lists only private_key_jwt, when a request is sent, then the secret is not sent
+MCP-EXT-AUTH-3 | tests/external/test_ext_auth_client_credentials.nim | Given a grant_types_supported without client_credentials, when a request is sent, then nothing is sent
+MCP-EXT-AUTH-3 | tests/external/test_ext_auth_client_credentials.nim | Given metadata whose token_endpoint_auth_methods_supported is not an array, when a request is sent, then it is refused
+MCP-EXT-AUTH-4 | tests/external/test_ext_auth_client_credentials.nim | Given a wrong secret, when a request is sent, then the failure names the error and neither the secret nor the assertion key
+MCP-EXT-AUTH-4 | tests/external/test_ext_auth_client_credentials.nim | Given an assertion signed with a wrong key, when a request is sent, then the failure does not contain the key
+MCP-EXT-AUTH-4 | tests/external/test_ext_auth_client_credentials.nim | Given a signer that fails, when a request is sent, then the failure is reported without the signer's message
+MCP-EXT-AUTH-4 | tests/external/test_ext_auth_client_credentials.nim | Given an authorization server that is not the one the resource lists, when the config chooses it, then the client refuses
+MCP-EXT-AUTH-4 | tests/external/test_ext_auth_client_credentials.nim | Given metadata that names another issuer, when a request is sent, then the client refuses and sends no credential
+MCP-EXT-AUTH-4 | tests/external/test_ext_auth_client_credentials.nim | Given metadata with a token endpoint that is plain http on a public host, when a request is sent, then the client refuses and sends no credential
+MCP-EXT-AUTH-4 | tests/external/test_ext_auth_client_credentials.nim | Given a token response that is not Bearer, when a request is sent, then the client refuses it
+MCP-EXT-AUTH-5 | tests/external/test_ext_auth_client_credentials.nim | Given a transport without the extension's auth, when the server answers 401, then the request fails and no token is requested
+MCP-EXT-AUTH-5 | tests/external/test_ext_auth_client_credentials.nim | Given a config that could never succeed, when the auth is made, then ValueError says why
+MCP-EXT-AUTH-6 | tests/external/test_ext_auth_client_credentials.nim | Given a client that declares the extension, when it sends a 2026-07-28 request, then clientCapabilities carries the identifier with empty settings
+MCP-EXT-AUTH-6 | tests/external/test_ext_auth_client_credentials.nim | Given a client that did not declare the extension, when it sends a request, then clientCapabilities has no extensions
+MCP-EXT-AUTH-6 | tests/external/test_ext_auth_client_credentials.nim | Given a server that advertises the extension, when a 2026-07-28 client discovers it, then the capabilities list the identifier
+MCP-EXT-AUTH-6 | tests/external/test_ext_auth_client_credentials.nim | Given a server that did not advertise it, when a client discovers it, then the capabilities do not list the identifier
+MCP-EXT-AUTH-6 | tests/external/test_ext_auth_client_credentials.nim | Given a build that speaks no version with the extensions capability, when the extension is declared or advertised, then ValueError names the limit and nothing is registered
+MCP-EXT-AUTH-6 | tests/external/test_ext_auth_client_credentials.nim | Given enableClientCredentials, when called, then the transport authorizes with it and the extension is declared
+MCP-EXT-AUTH-7 | tests/internal/test_ext_auth_grants_internal.nim | Given RFC 4231 test case 1, when HMAC-SHA256 of the fixtures is computed, then it matches (the signer the other tests rely on is right)
+MCP-EXT-AUTH-7 | tests/internal/test_ext_auth_grants_internal.nim | Given claims and a signer, when signed and decoded, then header, claims and signature come back and verify
+MCP-EXT-AUTH-7 | tests/external/test_ext_auth_grants.nim | Given the algorithm none or an empty signer, when a signer is made, then it is refused
+MCP-EXT-AUTH-7 | tests/internal/test_ext_auth_grants_internal.nim | Given a signer that raises or returns nothing, when signing, then OAuthError names neither the key nor the message
+MCP-EXT-AUTH-7 | tests/internal/test_ext_auth_grants_internal.nim | Given malformed JWTs, when decoded, then each is refused
+MCP-EXT-AUTH-7 | tests/internal/test_ext_auth_grants_internal.nim | Given a client assertion, when decoded, then iss and sub are the client, aud the server, and every one is fresh
+MCP-EXT-AUTH-7 | tests/internal/test_ext_auth_grants_internal.nim | Given a client secret sent with HTTP Basic, when client credentials are requested, then the secret is in the header only and a token comes back
+MCP-EXT-AUTH-7 | tests/internal/test_ext_auth_grants_internal.nim | Given a client id and secret with characters that need form encoding, when sent with Basic, then the server decodes them as RFC 6749 2.3.1 says
+MCP-EXT-AUTH-7 | tests/internal/test_ext_auth_grants_internal.nim | Given a client secret sent in the body, when client credentials are requested, then client_id and client_secret are form fields and there is no Authorization header
+MCP-EXT-AUTH-7 | tests/internal/test_ext_auth_grants_internal.nim | Given a signing key, when client credentials are requested with private_key_jwt, then the assertion authenticates and client_id is not sent
+MCP-EXT-AUTH-7 | tests/internal/test_ext_auth_grants_internal.nim | Given an assertion signed with another key, when client credentials are requested, then the server refuses and the error shows no secret
+MCP-EXT-AUTH-7 | tests/internal/test_ext_auth_grants_internal.nim | Given a wrong client secret, when requested, then OAuthServerError carries the error and not the secret
+MCP-EXT-AUTH-7 | tests/internal/test_ext_auth_grants_internal.nim | Given an ID-JAG like assertion, when the JWT bearer grant is requested, then grant_type and assertion are sent and the client authenticates separately
+MCP-EXT-AUTH-7 | tests/internal/test_ext_auth_grants_internal.nim | Given a subject token, when exchanged, then every RFC 8693 parameter is sent and the issued token is returned with its type and lifetime
+MCP-EXT-AUTH-7 | tests/internal/test_ext_auth_grants_internal.nim | Given an empty subject token, when exchanged, then nothing is sent
+MCP-EXT-AUTH-7 | tests/internal/test_ext_auth_grants_internal.nim | Given token exchange responses with a missing field, when parsed, then each is refused
+MCP-EXT-AUTH-7 | tests/internal/test_ext_auth_grants_internal.nim | Given a signer with no signing function or no algorithm, when signing, then OAuthError says it is not set up
+MCP-EXT-AUTH-7 | tests/internal/test_ext_auth_grants_internal.nim | Given a JWT whose signature is empty or not base64url, when decoded, then it is refused
+MCP-EXT-AUTH-7 | tests/internal/test_ext_auth_grants_internal.nim | Given payloads and signatures of every length modulo three, when decoded, then the bytes come back from segments without padding
+MCP-EXT-AUTH-7 | tests/internal/test_ext_auth_grants_internal.nim | Given a segment with one character more than whole groups, when decoded, then the character that makes no byte is left out
+MCP-EXT-AUTH-7 | tests/internal/test_ext_auth_grants_internal.nim | Given a header whose alg is missing, not a string or empty, when decoded, then it is refused
+MCP-EXT-AUTH-7 | tests/internal/test_ext_auth_grants_internal.nim | Given a JWT of exactly the largest accepted length and one a byte longer, when decoded, then the first is read and the second refused
+MCP-EXT-AUTH-7 | tests/internal/test_ext_auth_grants_internal.nim | Given a client assertion without a client_id or without an audience, when made, then OAuthError refuses either
+MCP-EXT-AUTH-7 | tests/internal/test_ext_auth_grants_internal.nim | Given scopes, when the JWT bearer grant is requested, then they are sent as one scope parameter
+MCP-EXT-AUTH-7 | tests/internal/test_ext_auth_grants_internal.nim | Given a private_key_jwt client without a lifetime, when client credentials are requested, then the assertion lives one minute
+MCP-EXT-AUTH-7 | tests/internal/test_ext_auth_grants_internal.nim | Given a subject token and no scopes, when exchanged, then no scope parameter is sent
+MCP-EXT-AUTH-8 | tests/internal/test_ext_auth_enterprise_managed_internal.nim | Given a 401 and an ID token, when a request is sent, then the IdP exchanges it for an ID-JAG for this authorization server and resource, the server turns that into an access token, and the user is never sent anywhere
+MCP-EXT-AUTH-8 | tests/external/test_ext_auth_enterprise_managed.nim | Given the access token the server issued, when it is looked up, then it is restricted to the MCP server named by the ID-JAG's resource
+MCP-EXT-AUTH-8 | tests/internal/test_ext_auth_enterprise_managed_internal.nim | Given a SAML assertion or a refresh token instead of an ID token, when a request is sent, then subject_token_type says which
+MCP-EXT-AUTH-8 | tests/external/test_ext_auth_enterprise_managed.nim | Given a signing key at the IdP and a public client with a metadata document URL at the authorization server, when a request is sent, then both authenticate as the draft says
+MCP-EXT-AUTH-8 | tests/external/test_ext_auth_enterprise_managed.nim | Given a stored token, when more requests are sent, then no second exchange happens
+MCP-EXT-AUTH-8 | tests/external/test_ext_auth_enterprise_managed.nim | Given an access token and an ID-JAG that both outlive a clock step, when the access token expires first, then the ID-JAG is reused
+MCP-EXT-AUTH-8 | tests/external/test_ext_auth_enterprise_managed.nim | Given an access token and an ID-JAG that have both expired, when the next request is sent, then the identity assertion is asked for again and the IdP issues a new ID-JAG
+MCP-EXT-AUTH-8 | tests/internal/test_ext_auth_enterprise_managed_internal.nim | Given a refresh token from the authorization server, when the access token is stored, then it is not kept (the ID-JAG renews access)
+MCP-EXT-AUTH-8 | tests/external/test_ext_auth_enterprise_managed.nim | Given a config without a resource, when a request is sent, then the exchange carries none
+MCP-EXT-AUTH-8 | tests/external/test_ext_auth_enterprise_managed.nim | Given the default clock, when a request is sent, then the ID-JAG is judged against now and accepted
+MCP-EXT-AUTH-8 | tests/external/test_ext_auth_enterprise_managed.nim | Given an access token that expires when the ID-JAG has 31 or 30 seconds left, when the next request is sent, then the first reuses the ID-JAG and the second asks the IdP for a new one
+MCP-EXT-AUTH-8 | tests/external/test_ext_auth_enterprise_managed.nim | Given an expired access token and an IdP that now refuses, when requests fail, then the stale token is dropped and the next request exchanges once
+MCP-EXT-AUTH-9 | tests/external/test_ext_auth_enterprise_managed.nim | Given scopes in the config, when the exchange is made, then they replace the challenge's
+MCP-EXT-AUTH-9 | tests/external/test_ext_auth_enterprise_managed.nim | Given no scope in the challenge but scopes_supported, when the exchange is made, then it asks for those
+MCP-EXT-AUTH-9 | tests/external/test_ext_auth_enterprise_managed.nim | Given a 403 insufficient_scope, when the request is sent, then a new ID-JAG for the union is requested and the request succeeds
+MCP-EXT-AUTH-9 | tests/external/test_ext_auth_enterprise_managed.nim | Given a 403 that names a scope already asked for, when it repeats, then the client does not ask again
+MCP-EXT-AUTH-9 | tests/external/test_ext_auth_enterprise_managed.nim | Given a 403 that is no insufficient_scope challenge, or a status that is no challenge, when handled, then the answer is no and nothing is exchanged
+MCP-EXT-AUTH-9 | tests/external/test_ext_auth_enterprise_managed.nim | Given a 401 without any challenge header, when handled, then the exchange asks for the scopes the resource supports
+MCP-EXT-AUTH-9 | tests/external/test_ext_auth_enterprise_managed.nim | Given a 403 that names a scope already requested, when handled, then the answer is no and no second exchange is made
+MCP-EXT-AUTH-9 | tests/internal/test_ext_auth_enterprise_managed_internal.nim | Given an authorization server that grants a narrower scope than was asked, when the access token is stored, then its scopes are the granted ones
+MCP-EXT-AUTH-9 | tests/internal/test_ext_auth_enterprise_managed_internal.nim | Given an authorization server that names no scope in its answer, when the access token is stored, then its scopes are the ones asked for
+MCP-EXT-AUTH-10 | tests/external/test_ext_auth_enterprise_managed.nim | Given an authorization server that does not list the ID-JAG profile, when a request is sent, then no identity assertion is used
+MCP-EXT-AUTH-10 | tests/external/test_ext_auth_enterprise_managed.nim | Given an authorization server that lists other profiles only, when a request is sent, then no identity assertion is used
+MCP-EXT-AUTH-10 | tests/internal/test_ext_auth_enterprise_managed_internal.nim | Given an authorization server that lists the profile but not the jwt-bearer grant, when a request is sent, then no identity assertion is used
+MCP-EXT-AUTH-10 | tests/external/test_ext_auth_enterprise_managed.nim | Given an IdP that lists identity chaining token types without id-jag, when a request is sent, then the identity assertion is not sent to it
+MCP-EXT-AUTH-10 | tests/external/test_ext_auth_enterprise_managed.nim | Given an IdP that does not advertise identity chaining token types, when a request is sent, then the exchange is tried (the draft says SHOULD)
+MCP-EXT-AUTH-11 | tests/external/test_ext_auth_enterprise_managed.nim | Given an ID-JAG whose typ is not oauth-id-jag+jwt, when it arrives, then it is not sent to the authorization server
+MCP-EXT-AUTH-11 | tests/external/test_ext_auth_enterprise_managed.nim | Given an ID-JAG issued by someone other than the IdP, when it arrives, then it is not sent on
+MCP-EXT-AUTH-11 | tests/external/test_ext_auth_enterprise_managed.nim | Given an ID-JAG for another audience, when it arrives, then it is not sent on
+MCP-EXT-AUTH-11 | tests/external/test_ext_auth_enterprise_managed.nim | Given an ID-JAG whose aud is an array with another entry too, when it arrives, then it is not sent on
+MCP-EXT-AUTH-11 | tests/external/test_ext_auth_enterprise_managed.nim | Given an ID-JAG whose aud is an array of exactly this authorization server, when it arrives, then it is accepted
+MCP-EXT-AUTH-11 | tests/external/test_ext_auth_enterprise_managed.nim | Given an ID-JAG for another client, when it arrives, then it is not sent on
+MCP-EXT-AUTH-11 | tests/external/test_ext_auth_enterprise_managed.nim | Given an ID-JAG without the resource that was asked for, when it arrives, then it is not sent on
+MCP-EXT-AUTH-11 | tests/external/test_ext_auth_enterprise_managed.nim | Given an ID-JAG for another resource, when it arrives, then it is not sent on
+MCP-EXT-AUTH-11 | tests/external/test_ext_auth_enterprise_managed.nim | Given an ID-JAG whose resource is an array that includes this server, when it arrives, then it is accepted
+MCP-EXT-AUTH-11 | tests/external/test_ext_auth_enterprise_managed.nim | Given an ID-JAG that has already expired, when it arrives, then it is not sent on
+MCP-EXT-AUTH-11 | tests/external/test_ext_auth_enterprise_managed.nim | Given an ID-JAG without sub, jti, iat or exp, when it arrives, then it is not sent on
+MCP-EXT-AUTH-11 | tests/external/test_ext_auth_enterprise_managed.nim | Given an exchange response that is not an ID-JAG by its issued_token_type or token_type, when it arrives, then it is not sent on
+MCP-EXT-AUTH-11 | tests/external/test_ext_auth_enterprise_managed.nim | Given a granted scope narrower than the request, when the ID-JAG arrives, then the exchange still succeeds
+MCP-EXT-AUTH-12 | tests/external/test_ext_auth_enterprise_managed.nim | Given an IdP that refuses by policy, when a request is sent, then the failure names the error, nothing reaches the authorization server, and no token or secret is in the message
+MCP-EXT-AUTH-12 | tests/external/test_ext_auth_enterprise_managed.nim | Given a wrong client secret at the IdP, when a request is sent, then the failure does not contain the secret
+MCP-EXT-AUTH-12 | tests/external/test_ext_auth_enterprise_managed.nim | Given an authorization server that refuses the ID-JAG, when a request is sent, then the failure contains neither the ID-JAG nor the identity assertion
+MCP-EXT-AUTH-12 | tests/external/test_ext_auth_enterprise_managed.nim | Given single sign-on that has to be repeated, when the provider raises, then the request fails with that reason and nothing is sent to the IdP
+MCP-EXT-AUTH-12 | tests/external/test_ext_auth_enterprise_managed.nim | Given an empty identity assertion, when a request is sent, then nothing is sent to the IdP
+MCP-EXT-AUTH-12 | tests/external/test_ext_auth_enterprise_managed.nim | Given a whole flow, when the logs are read, then the identity assertion went to the IdP only and the ID-JAG to the authorization server only
+MCP-EXT-AUTH-12 | tests/external/test_ext_auth_enterprise_managed.nim | Given an IdP issuer that is plain http on a public host, when the auth is made, then it is refused
+MCP-EXT-AUTH-12 | tests/external/test_ext_auth_enterprise_managed.nim | Given IdP metadata that names another issuer, when a request is sent, then the identity assertion is not sent
+MCP-EXT-AUTH-12 | tests/external/test_ext_auth_enterprise_managed.nim | Given IdP metadata with a plain-http token endpoint on a public host, when a request is sent, then the identity assertion is not sent
+MCP-EXT-AUTH-13 | tests/external/test_ext_auth_enterprise_managed.nim | Given a transport without the extension's auth, when the server answers 401, then the request fails and neither the IdP nor the authorization server is contacted
+MCP-EXT-AUTH-13 | tests/external/test_ext_auth_enterprise_managed.nim | Given a config that could never succeed, when the auth is made, then ValueError says why
+MCP-EXT-AUTH-11 | tests/internal/test_ext_auth_enterprise_managed_internal.nim | Given a well-formed ID-JAG, when checked, then the claims come back
+MCP-EXT-AUTH-11 | tests/internal/test_ext_auth_enterprise_managed_internal.nim | Given a resource written with a trailing slash on a bare origin, when checked, then it matches the canonical resource
+MCP-EXT-AUTH-11 | tests/internal/test_ext_auth_enterprise_managed_internal.nim | Given no resource expected, when the ID-JAG has none, then it is accepted
+MCP-EXT-AUTH-11 | tests/internal/test_ext_auth_enterprise_managed_internal.nim | Given an ID-JAG that is not a JWT or has the wrong typ, when checked, then it is refused
+MCP-EXT-AUTH-11 | tests/internal/test_ext_auth_enterprise_managed_internal.nim | Given claims of the wrong JSON type, when checked, then they are refused
+MCP-EXT-AUTH-11 | tests/internal/test_ext_auth_enterprise_managed_internal.nim | Given an ID-JAG that expires at this very second, when checked, then it has expired
+MCP-EXT-AUTH-11 | tests/internal/test_ext_auth_enterprise_managed_internal.nim | Given an ID-JAG without iss or without client_id, when checked, then it is refused as not from the IdP or not for the client
+MCP-EXT-AUTH-14 | tests/external/test_ext_auth_enterprise_managed.nim | Given a client that declares the extension, when it sends a 2026-07-28 request, then clientCapabilities carries the identifier with empty settings
+MCP-EXT-AUTH-14 | tests/external/test_ext_auth_enterprise_managed.nim | Given a client that did not declare the extension, when it sends a request, then clientCapabilities has no extensions
+MCP-EXT-AUTH-14 | tests/external/test_ext_auth_enterprise_managed.nim | Given a server that advertises the extension, when a 2026-07-28 client discovers it, then the capabilities list the identifier
+MCP-EXT-AUTH-14 | tests/external/test_ext_auth_enterprise_managed.nim | Given a build that speaks no version with the extensions capability, when the extension is declared or advertised, then ValueError names the limit and nothing is registered
+MCP-EXT-AUTH-14 | tests/external/test_ext_auth_enterprise_managed.nim | Given enableEnterpriseManaged, when called, then the transport authorizes with it and the extension is declared
+MCP-EXT-APPS-1 | tests/external/test_ext_apps_model.nim | Given the specification's example URIs, when checked, then they are UI resource URIs
+MCP-EXT-APPS-1 | tests/external/test_ext_apps_model.nim | Given URIs that are not ui:// or name nothing, when checked, then each is refused
+MCP-EXT-APPS-1 | tests/external/test_ext_apps_model.nim | Given a URI with whitespace or a control character, when checked, then it is refused
+MCP-EXT-APPS-2 | tests/external/test_ext_apps_model.nim | Given the specification's resources/read example, when parsed and written, then it round-trips
+MCP-EXT-APPS-2 | tests/external/test_ext_apps_model.nim | Given every field, when parsed, then csp lists, permissions, domain and prefersBorder are read
+MCP-EXT-APPS-2 | tests/external/test_ext_apps_model.nim | Given nothing declared, when parsed, then csp is none and the permission set is empty
+MCP-EXT-APPS-2 | tests/external/test_ext_apps_model.nim | Given fields of the wrong type, when parsed, then McpAppsError names the field
+MCP-EXT-APPS-2 | tests/external/test_ext_apps_model.nim | Given a permission the SDK does not know, when parsed, then it is not granted
+MCP-EXT-APPS-3 | tests/external/test_ext_apps_model.nim | Given the specification's origin forms, when checked, then they are accepted
+MCP-EXT-APPS-3 | tests/external/test_ext_apps_model.nim | Given a source that could end or extend a directive, when checked, then it is refused
+MCP-EXT-APPS-3 | tests/external/test_ext_apps_model.nim | Given a declaration with a bad origin, when parsed, then McpAppsError
+MCP-EXT-APPS-3 | tests/external/test_ext_apps_model.nim | Given a domain with whitespace or an empty one, when checked, then it is refused
+MCP-EXT-APPS-3 | tests/external/test_ext_apps_model.nim | Given a host that starts, ends or continues with a digit, when checked, then it is accepted
+MCP-EXT-APPS-4 | tests/external/test_ext_apps_model.nim | Given the specification's tool example, when read, then resourceUri and visibility are read
+MCP-EXT-APPS-4 | tests/external/test_ext_apps_model.nim | Given an app-only tool, when read, then visibility is app alone
+MCP-EXT-APPS-4 | tests/external/test_ext_apps_model.nim | Given no visibility, when read, then it defaults to model and app
+MCP-EXT-APPS-4 | tests/external/test_ext_apps_model.nim | Given an explicit empty visibility, when read, then neither may use the tool
+MCP-EXT-APPS-4 | tests/external/test_ext_apps_model.nim | Given only the deprecated flat key, when read, then it supplies the resourceUri
+MCP-EXT-APPS-4 | tests/external/test_ext_apps_model.nim | Given both forms, when read, then the nested one wins
+MCP-EXT-APPS-4 | tests/external/test_ext_apps_model.nim | Given no UI reference, when read, then none
+MCP-EXT-APPS-4 | tests/external/test_ext_apps_model.nim | Given malformed references, when read, then McpAppsError
+MCP-EXT-APPS-4 | tests/external/test_ext_apps_model.nim | Given csp or permissions on a tool, when read, then McpAppsError because they belong to the resource
+MCP-EXT-APPS-4 | tests/external/test_ext_apps_model.nim | Given a tool meta, when written, then it reads back the same
+MCP-EXT-APPS-5 | tests/external/test_ext_apps_model.nim | Given no csp declared, when the CSP is built, then it is the restrictive default
+MCP-EXT-APPS-5 | tests/external/test_ext_apps_model.nim | Given the specification's example declaration, when the CSP is built, then the origins land in their directives
+MCP-EXT-APPS-5 | tests/external/test_ext_apps_model.nim | Given frame and base-uri origins, when the CSP is built, then they replace the 'none' and 'self' defaults
+MCP-EXT-APPS-5 | tests/external/test_ext_apps_model.nim | Given an origin nobody checked, when the CSP is built, then McpAppsError and no origin is let through
+MCP-EXT-APPS-5 | tests/external/test_ext_apps_model.nim | Given declared permissions, when the allow attribute is built, then each maps to its Permission Policy feature
+MCP-EXT-APPS-5 | tests/external/test_ext_apps_model.nim | Given only connect origins, when the CSP is built, then the resource directives are the plain ones
+MCP-EXT-APPS-6 | tests/external/test_ext_apps_model.nim | Given the specification's example, when parsed, then the mime types are read
+MCP-EXT-APPS-6 | tests/external/test_ext_apps_model.nim | Given a declaration without mimeTypes or with a wrong shape, when parsed, then it is none
+MCP-EXT-APPS-6 | tests/external/test_ext_apps_model.nim | Given a host that lists other mime types only, when asked, then it does not support HTML apps
+MCP-EXT-APPS-6 | tests/external/test_ext_apps_host.nim | Given declareApps, when the host connects in any version, then its capabilities list the extension with the HTML mime type
+MCP-EXT-APPS-6 | tests/external/test_ext_apps_host.nim | Given empty or malformed mime types, when declareApps is called, then ValueError and nothing is declared
+MCP-EXT-APPS-6 | tests/external/test_ext_apps_host.nim | Given a connected client, when it declares apps, then it raises because capabilities are fixed at connect
+MCP-EXT-APPS-7 | tests/external/test_ext_apps_server.nim | Given a registry, when it is made in any build, then the server declares no extension for it
+MCP-EXT-APPS-7 | tests/external/test_ext_apps_host.nim | Given a client that never called declareApps, when it connects in any version, then no extensions are declared
+MCP-EXT-APPS-7 | tests/external/test_ext_apps_end_to_end.nim | Given a server that registered MCP Apps, when a client connects in any version, then the server declares no extension
+MCP-EXT-APPS-8 | tests/external/test_ext_apps_server.nim | Given bad registrations, when made, then each raises ValueError
+MCP-EXT-APPS-8 | tests/external/test_ext_apps_server.nim | Given a registered UI resource, when listed, then the entry has the uri, name, description and the MCP Apps mime type
+MCP-EXT-APPS-8 | tests/external/test_ext_apps_server.nim | Given a registered UI resource, when read, then the content item has text, the mime type and _meta.ui on the item
+MCP-EXT-APPS-8 | tests/external/test_ext_apps_server.nim | Given a resource registered as a blob, when read, then blob is the base64 of the HTML and there is no text
+MCP-EXT-APPS-8 | tests/external/test_ext_apps_server.nim | Given a URI that was not registered, when read, then none
+MCP-EXT-APPS-8 | tests/external/test_ext_apps_server.nim | Given a server wired with the registry, when a client lists and reads resources, then it gets the UI resource and a not-found error for other URIs
+MCP-EXT-APPS-8 | tests/external/test_ext_apps_server.nim | Given a fallback read handler, when a non-UI URI is read, then the fallback answers
+MCP-EXT-APPS-8 | tests/external/test_ext_apps_server.nim | Given a UI resource registered without a description, when listed, then the entry has no description
+MCP-EXT-APPS-9 | tests/external/test_ext_apps_server.nim | Given a registered resource, when a tool is built for it, then _meta.ui has the resourceUri and visibility
+MCP-EXT-APPS-9 | tests/external/test_ext_apps_server.nim | Given an app-only tool, when built, then visibility is app
+MCP-EXT-APPS-9 | tests/external/test_ext_apps_server.nim | Given legacyKey, when built, then the deprecated flat key is added too
+MCP-EXT-APPS-9 | tests/external/test_ext_apps_server.nim | Given a resource that is not registered, when a tool is built for it, then ValueError because the resource must exist
+MCP-EXT-APPS-10 | tests/external/test_ext_apps_server.nim | Given a host that declared MCP Apps, when it lists tools in any version, then the UI references are there
+MCP-EXT-APPS-10 | tests/external/test_ext_apps_server.nim | Given a client that declared nothing, when it lists tools in any version, then they are plain tools without _meta
+MCP-EXT-APPS-10 | tests/external/test_ext_apps_server.nim | Given a host that declared the extension without the HTML mime type, when it lists tools, then they are plain
+MCP-EXT-APPS-10 | tests/external/test_ext_apps_server.nim | Given a tool with other _meta keys, when listed to a plain client, then only the UI keys are removed
+MCP-EXT-APPS-10 | tests/external/test_ext_apps_server.nim | Given a handler, when it asks whether the host supports apps, then it is true only for the declared HTML mime type
+MCP-EXT-APPS-10 | tests/external/test_ext_apps_end_to_end.nim | Given a host that declared MCP Apps, when it lists tools and fetches the UI, then it gets the references, the HTML and the declarations
+MCP-EXT-APPS-10 | tests/external/test_ext_apps_end_to_end.nim | Given a host that did not declare MCP Apps, when it lists tools in any version, then the server shows plain tools
+MCP-EXT-APPS-11 | tests/external/test_ext_apps_host.nim | Given tools with UI references, when listed, then each keeps its _meta and the parsed reference
+MCP-EXT-APPS-11 | tests/external/test_ext_apps_host.nim | Given a tool with a malformed UI reference, when listed, then the tool is kept as a plain tool with the reason
+MCP-EXT-APPS-11 | tests/external/test_ext_apps_host.nim | Given several pages, when listed, then every page is read
+MCP-EXT-APPS-11 | tests/external/test_ext_apps_host.nim | Given tools with visibility, when the agent's list is made, then tools without model are left out
+MCP-EXT-APPS-11 | tests/external/test_ext_apps_host.nim | Given a View's tools/call, when the tool lacks app visibility or is unknown, then it is refused with a reason
+MCP-EXT-APPS-11 | tests/external/test_ext_apps_host.nim | Given a tool with an empty visibility, when asked, then neither the agent nor the app may use it
+MCP-EXT-APPS-11 | tests/external/test_ext_apps_host.nim | Given a server without the tools capability, when tools are listed, then McpUnsupportedError and nothing is sent
+MCP-EXT-APPS-12 | tests/external/test_ext_apps_host.nim | Given a server that serves the UI resource, when fetched, then the HTML and the declarations are returned
+MCP-EXT-APPS-12 | tests/external/test_ext_apps_host.nim | Given a blob, when fetched, then it is decoded
+MCP-EXT-APPS-12 | tests/external/test_ext_apps_host.nim | Given content items for several URIs, when fetched, then the item for the requested URI is used
+MCP-EXT-APPS-12 | tests/external/test_ext_apps_host.nim | Given a tool that points at a UI resource, when its UI is fetched, then the resource it names is read
+MCP-EXT-APPS-12 | tests/external/test_ext_apps_host.nim | Given a content item with the wrong mime type, when fetched, then McpProtocolError
+MCP-EXT-APPS-12 | tests/external/test_ext_apps_host.nim | Given an answer with no item for the URI, when fetched, then McpProtocolError
+MCP-EXT-APPS-12 | tests/external/test_ext_apps_host.nim | Given text and blob together or neither, when fetched, then McpProtocolError
+MCP-EXT-APPS-12 | tests/external/test_ext_apps_host.nim | Given text or blob of the wrong type or invalid base64, when fetched, then McpProtocolError
+MCP-EXT-APPS-12 | tests/external/test_ext_apps_host.nim | Given empty HTML, when fetched, then McpProtocolError
+MCP-EXT-APPS-12 | tests/external/test_ext_apps_host.nim | Given HTML over the limit as text or as blob, when fetched, then McpProtocolError; at the limit it passes
+MCP-EXT-APPS-12 | tests/external/test_ext_apps_host.nim | Given a huge blob, when fetched, then it is refused before it is decoded
+MCP-EXT-APPS-12 | tests/external/test_ext_apps_host.nim | Given a non-positive limit, when fetched, then McpProtocolError
+MCP-EXT-APPS-12 | tests/external/test_ext_apps_host.nim | Given declarations with a bad origin or wrong types, when fetched, then McpProtocolError
+MCP-EXT-APPS-12 | tests/external/test_ext_apps_host.nim | Given metadata on the listing entry only, when fetched with it, then it is used; the item's own wins
+MCP-EXT-APPS-12 | tests/external/test_ext_apps_host.nim | Given a URI that is not ui://, when fetched, then ValueError and nothing is sent
+MCP-EXT-APPS-12 | tests/external/test_ext_apps_host.nim | Given a client that did not declare MCP Apps, when it fetches, then McpUnsupportedError and nothing is sent
+MCP-EXT-APPS-12 | tests/external/test_ext_apps_host.nim | Given a server without the resources capability, when fetched, then McpUnsupportedError and nothing is sent
+MCP-EXT-APPS-12 | tests/external/test_ext_apps_host.nim | Given a server that answers with an error, when fetched, then McpRequestError
+MCP-EXT-APPS-12 | tests/external/test_ext_apps_host.nim | Given a fetched UI, when the host builds its CSP, then it is the one of the declared origins
+MCP-EXT-APPS-12 | tests/external/test_ext_apps_host.nim | Given a blob just over the limit once decoded, when fetched, then it is refused before it is decoded
+MCP-EXT-APPS-12 | tests/external/test_ext_apps_host.nim | Given an answer whose contents is missing or not an array, when checked, then McpAppsError
+MCP-EXT-APPS-13 | tests/external/test_ext_apps_messages.nim | Given a View's ui/initialize, when the host answers, then the result carries the version, host info, capabilities and context
+MCP-EXT-APPS-13 | tests/external/test_ext_apps_messages.nim | Given the View's initialize, when it declares display modes and tools, then they are remembered
+MCP-EXT-APPS-13 | tests/external/test_ext_apps_messages.nim | Given ui/initialize without appCapabilities or with a malformed field, when handled, then McpAppsError and the session stays unstarted
+MCP-EXT-APPS-13 | tests/external/test_ext_apps_messages.nim | Given a second ui/initialize, when handled, then McpAppsError
+MCP-EXT-APPS-13 | tests/external/test_ext_apps_messages.nim | Given initialized before ui/initialize or twice, when noted, then McpAppsError
+MCP-EXT-APPS-13 | tests/external/test_ext_apps_messages.nim | Given a host context that breaks the specification, when the result is built, then McpAppsError
+MCP-EXT-APPS-13 | tests/external/test_ext_apps_messages.nim | Given the specification's host context example, when validated, then it passes
+MCP-EXT-APPS-13 | tests/external/test_ext_apps_messages.nim | Given a View that has not sent initialized, when the host sends a notification or request, then McpAppsError
+MCP-EXT-APPS-13 | tests/external/test_ext_apps_messages.nim | Given a response, when the host sends it at any time, then it passes
+MCP-EXT-APPS-13 | tests/external/test_ext_apps_messages.nim | Given an initialized View, when the host sends tool-input then tool-result, then both pass
+MCP-EXT-APPS-13 | tests/external/test_ext_apps_messages.nim | Given tool-result before tool-input, when sent, then McpAppsError
+MCP-EXT-APPS-13 | tests/external/test_ext_apps_messages.nim | Given tool-input already sent, when it is sent again, then McpAppsError
+MCP-EXT-APPS-13 | tests/external/test_ext_apps_messages.nim | Given tool-input sent, when a partial follows, then McpAppsError
+MCP-EXT-APPS-13 | tests/external/test_ext_apps_messages.nim | Given a ready View, when the host sends a sandbox-reserved message to it, then McpAppsError
+MCP-EXT-APPS-13 | tests/external/test_ext_apps_messages.nim | Given a ready View, when the host cancels, changes context and tears down, then those pass
+MCP-EXT-APPS-13 | tests/external/test_ext_apps_messages.nim | Given a host context that is not an object or holds a section of the wrong kind, when validated, then each is a problem
+MCP-EXT-APPS-13 | tests/external/test_ext_apps_messages.nim | Given a host context with a list of modes and zero-pixel dimensions, when validated, then it passes
+MCP-EXT-APPS-13 | tests/external/test_ext_apps_messages.nim | Given host capabilities that are not an object, when the result is built, then McpAppsError
+MCP-EXT-APPS-13 | tests/external/test_ext_apps_messages.nim | Given ui/initialize without appInfo, when handled, then McpAppsError
+MCP-EXT-APPS-13 | tests/external/test_ext_apps_messages.nim | Given a View whose tools declaration omits listChanged, when initialized, then it does not announce list changes
+MCP-EXT-APPS-13 | tests/external/test_ext_apps_messages.nim | Given initialized sent twice or too early, when noted, then the error says which
+MCP-EXT-APPS-14 | tests/external/test_ext_apps_messages.nim | Given arguments and a result, when the notifications are built, then they have the specification's methods and params
+MCP-EXT-APPS-14 | tests/external/test_ext_apps_messages.nim | Given arguments or a result that are not objects, when built, then McpAppsError
+MCP-EXT-APPS-14 | tests/external/test_ext_apps_messages.nim | Given a reason, when cancellation and teardown are built, then it travels in params
+MCP-EXT-APPS-14 | tests/external/test_ext_apps_messages.nim | Given a partial context, when host-context-changed is built, then params are that context
+MCP-EXT-APPS-14 | tests/external/test_ext_apps_messages.nim | Given a denied request, when the error is built, then it has the implementation-defined code and the message
+MCP-EXT-APPS-14 | tests/external/test_ext_apps_messages.nim | Given no reason, when teardown is built, then params are empty
+MCP-EXT-APPS-14 | tests/external/test_ext_apps_messages.nim | Given a changed context that breaks the specification, when host-context-changed is built, then McpAppsError
+MCP-EXT-APPS-15 | tests/external/test_ext_apps_messages.nim | Given ui/open-link with an http or https URL, when parsed, then the URL is returned
+MCP-EXT-APPS-15 | tests/external/test_ext_apps_messages.nim | Given ui/open-link with a URL the host should not open, when parsed, then McpAppsError
+MCP-EXT-APPS-15 | tests/external/test_ext_apps_messages.nim | Given ui/message with a text block, when parsed, then the block is returned whether given as an object or an array
+MCP-EXT-APPS-15 | tests/external/test_ext_apps_messages.nim | Given ui/message that is malformed, when parsed, then McpAppsError
+MCP-EXT-APPS-15 | tests/external/test_ext_apps_messages.nim | Given ui/update-model-context, when parsed, then content blocks and structured content are returned
+MCP-EXT-APPS-15 | tests/external/test_ext_apps_messages.nim | Given ui/update-model-context that is malformed, when parsed, then McpAppsError
+MCP-EXT-APPS-15 | tests/external/test_ext_apps_messages.nim | Given ui/request-display-mode, when parsed, then the mode is returned; an unknown mode is McpAppsError
+MCP-EXT-APPS-15 | tests/external/test_ext_apps_messages.nim | Given a requested mode, when the host resolves it, then it is granted only if the host and a declaring View support it
+MCP-EXT-APPS-15 | tests/external/test_ext_apps_messages.nim | Given ui/notifications/size-changed, when parsed, then width and height are read, each optional
+MCP-EXT-APPS-15 | tests/external/test_ext_apps_messages.nim | Given ui/message with a resource block, when parsed, then it is returned; one without a resource object or a type is McpAppsError
+MCP-EXT-APPS-15 | tests/external/test_ext_apps_messages.nim | Given a mode the host or the View does not support, when resolved, then the current mode is kept, whichever it is
+MCP-EXT-APPS-15 | tests/external/test_ext_apps_messages.nim | Given a size of zero or a number that is not finite, when size-changed is parsed, then zero passes and the other is McpAppsError
+MCP-EXT-APPS-16 | tests/external/test_ext_apps_messages.nim | Given the ready and resource-ready messages, when built, then they have the specification's shape
+MCP-EXT-APPS-16 | tests/external/test_ext_apps_messages.nim | Given a csp with a bad origin, when sandbox-resource-ready is built, then McpAppsError
+MCP-EXT-APPS-16 | tests/external/test_ext_apps_messages.nim | Given methods, when routed, then the sandbox forwards all but ui/notifications/sandbox-* and the host forwards to the server only non-ui methods
+MCP-EXT-APPS-17 | tests/external/test_ext_apps_server.nim | Given a host that declared MCP Apps, when it lists tools in any version, then the UI references are there
+MCP-EXT-APPS-17 | tests/external/test_ext_apps_server.nim | Given a client that declared nothing, when it lists tools in any version, then they are plain tools without _meta
+MCP-EXT-APPS-17 | tests/external/test_ext_apps_host.nim | Given declareApps, when the host connects in any version, then its capabilities list the extension with the HTML mime type
+MCP-EXT-APPS-17 | tests/external/test_ext_apps_host.nim | Given a client that declared another extension besides apps, when it initializes in a legacy version, then only apps is sent
+MCP-EXT-APPS-17 | tests/external/test_ext_apps_end_to_end.nim | Given a host that declared MCP Apps, when it lists tools and fetches the UI, then it gets the references, the HTML and the declarations
+MCP-EXT-APPS-17 | tests/external/test_ext_apps_end_to_end.nim | Given a host that did not declare MCP Apps, when it lists tools in any version, then the server shows plain tools
+MCP-EXT-TASKS-1 | tests/external/test_ext_tasks.nim | Given the specification's CreateTaskResult example, when parsed and written, then it round-trips with ttlMs and pollIntervalMs
+MCP-EXT-TASKS-1 | tests/external/test_ext_tasks.nim | Given a task with unlimited lifetime, when written, then ttlMs is null
+MCP-EXT-TASKS-1 | tests/external/test_ext_tasks.nim | Given a failed task with error data, when written and parsed, then the data survives; without data the key is absent
+MCP-EXT-TASKS-2 | tests/external/test_ext_tasks.nim | Given a task of each status, when parsed as a DetailedTask, then the fields of the status are required
+MCP-EXT-TASKS-2 | tests/external/test_ext_tasks.nim | Given a Task with one field missing or of the wrong kind, when parsed, then the problem names that field
+MCP-EXT-TASKS-2 | tests/external/test_ext_tasks.nim | Given a failed task whose error lacks a code or a message of the right kind, when parsed, then it is a problem
+MCP-EXT-TASKS-3 | tests/external/test_ext_tasks.nim | Given the specification's capability example, when the extension is enabled, then the server declares exactly that
+MCP-EXT-TASKS-3 | tests/external/test_ext_tasks.nim | Given a server that did not enable the extension, when a client discovers it, then the extension is not declared
+MCP-EXT-TASKS-3 | tests/external/test_ext_tasks.nim | Given a build or a server that does not speak 2026-07-28, when the extension is enabled, then it raises
+MCP-EXT-TASKS-3 | tests/external/test_ext_tasks_client.nim | Given enableTasksExtension, when the client calls, then every request declares the extension and the task result type
+MCP-EXT-TASKS-3 | tests/external/test_ext_tasks_client.nim | Given a client limited to a version before 2026-07-28, when it enables the extension, then it raises
+MCP-EXT-TASKS-3 | tests/external/test_ext_tasks_dual.nim | Given a server with both, when each client discovers it, then the 2025-11-25 client sees tasks and the 2026-07-28 client sees the extension
+MCP-EXT-TASKS-4 | tests/external/test_ext_tasks.nim | Given a server that did not enable the extension, when a client declaring it asks for a task, then the answer is method not found
+MCP-EXT-TASKS-4 | tests/external/test_ext_tasks.nim | Given a client that did not declare the extension, when it uses tasks/get, tasks/update or tasks/cancel, then the answer is -32021 naming the extension
+MCP-EXT-TASKS-4 | tests/external/test_ext_tasks.nim | Given a client that did not declare the extension, when it calls a tool the server would make a task of, then it gets the result
+MCP-EXT-TASKS-4 | tests/external/test_ext_tasks.nim | Given a tool that exists only as a task, when a client that did not declare the extension calls it, then the answer is -32021
+MCP-EXT-TASKS-4 | tests/external/test_ext_tasks_client.nim | Given a client that did not enable the extension, when it calls a tool as a task, then it raises and sends nothing
+MCP-EXT-TASKS-4 | tests/external/test_ext_tasks_client.nim | Given a client that enabled the extension but negotiated an earlier version, when it calls a tool as a task, then it raises and sends nothing
+MCP-EXT-TASKS-4 | tests/external/test_ext_tasks_client.nim | Given a client that did not enable the extension, when it follows, answers, cancels or watches a task, then each raises McpUnsupportedError pointing to enableTasksExtension and sends nothing
+MCP-EXT-TASKS-5 | tests/external/test_ext_tasks.nim | Given a client that declared the extension, when the server decides against a task, then it gets the plain result
+MCP-EXT-TASKS-5 | tests/external/test_ext_tasks.nim | Given a server without a decider, when a client declaring the extension calls a tool, then no task is made
+MCP-EXT-TASKS-5 | tests/external/test_ext_tasks.nim | Given a client that declared the extension, when the server makes a task of a call, then the answer is a CreateTaskResult it can poll at once
+MCP-EXT-TASKS-5 | tests/external/test_ext_tasks.nim | Given a tool that is not the one the server makes tasks of, when a declaring client calls it, then the answer is the plain result
+MCP-EXT-TASKS-5 | tests/external/test_ext_tasks.nim | Given a request already running as a task, when it reaches the server's own handling, then it is not made a task again
+MCP-EXT-TASKS-5 | tests/external/test_ext_tasks.nim | Given a tools/call whose name is missing or not a string, when a client declaring the extension sends it, then the server's own -32602 answers
+MCP-EXT-TASKS-6 | tests/external/test_ext_tasks.nim | Given a task that finished, when it is polled, then the result of the tool call is inlined without a resultType of its own
+MCP-EXT-TASKS-6 | tests/external/test_ext_tasks.nim | Given a tool call that returned isError, when the task is polled, then it is completed, not failed
+MCP-EXT-TASKS-6 | tests/external/test_ext_tasks.nim | Given a tool call that ended in a JSON-RPC error, when the task is polled, then it is failed with that error
+MCP-EXT-TASKS-6 | tests/external/test_ext_tasks.nim | Given a task that is working, when the work finishes between polls, then the next poll shows completed
+MCP-EXT-TASKS-7 | tests/external/test_ext_tasks.nim | Given an unknown or malformed taskId, when tasks/get, tasks/update or tasks/cancel is sent, then the answer is -32602
+MCP-EXT-TASKS-7 | tests/external/test_ext_tasks.nim | Given a task whose ttl elapsed, when it is polled, then it is gone: -32602
+MCP-EXT-TASKS-7 | tests/external/test_ext_tasks.nim | Given an owner limit of one active task, when a second task is asked for, then the answer is an error and no task is made
+MCP-EXT-TASKS-8 | tests/external/test_ext_tasks.nim | Given a working task, when tasks/cancel is sent, then the answer is an empty acknowledgement and the work is told to stop
+MCP-EXT-TASKS-8 | tests/external/test_ext_tasks.nim | Given a task that is over, when tasks/cancel is sent, then it is acknowledged and the task keeps its status
+MCP-EXT-TASKS-8 | tests/external/test_ext_tasks.nim | Given a cancelled task, when the work finishes anyway, then the task stays cancelled
+MCP-EXT-TASKS-8 | tests/external/test_ext_tasks_client.nim | Given a working task, when the client polls and cancels, then it sees the state and the acknowledgement
+MCP-EXT-TASKS-9 | tests/external/test_ext_tasks.nim | Given the methods the extension reserves, when another extension registers one, then it raises
+MCP-EXT-TASKS-9 | tests/external/test_ext_tasks.nim | Given tasks/result and tasks/list, when a client that declared the extension asks, then both are method not found
+MCP-EXT-TASKS-10 | tests/external/test_ext_tasks.nim | Given tasks/get, tasks/update and tasks/cancel over Streamable HTTP, when the headers are built and checked, then Mcp-Name carries the taskId
+MCP-EXT-TASKS-11 | tests/external/test_ext_tasks.nim | Given a task that needs input, when it is polled, then it is input_required with the outstanding requests
+MCP-EXT-TASKS-11 | tests/external/test_ext_tasks.nim | Given an input_required task, when the client answers with tasks/update, then it is acknowledged and the task finishes with the answer
+MCP-EXT-TASKS-11 | tests/external/test_ext_tasks.nim | Given responses for keys that are not outstanding, when tasks/update is sent, then they are ignored and the task stays input_required
+MCP-EXT-TASKS-11 | tests/external/test_ext_tasks.nim | Given inputResponses that are not an object of objects or missing, when tasks/update is sent, then the answer is -32602
+MCP-EXT-TASKS-11 | tests/external/test_ext_tasks.nim | Given a task that asks twice, when each request is answered, then the keys differ and a key already answered is not outstanding again
+MCP-EXT-TASKS-11 | tests/external/test_ext_tasks.nim | Given a task cancelled while it waits for input, when it is polled, then it is cancelled and the work stopped
+MCP-EXT-TASKS-11 | tests/external/test_ext_tasks.nim | Given a client that did not declare elicitation, when a task asks it for input, then the tool fails and the task is not input_required
+MCP-EXT-TASKS-11 | tests/external/test_ext_tasks.nim | Given a call outside a task, when the tool asks for input the task way, then it raises ValueError
+MCP-EXT-TASKS-11 | tests/external/test_ext_tasks.nim | Given a task that waits on two requests at once, when one is answered, then it stays input_required until the other is answered too
+MCP-EXT-TASKS-11 | tests/external/test_ext_tasks.nim | Given a working task, when tasks/update names only keys nobody asked for, then the task is left as it was
+MCP-EXT-TASKS-11 | tests/external/test_ext_tasks.nim | Given a key a task used and had answered, when the tool asks again with that key, then it raises ValueError
+MCP-EXT-TASKS-11 | tests/external/test_ext_tasks.nim | Given a task cancelled while its tool runs on, when the tool asks for input afterwards, then the task is no longer one the extension serves
+MCP-EXT-TASKS-11 | tests/external/test_ext_tasks.nim | Given a tool whose request in a task ends asking for input the multi round-trip way, when the task is polled, then it failed with an internal error and the log points to requestInput
+MCP-EXT-TASKS-11 | tests/external/test_ext_tasks_client.nim | Given a task that needs input, when the client waits, then it answers from its elicitation handler and the task finishes
+MCP-EXT-TASKS-11 | tests/external/test_ext_tasks_client.nim | Given an input request listed on several polls, when the client waits, then it answers a key once
+MCP-EXT-TASKS-11 | tests/external/test_ext_tasks_client.nim | Given a task that asks for something the client has no handler for, when it waits, then it raises McpUnsupportedError
+MCP-EXT-TASKS-11 | tests/external/test_ext_tasks_client.nim | Given a server that lists an answered input request again, when the client waits, then it neither answers it again nor sends an empty update
+MCP-EXT-TASKS-12 | tests/external/test_ext_tasks.nim | Given a decider that waits for input gathered with multi round-trip requests, when the retry arrives, then the task starts only then
+MCP-EXT-TASKS-13 | tests/external/test_ext_tasks.nim | Given tasks of two owners, when one asks for the other's task, then it is unknown to it
+MCP-EXT-TASKS-13 | tests/external/test_ext_tasks.nim | Given no ownerOf and no authorization, when two clients ask, then they are one owner and the unguessable task id is the only separation
+MCP-EXT-TASKS-13 | tests/external/test_ext_tasks.nim | Given no ownerOf and authorized requests, when another principal asks for a task, then it is unknown to them
+MCP-EXT-TASKS-13 | tests/external/test_ext_tasks_dual.nim | Given a task of each kind, when the other kind of client asks for it, then it is unknown
+MCP-EXT-TASKS-13 | tests/external/test_ext_tasks_dual.nim | Given an expiry hook set on the store before the extension, when a task of another owner expires, then that hook is still called
+MCP-EXT-TASKS-14 | tests/external/test_ext_tasks.nim | Given a listen filter with taskIds, when parsed and written, then the ids round-trip and a malformed list is rejected
+MCP-EXT-TASKS-14 | tests/external/test_ext_tasks.nim | Given a client that did not declare the extension, when it listens for task ids, then the answer is -32021
+MCP-EXT-TASKS-14 | tests/external/test_ext_tasks.nim | Given task ids of its own and unknown ones, when a client listens, then the acknowledgement lists only its own
+MCP-EXT-TASKS-14 | tests/external/test_ext_tasks.nim | Given a task the client listened for, when its status changes, then the stream gets notifications/tasks with the whole task
+MCP-EXT-TASKS-14 | tests/external/test_ext_tasks.nim | Given a task of another owner, when a client listens for its id, then it is not acknowledged and gets nothing
+MCP-EXT-TASKS-14 | tests/external/test_ext_tasks.nim | Given a task the client did not list, when its status changes, then the stream is not told
+MCP-EXT-TASKS-14 | tests/external/test_ext_tasks_client.nim | Given a task being watched, when it completes, then the callback gets the whole task
+MCP-EXT-TASKS-14 | tests/external/test_ext_tasks_client.nim | Given an id the server did not agree to, when the client watches, then unsupported names it
+MCP-EXT-TASKS-14 | tests/external/test_ext_tasks_client.nim | Given a stream the server cannot write to, when a watched task changes status, then the server logs that it could not announce it and the task goes on
+MCP-EXT-TASKS-15 | tests/external/test_ext_tasks_client.nim | Given a tool the server makes a task of, when the client calls it, then it learns the task and not a result
+MCP-EXT-TASKS-15 | tests/external/test_ext_tasks_client.nim | Given a tool the server answers directly, when the client calls it, then it gets the result
+MCP-EXT-TASKS-15 | tests/external/test_ext_tasks_client.nim | Given a server that answers with a task without having declared the extension, when the client calls, then it raises McpProtocolError
+MCP-EXT-TASKS-15 | tests/external/test_ext_tasks_client.nim | Given a server whose task is malformed, when the client calls, then it raises McpProtocolError
+MCP-EXT-TASKS-15 | tests/external/test_ext_tasks_client.nim | Given an unknown task, when the client polls, then it raises McpRequestError with -32602
+MCP-EXT-TASKS-15 | tests/external/test_ext_tasks_client.nim | Given a task that finishes while the client waits, when it polls, then it waits the interval the task suggests between polls
+MCP-EXT-TASKS-15 | tests/external/test_ext_tasks_client.nim | Given a task that suggests no interval, when the client waits, then it uses its own default
+MCP-EXT-TASKS-15 | tests/external/test_ext_tasks_client.nim | Given a task that suggests an interval, when the client waits without a sleep of its own, then it really waits between polls
+MCP-EXT-TASKS-15 | tests/external/test_ext_tasks_client.nim | Given every status change, when the client waits, then the callback sees each status once
+MCP-EXT-TASKS-15 | tests/external/test_ext_tasks_client.nim | Given a tool that answers directly, when called with callToolAwaitingTask, then the result is returned
+MCP-EXT-TASKS-15 | tests/external/test_ext_tasks_client.nim | Given a tool the server makes a task of, when called with callToolAwaitingTask, then the final result is returned
+MCP-EXT-TASKS-15 | tests/external/test_ext_tasks_client.nim | Given a task that failed, when called with callToolAwaitingTask, then it raises McpRequestError with the task's error
+MCP-EXT-TASKS-15 | tests/external/test_ext_tasks_client.nim | Given a task that was cancelled, when called with callToolAwaitingTask, then it raises McpTaskCancelledError
+MCP-EXT-TASKS-15 | tests/external/test_ext_tasks_client.nim | Given a task the server made, when called with callToolAwaitingTask, then the caller is given the task id first
+MCP-EXT-TASKS-16 | tests/external/test_ext_tasks_dual.nim | Given a 2025-11-25 client that asks for a task, when the call is made, then it gets the core's nested task with ttl and pollInterval
+MCP-EXT-TASKS-16 | tests/external/test_ext_tasks_dual.nim | Given a 2026-07-28 client that declared the extension, when the call is made, then it gets the extension's flat task with ttlMs and pollIntervalMs
+MCP-EXT-TASKS-16 | tests/external/test_ext_tasks_dual.nim | Given one store, when its clock passes the ttl, then the tasks of both kinds expire
+MCP-EXT-TASKS-16 | tests/external/test_ext_tasks_dual.nim | Given the extension was enabled after the core, when a core task changes status, then the core still announces it to its session
+MCP-EXT-TASKS-16 | tests/external/test_ext_tasks_dual.nim | Given a 2025-11-25 client that declares an extensions capability, when it calls a tool, then the extension does not apply
+MCP-EXT-TASKS-16 | tests/external/test_ext_tasks_dual.nim | Given a server with only the extension, when a 2025-11-25 client asks for a task, then the task parameter is ignored
+MCP-EXT-TASKS-16 | tests/external/test_ext_tasks_dual.nim | Given a server with only the core's tasks, when a 2026-07-28 client declares the extension and asks, then it gets the result and no tasks methods
+MCP-EXT-TASKS-10 | tests/external/test_ext_tasks_http.nim | Given a task over HTTP, when the client polls, cancels and updates it, then every request passes the header check
+MCP-EXT-TASKS-10 | tests/external/test_ext_tasks_http.nim | Given a task over HTTP, when tasks/get carries another Mcp-Name than its taskId, then the server answers a header mismatch
+MCP-EXT-SKILLS-1 | tests/external/test_ext_skills_model.nim | Given a SKILL.md with scalars, quotes, block scalars, lists and a mapping, when its frontmatter is read, then the fields are JSON
+MCP-EXT-SKILLS-1 | tests/external/test_ext_skills_model.nim | Given the specification's SKILL.md, when read, then name and description come out
+MCP-EXT-SKILLS-1 | tests/external/test_ext_skills_model.nim | Given text outside the supported subset, when read, then FrontmatterError is raised
+MCP-EXT-SKILLS-1 | tests/external/test_ext_skills_model.nim | Given a frontmatter that is empty, when read, then there are no fields
+MCP-EXT-SKILLS-1 | tests/external/test_ext_skills_frontmatter.nim | Given the escapes of a double-quoted scalar, when read, then each becomes its character
+MCP-EXT-SKILLS-1 | tests/external/test_ext_skills_frontmatter.nim | Given hexadecimal escapes, when read, then each takes exactly its digits
+MCP-EXT-SKILLS-1 | tests/external/test_ext_skills_frontmatter.nim | Given the last code point, when escaped, then it is accepted and the one after it is refused
+MCP-EXT-SKILLS-1 | tests/external/test_ext_skills_frontmatter.nim | Given escapes that are cut short, malformed or not characters, when read, then FrontmatterError is raised
+MCP-EXT-SKILLS-1 | tests/external/test_ext_skills_frontmatter.nim | Given doubled quotes, when read, then each is one quote
+MCP-EXT-SKILLS-1 | tests/external/test_ext_skills_frontmatter.nim | Given empty quoted scalars, when read, then they are empty strings
+MCP-EXT-SKILLS-1 | tests/external/test_ext_skills_frontmatter.nim | Given quoted scalars that do not end on their line, when read, then FrontmatterError is raised
+MCP-EXT-SKILLS-1 | tests/external/test_ext_skills_frontmatter.nim | Given every spelling of null, when read, then it is JSON null
+MCP-EXT-SKILLS-1 | tests/external/test_ext_skills_frontmatter.nim | Given every spelling of a boolean, when read, then it is a JSON boolean
+MCP-EXT-SKILLS-1 | tests/external/test_ext_skills_frontmatter.nim | Given numbers and words that look like numbers, when read, then only numbers become numbers
+MCP-EXT-SKILLS-1 | tests/external/test_ext_skills_frontmatter.nim | Given a hash, when it does not follow a space, then it belongs to the scalar
+MCP-EXT-SKILLS-1 | tests/external/test_ext_skills_frontmatter.nim | Given a hash after a space, when read, then the rest of the line is a comment
+MCP-EXT-SKILLS-1 | tests/external/test_ext_skills_frontmatter.nim | Given a quote in the middle of a plain scalar, when a comment follows, then the quote opens nothing
+MCP-EXT-SKILLS-1 | tests/external/test_ext_skills_frontmatter.nim | Given a hash inside quotes, when a comment follows the quotes, then only the comment is dropped
+MCP-EXT-SKILLS-1 | tests/external/test_ext_skills_frontmatter.nim | Given empty, single and several items, when read, then the array has as many
+MCP-EXT-SKILLS-1 | tests/external/test_ext_skills_frontmatter.nim | Given a sequence that does not close on its line or nests, when read, then FrontmatterError is raised
+MCP-EXT-SKILLS-1 | tests/external/test_ext_skills_frontmatter.nim | Given quoted keys, when read, then they are unquoted the way their quotes say
+MCP-EXT-SKILLS-1 | tests/external/test_ext_skills_frontmatter.nim | Given a key with a space or a colon not followed by a space, when read, then the colon ends the key only before a space
+MCP-EXT-SKILLS-1 | tests/external/test_ext_skills_frontmatter.nim | Given lines that are not a key and a value, when read, then FrontmatterError is raised
+MCP-EXT-SKILLS-1 | tests/external/test_ext_skills_frontmatter.nim | Given a literal block with a blank line inside, when read, then the blank line stays
+MCP-EXT-SKILLS-1 | tests/external/test_ext_skills_frontmatter.nim | Given a block scalar that is the last field, when read, then it ends with the frontmatter
+MCP-EXT-SKILLS-1 | tests/external/test_ext_skills_frontmatter.nim | Given a block scalar with no lines, when read, then it is empty whether it is clipped or stripped
+MCP-EXT-SKILLS-1 | tests/external/test_ext_skills_frontmatter.nim | Given blank lines after a block scalar, when chomped, then clip keeps one newline, strip none and keep all
+MCP-EXT-SKILLS-1 | tests/external/test_ext_skills_frontmatter.nim | Given a block scalar header with more than a chomping indicator, when read, then FrontmatterError is raised
+MCP-EXT-SKILLS-1 | tests/external/test_ext_skills_frontmatter.nim | Given blank and comment lines between fields, when read, then they are ignored
+MCP-EXT-SKILLS-1 | tests/external/test_ext_skills_frontmatter.nim | Given a blank line between a key and its nested mapping, when read, then the mapping is the value
+MCP-EXT-SKILLS-1 | tests/external/test_ext_skills_frontmatter.nim | Given a key with nothing after it at the end, when read, then it is null
+MCP-EXT-SKILLS-1 | tests/external/test_ext_skills_frontmatter.nim | Given a comment before an indented mapping, when read, then the mapping is read at its own indent
+MCP-EXT-SKILLS-1 | tests/external/test_ext_skills_frontmatter.nim | Given a sequence indented under its key, when it has blank lines between items, then they are all items
+MCP-EXT-SKILLS-1 | tests/external/test_ext_skills_frontmatter.nim | Given a sequence written at the indent of its key, when it is the last field, then it is that key's value
+MCP-EXT-SKILLS-1 | tests/external/test_ext_skills_frontmatter.nim | Given a sequence item that is not a scalar, when read, then FrontmatterError is raised
+MCP-EXT-SKILLS-1 | tests/external/test_ext_skills_frontmatter.nim | Given a line in a sequence that is not an item or is indented further, when read, then FrontmatterError is raised
+MCP-EXT-SKILLS-1 | tests/external/test_ext_skills_frontmatter.nim | Given content left of the first field's indent, when read, then FrontmatterError is raised
+MCP-EXT-SKILLS-1 | tests/external/test_ext_skills_frontmatter.nim | Given text before the opening fence, when read, then it is refused
+MCP-EXT-SKILLS-1 | tests/external/test_ext_skills_frontmatter.nim | Given a fence with trailing spaces, when read, then it is a fence
+MCP-EXT-SKILLS-1 | tests/external/test_ext_skills_frontmatter.nim | Given an indented closing fence, when read, then it is not a fence
+MCP-EXT-SKILLS-1 | tests/external/test_ext_skills_frontmatter.nim | Given only comments and blank lines, when read, then there are no fields
+MCP-EXT-SKILLS-1 | tests/external/test_ext_skills_frontmatter.nim | Given whitespace after the content, when it is a tab, then it is not indentation
+MCP-EXT-SKILLS-1 | tests/external/test_ext_skills_frontmatter.nim | Given a tab in the indentation, when read, then FrontmatterError is raised
+MCP-EXT-SKILLS-1 | tests/external/test_ext_skills_frontmatter.nim | Given a refusal, when its message is read, then it names the line of the file
+MCP-EXT-SKILLS-1 | tests/external/test_ext_skills_frontmatter.nim | Given a sequence written at the indent of its key, when other fields follow it, then they are read
+MCP-EXT-SKILLS-2 | tests/external/test_ext_skills_model.nim | Given ordinary names, when validated, then they are accepted
+MCP-EXT-SKILLS-2 | tests/external/test_ext_skills_model.nim | Given names that break the Agent Skills rules, when validated, then each is refused
+MCP-EXT-SKILLS-2 | tests/external/test_ext_skills_model.nim | Given descriptions of 0, 1 and 1025 characters, when validated, then only the middle one is accepted
+MCP-EXT-SKILLS-2 | tests/external/test_ext_skills_model.nim | Given a name with a character that is neither ASCII nor a letter, when validated, then it is refused
+MCP-EXT-SKILLS-3 | tests/external/test_ext_skills_model.nim | Given URIs that could leave the skill, when split, then none is accepted
+MCP-EXT-SKILLS-3 | tests/external/test_ext_skills_model.nim | Given ordinary URIs, when split, then the scheme and path come out
+MCP-EXT-SKILLS-3 | tests/external/test_ext_skills_model.nim | Given a SKILL.md URI, when its root is taken, then the suffix goes and a bad URI has none
+MCP-EXT-SKILLS-3 | tests/external/test_ext_skills_model.nim | Given a skill root, when a file URI is resolved against it, then only files strictly inside resolve
+MCP-EXT-SKILLS-3 | tests/external/test_ext_skills_model.nim | Given file paths a server names inside a skill, when checked, then absolute and climbing paths are refused
+MCP-EXT-SKILLS-3 | tests/external/test_ext_skills_model.nim | Given schemes with digits, plus, hyphen and dot, when a URI is split, then the scheme is accepted
+MCP-EXT-SKILLS-3 | tests/external/test_ext_skills_model.nim | Given segments with a space, a percent escape of a plain character and a control character, when a URI is split, then only the control character and the escaped dot are refused
+MCP-EXT-SKILLS-4 | tests/external/test_ext_skills_model.nim | Given the same URI from two servers, when storage paths are computed, then they differ and stay under the root
+MCP-EXT-SKILLS-4 | tests/external/test_ext_skills_model.nim | Given a label or URI that climbs out of the root, when a storage path is computed, then SkillsError is raised
+MCP-EXT-SKILLS-4 | tests/external/test_ext_skills_model.nim | Given a label and a path segment with a space, when a storage path is computed, then each is percent-encoded with %20
+MCP-EXT-SKILLS-5 | tests/external/test_ext_skills_model.nim | Given the specification's entry, when parsed, then it is accepted and round-trips
+MCP-EXT-SKILLS-5 | tests/external/test_ext_skills_model.nim | Given an entry whose resources is dynamic, when parsed, then it is dynamic and has no files
+MCP-EXT-SKILLS-5 | tests/external/test_ext_skills_model.nim | Given entries that break one rule each, when parsed, then each raises SkillsError
+MCP-EXT-SKILLS-5 | tests/external/test_ext_skills_model.nim | Given the limits exactly, when an entry is parsed, then it is accepted
+MCP-EXT-SKILLS-5 | tests/external/test_ext_skills_model.nim | Given the files of the specification's example, when digested, then the digests match the published ones
+MCP-EXT-SKILLS-5 | tests/external/test_ext_skills_model.nim | Given entries with the same files in another order or another digest, when bound, then the binding follows the set
+MCP-EXT-SKILLS-5 | tests/external/test_ext_skills_model.nim | Given nothing or a value that is not an object, when an entry is parsed, then SkillsError names the rule
+MCP-EXT-SKILLS-5 | tests/external/test_ext_skills_model.nim | Given resources that lack a string uri or digest, when an entry is parsed, then the error says what a resource needs
+MCP-EXT-SKILLS-5 | tests/external/test_ext_skills_model.nim | Given a file of size 0, when an entry is parsed, then it is accepted
+MCP-EXT-SKILLS-6 | tests/external/test_ext_skills_server.nim | Given a catalog that was not registered, when a client asks for skills or reads a skill file, then nothing is served
+MCP-EXT-SKILLS-7 | tests/external/test_ext_skills_server.nim | Given a registered catalog, when a 2026-07-28 client discovers the server, then the extension and the resources capability are declared
+MCP-EXT-SKILLS-7 | tests/external/test_ext_skills_server.nim | Given a server registered with directoryRead, when a client discovers it, then the setting says so
+MCP-EXT-SKILLS-7 | tests/external/test_ext_skills_server.nim | Given a registered catalog, when a legacy client initializes, then the capabilities do not mention extensions
+MCP-EXT-SKILLS-8 | tests/external/test_ext_skills_server.nim | Given a server that speaks no 2026-07-28, when skills are registered, then ValueError is raised and nothing is declared
+MCP-EXT-SKILLS-8 | tests/external/test_ext_skills_server.nim | Given skills already registered or a method already defined, when they are registered, then ValueError is raised
+MCP-EXT-SKILLS-8 | tests/external/test_ext_skills_server.nim | Given a server that already defines resources/directory/read, when skills are registered with directoryRead, then ValueError is raised and nothing is declared
+MCP-EXT-SKILLS-9 | tests/external/test_ext_skills_server.nim | Given the skills of the specification's example, when a client lists them, then each entry is a complete manifest with digests
+MCP-EXT-SKILLS-9 | tests/external/test_ext_skills_server.nim | Given a catalog with the default cache policy, when listed, then the result says do not reuse and do not share
+MCP-EXT-SKILLS-10 | tests/external/test_ext_skills_server.nim | Given a catalog of three skills and a page size of two, when a client follows nextCursor, then every skill arrives once
+MCP-EXT-SKILLS-10 | tests/external/test_ext_skills_server.nim | Given a cursor the server did not issue or one that is not a string, when a client lists skills, then it is invalid params
+MCP-EXT-SKILLS-11 | tests/external/test_ext_skills_server.nim | Given a served skill, when skills/get names its SKILL.md, then the entry is returned with cache fields
+MCP-EXT-SKILLS-11 | tests/external/test_ext_skills_server.nim | Given a file of a skill, an unknown URI or no string, when skills/get is called, then each is invalid params
+MCP-EXT-SKILLS-13 | tests/external/test_ext_skills_server.nim | Given a client that declared nothing, when it asks for skills, then it is served: the specification asks no declaration of the client
+MCP-EXT-SKILLS-12 | tests/external/test_ext_skills_server.nim | Given a skill with text and binary files, when any client reads them, then text is text and binary is a base64 blob
+MCP-EXT-SKILLS-12 | tests/external/test_ext_skills_server.nim | Given a URI that is not a served skill file, when a client reads it, then the server's own handler answers
+MCP-EXT-SKILLS-12 | tests/external/test_ext_skills_server.nim | Given a catalog with another scheme, when its files are read, then that scheme is served and skill:// is not
+MCP-EXT-SKILLS-12 | tests/external/test_ext_skills_server.nim | Given text files with bytes that are not UTF-8 and a binary file whose bytes are valid UTF-8, when read, then each is a blob
+MCP-EXT-SKILLS-12 | tests/external/test_ext_skills_server.nim | Given a dynamic skill beside fixed ones, when a URI no skill serves is read, then the provider is not called
+MCP-EXT-SKILLS-12 | tests/external/test_ext_skills_server.nim | Given a resources/read without a string uri, when a client sends it, then the server's own handler answers invalid params
+MCP-EXT-SKILLS-14 | tests/external/test_ext_skills_server.nim | Given a server registered with directoryRead, when a client reads a skill root and a subdirectory, then direct children come back
+MCP-EXT-SKILLS-14 | tests/external/test_ext_skills_server.nim | Given a file, an unknown directory or a missing uri, when a client reads a directory, then each is invalid params
+MCP-EXT-SKILLS-14 | tests/external/test_ext_skills_server.nim | Given a server registered without directoryRead, when a client reads a directory, then the method is unknown
+MCP-EXT-SKILLS-14 | tests/external/test_ext_skills_server.nim | Given a directory with more children than a page, when a client follows the cursor, then all arrive
+MCP-EXT-SKILLS-14 | tests/external/test_ext_skills_server.nim | Given a server registered without saying anything about directoryRead, when a client discovers it, then the setting is absent and the method is unknown
+MCP-EXT-SKILLS-15 | tests/external/test_ext_skills_server.nim | Given a skill added with a file provider, when a client lists it and reads its files, then the entry is dynamic and the files are current
+MCP-EXT-SKILLS-16 | tests/external/test_ext_skills_server.nim | Given skills at acme/billing and acme/billing/refunds, when a client lists them, then the enclosing skill's manifest includes the nested files
+MCP-EXT-SKILLS-17 | tests/external/test_ext_skills_server.nim | Given a skill that cannot be served correctly, when it is added, then SkillsError is raised
+MCP-EXT-SKILLS-17 | tests/external/test_ext_skills_server.nim | Given a skill with more than 512 files or more than 16 MiB, when it is added, then SkillsError is raised and the limits themselves are accepted
+MCP-EXT-SKILLS-17 | tests/external/test_ext_skills_server.nim | Given a dynamic skill with a frontmatter that does not name it or no provider, when it is added, then SkillsError is raised
+MCP-EXT-SKILLS-17 | tests/external/test_ext_skills_server.nim | Given a scheme that is not one, when a catalog is made, then SkillsError is raised
+MCP-EXT-SKILLS-17 | tests/external/test_ext_skills_server.nim | Given schemes with digits, plus, hyphen and dot, when a catalog is made, then they are accepted
+MCP-EXT-SKILLS-17 | tests/external/test_ext_skills_server.nim | Given a dynamic skill with no frontmatter or one that is not an object, when it is added, then SkillsError says it must be an object
+MCP-EXT-SKILLS-17 | tests/external/test_ext_skills_server.nim | Given two dynamic skills and a dynamic skill added twice, when they are added, then the two are served and the repeat is refused
+MCP-EXT-SKILLS-18 | tests/external/test_ext_skills_server.nim | Given a directory with SKILL.md and a subdirectory, when it is added, then its files are served with their digests
+MCP-EXT-SKILLS-18 | tests/external/test_ext_skills_server.nim | Given a directory holding a symbolic link, when it is added, then SkillsError is raised and nothing is served
+MCP-EXT-SKILLS-18 | tests/external/test_ext_skills_server.nim | Given a path that is not a directory, when it is added, then SkillsError is raised
+MCP-EXT-SKILLS-18 | tests/external/test_ext_skills_server.nim | Given a file beyond 16 MiB that cannot be read, when its directory is added, then SkillsError names the limit before any read
+MCP-EXT-SKILLS-19 | tests/external/test_ext_skills_client.nim | Given a server that offers skills, when the client lists them, then the request declares the extension and the entries come back
+MCP-EXT-SKILLS-19 | tests/external/test_ext_skills_client.nim | Given a listing with a valid entry and entries that break the rules, when listed, then the valid one is returned and the others are reported with the reason
+MCP-EXT-SKILLS-19 | tests/external/test_ext_skills_client.nim | Given a listing over two pages, when the client lists all, then both pages are read
+MCP-EXT-SKILLS-19 | tests/external/test_ext_skills_client.nim | Given a server that repeats a cursor, when the client lists all, then it raises instead of looping
+MCP-EXT-SKILLS-19 | tests/external/test_ext_skills_client.nim | Given a skill the listing does not show, when the client gets it by URI, then it receives the entry
+MCP-EXT-SKILLS-19 | tests/external/test_ext_skills_client.nim | Given a skills/get answer for another URI or with a broken entry, when the client gets a skill, then McpProtocolError is raised
+MCP-EXT-SKILLS-19 | tests/external/test_ext_skills_client.nim | Given a server without the extension, when skills are listed, then McpUnsupportedError is raised and nothing is sent; a client that declared nothing lists a server that has it
+MCP-EXT-SKILLS-19 | tests/external/test_ext_skills_client.nim | Given a client that declared nothing, when it gets a skill by URI, then it is served
+MCP-EXT-SKILLS-20 | tests/external/test_ext_skills_client.nim | Given a file the entry lists, when it is read, then the verified bytes are returned
+MCP-EXT-SKILLS-20 | tests/external/test_ext_skills_client.nim | Given a SKILL.md that matches its entry, when the instructions are loaded, then they come with the verified frontmatter
+MCP-EXT-SKILLS-20 | tests/external/test_ext_skills_client.nim | Given a file whose bytes differ from the digest, when it is read, then SkillVerificationError is raised
+MCP-EXT-SKILLS-20 | tests/external/test_ext_skills_client.nim | Given a file whose length differs from the size, when it is read, then SkillVerificationError is raised
+MCP-EXT-SKILLS-20 | tests/external/test_ext_skills_client.nim | Given a file the entry does not list, when it is read, then SkillVerificationError is raised and no read is sent
+MCP-EXT-SKILLS-20 | tests/external/test_ext_skills_client.nim | Given a SKILL.md whose frontmatter differs from the entry's, when its instructions are loaded, then SkillVerificationError is raised
+MCP-EXT-SKILLS-20 | tests/external/test_ext_skills_client.nim | Given a SKILL.md whose extra frontmatter field the entry lacks, when its instructions are loaded, then SkillVerificationError is raised
+MCP-EXT-SKILLS-20 | tests/external/test_ext_skills_client.nim | Given a SKILL.md whose frontmatter cannot be read, when its instructions are loaded, then SkillVerificationError is raised
+MCP-EXT-SKILLS-20 | tests/external/test_ext_skills_client.nim | Given a binary file served as a blob, when it is read, then the decoded bytes are verified
+MCP-EXT-SKILLS-20 | tests/external/test_ext_skills_client.nim | Given an answer that does not hold the requested URI or no content, when a file is read, then McpProtocolError is raised
+MCP-EXT-SKILLS-21 | tests/external/test_ext_skills_client.nim | Given a dynamic skill the host did not allow, when it is read, then SkillsError is raised and nothing is sent
+MCP-EXT-SKILLS-21 | tests/external/test_ext_skills_client.nim | Given a dynamic skill the host allowed, when it is loaded, then its frontmatter is still compared and only its own files are read
+MCP-EXT-SKILLS-21 | tests/external/test_ext_skills_client.nim | Given a dynamic skill that serves more than 16 MiB, when it is read, then SkillsError is raised at the limit
+MCP-EXT-SKILLS-21 | tests/external/test_ext_skills_client.nim | Given a listed SKILL.md of exactly 16 MiB, when it is read, then the limit is not passed and the bytes come back
+MCP-EXT-SKILLS-21 | tests/external/test_ext_skills_client.nim | Given a listed file of 9 MiB read twice, when the second read would pass 16 MiB, then SkillsError is raised without a second request
+MCP-EXT-SKILLS-22 | tests/external/test_ext_skills_client.nim | Given a server without directoryRead, when a directory is read, then McpUnsupportedError is raised and nothing is sent
+MCP-EXT-SKILLS-22 | tests/external/test_ext_skills_client.nim | Given a server with directoryRead, when a directory is read over two pages, then all children arrive, directories marked
+MCP-EXT-SKILLS-22 | tests/external/test_ext_skills_client.nim | Given an unsafe directory URI or an unsafe child, when a directory is read, then it is refused
+MCP-EXT-SKILLS-22 | tests/external/test_ext_skills_client.nim | Given a directory read that lists a file the entry does not, when the children are filtered, then the unlisted file is left out
+MCP-EXT-SKILLS-22 | tests/external/test_ext_skills_client.nim | Given a client that declared nothing, when it reads a directory of a server with directoryRead, then it is served
+MCP-EXT-SKILLS-23 | tests/external/test_ext_skills_client.nim | Given an entry that changed on the server, when it is refreshed, then the new entry comes back marked changed
+MCP-EXT-SKILLS-23 | tests/external/test_ext_skills_client.nim | Given a dynamic entry, when it is refreshed, then it always counts as changed
+MCP-EXT-SKILLS-24 | tests/external/test_ext_skills_end_to_end.nim | Given a server that registered skills, when a client lists, gets and loads a skill, then the served instructions arrive verified
+MCP-EXT-SKILLS-24 | tests/external/test_ext_skills_end_to_end.nim | Given a server with directoryRead, when a client lists a directory, then the manifest and the directory agree
+MCP-EXT-SKILLS-24 | tests/external/test_ext_skills_end_to_end.nim | Given a server without directoryRead, when a client lists a directory, then it refuses before sending
+MCP-EXT-SKILLS-24 | tests/external/test_ext_skills_end_to_end.nim | Given a client that declared nothing, when it lists skills of a server that has them, then it is served
+MCP-EXT-SKILLS-25 | tests/external/test_ext_skills_frontmatter.nim | Given blank lines inside a multi-line plain scalar, when read, then n blank lines are n newlines
+MCP-EXT-SKILLS-25 | tests/external/test_ext_skills_frontmatter.nim | Given blank lines after a multi-line plain scalar, when another field follows, then they add nothing
+MCP-EXT-SKILLS-25 | tests/external/test_ext_skills_frontmatter.nim | Given a folded block with blank lines, when read, then n blank lines are n newlines and a plain break is a space
+MCP-EXT-SKILLS-26 | tests/external/test_ext_skills_frontmatter.nim | Given a trailing comma, when read, then it ends the sequence without adding an item
+MCP-EXT-SKILLS-27 | tests/external/test_ext_skills_frontmatter.nim | Given a keep-chomped block scalar with no lines, when read, then it is empty and each blank line is one newline
+MCP-EXT-SKILLS-28 | tests/external/test_ext_skills_frontmatter.nim | Given a doubled quote inside a single-quoted key, when read, then it is one quote of the key
+MCP-EXT-SKILLS-29 | tests/external/test_ext_skills_frontmatter.nim | Given a line starting with a hash inside a block scalar, when read, then it is content and not a comment
+MCP-EXT-SKILLS-29 | tests/external/test_ext_skills_frontmatter.nim | Given a comment outside the block scalar, when read, then it is still a comment
+MCP-EXT-SKILLS-30 | tests/external/test_ext_skills_frontmatter.nim | Given an item missing before a comma, when read, then FrontmatterError is raised
+MCP-EXT-SKILLS-30 | tests/external/test_ext_skills_frontmatter.nim | Given empty, single and several items, when read, then the array has as many
+MCP-EXT-SKILLS-30 | tests/external/test_ext_skills_frontmatter.nim | Given a trailing comma, when read, then it ends the sequence without adding an item
+MCP-EXT-SKILLS-31 | tests/external/test_ext_skills_frontmatter.nim | Given an escape inside a double-quoted key, when read, then it reads as in a value
+MCP-EXT-SKILLS-31 | tests/external/test_ext_skills_frontmatter.nim | Given a double-quoted key ending in an unescaped backslash pair, when read, then the quote closes it
+MCP-EXT-SKILLS-32 | tests/external/test_ext_skills_frontmatter.nim | Given a folded block with lines indented deeper than the rest, when read, then the breaks next to them stay
+MCP-EXT-SKILLS-32 | tests/external/test_ext_skills_frontmatter.nim | Given two spaces inside a line of a folded block, when read, then both stay
+MCP-EXT-SKILLS-33 | tests/external/test_ext_skills_frontmatter.nim | Given a comment after a multi-line plain scalar, when another field follows, then the scalar ended before it
+MCP-EXT-SKILLS-33 | tests/external/test_ext_skills_frontmatter.nim | Given a comment in the middle of a multi-line plain scalar, when read, then FrontmatterError is raised
+MCP-EXT-SKILLS-34 | tests/external/test_ext_skills_frontmatter.nim | Given a comment indented less than the content of a block scalar, when read, then the scalar ends before it
+MCP-EXT-SKILLS-34 | tests/external/test_ext_skills_frontmatter.nim | Given content after a line that ended a block scalar, when read, then FrontmatterError is raised

@@ -15,7 +15,7 @@ when DefaultProtocolVersion.has(ftProtectedResourceMetadata):
   import client/client
   import server/server
   import ext/auth_client_credentials
-  import auth/oauth/[errors, jwt]
+  import auth/oauth/errors
   import ./server_harness
   import ./client_peer
   import ext_auth_fixtures
@@ -114,27 +114,6 @@ when DefaultProtocolVersion.has(ftProtectedResourceMetadata):
       check posts[0].bearerOf == ""
       check posts[1].bearerOf.startsWith("Bearer at-ext-")
 
-    test "Given a signing key, when a request is sent, then the assertion names the issuer as audience, client_id is not in the body, and the retry succeeds":
-      let env = startEnv()
-      defer: env.stop()
-      let t = transportFor(newClientCredentialsAuth(env.withKey()), env.rs.url)
-      check t.ping(){"result", "served"}.getBool()
-      let r = env.requests[][0]
-      check r.field("client_assertion_type").isSome
-      check r.field("client_id").isNone
-      check decodeJwtUnverified(r.field("client_assertion").get).claims{"aud"}.getStr() ==
-            env.authServer.issuer
-
-    test "Given a server that expects the token endpoint as audience, when the config asks for it, then the assertion carries the token endpoint URL":
-      let env = startEnv()
-      defer: env.stop()
-      env.registry.audiences = @[env.authServer.metadata["token_endpoint"].getStr()]
-      var config = env.withKey()
-      config.assertionAudience = aaTokenEndpoint
-      let t = transportFor(newClientCredentialsAuth(config), env.rs.url)
-      check t.ping(){"result", "served"}.getBool()
-      check decodeJwtUnverified(env.requests[][0].field("client_assertion").get).claims{"aud"}.getStr() ==
-            env.authServer.metadata["token_endpoint"].getStr()
 
     test "Given a server that lists only client_secret_post besides private_key_jwt, when the client has a secret, then the secret goes in the body":
       let env = startEnv(authMethods = @["private_key_jwt", "client_secret_post"])

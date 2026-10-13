@@ -214,7 +214,7 @@ if isSupported(mpv20260728):
       let f = fixture()
       let answer = f.newPeer.ask("server/discover")
       check answer["result"]["capabilities"]["extensions"][Ext] == newJObject()
-      check parseJson(readFile(currentSourcePath().parentDir / "fixtures" / "2026-07-28" /
+      check parseJson(readFile(currentSourcePath().parentDir.parentDir / "fixtures" / "2026-07-28" /
         "ServerCapabilities_extensions-tasks.json"))["extensions"] ==
         answer["result"]["capabilities"]["extensions"]
 

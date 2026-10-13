@@ -36,6 +36,7 @@ import ../auth/oauth/[challenge, errors, grants, jwt, metadata, metadata_fields,
 import ./auth_shared
 
 export grants.ClientAuthMethod, jwt.JwtSigner, jwt.newJwtSigner
+export urls.FetchPolicy, urls.defaultFetchPolicy  # the type of the config's `fetchPolicy`
 
 const
   ClientCredentialsExtensionId* = "io.modelcontextprotocol/oauth-client-credentials"

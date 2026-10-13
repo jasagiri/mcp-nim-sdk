@@ -42,6 +42,8 @@ import ./auth_shared
 
 export grants.ClientAuthentication, grants.secretBasic, grants.secretPost,
        grants.privateKeyJwt, grants.publicClient
+export jwt.DecodedJwt  # the result of `checkIdentityAssertionGrant`
+export urls.FetchPolicy, urls.defaultFetchPolicy  # the type of the config's `fetchPolicy`
 
 const
   EnterpriseManagedExtensionId* = "io.modelcontextprotocol/enterprise-managed-authorization"

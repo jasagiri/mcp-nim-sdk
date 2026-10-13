@@ -9,11 +9,76 @@
 ## the fake servers verify it with the same key.
 
 import std/[asyncdispatch, asynchttpserver, base64, httpcore, json, options,
-            sets, strutils, tables, times, uri]
-import auth/oauth/[jwt, sha256, urls]
+            sets, strutils, tables, times, uri, osproc]
+import ext/auth_client_credentials
+import ext/auth_enterprise_managed  # DecodedJwt
 import auth_fixtures
 
 export auth_fixtures
+
+const
+  # RFC 8693 section 3. What a fake IdP is sent and answers; the SDK chooses
+  # among them itself, so its entries do not export them.
+  TokenTypeAccessToken* = "urn:ietf:params:oauth:token-type:access_token"
+  TokenTypeRefreshToken* = "urn:ietf:params:oauth:token-type:refresh_token"
+  TokenTypeIdToken* = "urn:ietf:params:oauth:token-type:id_token"
+  TokenTypeSaml2* = "urn:ietf:params:oauth:token-type:saml2"
+
+const
+  GrantTypeClientCredentials* = "client_credentials"
+  GrantTypeJwtBearer* = "urn:ietf:params:oauth:grant-type:jwt-bearer"
+  GrantTypeTokenExchange* = "urn:ietf:params:oauth:grant-type:token-exchange"
+
+proc formDecode(query: string): seq[(string, string)] =
+  for (k, v) in decodeQuery(query):
+    result.add (k, v)
+
+proc sha256(data: string): string =
+  ## The 32 raw bytes of the digest. Nim's std has no SHA-256, so it comes
+  ## from the openssl command (as in `auth_fixtures`); the hex form is read
+  ## because execCmdEx is not binary-safe on its output.
+  let (output, code) = execCmdEx("openssl dgst -sha256 -r", input = data)
+  let hex = output.splitWhitespace()
+  doAssert code == 0 and hex.len > 0 and hex[0].len == 64,
+    "openssl dgst failed: exit " & $code & ": " & output
+  result = newString(32)
+  for i in 0 ..< 32:
+    result[i] = char(parseHexInt(hex[0][2 * i .. 2 * i + 1]))
+
+proc base64Url(data: string): string =
+  base64.encode(data, safe = true).strip(leading = false, chars = {'='})
+
+proc signJwt*(signer: JwtSigner, claims: JsonNode, typ = none(string)): string =
+  ## The compact serialization of `claims` signed by `signer`.
+  var header = %*{"alg": signer.alg}
+  if typ.isSome:
+    header["typ"] = %typ.get
+  if signer.keyId.isSome:
+    header["kid"] = %signer.keyId.get
+  let signingInput = base64Url($header) & "." & base64Url($claims)
+  signingInput & "." & base64Url(signer.sign(signingInput))
+
+proc decodeSegment(segment, what: string): string =
+  if segment.len == 0 or not segment.allCharsInSet(
+       {'A'..'Z', 'a'..'z', '0'..'9', '-', '_'}):
+    raise newException(ValueError, "the JWT " & what & " is not base64url")
+  base64.decode(segment.replace('-', '+').replace('_', '/'))
+
+proc decodeJwtUnverified*(token: string): DecodedJwt =
+  ## Splits and parses a compact JWT; the signature is NOT checked. Raises
+  ## for anything that is not three base64url parts with JSON-object header
+  ## and payload and an `alg`.
+  let parts = token.split('.')
+  if parts.len != 3:
+    raise newException(ValueError, "a JWT has three dot-separated parts")
+  let header = parseJson(decodeSegment(parts[0], "header"))
+  let claims = parseJson(decodeSegment(parts[1], "payload"))
+  if header.kind != JObject or claims.kind != JObject:
+    raise newException(ValueError, "the JWT header and payload must be JSON objects")
+  if header{"alg"}.isNil or header{"alg"}.kind != JString or header{"alg"}.getStr().len == 0:
+    raise newException(ValueError, "the JWT header has no alg")
+  DecodedJwt(header: header, claims: claims, signingInput: parts[0] & "." & parts[1],
+             signature: decodeSegment(parts[2], "signature"))
 
 proc hmacSha256*(key, message: string): string =
   const Block = 64
@@ -39,10 +104,12 @@ proc hmacSha256*(key, message: string): string =
     result[i] = char(digest[i])
 
 proc hs256Signer*(key: string, keyId = none(string)): JwtSigner =
-  newJwtSigner("HS256", proc(input: string): string {.closure, gcsafe, raises: [].} =
+  newJwtSigner("HS256", proc(input: string): string {.closure, gcsafe.} =
     hmacSha256(key, input), keyId)
 
-proc hs256Valid*(jwt: DecodedJwt, key: string): bool =
+proc hs256Valid*[Jwt](jwt: Jwt, key: string): bool =
+  ## Generic over the decoded JWT so that a test that reads a token with the
+  ## SDK's own `DecodedJwt` can check it too.
   jwt.header{"alg"}.getStr() == "HS256" and jwt.signature == hmacSha256(key, jwt.signingInput)
 
 type

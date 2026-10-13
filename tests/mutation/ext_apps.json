@@ -6,7 +6,7 @@
     "src/ext/apps/provider.nim",
     "src/ext/apps.nim"
   ],
-  "testCommand": "nim c -r --hints:off tests/test_ext_apps_end_to_end.nim && nim c -r --hints:off tests/test_ext_apps_host.nim && nim c -r --hints:off tests/test_ext_apps_messages.nim && nim c -r --hints:off tests/test_ext_apps_model.nim && nim c -r --hints:off tests/test_ext_apps_server.nim",
+  "testCommand": "nim c -r --hints:off tests/external/test_ext_apps_end_to_end.nim && nim c -r --hints:off tests/external/test_ext_apps_host.nim && nim c -r --hints:off tests/external/test_ext_apps_messages.nim && nim c -r --hints:off tests/external/test_ext_apps_model.nim && nim c -r --hints:off tests/external/test_ext_apps_server.nim",
   "mutators": [
     "AOR",
     "ROR",

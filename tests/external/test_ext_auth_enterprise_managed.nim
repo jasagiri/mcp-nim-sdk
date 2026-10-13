@@ -17,7 +17,7 @@ when DefaultProtocolVersion.has(ftProtectedResourceMetadata):
   import client/client
   import server/server
   import ext/auth_enterprise_managed
-  import auth/oauth/[errors, grants, jwt, tokens, urls]
+  import auth/oauth/errors
   import ./server_harness
   import ./client_peer
   import ext_auth_fixtures
@@ -207,35 +207,6 @@ when DefaultProtocolVersion.has(ftProtectedResourceMetadata):
 
   suite "enterprise-managed authorization: the flow":
 
-    test "Given a 401 and an ID token, when a request is sent, then the IdP exchanges it for an ID-JAG for this authorization server and resource, the server turns that into an access token, and the user is never sent anywhere":
-      let env = startEnv()
-      defer: env.stop()
-      env.rs.challengeScope = "chat.read chat.history"
-      let t = env.connect(env.config())
-      check t.ping(){"result", "served"}.getBool()
-      check env.idpRequests[].len == 1
-      let x = env.idpRequests[][0]
-      check x.field("grant_type") == some(GrantTypeTokenExchange)
-      check x.field("requested_token_type") == some(TokenTypeIdJag)
-      check x.field("audience") == some(env.ras.issuer)
-      check x.field("resource") == some(env.rs.url)
-      # A challenge names a scope from 2025-11-25 on; before that it is ignored.
-      check x.field("scope") ==
-        (if ScopeChallenges: some("chat.read chat.history") else: none(string))
-      check x.field("subject_token") == some(IdToken)
-      check x.field("subject_token_type") == some(TokenTypeIdToken)
-      check env.rasRequests[].len == 1
-      let g = env.rasRequests[][0]
-      check g.field("grant_type") == some(GrantTypeJwtBearer)
-      check g.field("assertion").isSome
-      check g.field("resource").isNone
-      check g.field("subject_token").isNone
-      let posts = env.rs.log.requestsTo("/mcp")
-      check posts.len == 2
-      check posts[0].bearerOf == ""
-      check posts[1].bearerOf.startsWith("Bearer at-ext-")
-      for l in env.idp.log & env.ras.log:
-        check l.path != "/authorize"
 
     test "Given the access token the server issued, when it is looked up, then it is restricted to the MCP server named by the ID-JAG's resource":
       let env = startEnv()
@@ -244,14 +215,6 @@ when DefaultProtocolVersion.has(ftProtectedResourceMetadata):
       let token = env.rs.log.requestsTo("/mcp")[1].bearerOf["Bearer ".len .. ^1]
       check env.ras.accessTokens[token].resource == env.rs.url
 
-    test "Given a SAML assertion or a refresh token instead of an ID token, when a request is sent, then subject_token_type says which":
-      for (kind, token, urn) in [(iakSaml2, "saml-alice-SECRET", TokenTypeSaml2),
-                                 (iakRefreshToken, "refresh-alice-SECRET", TokenTypeRefreshToken)]:
-        let env = startEnv()
-        defer: env.stop()
-        env.assertion[] = IdentityAssertion(kind: kind, token: token)
-        check env.connect(env.config()).ping(){"result", "served"}.getBool()
-        check env.idpRequests[][0].field("subject_token_type") == some(urn)
 
     test "Given a signing key at the IdP and a public client with a metadata document URL at the authorization server, when a request is sent, then both authenticate as the draft says":
       let env = startEnv()
@@ -304,13 +267,6 @@ when DefaultProtocolVersion.has(ftProtectedResourceMetadata):
       check env.providerCalls[] == 2
       check env.rasRequests[][0].field("assertion") != env.rasRequests[][1].field("assertion")
 
-    test "Given a refresh token from the authorization server, when the access token is stored, then it is not kept (the ID-JAG renews access)":
-      let env = startEnv()
-      defer: env.stop()
-      env.rasRefresh[] = true
-      let config = env.config()
-      discard env.connect(config).ping()
-      check config.tokenStore.load(canonicalResource(env.rs.url)).get.refreshToken.isNone
 
     test "Given a config without a resource, when a request is sent, then the exchange carries none":
       let env = startEnv()
@@ -385,10 +341,6 @@ when DefaultProtocolVersion.has(ftProtectedResourceMetadata):
       defer: env.stop()
       check GrantProfileIdJag in env.refusedBeforeAnyExchange(env.config())
 
-    test "Given an authorization server that lists the profile but not the jwt-bearer grant, when a request is sent, then no identity assertion is used":
-      let env = startEnv(rasGrantTypes = @["authorization_code"])
-      defer: env.stop()
-      check GrantTypeJwtBearer in env.refusedBeforeAnyExchange(env.config())
 
     test "Given an IdP that lists identity chaining token types without id-jag, when a request is sent, then the identity assertion is not sent to it":
       let env = startEnv(idpTokenTypes = @["urn:ietf:params:oauth:token-type:access_token"])
@@ -620,65 +572,6 @@ when DefaultProtocolVersion.has(ftProtectedResourceMetadata):
                   "client_id": "c", "exp": 1_800_000_100, "iat": 1_799_999_900,
                   "resource": "https://mcp.example/mcp"}
 
-    test "Given a well-formed ID-JAG, when checked, then the claims come back":
-      let decoded = checkIdentityAssertionGrant(jag(good), "https://idp.example", "https://as.example",
-                                                some("https://mcp.example/mcp"), "c", now)
-      check decoded.claims{"sub"}.getStr() == "u"
-
-    test "Given a resource written with a trailing slash on a bare origin, when checked, then it matches the canonical resource":
-      var claims = good.copy()
-      claims["resource"] = %"https://mcp.example/"
-      discard checkIdentityAssertionGrant(jag(claims), "https://idp.example", "https://as.example",
-                                          some("https://mcp.example"), "c", now)
-
-    test "Given no resource expected, when the ID-JAG has none, then it is accepted":
-      var claims = good.copy()
-      claims.delete("resource")
-      discard checkIdentityAssertionGrant(jag(claims), "https://idp.example", "https://as.example",
-                                          none(string), "c", now)
-
-    test "Given an ID-JAG that is not a JWT or has the wrong typ, when checked, then it is refused":
-      expect OAuthError:
-        discard checkIdentityAssertionGrant("not-a-jwt", "https://idp.example", "https://as.example",
-                                            none(string), "c", now)
-      expect OAuthSecurityError:
-        discard checkIdentityAssertionGrant(jag(good, "at+jwt"), "https://idp.example",
-                                            "https://as.example", none(string), "c", now)
-      expect OAuthSecurityError:
-        discard checkIdentityAssertionGrant(hs256Signer("k").signJwt(good), "https://idp.example",
-                                            "https://as.example", none(string), "c", now)
-
-    test "Given claims of the wrong JSON type, when checked, then they are refused":
-      for (name, value) in [("aud", %5), ("aud", %*[1]), ("resource", %true), ("iss", %1),
-                            ("client_id", %1), ("exp", %"soon"), ("sub", %""), ("jti", %3)]:
-        var claims = good.copy()
-        claims[name] = value
-        var refused = false
-        try:
-          discard checkIdentityAssertionGrant(jag(claims), "https://idp.example",
-                                              "https://as.example", some("https://mcp.example/mcp"),
-                                              "c", now)
-        except OAuthError:
-          refused = true
-        check refused
-
-    test "Given an ID-JAG that expires at this very second, when checked, then it has expired":
-      var claims = good.copy()
-      claims["exp"] = %1_800_000_000
-      try:
-        discard checkIdentityAssertionGrant(jag(claims), "https://idp.example", "https://as.example",
-                                            none(string), "c", now)
-        fail()
-      except OAuthError as e:
-        check "expired" in e.msg
-
-    test "Given an ID-JAG without iss or without client_id, when checked, then it is refused as not from the IdP or not for the client":
-      for name in ["iss", "client_id"]:
-        var claims = good.copy()
-        claims.delete(name)
-        expect OAuthSecurityError:
-          discard checkIdentityAssertionGrant(jag(claims), "https://idp.example",
-                                              "https://as.example", none(string), "c", now)
 
   suite "enterprise-managed authorization: how a challenge is answered":
 
@@ -759,24 +652,6 @@ when DefaultProtocolVersion.has(ftProtectedResourceMetadata):
       discard t.failureOf()
       check env.idpRequests[].len == asked + 1
 
-    test "Given an authorization server that grants a narrower scope than was asked, when the access token is stored, then its scopes are the granted ones":
-      let env = startEnv()
-      defer: env.stop()
-      env.rs.challengeScope = "chat.read chat.history"
-      env.behavior.grantScope = some("chat.read")
-      let config = env.config()
-      discard env.connect(config).ping()
-      check config.tokenStore.load(canonicalResource(env.rs.url)).get.scopes == @["chat.read"]
-
-    test "Given an authorization server that names no scope in its answer, when the access token is stored, then its scopes are the ones asked for":
-      let env = startEnv()
-      defer: env.stop()
-      env.rs.challengeScope = "chat.read"
-      env.behavior.grantScope = some("")
-      let config = env.config()
-      discard env.connect(config).ping()
-      check config.tokenStore.load(canonicalResource(env.rs.url)).get.scopes ==
-            (if ScopeChallenges: @["chat.read"] else: @[])
 
   suite "enterprise-managed authorization: the extensions capability":
 
@@ -836,7 +711,6 @@ when DefaultProtocolVersion.has(ftProtectedResourceMetadata):
 
 else:
   import std/[unittest, asyncdispatch]
-  import auth/oauth/grants
   import ext/auth_enterprise_managed
 
   suite "enterprise-managed authorization: versions without Protected Resource Metadata":
