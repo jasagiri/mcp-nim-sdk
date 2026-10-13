@@ -96,7 +96,7 @@ README は使い方の説明で、型や手続きの一覧ではないので、�
 | `protocol/param_headers` | `server/server`、`transport/http`、`transport/http_server` | `test_param_headers.nim` |
 | `server/request_state` | **無し** | `test_mrtr.nim` |
 | `server/subscriptions` | `server/server` |  |
-| `server/tools` | **無し** | `test_audio_content.nim`、`test_icons.nim`、`test_resource_links.nim`、`test_tool_annotations.nim` |
+| `server/tools` | `mcp` (2026-10-13 から。入口が export する) | `test_audio_content.nim`、`test_icons.nim`、`test_resource_links.nim`、`test_tool_annotations.nim` |
 | `transport/address_policy` | `auth/oauth/urls`、`client/icons`、`transport/guarded_wire` | `test_security_address.nim`、`test_security_icons.nim` |
 | `transport/auth_hook` | `auth/client`、`auth/resource_server`、`transport/http`、`transport/http_server` | `test_auth_failure.nim`、`test_auth_http_methods.nim`、`test_http_documents.nim`、`test_security_http.nim` |
 | `transport/first_of` | `client/client`、`client/subscriptions`、`transport/http_server`、`transport/http_wire` ほか 1 | `test_first_of.nim` |
@@ -106,6 +106,6 @@ README は使い方の説明で、型や手続きの一覧ではないので、�
 | `transport/sse_legacy` | `transport/http_compat` | `test_http_sse_legacy.nim` |
 | `transport/sse_stream` | `transport/http_server` | `test_http_streams.nim` |
 
-`src` のどこからも import されていないのは `protocol/implementation_status`、`server/request_state`、`server/tools`、`transport/http_compat` である。
+`src` のどこからも import されていないのは `protocol/implementation_status`、`server/request_state`、`transport/http_compat` である (`server/tools` は 2026-10-13 に入口の `mcp` が export するようにした)。
 `server/request_state` は `server/mrtr` の doc が、`transport/http_compat` は README が利用者に import を案内している。`protocol/implementation_status` は文書を生成する道具とそのテストが使う表である。
-**`server/tools` (`createToolInfo`、`createToolResult` など) は、入口から届かず、`src` からも呼ばれず、どの文書も案内していない。** テスト 4 本がこれを import している。公開するのか消すのかが決まっていない。
+`server/tools` (`createToolInfo`、`createToolResult` など) は、この表を作った時点では入口から届かず、`src` からも呼ばれず、どの文書も案内していなかった。2026-10-13 に利用者の決定で公開にした: `import mcp` が export し、README が案内する。この文書のほかの数 (公開のシンボルの数、説明の無いシンボルの数) は数え直していない。

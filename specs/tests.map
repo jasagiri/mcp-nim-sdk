@@ -887,6 +887,9 @@ MCP-CONTENT-FIELDS-8 | tests/test_tool_annotations.nim | Given a title and an ic
 MCP-CONTENT-FIELDS-8 | tests/test_tool_annotations.nim | Given a result built without isError, when it is read, then it is not an error
 MCP-CONTENT-FIELDS-8 | tests/test_tool_annotations.nim | Given no description and no required list, when schemas are built, then only type and shape are sent
 MCP-CONTENT-FIELDS-8 | tests/test_tool_annotations.nim | Given a description and required names, when schemas are built, then they are sent
+MCP-CONTENT-FIELDS-8 | tests/test_tool_builders.nim | Given a name, a description and a schema only, when a tool is defined, then it has no title, icons, annotations or outputSchema
+MCP-CONTENT-FIELDS-8 | tests/test_tool_builders.nim | Given a result built without isError, when it is read, then it is not an error
+MCP-CONTENT-FIELDS-8 | tests/test_tool_builders.nim | Given schemas built without a description or a required list, when they are read, then they carry neither
 MCP-STRUCTOUT-6 | tests/test_structured_tool_output.nim | Given a version without structured output, when the result has no structuredContent, then it is served as it is
 MCP-STRUCTOUT-6 | tests/test_structured_tool_output.nim | Given a tool without an outputSchema, when it returns any structuredContent, then it is not checked
 MCP-STRUCTOUT-6 | tests/test_structured_tool_output.nim | Given a client of a version without structured output, when a result breaks the schema, then it is returned unchecked

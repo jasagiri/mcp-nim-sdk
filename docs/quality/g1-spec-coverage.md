@@ -129,7 +129,7 @@ joined to tests by the rows of
 | MCP-CONTENT-FIELDS-5 | tests/test_structured_tool_output.nim (3) |
 | MCP-CONTENT-FIELDS-6 | tests/test_structured_tool_output.nim (2) |
 | MCP-CONTENT-FIELDS-7 | tests/test_structured_tool_output.nim (2) |
-| MCP-CONTENT-FIELDS-8 | tests/test_tool_annotations.nim (5) |
+| MCP-CONTENT-FIELDS-8 | tests/test_tool_annotations.nim (5), tests/test_tool_builders.nim (3) |
 | MCP-ELICIT-1 | tests/test_client_elicitation.nim (1), tests/test_elicitation_payload.nim (2), tests/test_server_elicitation.nim (2) |
 | MCP-ELICIT-2 | tests/test_elicitation_payload.nim (3), tests/test_server_elicitation.nim (1) |
 | MCP-ELICIT-3 | tests/test_client_elicitation.nim (1), tests/test_elicitation_payload.nim (7), tests/test_server_elicitation.nim (1) |

@@ -1,4 +1,7 @@
-## MCP server tool utilities
+## What a server builds its tool definitions and results with, instead of
+## writing the JSON out: `createToolInfo` and the schema procedures for an
+## item of tools/list, `createToolResult` and the content procedures for the
+## answer of a tools/call. `import mcp` exports them.
 
 import json, options
 import ../protocol/content
@@ -7,7 +10,7 @@ import ../protocol/types
 proc createToolInfo*(name: string, description: string, inputSchema: JsonNode,
                      annotations: JsonNode = nil, title = "",
                      outputSchema: JsonNode = nil,
-                     icons: seq[McpIcon] = @[]): JsonNode =
+                     icons: seq[McpIcon] = @[]): JsonNode {.raises: [].} =
   ## A tool definition for tools/list. Fields the client's protocol version
   ## does not have (annotations, title, outputSchema, icons) are left out
   ## when the server answers, so they can be set whatever the version.
@@ -24,44 +27,45 @@ proc createToolInfo*(name: string, description: string, inputSchema: JsonNode,
   if not outputSchema.isNil:
     result["outputSchema"] = outputSchema
   if icons.len > 0:
-    result["icons"] = newJArray()
+    let listed = newJArray()
     for icon in icons:
-      result["icons"].add icon.toJson
+      listed.add icon.toJson
+    result["icons"] = listed
 
-proc createToolResult*(content: seq[JsonNode], isError: bool = false): JsonNode =
+proc createToolResult*(content: seq[JsonNode], isError: bool = false): JsonNode {.raises: [].} =
   result = %*{
     "content": content,
     "isError": isError
   }
 
-proc createTextToolContent*(text: string): JsonNode =
+proc createTextToolContent*(text: string): JsonNode {.raises: [].} =
   result = %*{
     "type": "text",
     "text": text
   }
 
-proc createImageToolContent*(data: string, mimeType: string): JsonNode =
+proc createImageToolContent*(data: string, mimeType: string): JsonNode {.raises: [].} =
   result = %*{
     "type": "image",
     "data": data,
     "mimeType": mimeType
   }
 
-proc createAudioToolContent*(data: string, mimeType: string): JsonNode =
+proc createAudioToolContent*(data: string, mimeType: string): JsonNode {.raises: [].} =
   result = %*{
     "type": "audio",
     "data": data,
     "mimeType": mimeType
   }
 
-proc createResourceToolContent*(resource: JsonNode): JsonNode =
+proc createResourceToolContent*(resource: JsonNode): JsonNode {.raises: [].} =
   result = %*{
     "type": "resource",
     "resource": resource
   }
 
 proc createResourceLinkToolContent*(uri, name: string, description = "",
-    mimeType = "", title = "", size = none(int)): JsonNode =
+    mimeType = "", title = "", size = none(int)): JsonNode {.raises: [].} =
   ## A link to a resource (2025-06-18 and later); a client may read it with
   ## resources/read. Only the fields that were given are sent.
   result = %*{"type": "resource_link", "uri": uri, "name": name}
@@ -70,7 +74,7 @@ proc createResourceLinkToolContent*(uri, name: string, description = "",
   if title.len > 0: result["title"] = %title
   if size.isSome: result["size"] = %size.get
 
-proc createInputSchema*(properties: JsonNode, required: seq[string] = @[]): JsonNode =
+proc createInputSchema*(properties: JsonNode, required: seq[string] = @[]): JsonNode {.raises: [].} =
   result = %*{
     "type": "object",
     "properties": properties
@@ -79,7 +83,7 @@ proc createInputSchema*(properties: JsonNode, required: seq[string] = @[]): Json
   if required.len > 0:
     result["required"] = %required
 
-proc createStringProperty*(description: string = ""): JsonNode =
+proc createStringProperty*(description: string = ""): JsonNode {.raises: [].} =
   result = %*{
     "type": "string"
   }
@@ -87,7 +91,7 @@ proc createStringProperty*(description: string = ""): JsonNode =
   if description.len > 0:
     result["description"] = %description
 
-proc createNumberProperty*(description: string = ""): JsonNode =
+proc createNumberProperty*(description: string = ""): JsonNode {.raises: [].} =
   result = %*{
     "type": "number"
   }
@@ -95,7 +99,7 @@ proc createNumberProperty*(description: string = ""): JsonNode =
   if description.len > 0:
     result["description"] = %description
 
-proc createBooleanProperty*(description: string = ""): JsonNode =
+proc createBooleanProperty*(description: string = ""): JsonNode {.raises: [].} =
   result = %*{
     "type": "boolean"
   }
@@ -103,7 +107,7 @@ proc createBooleanProperty*(description: string = ""): JsonNode =
   if description.len > 0:
     result["description"] = %description
 
-proc createArrayProperty*(items: JsonNode, description: string = ""): JsonNode =
+proc createArrayProperty*(items: JsonNode, description: string = ""): JsonNode {.raises: [].} =
   result = %*{
     "type": "array",
     "items": items
@@ -112,7 +116,7 @@ proc createArrayProperty*(items: JsonNode, description: string = ""): JsonNode =
   if description.len > 0:
     result["description"] = %description
 
-proc createObjectProperty*(properties: JsonNode, required: seq[string] = @[], description: string = ""): JsonNode =
+proc createObjectProperty*(properties: JsonNode, required: seq[string] = @[], description: string = ""): JsonNode {.raises: [].} =
   result = %*{
     "type": "object",
     "properties": properties
@@ -124,7 +128,7 @@ proc createObjectProperty*(properties: JsonNode, required: seq[string] = @[], de
   if description.len > 0:
     result["description"] = %description
 
-proc createEnumProperty*(values: seq[string], description: string = ""): JsonNode =
+proc createEnumProperty*(values: seq[string], description: string = ""): JsonNode {.raises: [].} =
   result = %*{
     "type": "string",
     "enum": values

@@ -308,6 +308,8 @@ proc main() =
 main()
 ```
 
+The example writes its tool definition and its result as JSON. A server can build them with procedures instead: `createToolInfo` with `createInputSchema` and the `create…Property` procedures for an item of `tools/list`, and `createToolResult` with `createTextToolContent` and the other `create…ToolContent` procedures for the answer of a call ([src/server/tools.nim](src/server/tools.nim)). They produce the same JSON and leave out the fields that were not given.
+
 [examples/features_client.nim](examples/features_client.nim) does the same for a client:
 
 ```nim
