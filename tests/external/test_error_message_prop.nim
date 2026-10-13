@@ -122,7 +122,10 @@ suite "The errors a server writes (every version)":
         let reply = server.connect(server.attach(), version).ask("tools/call", %*{"name": "breaks"})
         reply.hasKey("error") and reply.errorCode == -32603 and
           reply["error"]["message"].getStr() == "Internal error" and
-          "handler-says" notin $reply and text notin $reply))
+          "handler-says" notin $reply and text notin $reply and
+          # nor a part of it: every piece the text is made of, wherever it stood
+          "line" notin $reply and "Second sentence" notin $reply and
+          "/private/path" notin $reply and "x y z w v u t" notin $reply))
     checkpoint describe(outcome)
     check outcome.passed
 
@@ -139,18 +142,19 @@ proc startHttp(): string =
 suite "The errors an HTTP server writes":
 
   test "Given any body that is not a request, when posted, then the answer carries one concise sentence":
-    # Space: text that is not JSON, and JSON that is no request: numbers, strings, null, arrays
-    # of numbers and objects without a method.
+    # Space: text that is not JSON, and JSON that is no request: a number, a string, a boolean,
+    # null, arrays and objects without a method.
     let url = startHttp()
     let http = newAsyncHttpClient()
     defer: http.close()
-    let anyBody = map(pair(intIn(0, 3), pair(anyWord, anyJson)),
+    let anyBody = map(pair(intIn(0, 4), pair(anyWord, anyJson)),
       proc(x: (int, (string, JsonNode))): string {.raises: [].} =
         case x[0]
         of 0: "{" & x[1][0]                          # cut off: not JSON
         of 1: x[1][0] & " " & x[1][0]                # words: not JSON
         of 2: $(%*[1, 2, x[1][0].len])               # an array of numbers
-        else: $(%*{"k": x[1][1]}))                   # an object that names no method
+        of 3: $(%*{"k": x[1][1]})                    # an object that names no method
+        else: $x[1][1])                              # any JSON value by itself
     let outcome = propcheck.check(anyBody,
       guarded(proc(body: string): bool =
         let response = waitFor http.request(url, HttpPost, body)

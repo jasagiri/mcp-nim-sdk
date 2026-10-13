@@ -147,6 +147,12 @@ suite "The keys the SDK writes (2026-07-28)":
           for key in keys:
             if not isValidMetaKey(key):
               return false
+          # Not valid for want of keys: a result (the first three requests) names the server.
+          var answered = false
+          for request in a.requests:
+            if request <= 2: answered = true
+          if answered and MetaServerInfo notin keys:
+            return false
           true))
       checkpoint describe(outcome)
       check outcome.passed

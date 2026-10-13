@@ -122,6 +122,7 @@ suite "cache hints on every page of a list (2026-07-28)":
             cursor = reply["result"]{"nextCursor"}.getStr()
             if cursor == "" or pages > 20:
               break
-          pages <= 20))
+          # every page was followed: as many as the list makes at this page size
+          pages == max(1, (c.items + c.pageSize - 1) div c.pageSize)))
       checkpoint describe(outcome)
       check outcome.passed

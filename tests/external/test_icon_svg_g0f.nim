@@ -34,11 +34,6 @@ proc refusal(icon: McpIcon, options = IconFetchOptions()): string =
     return e.msg
 
 suite "An SVG icon":
-  test "Given an SVG icon, when it is fetched with the default options, then it is refused and the refusal names the type":
-    for opening in Openings:
-      let why = refusal(McpIcon(src: dataUri("image/svg+xml", opening)))
-      check why.len > 0
-      check "image/svg+xml" in why
 
   test "Given an application that allows SVG, when an SVG icon is fetched, then its bytes come back as they are, with the type SVG":
     let options = IconFetchOptions(allowed: {itPng, itSvg})
@@ -46,12 +41,6 @@ suite "An SVG icon":
       let icon = waitFor fetchIcon(McpIcon(src: dataUri("image/svg+xml", opening)), Origin, options)
       check icon.kind == itSvg
       check icon.bytes == opening   # the script is still there: the application is told what it has
-
-  test "Given SVG bytes that call themselves a PNG, when they are fetched, then the label does not get them through":
-    for opening in Openings:
-      let label = dataUri("image/png", opening)
-      check refusal(McpIcon(src: label)).len > 0
-      check refusal(McpIcon(src: label), IconFetchOptions(allowed: {itPng, itSvg})).len > 0
 
   test "Given an application that allows SVG, when a PNG is fetched, then it is still a PNG":
     let icon = waitFor fetchIcon(McpIcon(src: dataUri("image/png", Png)), Origin,

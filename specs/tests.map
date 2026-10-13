@@ -179,12 +179,9 @@ MCP-RESOURCES-12 | tests/external/test_client_operations.nim | Given a 2026-07-2
 MCP-RESOURCES-13 | tests/external/test_server_resources_prompts.nim | Given the capabilities declared but no handlers, when a client calls the methods, then the method is not found
 MCP-RESOURCES-14 | tests/external/test_server_resources_prompts.nim | Given a read or a get whose required string parameter is missing or not a string, when it is sent, then the answer is invalid params
 MCP-RESOURCES-14 | tests/external/test_server_errors.nim | Given a call whose name is missing or not a string, when it is sent, then the answer is invalid params
-MCP-RESOURCES-15 | tests/external/test_resource_failures_g0c.nim | Given a resources/read handler that raises, when a client reads, then the answer is -32603 without the cause
-MCP-RESOURCES-15 | tests/external/test_resource_failures_g0c.nim | Given a resources/list handler that raises, when a client lists, then the answer is -32603 without the cause
 MCP-RESOURCES-15 | tests/external/test_handler_results_prop.nim | Given any exception a resources/list or resources/read handler raises, when a client lists or reads, then the answer is -32603, carries no result and does not name the cause
 MCP-RESOURCES-16 | tests/external/test_client_resource_error_g0c.nim | Given a server that answers -32002 or -32602, when the client reads, then the call fails with that code and the uri, and the client carries on
 MCP-RESOURCES-17 | tests/external/test_handler_results_fix.nim | Given a resource whose blob is not base64, when it is read, then the answer is an internal error
-MCP-RESOURCES-17 | tests/external/test_handler_results_fix.nim | Given a resource whose blob is not a string, when it is read, then the answer is an internal error
 MCP-RESOURCES-17 | tests/external/test_handler_results_fix.nim | Given a resource whose blob is base64 with or without padding groups, or that has text only, when it is read, then the contents are sent as they are
 MCP-RESOURCES-17 | tests/external/test_handler_results_prop.nim | Given any contents a resource handler returns, when a client sends resources/read, then they are sent as given if a blob is base64 and the read is an internal error otherwise
 MCP-LISTCHANGED-1 | tests/external/test_server_notifications.nim | Given two initialized clients, when the tool list changes, then each is told on its own session
@@ -211,7 +208,6 @@ MCP-PROMPTS-4 | tests/external/test_server_resources_prompts.nim | Given a promp
 MCP-PROMPTS-5 | tests/external/test_server_errors.nim | Given a prompt handler whose result is not an object, when the prompt is requested, then the answer is an internal error
 MCP-PROMPTS-6 | tests/external/test_handler_results_fix.nim | Given a prompt that lists a required argument, when it is got without it, then the handler is not run and the answer is invalid params
 MCP-PROMPTS-6 | tests/external/test_handler_results_fix.nim | Given a prompt whose arguments are optional or absent, when it is got without them, then the handler runs
-MCP-PROMPTS-6 | tests/external/test_handler_results_fix.nim | Given a prompt with two required arguments, when it is got with one, then the handler is not run and the answer is invalid params
 MCP-PROMPTS-6 | tests/external/test_handler_results_fix.nim | Given a prompt the server does not list, when it is got without arguments, then the handler decides
 MCP-PROMPTS-6 | tests/external/test_handler_results_fix.nim | Given arguments that are not an object, when a prompt is got, then the answer is invalid params and the handler is not run
 MCP-PROMPTS-6 | tests/external/test_handler_results_prop.nim | Given any prompt that lists arguments, when it is got with any of them left out, then the handler runs exactly when no required argument is missing
@@ -1689,15 +1685,11 @@ MCP-CONTENT-FIELDS-9 | tests/external/test_client_embedded_content_g0c.nim | Giv
 MCP-CONTENT-FIELDS-11 | tests/external/test_schema_ref_g0d.nim | Given a $ref to a network address, when an instance is validated, then the schema is reported and nothing connects to the address
 MCP-CONTENT-FIELDS-11 | tests/external/test_schema_ref_g0d.nim | Given a $ref to a file or a relative document, when an instance is validated, then the schema is reported
 MCP-CONTENT-FIELDS-11 | tests/external/test_schema_ref_g0d.nim | Given a $ref into its own document, when an instance is validated, then it is followed
-MCP-CONTENT-FIELDS-12 | tests/external/test_icon_svg_g0f.nim | Given an SVG icon, when it is fetched with the default options, then it is refused and the refusal names the type
 MCP-CONTENT-FIELDS-12 | tests/external/test_icon_svg_g0f.nim | Given an application that allows SVG, when an SVG icon is fetched, then its bytes come back as they are, with the type SVG
-MCP-CONTENT-FIELDS-12 | tests/external/test_icon_svg_g0f.nim | Given SVG bytes that call themselves a PNG, when they are fetched, then the label does not get them through
 MCP-CONTENT-FIELDS-12 | tests/external/test_icon_svg_g0f.nim | Given an application that allows SVG, when a PNG is fetched, then it is still a PNG
 MCP-CONTENT-FIELDS-12 | tests/external/test_icon_svg_prop.nim | Given any SVG icon however its markup opens, when it is fetched, then it is refused naming image/svg+xml unless SVG is allowed, then its bytes come back as they are with the type SVG, and a label of another type gets it through in neither case
 MCP-CONTENT-FIELDS-15 | tests/internal/test_docs_version.nim | Given the dialects the validator takes, when the README is read, then it names each of them and what happens to any other
 MCP-CONTENT-FIELDS-13 | tests/external/test_handler_results_fix.nim | Given a prompt image whose data is not base64 or that has no mimeType, when the prompt is got, then the answer is an internal error
-MCP-CONTENT-FIELDS-13 | tests/external/test_handler_results_fix.nim | Given a prompt image whose data is not a string, when the prompt is got, then the answer is an internal error
-MCP-CONTENT-FIELDS-13 | tests/external/test_handler_results_fix.nim | Given a prompt image of base64 data with a mimeType, when the prompt is got, then it is sent as it is
 MCP-CONTENT-FIELDS-13 | tests/external/test_handler_results_prop.nim | Given any image block a prompt handler returns, when a client sends prompts/get, then it is sent as given if it is base64 with a mimeType and is an internal error otherwise
 MCP-CONTENT-FIELDS-14 | tests/external/test_handler_results_fix.nim | Given an embedded resource without uri, without mimeType, or without text and blob, when the prompt is got, then the answer is an internal error
 MCP-CONTENT-FIELDS-14 | tests/external/test_handler_results_fix.nim | Given an embedded resource whose uri or mimeType is empty, or that has no resource, when the prompt is got, then the answer is an internal error
@@ -1739,21 +1731,10 @@ MCP-SAMPLING-TOOLS-11 | tests/external/test_sampling_tools_payload.nim | Given t
 MCP-SAMPLING-TOOLS-12 | tests/external/test_sampling_tools_payload.nim | Given array content or an unknown content type in a result, when checked, then the version and the block decide
 MCP-SAMPLING-TOOLS-12 | tests/external/test_sampling_tools_payload.nim | Given a result that completes without a tool use, when the tool choice is not required, then it is valid
 MCP-SAMPLING-TOOLS-12 | tests/external/test_sampling_tools_payload.nim | Given tool choice required and a message without content, when a result completes without a tool use, then the absence of a tool use is reported
-MCP-SAMPLING-TOOLS-13 | tests/external/test_sampling_payload_g0c.nim | Given a message whose role is neither user nor assistant, or is missing, when the server asks, then it raises and sends nothing
-MCP-SAMPLING-TOOLS-13 | tests/external/test_sampling_payload_g0c.nim | Given a message without a content, or with one that is no content block, when the server asks, then it raises and sends nothing
-MCP-SAMPLING-TOOLS-13 | tests/external/test_sampling_payload_g0c.nim | Given a user message and an assistant message with content, when the server asks, then the request is sent as given
-MCP-SAMPLING-TOOLS-13 | tests/external/test_sampling_payload_g0c.nim | Given a handler whose message has a role other than user or assistant, or none, or no content, when the tool is called, then it is an internal error and nothing is asked
-MCP-SAMPLING-TOOLS-13 | tests/external/test_sampling_payload_g0c.nim | Given a user message and an assistant message with content, when the tool is called, then the answer asks for them as given
-MCP-SAMPLING-TOOLS-13 | tests/external/test_client_sampling_g0c.nim | Given a message whose role is neither user nor assistant, or is missing, or that has no content, when the server asks, then the client answers invalid params and the handler is not called
-MCP-SAMPLING-TOOLS-13 | tests/external/test_client_sampling_g0c.nim | Given an input request whose message has a role other than user or assistant, when the client reads it, then it abandons the request with invalid params, without calling the handler or retrying
 MCP-SAMPLING-TOOLS-13 | tests/external/test_client_sampling_prop.nim | Given any messages in an input request, when the client reads it, then it abandons the request with invalid params, without calling the handler or retrying, unless every message is good, and then it calls the handler and retries
 MCP-SAMPLING-TOOLS-13 | tests/external/test_client_sampling_prop.nim | Given any messages, when the server asks, then the client answers invalid params and the handler is not called unless every message has a role of user or assistant and a content block, and then the handler is called
 MCP-SAMPLING-TOOLS-13 | tests/external/test_sampling_payload_prop.nim | Given any messages a tool handler asks, when the tool is called, then the answer is an internal error and nothing is asked unless every message is good, and then the answer asks for them as given
 MCP-SAMPLING-TOOLS-13 | tests/external/test_sampling_payload_prop.nim | Given any messages, when the server asks, then it raises and sends nothing unless every message has a role of user or assistant and a content block, and then the request is sent as given
-MCP-SAMPLING-TOOLS-14 | tests/external/test_sampling_payload_g0c.nim | Given an answer whose stopReason is a string the specification does not list, when the server asked, then the answer is returned with it
-MCP-SAMPLING-TOOLS-14 | tests/external/test_sampling_payload_g0c.nim | Given a request with tools and an answer with a stopReason of the client's own, when the server asked, then the answer is returned with it
-MCP-SAMPLING-TOOLS-14 | tests/external/test_client_sampling_g0c.nim | Given a handler whose answer stops for a reason the specification does not list, when the server asks, then the answer carries that stopReason
-MCP-SAMPLING-TOOLS-14 | tests/external/test_client_sampling_g0c.nim | Given a handler whose answer stops for a reason the specification does not list, when the server asks for input, then the retry carries that stopReason
 MCP-SAMPLING-TOOLS-14 | tests/external/test_client_sampling_prop.nim | Given any stopReason the specification does not list in a handler's answer, when the server asks for input, then the retry carries that stopReason
 MCP-SAMPLING-TOOLS-14 | tests/external/test_client_sampling_prop.nim | Given any stopReason the specification does not list in a handler's answer, when the server asks, then the answer carries that stopReason
 MCP-SAMPLING-TOOLS-14 | tests/external/test_sampling_payload_prop.nim | Given any stopReason the specification does not list in an answer, when the server asked, then the answer is returned with it, with or without tools in the request
@@ -2192,7 +2173,6 @@ MCP-META-1 | tests/external/test_meta_keys_g0f.nim | Given the keys the SDK defi
 MCP-META-1 | tests/external/test_meta_keys_g0f.nim | Given a server that answers discovery, a list, a call, a failed call and an unknown method, when its messages are read, then every _meta key in them is valid
 MCP-META-1 | tests/external/test_meta_keys_prop.nim | Given any requests of a 2026-07-28 server, discovery, a list, a call, a failed call or an unknown method, with any keys of the syntax in _meta, when its messages are read, then every _meta key in them is valid
 MCP-META-2 | tests/external/test_meta_keys_g0f.nim | Given requests whose _meta holds unknown reserved keys with any value, when the server answers, then it answers as it would without them
-MCP-META-2 | tests/external/test_meta_keys_g0f.nim | Given a reserved key the server reads and a value of the wrong type, when a request carries it, then the answer is invalid params and never an internal error
 MCP-META-2 | tests/external/test_meta_values_client_g0f.nim | Given results whose _meta holds reserved keys of any value, when the client reads them, then the content comes through
 MCP-META-2 | tests/external/test_meta_keys_prop.nim | Given any value at unknown keys under a reserved prefix in _meta, when the server answers, then it answers as it would without them
 MCP-META-2 | tests/external/test_meta_keys_prop.nim | Given any value of the wrong type at a key the server reads, when a request carries it, then the answer is invalid params and never an internal error

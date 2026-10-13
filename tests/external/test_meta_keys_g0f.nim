@@ -115,23 +115,3 @@ suite "The values at reserved keys are not assumed (2026-07-28)":
           let called = peer.ask("tools/call", %*{"name": "t"}, meta = %*{key: value})
           check called.hasKey("result")
           check textOf(called) == "ok"
-
-  test "Given a reserved key the server reads and a value of the wrong type, when a request carries it, then the answer is invalid params and never an internal error":
-    let wrong = [
-      (MetaLogLevel, %5), (MetaLogLevel, %true), (MetaLogLevel, %[1]), (MetaLogLevel, %*{"a": 1}),
-      (MetaClientInfo, %"x"), (MetaClientInfo, %5), (MetaClientInfo, %[1]), (MetaClientInfo, %true),
-      (MetaClientCapabilities, %"x"), (MetaClientCapabilities, %5), (MetaClientCapabilities, %[1]),
-      (MetaClientCapabilities, %true),
-      (MetaTraceparent, %5), (MetaTraceparent, %true), (MetaTraceparent, %[1]),
-      (MetaTraceparent, %*{"a": 1})]
-    for v in SupportedProtocolVersions:
-      if not isModern(v): continue
-      let server = newServer(McpServerCapabilities(tools: some(McpToolsCapability())))
-      server.onToolsList(proc(cursor: Option[string]): Future[McpPage] {.async.} =
-        return McpPage(items: @[]))
-      let peer = server.connect(server.attach(), v)
-      for (key, value) in wrong:
-        let reply = peer.ask("tools/list", meta = %*{key: value})
-        check reply.hasKey("error")
-        if reply.hasKey("error"):
-          check reply.errorCode == -32602
