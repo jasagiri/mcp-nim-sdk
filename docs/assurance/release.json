@@ -9,7 +9,7 @@
     {
      "supports": true,
      "kind": "measurement",
-     "ref": "2026-10-13、本線 f508412bc5c1: nimble specCoverage (nim-spec-coverage --scenarios) で宣言 469、対応表に行のある ID 469、終了コード 0。tests/test_spec_coverage.nim が同じコミットの通しで通る",
+     "ref": "2026-10-13、本線 f508412bc5c1: nimble specCoverage (nim-spec-coverage --scenarios) で宣言 469、対応表に行のある ID 469、終了コード 0。tests/internal/test_spec_coverage.nim が同じコミットの通しで通る",
      "note": "これが言うのは「対応表に行があり、その名前のテストが実在する」まで。そのテストが外部仕様テストかどうかは言わない",
      "file": "../quality/g1-spec-coverage.md"
     },
@@ -31,7 +31,7 @@
     {
      "supports": true,
      "kind": "test",
-     "ref": "tests/test_fuzz_regressions.nim が 192f0a46 (2026-10-08) で通る",
+     "ref": "tests/internal/test_fuzz_regressions.nim が 192f0a46 (2026-10-08) で通る",
      "note": "ファジング (nim-fuzz、2026-10-07) が見つけた RangeDefect (正規表現、U+00FF を超える文字) は 638f7cf6 で修正し、入力を corpus に保存した。入口ごとに流した入力の数は記録していない",
      "file": "../../tests/test_fuzz_regressions.nim"
     }
@@ -140,7 +140,7 @@
     {
      "supports": true,
      "kind": "test",
-     "ref": "tests/test_security_wire_tls.nim (-d:ssl)。nimble testSsl が本線 ulxvrxkt (2026-10-07) で通った。別のホストの証明書と、名前だけの証明書に IP アドレスでつなぐ場合を拒否する",
+     "ref": "tests/internal/test_security_wire_tls.nim (-d:ssl)。nimble testSsl が本線 ulxvrxkt (2026-10-07) で通った。別のホストの証明書と、名前だけの証明書に IP アドレスでつなぐ場合を拒否する",
      "file": "../../tests/test_security_wire_tls.nim"
     }
    ]

@@ -37,475 +37,475 @@ joined to tests by the rows of
 
 | ID | test files (count) |
 |---|---|
-| MCP-AUTH-1 | tests/test_auth_resource_server.nim (2) |
-| MCP-AUTH-2 | tests/test_auth_resource_server.nim (5) |
-| MCP-AUTH-32 | tests/test_auth_resource_server.nim (4) |
-| MCP-AUTH-33 | tests/test_auth_resource_server.nim (3) |
-| MCP-AUTH-3 | tests/test_auth_resource_server.nim (1) |
-| MCP-AUTH-4 | tests/test_auth_resource_server.nim (1) |
-| MCP-AUTH-5 | tests/test_auth_client_flow.nim (1), tests/test_auth_http_methods.nim (3), tests/test_auth_resource_server.nim (1) |
-| MCP-AUTH-6 | tests/test_auth_resource_server.nim (3) |
-| MCP-AUTH-7 | tests/test_auth_resource_server.nim (2) |
-| MCP-AUTH-8 | tests/test_auth_resource_server.nim (1) |
-| MCP-AUTH-9 | tests/test_auth_resource_server.nim (1) |
-| MCP-AUTH-10 | tests/test_auth_oauth_basics.nim (14), tests/test_auth_resource_server.nim (4) |
-| MCP-AUTH-11 | tests/test_auth_client_flow.nim (3), tests/test_auth_oauth_basics.nim (1) |
-| MCP-AUTH-12 | tests/test_auth_client_flow.nim (2), tests/test_auth_oauth_basics.nim (3) |
-| MCP-AUTH-13 | tests/test_auth_client_flow.nim (2), tests/test_auth_oauth_basics.nim (2) |
-| MCP-AUTH-14 | tests/test_auth_client_flow.nim (1), tests/test_auth_oauth_basics.nim (9) |
-| MCP-AUTH-15 | tests/test_auth_client_flow.nim (2), tests/test_auth_oauth_basics.nim (2) |
-| MCP-AUTH-16 | tests/test_auth_client_flow.nim (3) |
-| MCP-AUTH-17 | tests/test_auth_client_flow.nim (2) |
-| MCP-AUTH-18 | tests/test_auth_client_flow.nim (3), tests/test_auth_oauth_basics.nim (3) |
-| MCP-AUTH-19 | tests/test_auth_client_flow.nim (3) |
-| MCP-AUTH-20 | tests/test_auth_client_flow.nim (3) |
-| MCP-AUTH-21 | tests/test_auth_client_flow.nim (1), tests/test_auth_oauth_basics.nim (4) |
-| MCP-AUTH-22 | tests/test_auth_client_flow.nim (6) |
-| MCP-AUTH-23 | tests/test_auth_client_flow.nim (8) |
-| MCP-AUTH-24 | tests/test_auth_client_flow.nim (3) |
-| MCP-AUTH-25 | tests/test_auth_client_flow.nim (4) |
-| MCP-AUTH-26 | tests/test_auth_client_flow.nim (4) |
-| MCP-AUTH-27 | tests/test_auth_client_flow.nim (6) |
-| MCP-AUTH-28 | tests/test_auth_client_flow.nim (1) |
-| MCP-AUTH-29 | tests/test_auth_client_flow.nim (11) |
-| MCP-AUTH-30 | tests/test_auth_oauth_basics.nim (7) |
-| MCP-AUTH-31 | tests/test_auth_failure.nim (5) |
-| MCP-AUTH-34 | tests/test_auth_oauth_basics.nim (14) |
-| MCP-AUTH-35 | tests/test_auth_oauth_basics.nim (11) |
-| MCP-AUTH-36 | tests/test_auth_oauth_basics.nim (5) |
-| MCP-AUTH-37 | tests/test_auth_oauth_basics.nim (5) |
-| MCP-AUTH-38 | tests/test_auth_oauth_basics.nim (2) |
-| MCP-AUTH-39 | tests/test_auth_oauth_basics.nim (2) |
-| MCP-AUTH-40 | tests/test_auth_oauth_basics.nim (5) |
-| MCP-AUTH-41 | tests/test_auth_oauth_basics.nim (1), tests/test_security_auth_tokens.nim (10) |
-| MCP-AUTH-42 | tests/test_auth_oauth_basics.nim (5) |
-| MCP-COMPLETION-1 | tests/test_server_completion.nim (4) |
-| MCP-COMPLETION-2 | tests/test_server_completion.nim (1) |
-| MCP-COMPLETION-3 | tests/test_server_completion.nim (3) |
-| MCP-COMPLETION-4 | tests/test_server_completion.nim (3) |
-| MCP-COMPLETION-5 | tests/test_client_operations.nim (3) |
-| MCP-COMPLETION-6 | tests/test_client_operations.nim (3) |
-| MCP-SCHEMA-1 | tests/test_json_schema.nim (5) |
-| MCP-SCHEMA-2 | tests/test_json_schema.nim (5) |
-| MCP-SCHEMA-3 | tests/test_json_schema.nim (9) |
-| MCP-SCHEMA-4 | tests/test_json_schema.nim (7) |
-| MCP-SCHEMA-5 | tests/test_json_schema.nim (5) |
-| MCP-SCHEMA-6 | tests/test_json_schema.nim (8) |
-| MCP-TOOLANN-1 | tests/test_tool_annotations.nim (3) |
-| MCP-TOOLANN-2 | tests/test_tool_annotations.nim (1) |
-| MCP-TOOLANN-3 | tests/test_tool_annotations.nim (6) |
-| MCP-AUDIO-1 | tests/test_audio_content.nim (2) |
-| MCP-AUDIO-2 | tests/test_audio_content.nim (2) |
-| MCP-AUDIO-3 | tests/test_audio_content.nim (3) |
-| MCP-AUDIO-4 | tests/test_client_server_requests.nim (1) |
-| MCP-STRUCTOUT-1 | tests/test_structured_tool_output.nim (3) |
-| MCP-STRUCTOUT-2 | tests/test_structured_tool_output.nim (3) |
-| MCP-STRUCTOUT-3 | tests/test_structured_tool_output.nim (4) |
-| MCP-STRUCTOUT-4 | tests/test_structured_tool_output.nim (1) |
-| MCP-STRUCTOUT-5 | tests/test_structured_tool_output.nim (7) |
-| MCP-STRUCTOUT-6 | tests/test_structured_tool_output.nim (4) |
-| MCP-RESLINK-1 | tests/test_resource_links.nim (3) |
-| MCP-RESLINK-2 | tests/test_resource_links.nim (2) |
-| MCP-RESLINK-3 | tests/test_resource_links.nim (5) |
-| MCP-TITLE-1 | tests/test_title_fields.nim (2) |
-| MCP-TITLE-2 | tests/test_title_fields.nim (2) |
-| MCP-TITLE-3 | tests/test_title_fields.nim (2) |
-| MCP-ICONS-1 | tests/test_icons.nim (5) |
-| MCP-ICONS-2 | tests/test_icons.nim (1) |
-| MCP-ICONS-3 | tests/test_icons.nim (4) |
-| MCP-ICONS-4 | tests/test_icons.nim (4) |
-| MCP-IMPL-1 | tests/test_implementation_info.nim (3) |
-| MCP-IMPL-2 | tests/test_implementation_info.nim (2) |
-| MCP-IMPL-3 | tests/test_implementation_info.nim (5) |
-| MCP-TITLE-4 | tests/test_implementation_info.nim (2) |
-| MCP-ICONS-5 | tests/test_implementation_info.nim (2) |
-| MCP-CONTENT-FIELDS-1 | tests/test_client_field_types.nim (6) |
-| MCP-CONTENT-FIELDS-2 | tests/test_client_operations.nim (3) |
-| MCP-ICONS-6 | tests/test_icon_fetch.nim (14) |
-| MCP-ICONS-7 | tests/test_icon_fetch.nim (4) |
-| MCP-ICONS-8 | tests/test_icon_fetch.nim (1) |
-| MCP-CONTENT-FIELDS-3 | tests/test_implementation_info.nim (1), tests/test_tool_annotations.nim (1) |
-| MCP-CONTENT-FIELDS-4 | tests/test_structured_tool_output.nim (1) |
-| MCP-CONTENT-FIELDS-5 | tests/test_structured_tool_output.nim (3) |
-| MCP-CONTENT-FIELDS-6 | tests/test_structured_tool_output.nim (2) |
-| MCP-CONTENT-FIELDS-7 | tests/test_structured_tool_output.nim (2) |
-| MCP-CONTENT-FIELDS-8 | tests/test_tool_annotations.nim (5), tests/test_tool_builders.nim (3) |
-| MCP-ELICIT-1 | tests/test_client_elicitation.nim (1), tests/test_elicitation_payload.nim (2), tests/test_server_elicitation.nim (2) |
-| MCP-ELICIT-2 | tests/test_elicitation_payload.nim (3), tests/test_server_elicitation.nim (1) |
-| MCP-ELICIT-3 | tests/test_client_elicitation.nim (1), tests/test_elicitation_payload.nim (7), tests/test_server_elicitation.nim (1) |
-| MCP-ELICIT-4 | tests/test_server_elicitation.nim (2) |
-| MCP-ELICIT-5 | tests/test_client_elicitation.nim (4) |
-| MCP-ELICIT-ENUM-1 | tests/test_elicitation_payload.nim (7) |
-| MCP-ELICIT-ENUM-2 | tests/test_client_elicitation.nim (1), tests/test_elicitation_payload.nim (3), tests/test_server_elicitation.nim (1) |
-| MCP-ELICIT-ENUM-3 | tests/test_client_elicitation.nim (1), tests/test_server_elicitation.nim (1) |
-| MCP-ELICIT-DEFAULT-1 | tests/test_elicitation_payload.nim (3) |
-| MCP-ELICIT-DEFAULT-2 | tests/test_elicitation_payload.nim (1) |
-| MCP-ELICIT-URL-1 | tests/test_client_elicitation.nim (2), tests/test_elicitation_payload.nim (5), tests/test_server_elicitation.nim (2) |
-| MCP-ELICIT-URL-2 | tests/test_elicitation_payload.nim (2), tests/test_server_elicitation.nim (3) |
-| MCP-ELICIT-URL-3 | tests/test_client_elicitation.nim (2) |
-| MCP-ELICIT-URL-4 | tests/test_client_elicitation.nim (2), tests/test_elicitation_payload.nim (1), tests/test_server_elicitation.nim (2) |
-| MCP-ELICIT-URL-5 | tests/test_client_elicitation.nim (3), tests/test_elicitation_payload.nim (3), tests/test_server_elicitation.nim (2) |
-| MCP-ELICIT-6 | tests/test_elicitation_payload.nim (6) |
-| MCP-ELICIT-7 | tests/test_elicitation_payload.nim (5) |
-| MCP-ELICIT-8 | tests/test_elicitation_payload.nim (2) |
-| MCP-ELICIT-9 | tests/test_elicitation_payload.nim (2) |
-| MCP-ELICIT-10 | tests/test_client_elicitation.nim (1), tests/test_server_elicitation.nim (1), tests/test_tasks_end_to_end.nim (1) |
-| MCP-SSE-1 | tests/test_event_stream.nim (1) |
-| MCP-SSE-2 | tests/test_event_stream.nim (1) |
-| MCP-SSE-3 | tests/test_event_stream.nim (1) |
-| MCP-EXT-1 | tests/test_extensions.nim (6) |
-| MCP-EXT-2 | tests/test_extensions.nim (2) |
-| MCP-EXT-3 | tests/test_extensions.nim (1) |
-| MCP-EXT-4 | tests/test_extensions.nim (3) |
-| MCP-EXT-5 | tests/test_extensions.nim (4) |
-| MCP-EXT-6 | tests/test_extensions.nim (2) |
-| MCP-EXT-7 | tests/test_extensions.nim (4) |
-| MCP-EXT-8 | tests/test_extensions.nim (3) |
-| MCP-EXT-9 | tests/test_extensions.nim (2) |
-| MCP-EXT-10 | tests/test_extensions.nim (1) |
-| MCP-EXT-11 | tests/test_extensions.nim (1) |
-| MCP-EXT-12 | tests/test_extensions.nim (2) |
-| MCP-EXT-13 | tests/test_extensions.nim (1) |
-| MCP-EXT-14 | tests/test_extensions.nim (1) |
-| MCP-EXT-15 | tests/test_extensions.nim (4) |
-| MCP-EXT-16 | tests/test_extensions.nim (1) |
-| MCP-EXT-17 | tests/test_extensions.nim (1) |
-| MCP-EXT-18 | tests/test_extensions.nim (1) |
-| MCP-HTTPSSE-1 | tests/test_http_sse_legacy.nim (2) |
-| MCP-HTTPSSE-2 | tests/test_http_sse_legacy.nim (4) |
-| MCP-HTTPSSE-3 | tests/test_http_sse_legacy.nim (2) |
-| MCP-HTTPSSE-4 | tests/test_http_sse_legacy.nim (3) |
-| MCP-HTTPSSE-5 | tests/test_http_sse_legacy.nim (2) |
-| MCP-HTTPSSE-6 | tests/test_http_sse_legacy.nim (2) |
-| MCP-HTTPSSE-7 | tests/test_http_sse_legacy.nim (4) |
-| MCP-HTTPSSE-8 | tests/test_http_sse_legacy.nim (3) |
-| MCP-HTTPSSE-9 | tests/test_http_sse_legacy.nim (2) |
-| MCP-HTTPSSE-10 | tests/test_http_sse_legacy.nim (5) |
-| MCP-HTTPSSE-11 | tests/test_http_sse_legacy.nim (2) |
-| MCP-HTTPSSE-12 | tests/test_http_sse_legacy.nim (4) |
-| MCP-HTTPSSE-13 | tests/test_http_sse_legacy.nim (1) |
-| MCP-HTTPSSE-14 | tests/test_http_sse_legacy.nim (2) |
-| MCP-HTTPSSE-15 | tests/test_http_sse_legacy.nim (1) |
-| MCP-HTTPSSE-16 | tests/test_http_sse_legacy.nim (6) |
-| MCP-HTTPSSE-17 | tests/test_http_sse_legacy.nim (1) |
-| MCP-HTTPSSE-18 | tests/test_http_sse_legacy.nim (6) |
-| MCP-HTTPSTREAM-1 | tests/test_http_streams.nim (5) |
-| MCP-HTTPSTREAM-2 | tests/test_http_streams.nim (2) |
-| MCP-HTTPSTREAM-3 | tests/test_http_streams.nim (2) |
-| MCP-HTTPSTREAM-4 | tests/test_http_streams.nim (1) |
-| MCP-HTTPSTREAM-5 | tests/test_http_streams.nim (2) |
-| MCP-HTTPSTREAM-6 | tests/test_http_streams.nim (1) |
-| MCP-HTTPSTREAM-7 | tests/test_http_streams.nim (3) |
-| MCP-HTTPSTREAM-8 | tests/test_http_streams.nim (4) |
-| MCP-HTTPSTREAM-9 | tests/test_http_client_streams.nim (5) |
-| MCP-HTTPSTREAM-10 | tests/test_http_client_streams.nim (1) |
-| MCP-HTTPSTREAM-11 | tests/test_http_client_streams.nim (1) |
-| MCP-HTTPGET-1 | tests/test_http_streams.nim (4) |
-| MCP-HTTPGET-2 | tests/test_http_streams.nim (2) |
-| MCP-HTTPGET-3 | tests/test_http_streams.nim (5) |
-| MCP-HTTPGET-4 | tests/test_http_streams.nim (2) |
-| MCP-HTTPGET-5 | tests/test_http_streams.nim (2) |
-| MCP-HTTPGET-8 | tests/test_http_streams.nim (1) |
-| MCP-HTTPGET-6 | tests/test_http_client_streams.nim (3) |
-| MCP-HTTPGET-7 | tests/test_http_client_streams.nim (3) |
-| MCP-HTTPSESSION-1 | tests/test_http_client_streams.nim (4) |
-| MCP-HTTPSESSION-2 | tests/test_http_streams.nim (7) |
-| MCP-HTTPVER-1 | tests/test_http_streams.nim (6) |
-| MCP-HTTPBATCH-1 | tests/test_http_streams.nim (6) |
-| MCP-HTTPBATCH-2 | tests/test_http_streams.nim (3) |
-| MCP-HTTPBATCH-3 | tests/test_http_streams.nim (1) |
-| MCP-HTTPCLIENT-1 | tests/test_http_client_streams.nim (2) |
-| MCP-HTTPSTREAM-12 | tests/test_http_streams.nim (2) |
-| MCP-HTTPSTREAM-13 | tests/test_http_streams.nim (4) |
-| MCP-HTTPSTREAM-14 | tests/test_http_streams.nim (3) |
-| MCP-HTTPSTREAM-15 | tests/test_http_streams.nim (3), tests/test_version_floor.nim (1) |
-| MCP-HTTPSTREAM-16 | tests/test_http_streams.nim (2) |
-| MCP-HTTPSTREAM-17 | tests/test_version_floor.nim (1) |
-| MCP-HTTPSTREAM-18 | tests/test_security_http.nim (2) |
-| MCP-HTTPSTREAM-19 | tests/test_http_streams.nim (4) |
-| MCP-HTTPSTREAM-20 | tests/test_http_streams.nim (7) |
-| MCP-LIFECYCLE-1 | tests/test_legacy_handshake.nim (4) |
-| MCP-LIFECYCLE-2 | tests/test_legacy_handshake.nim (5) |
-| MCP-LIFECYCLE-3 | tests/test_legacy_handshake.nim (4) |
-| MCP-LIFECYCLE-4 | tests/test_era_matrix.nim (1), tests/test_legacy_handshake.nim (1) |
-| MCP-LIFECYCLE-5 | tests/test_era_matrix.nim (1), tests/test_modern_protocol.nim (3) |
-| MCP-LIFECYCLE-6 | tests/test_era_matrix.nim (3) |
-| MCP-LIFECYCLE-7 | tests/test_era_matrix.nim (1) |
-| MCP-LIFECYCLE-8 | tests/test_era_matrix.nim (2) |
-| MCP-LIFECYCLE-9 | tests/test_era_matrix.nim (2) |
-| MCP-LIFECYCLE-10 | tests/test_era_matrix.nim (2) |
-| MCP-LIFECYCLE-11 | tests/test_era_matrix.nim (2) |
-| MCP-LIFECYCLE-12 | tests/test_era_matrix.nim (2) |
-| MCP-LIFECYCLE-13 | tests/test_era_matrix.nim (2) |
-| MCP-RESULT-1 | tests/test_era_matrix.nim (2), tests/test_modern_protocol.nim (4) |
-| MCP-CACHE-1 | tests/test_modern_protocol.nim (3) |
-| MCP-LIFECYCLE-14 | tests/test_era_matrix.nim (7) |
-| MCP-LIFECYCLE-15 | tests/test_legacy_handshake.nim (1) |
-| MCP-LOGGING-1 | tests/test_server_logging.nim (3) |
-| MCP-LOGGING-2 | tests/test_server_logging.nim (3) |
-| MCP-LOGGING-3 | tests/test_server_logging.nim (3) |
-| MCP-LOGGING-4 | tests/test_server_logging.nim (4) |
-| MCP-LOGGING-5 | tests/test_server_logging.nim (2) |
-| MCP-LOGGING-6 | tests/test_server_logging.nim (2) |
-| MCP-LOGGING-7 | tests/test_server_logging.nim (1) |
-| MCP-LOGGING-8 | tests/test_client_operations.nim (1), tests/test_server_logging.nim (1) |
-| MCP-LOGGING-9 | tests/test_client_operations.nim (2), tests/test_client_server_requests.nim (1) |
-| MCP-MRTR-1 | tests/test_mrtr.nim (7) |
-| MCP-MRTR-2 | tests/test_mrtr.nim (2) |
-| MCP-MRTR-3 | tests/test_mrtr.nim (1) |
-| MCP-MRTR-4 | tests/test_mrtr.nim (1) |
-| MCP-MRTR-5 | tests/test_mrtr.nim (1) |
-| MCP-MRTR-6 | tests/test_mrtr.nim (3) |
-| MCP-MRTR-7 | tests/test_mrtr.nim (1) |
-| MCP-MRTR-8 | tests/test_mrtr.nim (1) |
-| MCP-MRTR-9 | tests/test_mrtr.nim (1) |
-| MCP-MRTR-10 | tests/test_mrtr.nim (9) |
-| MCP-MRTR-11 | tests/test_mrtr.nim (3) |
-| MCP-MRTR-12 | tests/test_mrtr.nim (1) |
-| MCP-MRTR-13 | tests/test_mrtr.nim (4) |
-| MCP-MRTR-14 | tests/test_mrtr.nim (2) |
-| MCP-MRTR-15 | tests/test_mrtr.nim (1) |
-| MCP-MRTR-16 | tests/test_mrtr.nim (2) |
-| MCP-MRTR-17 | tests/test_mrtr.nim (4) |
-| MCP-MRTR-18 | tests/test_mrtr.nim (2) |
-| MCP-PAGINATION-1 | tests/test_server_pagination.nim (4) |
-| MCP-PAGINATION-2 | tests/test_server_pagination.nim (5) |
-| MCP-PAGINATION-3 | tests/test_server_pagination.nim (1) |
-| MCP-PAGINATION-4 | tests/test_client_operations.nim (4), tests/test_security_pages.nim (1) |
-| MCP-PAGINATION-5 | tests/test_client_operations.nim (1) |
-| MCP-PROGRESS-1 | tests/test_server_progress_cancel.nim (3) |
-| MCP-PROGRESS-2 | tests/test_server_progress_cancel.nim (1) |
-| MCP-PROGRESS-3 | tests/test_server_progress_cancel.nim (2) |
-| MCP-PROGRESS-4 | tests/test_server_progress_cancel.nim (1) |
-| MCP-PROGRESS-5 | tests/test_client_requests.nim (5) |
-| MCP-CANCEL-1 | tests/test_server_progress_cancel.nim (6) |
-| MCP-CANCEL-2 | tests/test_server_progress_cancel.nim (4) |
-| MCP-CANCEL-3 | tests/test_server_progress_cancel.nim (5) |
-| MCP-CANCEL-4 | tests/test_client_requests.nim (10) |
-| MCP-CANCEL-5 | tests/test_http_streams.nim (3) |
-| MCP-CANCEL-6 | tests/test_http_streams.nim (1) |
-| MCP-CANCEL-7 | tests/test_server_progress_cancel.nim (2) |
-| MCP-PROMPTS-1 | tests/test_server_errors.nim (1), tests/test_server_resources_prompts.nim (1) |
-| MCP-PROMPTS-2 | tests/test_client_operations.nim (5) |
-| MCP-PROMPTS-3 | tests/test_server_resources_prompts.nim (2) |
-| MCP-PROMPTS-4 | tests/test_server_errors.nim (1), tests/test_server_resources_prompts.nim (1) |
-| MCP-PROMPTS-5 | tests/test_server_errors.nim (1) |
-| MCP-HOOKS-1 | tests/test_request_hooks.nim (4) |
-| MCP-HOOKS-2 | tests/test_request_hooks.nim (4) |
-| MCP-HOOKS-3 | tests/test_request_hooks.nim (1) |
-| MCP-HOOKS-4 | tests/test_request_hooks.nim (1) |
-| MCP-RESOURCES-1 | tests/test_server_errors.nim (2), tests/test_server_resources_prompts.nim (1) |
-| MCP-RESOURCES-2 | tests/test_client_operations.nim (2) |
-| MCP-RESOURCES-3 | tests/test_server_resources_prompts.nim (2) |
-| MCP-RESOURCES-4 | tests/test_server_errors.nim (1) |
-| MCP-RESOURCES-5 | tests/test_server_errors.nim (1) |
-| MCP-RESOURCES-6 | tests/test_server_pagination.nim (3) |
-| MCP-RESOURCES-7 | tests/test_client_operations.nim (1) |
-| MCP-RESOURCES-8 | tests/test_server_errors.nim (1), tests/test_server_notifications.nim (3) |
-| MCP-RESOURCES-9 | tests/test_server_notifications.nim (2) |
-| MCP-RESOURCES-10 | tests/test_server_notifications.nim (5) |
-| MCP-RESOURCES-11 | tests/test_client_operations.nim (4), tests/test_client_server_requests.nim (1) |
-| MCP-RESOURCES-12 | tests/test_client_operations.nim (2), tests/test_server_notifications.nim (1) |
-| MCP-LISTCHANGED-1 | tests/test_request_hooks.nim (2), tests/test_server_notifications.nim (5) |
-| MCP-LISTCHANGED-2 | tests/test_client_server_requests.nim (3) |
-| MCP-RESOURCES-13 | tests/test_server_resources_prompts.nim (1) |
-| MCP-RESOURCES-14 | tests/test_server_errors.nim (1), tests/test_server_resources_prompts.nim (1) |
-| MCP-SAMPLING-TOOLS-1 | tests/test_client_sampling_tools.nim (2), tests/test_sampling_tools_payload.nim (7), tests/test_server_sampling_tools.nim (4) |
-| MCP-SAMPLING-TOOLS-2 | tests/test_client_sampling_tools.nim (2), tests/test_sampling_tools_payload.nim (3), tests/test_server_sampling_tools.nim (2) |
-| MCP-SAMPLING-TOOLS-3 | tests/test_client_sampling_tools.nim (1) |
-| MCP-SAMPLING-TOOLS-4 | tests/test_sampling_tools_payload.nim (11) |
-| MCP-SAMPLING-TOOLS-5 | tests/test_client_sampling_tools.nim (1), tests/test_server_sampling_tools.nim (1) |
-| MCP-SAMPLING-TOOLS-6 | tests/test_sampling_tools_payload.nim (5), tests/test_server_sampling_tools.nim (2) |
-| MCP-SAMPLING-TOOLS-7 | tests/test_client_sampling_tools.nim (2) |
-| MCP-SAMPLING-TOOLS-8 | tests/test_sampling_tools_payload.nim (2) |
-| MCP-SAMPLING-TOOLS-9 | tests/test_sampling_tools_payload.nim (7) |
-| MCP-SAMPLING-TOOLS-10 | tests/test_sampling_tools_payload.nim (5) |
-| MCP-SAMPLING-TOOLS-11 | tests/test_sampling_tools_payload.nim (2) |
-| MCP-SAMPLING-TOOLS-12 | tests/test_sampling_tools_payload.nim (3) |
-| MCP-SEC-SCHEMA-1 | tests/test_security_schema.nim (2) |
-| MCP-SEC-SCHEMA-2 | tests/test_security_schema.nim (3) |
-| MCP-SEC-SCHEMA-3 | tests/test_security_schema.nim (5) |
-| MCP-SEC-SCHEMA-4 | tests/test_security_schema.nim (5) |
-| MCP-SEC-SCHEMA-5 | tests/test_security_schema.nim (7) |
-| MCP-SEC-SCHEMA-6 | tests/test_security_schema.nim (3) |
-| MCP-SEC-SCHEMA-7 | tests/test_security_schema.nim (5) |
-| MCP-SEC-SCHEMA-8 | tests/test_security_schema.nim (5) |
-| MCP-SEC-HTTP-1 | tests/test_security_http.nim (5) |
-| MCP-SEC-HTTP-2 | tests/test_security_http.nim (5) |
-| MCP-SEC-HTTP-6 | tests/test_security_http.nim (5) |
-| MCP-SEC-HTTP-3 | tests/test_security_http.nim (10) |
-| MCP-SEC-HTTP-9 | tests/test_security_http.nim (1) |
-| MCP-SEC-HTTP-5 | tests/test_security_http.nim (5) |
-| MCP-SEC-HTTP-7 | tests/test_security_diagnostic.nim (13), tests/test_security_diagnostic_auth.nim (1), tests/test_security_diagnostic_client.nim (3) |
-| MCP-SEC-WIRE-1 | tests/test_security_wire_tls.nim (4) |
-| MCP-SEC-WIRE-2 | tests/test_security_wire_headers.nim (7) |
-| MCP-SEC-WIRE-3 | tests/test_security_wire_limits.nim (6), tests/test_security_wire_tls.nim (1) |
-| MCP-SEC-WIRE-4 | tests/test_security_address.nim (7) |
-| MCP-SEC-WIRE-5 | tests/test_security_address.nim (5) |
-| MCP-SEC-WIRE-6 | tests/test_security_address.nim (2) |
-| MCP-SEC-WIRE-7 | tests/test_security_icons.nim (1) |
-| MCP-SEC-WIRE-10 | tests/test_security_icons.nim (1) |
-| MCP-SEC-WIRE-11 | tests/test_security_address.nim (4) |
-| MCP-SEC-WIRE-8 | tests/test_security_icons.nim (3) |
-| MCP-SEC-AUTH-1 | tests/test_security_auth.nim (3) |
-| MCP-SEC-AUTH-2 | tests/test_security_auth.nim (1) |
-| MCP-SEC-AUTH-5 | tests/test_security_auth_tokens.nim (8) |
-| MCP-SEC-TASKS-1 | tests/test_security_tasks.nim (3) |
-| MCP-SEC-TASKS-2 | tests/test_security_tasks.nim (1) |
-| MCP-SEC-TASKS-3 | tests/test_security_tasks.nim (5) |
-| MCP-SEC-TASKS-4 | tests/test_security_tasks.nim (4) |
-| MCP-SEC-TASKS-5 | tests/test_security_tasks.nim (1) |
-| MCP-SEC-SWEEP-1 | tests/test_security_poll.nim (5) |
-| MCP-SEC-SWEEP-2 | tests/test_security_expiry.nim (2) |
-| MCP-SEC-SWEEP-3 | tests/test_security_sampling.nim (3) |
-| MCP-SEC-SWEEP-5 | tests/test_security_pages.nim (3) |
-| MCP-SEC-WIRE-9 | tests/test_base64_shape.nim (6), tests/test_icon_fetch.nim (1), tests/test_server_pagination.nim (2) |
-| MCP-SEC-SCHEMA-9 | tests/test_security_schema.nim (4) |
-| MCP-SEC-SCHEMA-10 | tests/test_security_schema.nim (5) |
-| MCP-SEC-SCHEMA-11 | tests/test_json_schema.nim (4) |
-| MCP-SEC-SCHEMA-12 | tests/test_json_schema.nim (6) |
-| MCP-SEC-SCHEMA-13 | tests/test_json_schema.nim (9) |
-| MCP-SEC-SCHEMA-14 | tests/test_security_schema.nim (7) |
-| MCP-SEC-SWEEP-6 | tests/test_fuzz_regressions.nim (3) |
-| MCP-SEC-WIRE-12 | tests/test_security_address.nim (24) |
-| MCP-SEC-WIRE-13 | tests/test_security_address.nim (11) |
-| MCP-SEC-WIRE-14 | tests/test_security_address.nim (5) |
-| MCP-SEC-WIRE-15 | tests/test_http_wire_internals.nim (1), tests/test_security_wire_headers.nim (11) |
-| MCP-SEC-WIRE-16 | tests/test_security_wire_headers.nim (9) |
-| MCP-SEC-WIRE-17 | tests/test_security_wire_headers.nim (4) |
-| MCP-SEC-WIRE-18 | tests/test_security_wire_headers.nim (13) |
-| MCP-SEC-WIRE-19 | tests/test_http_wire_internals.nim (1), tests/test_security_wire_headers.nim (2) |
-| MCP-SEC-WIRE-20 | tests/test_security_wire_headers.nim (1), tests/test_security_wire_tls.nim (2) |
-| MCP-SEC-WIRE-21 | tests/test_security_address.nim (7) |
-| MCP-SEC-HTTP-8 | tests/test_security_http.nim (1) |
-| MCP-SERVERREQ-1 | tests/test_server_requests.nim (1) |
-| MCP-SERVERREQ-2 | tests/test_server_requests.nim (2) |
-| MCP-SERVERREQ-3 | tests/test_server_requests.nim (1) |
-| MCP-SERVERREQ-4 | tests/test_server_requests.nim (2) |
-| MCP-SERVERREQ-5 | tests/test_server_requests.nim (3) |
-| MCP-SERVERREQ-10 | tests/test_server_requests.nim (8) |
-| MCP-SERVERREQ-11 | tests/test_server_requests.nim (3) |
-| MCP-SERVERREQ-6 | tests/test_server_requests.nim (3) |
-| MCP-SERVERREQ-7 | tests/test_server_requests.nim (2) |
-| MCP-SERVERREQ-8 | tests/test_server_requests.nim (1) |
-| MCP-SERVERREQ-9 | tests/test_client_server_requests.nim (1), tests/test_server_requests.nim (2) |
-| MCP-CLIENTREQ-1 | tests/test_client_server_requests.nim (7) |
-| MCP-CLIENTREQ-2 | tests/test_client_server_requests.nim (1) |
-| MCP-CLIENTREQ-3 | tests/test_client_server_requests.nim (4) |
-| MCP-CLIENTREQ-4 | tests/test_client_server_requests.nim (3) |
-| MCP-CLIENTREQ-5 | tests/test_client_server_requests.nim (2) |
-| MCP-SERVERREQ-12 | tests/test_server_requests.nim (1) |
-| MCP-STDIO-1 | tests/test_stdio.nim (4) |
-| MCP-STDIO-2 | tests/test_stdio.nim (2) |
-| MCP-STDIO-3 | tests/test_stdio.nim (3) |
-| MCP-STDIO-4 | tests/test_stdio.nim (2) |
-| MCP-STDIO-5 | tests/test_stdio.nim (8) |
-| MCP-STDIO-6 | tests/test_stdio.nim (6) |
-| MCP-HTTP-1 | tests/test_streamable_http.nim (6) |
-| MCP-HTTP-2 | tests/test_streamable_http.nim (3) |
-| MCP-HTTP-3 | tests/test_streamable_http.nim (2) |
-| MCP-HTTP-4 | tests/test_streamable_http.nim (5) |
-| MCP-HTTP-5 | tests/test_streamable_http.nim (4) |
-| MCP-HTTP-6 | tests/test_modern_protocol.nim (5), tests/test_streamable_http.nim (4) |
-| MCP-HTTP-7 | tests/test_streamable_http.nim (1) |
-| MCP-HTTP-8 | tests/test_streamable_http.nim (2) |
-| MCP-HTTP-9 | tests/test_streamable_http.nim (5) |
-| MCP-HTTP-10 | tests/test_modern_protocol.nim (5), tests/test_param_headers.nim (13), tests/test_param_headers_http.nim (9) |
-| MCP-HTTP-11 | tests/test_param_headers_http.nim (2) |
-| MCP-HTTP-12 | tests/test_param_headers.nim (7), tests/test_param_headers_http.nim (3) |
-| MCP-HTTP-13 | tests/test_param_headers.nim (17) |
-| MCP-HTTP-24 | tests/test_param_headers.nim (8) |
-| MCP-HTTP-25 | tests/test_param_headers.nim (3) |
-| MCP-HTTP-14 | tests/test_streamable_http.nim (6) |
-| MCP-HTTP-15 | tests/test_version_floor.nim (4) |
-| MCP-HTTP-16 | tests/test_version_floor.nim (3) |
-| MCP-HTTP-17 | tests/test_http_unresponsive.nim (2) |
-| MCP-HTTP-18 | tests/test_param_headers_http.nim (8) |
-| MCP-HTTP-19 | tests/test_streamable_http.nim (1) |
-| MCP-HTTP-20 | tests/test_streamable_http.nim (1) |
-| MCP-HTTP-21 | tests/test_version_floor.nim (3) |
-| MCP-HTTP-22 | tests/test_http_documents.nim (1) |
-| MCP-HTTP-23 | tests/test_streamable_http.nim (1) |
-| MCP-HTTP-32 | tests/test_http_client_streams.nim (5) |
-| MCP-HTTP-33 | tests/test_http_client_streams.nim (1) |
-| MCP-HTTP-34 | tests/test_http_client_streams.nim (2) |
-| MCP-HTTP-35 | tests/test_http_client_streams.nim (1) |
-| MCP-HTTP-36 | tests/test_http_client_streams.nim (3) |
-| MCP-HTTP-37 | tests/test_streamable_http.nim (2) |
-| MCP-HTTP-38 | tests/test_auth_failure.nim (1) |
-| MCP-HTTP-39 | tests/test_param_headers_http.nim (3) |
-| MCP-HTTP-26 | tests/test_param_headers_http.nim (7) |
-| MCP-HTTP-27 | tests/test_http_client_streams.nim (3) |
-| MCP-HTTP-28 | tests/test_http_client_streams.nim (6) |
-| MCP-HTTP-29 | tests/test_http_client_streams.nim (8) |
-| MCP-HTTP-30 | tests/test_http_client_streams.nim (2) |
-| MCP-HTTP-31 | tests/test_http_client_streams.nim (5) |
-| MCP-HTTP-40 | tests/test_http_client_streams.nim (1) |
-| MCP-HTTP-41 | tests/test_http_client_streams.nim (2) |
-| MCP-SUBSCRIBE-1 | tests/test_subscriptions.nim (5) |
-| MCP-SUBSCRIBE-2 | tests/test_subscriptions.nim (3) |
-| MCP-SUBSCRIBE-3 | tests/test_subscriptions.nim (5) |
-| MCP-SUBSCRIBE-4 | tests/test_subscriptions.nim (1) |
-| MCP-SUBSCRIBE-5 | tests/test_subscriptions.nim (2) |
-| MCP-SUBSCRIBE-6 | tests/test_subscriptions.nim (3) |
-| MCP-SUBSCRIBE-7 | tests/test_subscriptions.nim (1) |
-| MCP-SUBSCRIBE-8 | tests/test_subscriptions.nim (3) |
-| MCP-SUBSCRIBE-9 | tests/test_subscriptions.nim (6) |
-| MCP-SUBSCRIBE-10 | tests/test_subscriptions.nim (6) |
-| MCP-SUBSCRIBE-11 | tests/test_subscriptions.nim (6) |
-| MCP-SUBSCRIBE-12 | tests/test_subscriptions.nim (3) |
-| MCP-SUBSCRIBE-13 | tests/test_subscriptions.nim (1) |
-| MCP-SUBSCRIBE-14 | tests/test_subscriptions.nim (7) |
-| MCP-SUBSCRIBE-15 | tests/test_subscriptions.nim (4) |
-| MCP-TASKS-1 | tests/test_legacy_handshake.nim (2), tests/test_tasks_end_to_end.nim (1), tests/test_tasks_server.nim (2) |
-| MCP-TASKS-2 | tests/test_tasks_client.nim (2), tests/test_tasks_server.nim (7) |
-| MCP-TASKS-3 | tests/test_tasks_client.nim (3), tests/test_tasks_server.nim (4) |
-| MCP-TASKS-4 | tests/test_tasks_server.nim (6), tests/test_tasks_store.nim (15) |
-| MCP-TASKS-5 | tests/test_tasks_store.nim (1) |
-| MCP-TASKS-6 | tests/test_tasks_store.nim (7) |
-| MCP-TASKS-7 | tests/test_tasks_client.nim (3), tests/test_tasks_server.nim (4), tests/test_tasks_store.nim (7) |
-| MCP-TASKS-8 | tests/test_tasks_client.nim (2), tests/test_tasks_server.nim (5), tests/test_tasks_store.nim (12) |
-| MCP-TASKS-9 | tests/test_tasks_client.nim (1), tests/test_tasks_server.nim (4), tests/test_tasks_store.nim (3) |
-| MCP-TASKS-10 | tests/test_tasks_client.nim (2), tests/test_tasks_end_to_end.nim (1), tests/test_tasks_server.nim (5), tests/test_tasks_store.nim (5) |
-| MCP-TASKS-11 | tests/test_tasks_client.nim (3), tests/test_tasks_server.nim (3), tests/test_tasks_store.nim (1) |
-| MCP-TASKS-12 | tests/test_tasks_server.nim (2), tests/test_tasks_store.nim (8) |
-| MCP-TASKS-13 | tests/test_tasks_server.nim (2), tests/test_tasks_store.nim (1) |
-| MCP-TASKS-14 | tests/test_tasks_client.nim (2), tests/test_tasks_end_to_end.nim (2), tests/test_tasks_server.nim (2) |
-| MCP-TASKS-15 | tests/test_tasks_client.nim (1), tests/test_tasks_server.nim (1), tests/test_tasks_store.nim (1) |
-| MCP-TASKS-16 | tests/test_tasks_client.nim (12), tests/test_tasks_end_to_end.nim (3) |
-| MCP-TASKS-17 | tests/test_tasks_client.nim (9), tests/test_tasks_end_to_end.nim (1) |
-| MCP-TASKS-18 | tests/test_tasks_end_to_end.nim (1), tests/test_tasks_server.nim (8) |
-| MCP-TASKS-19 | tests/test_tasks_end_to_end.nim (5) |
-| MCP-TASKS-20 | tests/test_tasks_end_to_end.nim (1) |
-| MCP-TASKS-21 | tests/test_tasks_end_to_end.nim (1) |
-| MCP-TASKS-22 | tests/test_tasks_http.nim (2) |
-| MCP-TASKS-23 | tests/test_tasks_http.nim (2), tests/test_tasks_server.nim (2), tests/test_tasks_store.nim (1) |
-| MCP-TASKS-24 | tests/test_tasks_principal.nim (4) |
-| MCP-TASKS-25 | tests/test_tasks_store.nim (1) |
-| MCP-TOOLS-1 | tests/test_client_operations.nim (2), tests/test_era_matrix.nim (2), tests/test_stdio.nim (1), tests/test_streamable_http.nim (1) |
-| MCP-TOOLS-2 | tests/test_era_matrix.nim (1) |
-| MCP-TOOLS-3 | tests/test_tool_input_validation.nim (4) |
-| MCP-TOOLS-4 | tests/test_tool_input_validation.nim (1) |
-| MCP-TOOLS-5 | tests/test_tool_input_validation.nim (1) |
-| MCP-TOOLS-6 | tests/test_server_errors.nim (2) |
-| MCP-TRACE-1 | tests/test_trace_context.nim (20) |
-| MCP-TRACE-2 | tests/test_trace_context.nim (2) |
-| MCP-TRACE-3 | tests/test_trace_context.nim (3) |
-| MCP-TRACE-4 | tests/test_trace_context.nim (1) |
-| MCP-TRACE-5 | tests/test_trace_context.nim (2) |
-| MCP-TRANSPORT-1 | tests/test_transport.nim (2) |
-| MCP-TRANSPORT-2 | tests/test_transport.nim (5) |
-| MCP-TRANSPORT-3 | tests/test_transport.nim (4) |
-| MCP-VERSION-1 | tests/test_version.nim (3) |
-| MCP-VERSION-2 | tests/test_version.nim (2), tests/test_version_floor.nim (2) |
-| MCP-VERSION-3 | tests/test_legacy_handshake.nim (2), tests/test_version.nim (1), tests/test_version_floor.nim (1) |
-| MCP-VERSION-10 | tests/test_version_build_config.nim (4) |
-| MCP-VERSION-4 | tests/test_version.nim (1) |
-| MCP-VERSION-5 | tests/test_legacy_handshake.nim (1), tests/test_version.nim (1) |
-| MCP-VERSION-6 | tests/test_legacy_handshake.nim (2), tests/test_version.nim (3) |
-| MCP-VERSION-7 | tests/test_legacy_handshake.nim (2) |
-| MCP-VERSION-8 | tests/test_legacy_handshake.nim (1) |
-| MCP-VERSION-9 | tests/test_version_floor.nim (2) |
+| MCP-AUTH-1 | tests/external/test_auth_resource_server.nim (2) |
+| MCP-AUTH-2 | tests/external/test_auth_resource_server.nim (5) |
+| MCP-AUTH-32 | tests/external/test_auth_resource_server.nim (2), tests/internal/test_auth_resource_server_internal.nim (2) |
+| MCP-AUTH-33 | tests/external/test_auth_resource_server.nim (3) |
+| MCP-AUTH-3 | tests/external/test_auth_resource_server.nim (1) |
+| MCP-AUTH-4 | tests/external/test_auth_resource_server.nim (1) |
+| MCP-AUTH-5 | tests/external/test_auth_client_flow.nim (1), tests/external/test_auth_http_methods.nim (3), tests/external/test_auth_resource_server.nim (1) |
+| MCP-AUTH-6 | tests/external/test_auth_resource_server.nim (3) |
+| MCP-AUTH-7 | tests/external/test_auth_resource_server.nim (2) |
+| MCP-AUTH-8 | tests/external/test_auth_resource_server.nim (1) |
+| MCP-AUTH-9 | tests/external/test_auth_resource_server.nim (1) |
+| MCP-AUTH-10 | tests/external/test_auth_oauth_basics.nim (5), tests/external/test_auth_resource_server.nim (4), tests/internal/test_auth_oauth_basics_internal.nim (9) |
+| MCP-AUTH-11 | tests/external/test_auth_client_flow.nim (3), tests/internal/test_auth_oauth_basics_internal.nim (1) |
+| MCP-AUTH-12 | tests/external/test_auth_client_flow.nim (2), tests/internal/test_auth_oauth_basics_internal.nim (3) |
+| MCP-AUTH-13 | tests/external/test_auth_client_flow.nim (2), tests/internal/test_auth_oauth_basics_internal.nim (2) |
+| MCP-AUTH-14 | tests/external/test_auth_client_flow.nim (1), tests/internal/test_auth_oauth_basics_internal.nim (9) |
+| MCP-AUTH-15 | tests/external/test_auth_client_flow.nim (2), tests/internal/test_auth_oauth_basics_internal.nim (2) |
+| MCP-AUTH-16 | tests/external/test_auth_client_flow.nim (3) |
+| MCP-AUTH-17 | tests/external/test_auth_client_flow.nim (2) |
+| MCP-AUTH-18 | tests/external/test_auth_client_flow.nim (2), tests/internal/test_auth_client_flow_internal.nim (1), tests/internal/test_auth_oauth_basics_internal.nim (3) |
+| MCP-AUTH-19 | tests/external/test_auth_client_flow.nim (3) |
+| MCP-AUTH-20 | tests/external/test_auth_client_flow.nim (3) |
+| MCP-AUTH-21 | tests/external/test_auth_client_flow.nim (1), tests/external/test_auth_oauth_basics.nim (1), tests/internal/test_auth_oauth_basics_internal.nim (3) |
+| MCP-AUTH-22 | tests/external/test_auth_client_flow.nim (6) |
+| MCP-AUTH-23 | tests/external/test_auth_client_flow.nim (6), tests/internal/test_auth_client_flow_internal.nim (2) |
+| MCP-AUTH-24 | tests/external/test_auth_client_flow.nim (3) |
+| MCP-AUTH-25 | tests/external/test_auth_client_flow.nim (3), tests/internal/test_auth_client_flow_internal.nim (1) |
+| MCP-AUTH-26 | tests/external/test_auth_client_flow.nim (3), tests/internal/test_auth_client_flow_internal.nim (1) |
+| MCP-AUTH-27 | tests/external/test_auth_client_flow.nim (6) |
+| MCP-AUTH-28 | tests/external/test_auth_client_flow.nim (1) |
+| MCP-AUTH-29 | tests/external/test_auth_client_flow.nim (6), tests/internal/test_auth_client_flow_internal.nim (5) |
+| MCP-AUTH-30 | tests/external/test_auth_oauth_basics.nim (3), tests/internal/test_auth_oauth_basics_internal.nim (4) |
+| MCP-AUTH-31 | tests/external/test_auth_failure.nim (5) |
+| MCP-AUTH-34 | tests/external/test_auth_oauth_basics.nim (8), tests/internal/test_auth_oauth_basics_internal.nim (6) |
+| MCP-AUTH-35 | tests/external/test_auth_oauth_basics.nim (9), tests/internal/test_auth_oauth_basics_internal.nim (2) |
+| MCP-AUTH-36 | tests/external/test_auth_oauth_basics.nim (3), tests/internal/test_auth_oauth_basics_internal.nim (2) |
+| MCP-AUTH-37 | tests/external/test_auth_oauth_basics.nim (3), tests/internal/test_auth_oauth_basics_internal.nim (2) |
+| MCP-AUTH-38 | tests/external/test_auth_oauth_basics.nim (1), tests/internal/test_auth_oauth_basics_internal.nim (1) |
+| MCP-AUTH-39 | tests/external/test_auth_oauth_basics.nim (1), tests/internal/test_auth_oauth_basics_internal.nim (1) |
+| MCP-AUTH-40 | tests/external/test_auth_oauth_basics.nim (3), tests/internal/test_auth_oauth_basics_internal.nim (2) |
+| MCP-AUTH-41 | tests/external/test_security_auth_tokens.nim (4), tests/internal/test_auth_oauth_basics_internal.nim (1), tests/internal/test_security_auth_tokens_internal.nim (6) |
+| MCP-AUTH-42 | tests/external/test_auth_oauth_basics.nim (3), tests/internal/test_auth_oauth_basics_internal.nim (2) |
+| MCP-COMPLETION-1 | tests/external/test_server_completion.nim (4) |
+| MCP-COMPLETION-2 | tests/external/test_server_completion.nim (1) |
+| MCP-COMPLETION-3 | tests/external/test_server_completion.nim (3) |
+| MCP-COMPLETION-4 | tests/external/test_server_completion.nim (3) |
+| MCP-COMPLETION-5 | tests/external/test_client_operations.nim (3) |
+| MCP-COMPLETION-6 | tests/external/test_client_operations.nim (3) |
+| MCP-SCHEMA-1 | tests/external/test_json_schema.nim (5) |
+| MCP-SCHEMA-2 | tests/external/test_json_schema.nim (5) |
+| MCP-SCHEMA-3 | tests/external/test_json_schema.nim (9) |
+| MCP-SCHEMA-4 | tests/external/test_json_schema.nim (7) |
+| MCP-SCHEMA-5 | tests/external/test_json_schema.nim (5) |
+| MCP-SCHEMA-6 | tests/external/test_json_schema.nim (8) |
+| MCP-TOOLANN-1 | tests/external/test_tool_annotations.nim (3) |
+| MCP-TOOLANN-2 | tests/external/test_tool_annotations.nim (1) |
+| MCP-TOOLANN-3 | tests/external/test_tool_annotations.nim (6) |
+| MCP-AUDIO-1 | tests/external/test_audio_content.nim (2) |
+| MCP-AUDIO-2 | tests/external/test_audio_content.nim (2) |
+| MCP-AUDIO-3 | tests/external/test_audio_content.nim (3) |
+| MCP-AUDIO-4 | tests/external/test_client_server_requests.nim (1) |
+| MCP-STRUCTOUT-1 | tests/external/test_structured_tool_output.nim (3) |
+| MCP-STRUCTOUT-2 | tests/external/test_structured_tool_output.nim (3) |
+| MCP-STRUCTOUT-3 | tests/external/test_structured_tool_output.nim (4) |
+| MCP-STRUCTOUT-4 | tests/external/test_structured_tool_output.nim (1) |
+| MCP-STRUCTOUT-5 | tests/external/test_structured_tool_output.nim (7) |
+| MCP-STRUCTOUT-6 | tests/external/test_structured_tool_output.nim (4) |
+| MCP-RESLINK-1 | tests/external/test_resource_links.nim (2), tests/internal/test_resource_links_internal.nim (1) |
+| MCP-RESLINK-2 | tests/external/test_resource_links.nim (2) |
+| MCP-RESLINK-3 | tests/external/test_resource_links.nim (5) |
+| MCP-TITLE-1 | tests/external/test_title_fields.nim (2) |
+| MCP-TITLE-2 | tests/external/test_title_fields.nim (2) |
+| MCP-TITLE-3 | tests/external/test_title_fields.nim (2) |
+| MCP-ICONS-1 | tests/external/test_icons.nim (4), tests/internal/test_icons_internal.nim (1) |
+| MCP-ICONS-2 | tests/external/test_icons.nim (1) |
+| MCP-ICONS-3 | tests/external/test_icons.nim (4) |
+| MCP-ICONS-4 | tests/external/test_icons.nim (4) |
+| MCP-IMPL-1 | tests/external/test_implementation_info.nim (3) |
+| MCP-IMPL-2 | tests/external/test_implementation_info.nim (2) |
+| MCP-IMPL-3 | tests/external/test_implementation_info.nim (5) |
+| MCP-TITLE-4 | tests/external/test_implementation_info.nim (2) |
+| MCP-ICONS-5 | tests/external/test_implementation_info.nim (2) |
+| MCP-CONTENT-FIELDS-1 | tests/external/test_client_field_types.nim (6) |
+| MCP-CONTENT-FIELDS-2 | tests/external/test_client_operations.nim (3) |
+| MCP-ICONS-6 | tests/external/test_icon_fetch.nim (1), tests/internal/test_icon_fetch_internal.nim (13) |
+| MCP-ICONS-7 | tests/external/test_icon_fetch.nim (4) |
+| MCP-ICONS-8 | tests/external/test_icon_fetch.nim (1) |
+| MCP-CONTENT-FIELDS-3 | tests/external/test_implementation_info.nim (1), tests/external/test_tool_annotations.nim (1) |
+| MCP-CONTENT-FIELDS-4 | tests/external/test_structured_tool_output.nim (1) |
+| MCP-CONTENT-FIELDS-5 | tests/external/test_structured_tool_output.nim (3) |
+| MCP-CONTENT-FIELDS-6 | tests/external/test_structured_tool_output.nim (2) |
+| MCP-CONTENT-FIELDS-7 | tests/external/test_structured_tool_output.nim (2) |
+| MCP-CONTENT-FIELDS-8 | tests/external/test_tool_annotations.nim (5), tests/external/test_tool_builders.nim (3) |
+| MCP-ELICIT-1 | tests/external/test_client_elicitation.nim (1), tests/external/test_elicitation_payload.nim (2), tests/external/test_server_elicitation.nim (2) |
+| MCP-ELICIT-2 | tests/external/test_elicitation_payload.nim (3), tests/external/test_server_elicitation.nim (1) |
+| MCP-ELICIT-3 | tests/external/test_client_elicitation.nim (1), tests/external/test_elicitation_payload.nim (7), tests/external/test_server_elicitation.nim (1) |
+| MCP-ELICIT-4 | tests/external/test_server_elicitation.nim (2) |
+| MCP-ELICIT-5 | tests/external/test_client_elicitation.nim (4) |
+| MCP-ELICIT-ENUM-1 | tests/external/test_elicitation_payload.nim (7) |
+| MCP-ELICIT-ENUM-2 | tests/external/test_client_elicitation.nim (1), tests/external/test_elicitation_payload.nim (3), tests/external/test_server_elicitation.nim (1) |
+| MCP-ELICIT-ENUM-3 | tests/external/test_client_elicitation.nim (1), tests/external/test_server_elicitation.nim (1) |
+| MCP-ELICIT-DEFAULT-1 | tests/external/test_elicitation_payload.nim (3) |
+| MCP-ELICIT-DEFAULT-2 | tests/external/test_elicitation_payload.nim (1) |
+| MCP-ELICIT-URL-1 | tests/external/test_client_elicitation.nim (2), tests/external/test_elicitation_payload.nim (5), tests/external/test_server_elicitation.nim (2) |
+| MCP-ELICIT-URL-2 | tests/external/test_elicitation_payload.nim (2), tests/external/test_server_elicitation.nim (3) |
+| MCP-ELICIT-URL-3 | tests/external/test_client_elicitation.nim (2) |
+| MCP-ELICIT-URL-4 | tests/external/test_client_elicitation.nim (2), tests/external/test_elicitation_payload.nim (1), tests/external/test_server_elicitation.nim (2) |
+| MCP-ELICIT-URL-5 | tests/external/test_client_elicitation.nim (3), tests/external/test_elicitation_payload.nim (3), tests/external/test_server_elicitation.nim (2) |
+| MCP-ELICIT-6 | tests/external/test_elicitation_payload.nim (6) |
+| MCP-ELICIT-7 | tests/external/test_elicitation_payload.nim (5) |
+| MCP-ELICIT-8 | tests/external/test_elicitation_payload.nim (2) |
+| MCP-ELICIT-9 | tests/external/test_elicitation_payload.nim (2) |
+| MCP-ELICIT-10 | tests/external/test_client_elicitation.nim (1), tests/external/test_server_elicitation.nim (1), tests/external/test_tasks_end_to_end.nim (1) |
+| MCP-SSE-1 | tests/external/test_event_stream.nim (1) |
+| MCP-SSE-2 | tests/external/test_event_stream.nim (1) |
+| MCP-SSE-3 | tests/external/test_event_stream.nim (1) |
+| MCP-EXT-1 | tests/external/test_extensions.nim (6) |
+| MCP-EXT-2 | tests/external/test_extensions.nim (2) |
+| MCP-EXT-3 | tests/external/test_extensions.nim (1) |
+| MCP-EXT-4 | tests/external/test_extensions.nim (3) |
+| MCP-EXT-5 | tests/external/test_extensions.nim (4) |
+| MCP-EXT-6 | tests/external/test_extensions.nim (2) |
+| MCP-EXT-7 | tests/external/test_extensions.nim (4) |
+| MCP-EXT-8 | tests/external/test_extensions.nim (3) |
+| MCP-EXT-9 | tests/external/test_extensions.nim (2) |
+| MCP-EXT-10 | tests/external/test_extensions.nim (1) |
+| MCP-EXT-11 | tests/external/test_extensions.nim (1) |
+| MCP-EXT-12 | tests/external/test_extensions.nim (2) |
+| MCP-EXT-13 | tests/external/test_extensions.nim (1) |
+| MCP-EXT-14 | tests/external/test_extensions.nim (1) |
+| MCP-EXT-15 | tests/external/test_extensions.nim (4) |
+| MCP-EXT-16 | tests/external/test_extensions.nim (1) |
+| MCP-EXT-17 | tests/external/test_extensions.nim (1) |
+| MCP-EXT-18 | tests/external/test_extensions.nim (1) |
+| MCP-HTTPSSE-1 | tests/external/test_http_sse_legacy.nim (2) |
+| MCP-HTTPSSE-2 | tests/external/test_http_sse_legacy.nim (4) |
+| MCP-HTTPSSE-3 | tests/external/test_http_sse_legacy.nim (2) |
+| MCP-HTTPSSE-4 | tests/external/test_http_sse_legacy.nim (3) |
+| MCP-HTTPSSE-5 | tests/external/test_http_sse_legacy.nim (2) |
+| MCP-HTTPSSE-6 | tests/external/test_http_sse_legacy.nim (2) |
+| MCP-HTTPSSE-7 | tests/external/test_http_sse_legacy.nim (4) |
+| MCP-HTTPSSE-8 | tests/external/test_http_sse_legacy.nim (3) |
+| MCP-HTTPSSE-9 | tests/external/test_http_sse_legacy.nim (2) |
+| MCP-HTTPSSE-10 | tests/external/test_http_sse_legacy.nim (5) |
+| MCP-HTTPSSE-11 | tests/external/test_http_sse_legacy.nim (2) |
+| MCP-HTTPSSE-12 | tests/external/test_http_sse_legacy.nim (4) |
+| MCP-HTTPSSE-13 | tests/external/test_http_sse_legacy.nim (1) |
+| MCP-HTTPSSE-14 | tests/external/test_http_sse_legacy.nim (2) |
+| MCP-HTTPSSE-15 | tests/external/test_http_sse_legacy.nim (1) |
+| MCP-HTTPSSE-16 | tests/external/test_http_sse_legacy.nim (6) |
+| MCP-HTTPSSE-17 | tests/external/test_http_sse_legacy.nim (1) |
+| MCP-HTTPSSE-18 | tests/external/test_http_sse_legacy.nim (6) |
+| MCP-HTTPSTREAM-1 | tests/external/test_http_streams.nim (5) |
+| MCP-HTTPSTREAM-2 | tests/external/test_http_streams.nim (2) |
+| MCP-HTTPSTREAM-3 | tests/external/test_http_streams.nim (2) |
+| MCP-HTTPSTREAM-4 | tests/external/test_http_streams.nim (1) |
+| MCP-HTTPSTREAM-5 | tests/external/test_http_streams.nim (2) |
+| MCP-HTTPSTREAM-6 | tests/external/test_http_streams.nim (1) |
+| MCP-HTTPSTREAM-7 | tests/external/test_http_streams.nim (3) |
+| MCP-HTTPSTREAM-8 | tests/external/test_http_streams.nim (4) |
+| MCP-HTTPSTREAM-9 | tests/external/test_http_client_streams.nim (5) |
+| MCP-HTTPSTREAM-10 | tests/external/test_http_client_streams.nim (1) |
+| MCP-HTTPSTREAM-11 | tests/external/test_http_client_streams.nim (1) |
+| MCP-HTTPGET-1 | tests/external/test_http_streams.nim (4) |
+| MCP-HTTPGET-2 | tests/external/test_http_streams.nim (2) |
+| MCP-HTTPGET-3 | tests/external/test_http_streams.nim (5) |
+| MCP-HTTPGET-4 | tests/external/test_http_streams.nim (2) |
+| MCP-HTTPGET-5 | tests/external/test_http_streams.nim (2) |
+| MCP-HTTPGET-8 | tests/external/test_http_streams.nim (1) |
+| MCP-HTTPGET-6 | tests/external/test_http_client_streams.nim (3) |
+| MCP-HTTPGET-7 | tests/external/test_http_client_streams.nim (3) |
+| MCP-HTTPSESSION-1 | tests/external/test_http_client_streams.nim (4) |
+| MCP-HTTPSESSION-2 | tests/external/test_http_streams.nim (7) |
+| MCP-HTTPVER-1 | tests/external/test_http_streams.nim (6) |
+| MCP-HTTPBATCH-1 | tests/external/test_http_streams.nim (6) |
+| MCP-HTTPBATCH-2 | tests/external/test_http_streams.nim (3) |
+| MCP-HTTPBATCH-3 | tests/external/test_http_streams.nim (1) |
+| MCP-HTTPCLIENT-1 | tests/external/test_http_client_streams.nim (2) |
+| MCP-HTTPSTREAM-12 | tests/external/test_http_streams.nim (2) |
+| MCP-HTTPSTREAM-13 | tests/external/test_http_streams.nim (4) |
+| MCP-HTTPSTREAM-14 | tests/external/test_http_streams.nim (3) |
+| MCP-HTTPSTREAM-15 | tests/external/test_http_streams.nim (3), tests/external/test_version_floor.nim (1) |
+| MCP-HTTPSTREAM-16 | tests/external/test_http_streams.nim (2) |
+| MCP-HTTPSTREAM-17 | tests/external/test_version_floor.nim (1) |
+| MCP-HTTPSTREAM-18 | tests/external/test_security_http.nim (2) |
+| MCP-HTTPSTREAM-19 | tests/external/test_http_streams.nim (1), tests/internal/test_http_streams_internal.nim (3) |
+| MCP-HTTPSTREAM-20 | tests/external/test_http_streams.nim (2), tests/internal/test_http_streams_internal.nim (5) |
+| MCP-LIFECYCLE-1 | tests/external/test_legacy_handshake.nim (4) |
+| MCP-LIFECYCLE-2 | tests/external/test_legacy_handshake.nim (5) |
+| MCP-LIFECYCLE-3 | tests/external/test_legacy_handshake.nim (4) |
+| MCP-LIFECYCLE-4 | tests/external/test_era_matrix.nim (1), tests/external/test_legacy_handshake.nim (1) |
+| MCP-LIFECYCLE-5 | tests/external/test_era_matrix.nim (1), tests/external/test_modern_protocol.nim (3) |
+| MCP-LIFECYCLE-6 | tests/external/test_era_matrix.nim (3) |
+| MCP-LIFECYCLE-7 | tests/external/test_era_matrix.nim (1) |
+| MCP-LIFECYCLE-8 | tests/external/test_era_matrix.nim (2) |
+| MCP-LIFECYCLE-9 | tests/external/test_era_matrix.nim (2) |
+| MCP-LIFECYCLE-10 | tests/external/test_era_matrix.nim (2) |
+| MCP-LIFECYCLE-11 | tests/external/test_era_matrix.nim (2) |
+| MCP-LIFECYCLE-12 | tests/external/test_era_matrix.nim (2) |
+| MCP-LIFECYCLE-13 | tests/external/test_era_matrix.nim (2) |
+| MCP-RESULT-1 | tests/external/test_era_matrix.nim (2), tests/external/test_modern_protocol.nim (4) |
+| MCP-CACHE-1 | tests/external/test_modern_protocol.nim (3) |
+| MCP-LIFECYCLE-14 | tests/external/test_era_matrix.nim (7) |
+| MCP-LIFECYCLE-15 | tests/external/test_legacy_handshake.nim (1) |
+| MCP-LOGGING-1 | tests/external/test_server_logging.nim (3) |
+| MCP-LOGGING-2 | tests/external/test_server_logging.nim (3) |
+| MCP-LOGGING-3 | tests/external/test_server_logging.nim (3) |
+| MCP-LOGGING-4 | tests/external/test_server_logging.nim (4) |
+| MCP-LOGGING-5 | tests/external/test_server_logging.nim (2) |
+| MCP-LOGGING-6 | tests/external/test_server_logging.nim (2) |
+| MCP-LOGGING-7 | tests/external/test_server_logging.nim (1) |
+| MCP-LOGGING-8 | tests/external/test_client_operations.nim (1), tests/external/test_server_logging.nim (1) |
+| MCP-LOGGING-9 | tests/external/test_client_operations.nim (2), tests/external/test_client_server_requests.nim (1) |
+| MCP-MRTR-1 | tests/external/test_mrtr.nim (7) |
+| MCP-MRTR-2 | tests/external/test_mrtr.nim (2) |
+| MCP-MRTR-3 | tests/external/test_mrtr.nim (1) |
+| MCP-MRTR-4 | tests/external/test_mrtr.nim (1) |
+| MCP-MRTR-5 | tests/external/test_mrtr.nim (1) |
+| MCP-MRTR-6 | tests/external/test_mrtr.nim (3) |
+| MCP-MRTR-7 | tests/external/test_mrtr.nim (1) |
+| MCP-MRTR-8 | tests/external/test_mrtr.nim (1) |
+| MCP-MRTR-9 | tests/external/test_mrtr.nim (1) |
+| MCP-MRTR-10 | tests/external/test_mrtr.nim (8), tests/internal/test_mrtr_internal.nim (1) |
+| MCP-MRTR-11 | tests/external/test_mrtr.nim (3) |
+| MCP-MRTR-12 | tests/external/test_mrtr.nim (1) |
+| MCP-MRTR-13 | tests/external/test_mrtr.nim (4) |
+| MCP-MRTR-14 | tests/external/test_mrtr.nim (2) |
+| MCP-MRTR-15 | tests/external/test_mrtr.nim (1) |
+| MCP-MRTR-16 | tests/external/test_mrtr.nim (2) |
+| MCP-MRTR-17 | tests/external/test_mrtr.nim (4) |
+| MCP-MRTR-18 | tests/external/test_mrtr.nim (2) |
+| MCP-PAGINATION-1 | tests/external/test_server_pagination.nim (4) |
+| MCP-PAGINATION-2 | tests/external/test_server_pagination.nim (5) |
+| MCP-PAGINATION-3 | tests/external/test_server_pagination.nim (1) |
+| MCP-PAGINATION-4 | tests/external/test_client_operations.nim (4), tests/external/test_security_pages.nim (1) |
+| MCP-PAGINATION-5 | tests/external/test_client_operations.nim (1) |
+| MCP-PROGRESS-1 | tests/external/test_server_progress_cancel.nim (3) |
+| MCP-PROGRESS-2 | tests/external/test_server_progress_cancel.nim (1) |
+| MCP-PROGRESS-3 | tests/external/test_server_progress_cancel.nim (2) |
+| MCP-PROGRESS-4 | tests/external/test_server_progress_cancel.nim (1) |
+| MCP-PROGRESS-5 | tests/external/test_client_requests.nim (5) |
+| MCP-CANCEL-1 | tests/external/test_server_progress_cancel.nim (6) |
+| MCP-CANCEL-2 | tests/external/test_server_progress_cancel.nim (4) |
+| MCP-CANCEL-3 | tests/external/test_server_progress_cancel.nim (5) |
+| MCP-CANCEL-4 | tests/external/test_client_requests.nim (9), tests/internal/test_client_requests_internal.nim (1) |
+| MCP-CANCEL-5 | tests/external/test_http_streams.nim (3) |
+| MCP-CANCEL-6 | tests/external/test_http_streams.nim (1) |
+| MCP-CANCEL-7 | tests/external/test_server_progress_cancel.nim (2) |
+| MCP-PROMPTS-1 | tests/external/test_server_errors.nim (1), tests/external/test_server_resources_prompts.nim (1) |
+| MCP-PROMPTS-2 | tests/external/test_client_operations.nim (5) |
+| MCP-PROMPTS-3 | tests/external/test_server_resources_prompts.nim (2) |
+| MCP-PROMPTS-4 | tests/external/test_server_errors.nim (1), tests/external/test_server_resources_prompts.nim (1) |
+| MCP-PROMPTS-5 | tests/external/test_server_errors.nim (1) |
+| MCP-HOOKS-1 | tests/external/test_request_hooks.nim (4) |
+| MCP-HOOKS-2 | tests/external/test_request_hooks.nim (4) |
+| MCP-HOOKS-3 | tests/external/test_request_hooks.nim (1) |
+| MCP-HOOKS-4 | tests/external/test_request_hooks.nim (1) |
+| MCP-RESOURCES-1 | tests/external/test_server_errors.nim (2), tests/external/test_server_resources_prompts.nim (1) |
+| MCP-RESOURCES-2 | tests/external/test_client_operations.nim (2) |
+| MCP-RESOURCES-3 | tests/external/test_server_resources_prompts.nim (2) |
+| MCP-RESOURCES-4 | tests/external/test_server_errors.nim (1) |
+| MCP-RESOURCES-5 | tests/external/test_server_errors.nim (1) |
+| MCP-RESOURCES-6 | tests/external/test_server_pagination.nim (3) |
+| MCP-RESOURCES-7 | tests/external/test_client_operations.nim (1) |
+| MCP-RESOURCES-8 | tests/external/test_server_errors.nim (1), tests/external/test_server_notifications.nim (3) |
+| MCP-RESOURCES-9 | tests/external/test_server_notifications.nim (2) |
+| MCP-RESOURCES-10 | tests/external/test_server_notifications.nim (5) |
+| MCP-RESOURCES-11 | tests/external/test_client_operations.nim (4), tests/external/test_client_server_requests.nim (1) |
+| MCP-RESOURCES-12 | tests/external/test_client_operations.nim (2), tests/external/test_server_notifications.nim (1) |
+| MCP-LISTCHANGED-1 | tests/external/test_request_hooks.nim (2), tests/external/test_server_notifications.nim (5) |
+| MCP-LISTCHANGED-2 | tests/external/test_client_server_requests.nim (3) |
+| MCP-RESOURCES-13 | tests/external/test_server_resources_prompts.nim (1) |
+| MCP-RESOURCES-14 | tests/external/test_server_errors.nim (1), tests/external/test_server_resources_prompts.nim (1) |
+| MCP-SAMPLING-TOOLS-1 | tests/external/test_client_sampling_tools.nim (2), tests/external/test_sampling_tools_payload.nim (7), tests/external/test_server_sampling_tools.nim (4) |
+| MCP-SAMPLING-TOOLS-2 | tests/external/test_client_sampling_tools.nim (2), tests/external/test_sampling_tools_payload.nim (3), tests/external/test_server_sampling_tools.nim (2) |
+| MCP-SAMPLING-TOOLS-3 | tests/external/test_client_sampling_tools.nim (1) |
+| MCP-SAMPLING-TOOLS-4 | tests/external/test_sampling_tools_payload.nim (11) |
+| MCP-SAMPLING-TOOLS-5 | tests/external/test_client_sampling_tools.nim (1), tests/external/test_server_sampling_tools.nim (1) |
+| MCP-SAMPLING-TOOLS-6 | tests/external/test_sampling_tools_payload.nim (5), tests/external/test_server_sampling_tools.nim (2) |
+| MCP-SAMPLING-TOOLS-7 | tests/external/test_client_sampling_tools.nim (2) |
+| MCP-SAMPLING-TOOLS-8 | tests/external/test_sampling_tools_payload.nim (2) |
+| MCP-SAMPLING-TOOLS-9 | tests/external/test_sampling_tools_payload.nim (7) |
+| MCP-SAMPLING-TOOLS-10 | tests/external/test_sampling_tools_payload.nim (5) |
+| MCP-SAMPLING-TOOLS-11 | tests/external/test_sampling_tools_payload.nim (2) |
+| MCP-SAMPLING-TOOLS-12 | tests/external/test_sampling_tools_payload.nim (3) |
+| MCP-SEC-SCHEMA-1 | tests/external/test_security_schema.nim (2) |
+| MCP-SEC-SCHEMA-2 | tests/external/test_security_schema.nim (2), tests/internal/test_security_schema_internal.nim (1) |
+| MCP-SEC-SCHEMA-3 | tests/external/test_security_schema.nim (5) |
+| MCP-SEC-SCHEMA-4 | tests/external/test_security_schema.nim (5) |
+| MCP-SEC-SCHEMA-5 | tests/external/test_security_schema.nim (7) |
+| MCP-SEC-SCHEMA-6 | tests/external/test_security_schema.nim (3) |
+| MCP-SEC-SCHEMA-7 | tests/external/test_security_schema.nim (5) |
+| MCP-SEC-SCHEMA-8 | tests/external/test_security_schema.nim (5) |
+| MCP-SEC-HTTP-1 | tests/external/test_security_http.nim (5) |
+| MCP-SEC-HTTP-2 | tests/external/test_security_http.nim (5) |
+| MCP-SEC-HTTP-6 | tests/external/test_security_http.nim (5) |
+| MCP-SEC-HTTP-3 | tests/external/test_security_http.nim (10) |
+| MCP-SEC-HTTP-9 | tests/external/test_security_http.nim (1) |
+| MCP-SEC-HTTP-5 | tests/external/test_security_http.nim (5) |
+| MCP-SEC-HTTP-7 | tests/external/test_security_diagnostic.nim (3), tests/external/test_security_diagnostic_client.nim (3), tests/internal/test_security_diagnostic_auth.nim (1), tests/internal/test_security_diagnostic_internal.nim (10) |
+| MCP-SEC-WIRE-1 | tests/internal/test_security_wire_tls.nim (4) |
+| MCP-SEC-WIRE-2 | tests/external/test_security_wire_headers.nim (6), tests/internal/test_security_wire_headers_internal.nim (1) |
+| MCP-SEC-WIRE-3 | tests/external/test_security_wire_limits.nim (4), tests/internal/test_security_wire_limits_internal.nim (2), tests/internal/test_security_wire_tls.nim (1) |
+| MCP-SEC-WIRE-4 | tests/external/test_security_address.nim (1), tests/internal/test_security_address_internal.nim (6) |
+| MCP-SEC-WIRE-5 | tests/external/test_security_address.nim (2), tests/internal/test_security_address_internal.nim (3) |
+| MCP-SEC-WIRE-6 | tests/external/test_security_address.nim (1), tests/internal/test_security_address_internal.nim (1) |
+| MCP-SEC-WIRE-7 | tests/internal/test_security_icons_internal.nim (1) |
+| MCP-SEC-WIRE-10 | tests/internal/test_security_icons_internal.nim (1) |
+| MCP-SEC-WIRE-11 | tests/external/test_security_address.nim (2), tests/internal/test_security_address_internal.nim (2) |
+| MCP-SEC-WIRE-8 | tests/external/test_security_icons.nim (3) |
+| MCP-SEC-AUTH-1 | tests/external/test_security_auth.nim (3) |
+| MCP-SEC-AUTH-2 | tests/external/test_security_auth.nim (1) |
+| MCP-SEC-AUTH-5 | tests/external/test_security_auth_tokens.nim (8) |
+| MCP-SEC-TASKS-1 | tests/external/test_security_tasks.nim (3) |
+| MCP-SEC-TASKS-2 | tests/external/test_security_tasks.nim (1) |
+| MCP-SEC-TASKS-3 | tests/external/test_security_tasks.nim (5) |
+| MCP-SEC-TASKS-4 | tests/external/test_security_tasks.nim (4) |
+| MCP-SEC-TASKS-5 | tests/external/test_security_tasks.nim (1) |
+| MCP-SEC-SWEEP-1 | tests/external/test_security_poll.nim (5) |
+| MCP-SEC-SWEEP-2 | tests/external/test_security_expiry.nim (2) |
+| MCP-SEC-SWEEP-3 | tests/external/test_security_sampling.nim (3) |
+| MCP-SEC-SWEEP-5 | tests/external/test_security_pages.nim (3) |
+| MCP-SEC-WIRE-9 | tests/external/test_server_pagination.nim (2), tests/internal/test_base64_shape.nim (6), tests/internal/test_icon_fetch_internal.nim (1) |
+| MCP-SEC-SCHEMA-9 | tests/external/test_security_schema.nim (1), tests/internal/test_security_schema_internal.nim (3) |
+| MCP-SEC-SCHEMA-10 | tests/external/test_security_schema.nim (5) |
+| MCP-SEC-SCHEMA-11 | tests/external/test_json_schema.nim (4) |
+| MCP-SEC-SCHEMA-12 | tests/external/test_json_schema.nim (6) |
+| MCP-SEC-SCHEMA-13 | tests/external/test_json_schema.nim (9) |
+| MCP-SEC-SCHEMA-14 | tests/external/test_security_schema.nim (3), tests/internal/test_security_schema_internal.nim (4) |
+| MCP-SEC-SWEEP-6 | tests/internal/test_fuzz_regressions.nim (3) |
+| MCP-SEC-WIRE-12 | tests/external/test_security_address.nim (12), tests/internal/test_security_address_internal.nim (12) |
+| MCP-SEC-WIRE-13 | tests/external/test_security_address.nim (5), tests/internal/test_security_address_internal.nim (6) |
+| MCP-SEC-WIRE-14 | tests/external/test_security_address.nim (3), tests/internal/test_security_address_internal.nim (2) |
+| MCP-SEC-WIRE-15 | tests/external/test_security_wire_headers.nim (6), tests/internal/test_http_wire_internals.nim (1), tests/internal/test_security_wire_headers_internal.nim (5) |
+| MCP-SEC-WIRE-16 | tests/external/test_security_wire_headers.nim (4), tests/internal/test_security_wire_headers_internal.nim (5) |
+| MCP-SEC-WIRE-17 | tests/external/test_security_wire_headers.nim (4) |
+| MCP-SEC-WIRE-18 | tests/external/test_security_wire_headers.nim (1), tests/internal/test_security_wire_headers_internal.nim (12) |
+| MCP-SEC-WIRE-19 | tests/internal/test_http_wire_internals.nim (1), tests/internal/test_security_wire_headers_internal.nim (2) |
+| MCP-SEC-WIRE-20 | tests/external/test_security_wire_headers.nim (1), tests/internal/test_security_wire_tls.nim (2) |
+| MCP-SEC-WIRE-21 | tests/external/test_security_address.nim (4), tests/internal/test_security_address_internal.nim (3) |
+| MCP-SEC-HTTP-8 | tests/external/test_security_http.nim (1) |
+| MCP-SERVERREQ-1 | tests/external/test_server_requests.nim (1) |
+| MCP-SERVERREQ-2 | tests/external/test_server_requests.nim (2) |
+| MCP-SERVERREQ-3 | tests/external/test_server_requests.nim (1) |
+| MCP-SERVERREQ-4 | tests/external/test_server_requests.nim (2) |
+| MCP-SERVERREQ-5 | tests/external/test_server_requests.nim (3) |
+| MCP-SERVERREQ-10 | tests/external/test_server_requests.nim (8) |
+| MCP-SERVERREQ-11 | tests/external/test_server_requests.nim (3) |
+| MCP-SERVERREQ-6 | tests/external/test_server_requests.nim (3) |
+| MCP-SERVERREQ-7 | tests/external/test_server_requests.nim (2) |
+| MCP-SERVERREQ-8 | tests/external/test_server_requests.nim (1) |
+| MCP-SERVERREQ-9 | tests/external/test_client_server_requests.nim (1), tests/external/test_server_requests.nim (2) |
+| MCP-CLIENTREQ-1 | tests/external/test_client_server_requests.nim (7) |
+| MCP-CLIENTREQ-2 | tests/external/test_client_server_requests.nim (1) |
+| MCP-CLIENTREQ-3 | tests/external/test_client_server_requests.nim (4) |
+| MCP-CLIENTREQ-4 | tests/external/test_client_server_requests.nim (3) |
+| MCP-CLIENTREQ-5 | tests/external/test_client_server_requests.nim (2) |
+| MCP-SERVERREQ-12 | tests/external/test_server_requests.nim (1) |
+| MCP-STDIO-1 | tests/external/test_stdio.nim (4) |
+| MCP-STDIO-2 | tests/external/test_stdio.nim (2) |
+| MCP-STDIO-3 | tests/external/test_stdio.nim (3) |
+| MCP-STDIO-4 | tests/external/test_stdio.nim (2) |
+| MCP-STDIO-5 | tests/external/test_stdio.nim (8) |
+| MCP-STDIO-6 | tests/external/test_stdio.nim (6) |
+| MCP-HTTP-1 | tests/external/test_streamable_http.nim (6) |
+| MCP-HTTP-2 | tests/external/test_streamable_http.nim (3) |
+| MCP-HTTP-3 | tests/external/test_streamable_http.nim (2) |
+| MCP-HTTP-4 | tests/external/test_streamable_http.nim (5) |
+| MCP-HTTP-5 | tests/external/test_streamable_http.nim (4) |
+| MCP-HTTP-6 | tests/external/test_modern_protocol.nim (5), tests/external/test_streamable_http.nim (4) |
+| MCP-HTTP-7 | tests/external/test_streamable_http.nim (1) |
+| MCP-HTTP-8 | tests/external/test_streamable_http.nim (2) |
+| MCP-HTTP-9 | tests/external/test_streamable_http.nim (5) |
+| MCP-HTTP-10 | tests/external/test_modern_protocol.nim (5), tests/external/test_param_headers_http.nim (9), tests/internal/test_param_headers_internal.nim (13) |
+| MCP-HTTP-11 | tests/external/test_param_headers_http.nim (2) |
+| MCP-HTTP-12 | tests/external/test_param_headers_http.nim (3), tests/internal/test_param_headers_internal.nim (7) |
+| MCP-HTTP-13 | tests/external/test_param_headers.nim (10), tests/internal/test_param_headers_internal.nim (7) |
+| MCP-HTTP-24 | tests/external/test_param_headers.nim (5), tests/internal/test_param_headers_internal.nim (3) |
+| MCP-HTTP-25 | tests/external/test_param_headers.nim (2), tests/internal/test_param_headers_internal.nim (1) |
+| MCP-HTTP-14 | tests/external/test_streamable_http.nim (6) |
+| MCP-HTTP-15 | tests/external/test_version_floor.nim (4) |
+| MCP-HTTP-16 | tests/external/test_version_floor.nim (3) |
+| MCP-HTTP-17 | tests/external/test_http_unresponsive.nim (2) |
+| MCP-HTTP-18 | tests/external/test_param_headers_http.nim (8) |
+| MCP-HTTP-19 | tests/external/test_streamable_http.nim (1) |
+| MCP-HTTP-20 | tests/external/test_streamable_http.nim (1) |
+| MCP-HTTP-21 | tests/external/test_version_floor.nim (3) |
+| MCP-HTTP-22 | tests/external/test_http_documents.nim (1) |
+| MCP-HTTP-23 | tests/external/test_streamable_http.nim (1) |
+| MCP-HTTP-32 | tests/external/test_http_client_streams.nim (5) |
+| MCP-HTTP-33 | tests/external/test_http_client_streams.nim (1) |
+| MCP-HTTP-34 | tests/external/test_http_client_streams.nim (2) |
+| MCP-HTTP-35 | tests/external/test_http_client_streams.nim (1) |
+| MCP-HTTP-36 | tests/external/test_http_client_streams.nim (3) |
+| MCP-HTTP-37 | tests/external/test_streamable_http.nim (2) |
+| MCP-HTTP-38 | tests/external/test_auth_failure.nim (1) |
+| MCP-HTTP-39 | tests/external/test_param_headers_http.nim (3) |
+| MCP-HTTP-26 | tests/external/test_param_headers_http.nim (7) |
+| MCP-HTTP-27 | tests/external/test_http_client_streams.nim (3) |
+| MCP-HTTP-28 | tests/external/test_http_client_streams.nim (6) |
+| MCP-HTTP-29 | tests/external/test_http_client_streams.nim (8) |
+| MCP-HTTP-30 | tests/external/test_http_client_streams.nim (2) |
+| MCP-HTTP-31 | tests/external/test_http_client_streams.nim (5) |
+| MCP-HTTP-40 | tests/external/test_http_client_streams.nim (1) |
+| MCP-HTTP-41 | tests/external/test_http_client_streams.nim (2) |
+| MCP-SUBSCRIBE-1 | tests/external/test_subscriptions.nim (5) |
+| MCP-SUBSCRIBE-2 | tests/external/test_subscriptions.nim (3) |
+| MCP-SUBSCRIBE-3 | tests/external/test_subscriptions.nim (5) |
+| MCP-SUBSCRIBE-4 | tests/external/test_subscriptions.nim (1) |
+| MCP-SUBSCRIBE-5 | tests/external/test_subscriptions.nim (2) |
+| MCP-SUBSCRIBE-6 | tests/external/test_subscriptions.nim (3) |
+| MCP-SUBSCRIBE-7 | tests/external/test_subscriptions.nim (1) |
+| MCP-SUBSCRIBE-8 | tests/external/test_subscriptions.nim (3) |
+| MCP-SUBSCRIBE-9 | tests/external/test_subscriptions.nim (6) |
+| MCP-SUBSCRIBE-10 | tests/external/test_subscriptions.nim (6) |
+| MCP-SUBSCRIBE-11 | tests/external/test_subscriptions.nim (5), tests/internal/test_subscriptions_internal.nim (1) |
+| MCP-SUBSCRIBE-12 | tests/external/test_subscriptions.nim (3) |
+| MCP-SUBSCRIBE-13 | tests/external/test_subscriptions.nim (1) |
+| MCP-SUBSCRIBE-14 | tests/external/test_subscriptions.nim (7) |
+| MCP-SUBSCRIBE-15 | tests/external/test_subscriptions.nim (4) |
+| MCP-TASKS-1 | tests/external/test_legacy_handshake.nim (2), tests/external/test_tasks_end_to_end.nim (1), tests/external/test_tasks_server.nim (2) |
+| MCP-TASKS-2 | tests/external/test_tasks_client.nim (2), tests/external/test_tasks_server.nim (7) |
+| MCP-TASKS-3 | tests/external/test_tasks_client.nim (3), tests/external/test_tasks_server.nim (4) |
+| MCP-TASKS-4 | tests/external/test_tasks_server.nim (6), tests/external/test_tasks_store.nim (15) |
+| MCP-TASKS-5 | tests/external/test_tasks_store.nim (1) |
+| MCP-TASKS-6 | tests/external/test_tasks_store.nim (7) |
+| MCP-TASKS-7 | tests/external/test_tasks_client.nim (3), tests/external/test_tasks_server.nim (4), tests/external/test_tasks_store.nim (7) |
+| MCP-TASKS-8 | tests/external/test_tasks_client.nim (2), tests/external/test_tasks_server.nim (5), tests/external/test_tasks_store.nim (12) |
+| MCP-TASKS-9 | tests/external/test_tasks_client.nim (1), tests/external/test_tasks_server.nim (4), tests/external/test_tasks_store.nim (3) |
+| MCP-TASKS-10 | tests/external/test_tasks_client.nim (2), tests/external/test_tasks_end_to_end.nim (1), tests/external/test_tasks_server.nim (5), tests/external/test_tasks_store.nim (5) |
+| MCP-TASKS-11 | tests/external/test_tasks_client.nim (3), tests/external/test_tasks_server.nim (3), tests/external/test_tasks_store.nim (1) |
+| MCP-TASKS-12 | tests/external/test_tasks_server.nim (2), tests/external/test_tasks_store.nim (8) |
+| MCP-TASKS-13 | tests/external/test_tasks_server.nim (2), tests/external/test_tasks_store.nim (1) |
+| MCP-TASKS-14 | tests/external/test_tasks_client.nim (2), tests/external/test_tasks_end_to_end.nim (2), tests/external/test_tasks_server.nim (2) |
+| MCP-TASKS-15 | tests/external/test_tasks_client.nim (1), tests/external/test_tasks_server.nim (1), tests/external/test_tasks_store.nim (1) |
+| MCP-TASKS-16 | tests/external/test_tasks_client.nim (12), tests/external/test_tasks_end_to_end.nim (3) |
+| MCP-TASKS-17 | tests/external/test_tasks_client.nim (9), tests/external/test_tasks_end_to_end.nim (1) |
+| MCP-TASKS-18 | tests/external/test_tasks_end_to_end.nim (1), tests/external/test_tasks_server.nim (8) |
+| MCP-TASKS-19 | tests/external/test_tasks_end_to_end.nim (5) |
+| MCP-TASKS-20 | tests/external/test_tasks_end_to_end.nim (1) |
+| MCP-TASKS-21 | tests/external/test_tasks_end_to_end.nim (1) |
+| MCP-TASKS-22 | tests/external/test_tasks_http.nim (1), tests/internal/test_tasks_http_internal.nim (1) |
+| MCP-TASKS-23 | tests/external/test_tasks_http.nim (1), tests/external/test_tasks_server.nim (1), tests/internal/test_tasks_http_internal.nim (1), tests/internal/test_tasks_server_internal.nim (1), tests/internal/test_tasks_store_internal.nim (1) |
+| MCP-TASKS-24 | tests/external/test_tasks_principal.nim (4) |
+| MCP-TASKS-25 | tests/external/test_tasks_store.nim (1) |
+| MCP-TOOLS-1 | tests/external/test_client_operations.nim (2), tests/external/test_era_matrix.nim (2), tests/external/test_stdio.nim (1), tests/external/test_streamable_http.nim (1) |
+| MCP-TOOLS-2 | tests/external/test_era_matrix.nim (1) |
+| MCP-TOOLS-3 | tests/external/test_tool_input_validation.nim (4) |
+| MCP-TOOLS-4 | tests/external/test_tool_input_validation.nim (1) |
+| MCP-TOOLS-5 | tests/external/test_tool_input_validation.nim (1) |
+| MCP-TOOLS-6 | tests/external/test_server_errors.nim (2) |
+| MCP-TRACE-1 | tests/external/test_trace_context.nim (20) |
+| MCP-TRACE-2 | tests/external/test_trace_context.nim (2) |
+| MCP-TRACE-3 | tests/external/test_trace_context.nim (3) |
+| MCP-TRACE-4 | tests/external/test_trace_context.nim (1) |
+| MCP-TRACE-5 | tests/external/test_trace_context.nim (2) |
+| MCP-TRANSPORT-1 | tests/external/test_transport.nim (2) |
+| MCP-TRANSPORT-2 | tests/external/test_transport.nim (5) |
+| MCP-TRANSPORT-3 | tests/external/test_transport.nim (4) |
+| MCP-VERSION-1 | tests/external/test_version.nim (3) |
+| MCP-VERSION-2 | tests/external/test_version.nim (2), tests/external/test_version_floor.nim (2) |
+| MCP-VERSION-3 | tests/external/test_legacy_handshake.nim (2), tests/external/test_version.nim (1), tests/external/test_version_floor.nim (1) |
+| MCP-VERSION-10 | tests/external/test_version_build_config.nim (4) |
+| MCP-VERSION-4 | tests/external/test_version.nim (1) |
+| MCP-VERSION-5 | tests/external/test_legacy_handshake.nim (1), tests/external/test_version.nim (1) |
+| MCP-VERSION-6 | tests/external/test_legacy_handshake.nim (2), tests/external/test_version.nim (3) |
+| MCP-VERSION-7 | tests/external/test_legacy_handshake.nim (2) |
+| MCP-VERSION-8 | tests/external/test_legacy_handshake.nim (1) |
+| MCP-VERSION-9 | tests/external/test_version_floor.nim (2) |
 
 Declared: 469  Covered: 469  Uncovered: 0
 

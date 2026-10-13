@@ -4,7 +4,7 @@
     "src/server/mrtr.nim",
     "src/server/request_state.nim"
   ],
-  "testCommand": "nim c -r --hints:off tests/test_mrtr.nim",
+  "testCommand": "nim c -r --hints:off tests/external/test_mrtr.nim",
   "mutators": [
     "AOR",
     "ROR",

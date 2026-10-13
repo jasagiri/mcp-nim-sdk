@@ -5,7 +5,7 @@
     "src/server/tasks.nim",
     "src/client/tasks.nim"
   ],
-  "testCommand": "nim c -r --hints:off tests/test_tasks_store.nim && nim c -r --hints:off tests/test_tasks_server.nim && nim c -r --hints:off tests/test_tasks_client.nim && nim c -r --hints:off tests/test_tasks_end_to_end.nim && nim c -r --hints:off -d:mcpDefaultProtocolVersion=2025-11-25 tests/test_tasks_server.nim && nim c -r --hints:off -d:mcpDefaultProtocolVersion=2025-11-25 tests/test_tasks_client.nim && nim c -r --hints:off -d:mcpDefaultProtocolVersion=2025-11-25 tests/test_tasks_end_to_end.nim && nim c -r --hints:off tests/test_security_tasks.nim && nim c -r --hints:off tests/test_security_poll.nim && nim c -r --hints:off tests/test_security_expiry.nim && nim c -r --hints:off tests/test_tasks_principal.nim && nim c -r --hints:off tests/test_tasks_http.nim",
+  "testCommand": "nim c -r --hints:off tests/external/test_tasks_store.nim && nim c -r --hints:off tests/external/test_tasks_server.nim && nim c -r --hints:off tests/external/test_tasks_client.nim && nim c -r --hints:off tests/external/test_tasks_end_to_end.nim && nim c -r --hints:off -d:mcpDefaultProtocolVersion=2025-11-25 tests/external/test_tasks_server.nim && nim c -r --hints:off -d:mcpDefaultProtocolVersion=2025-11-25 tests/external/test_tasks_client.nim && nim c -r --hints:off -d:mcpDefaultProtocolVersion=2025-11-25 tests/external/test_tasks_end_to_end.nim && nim c -r --hints:off tests/external/test_security_tasks.nim && nim c -r --hints:off tests/external/test_security_poll.nim && nim c -r --hints:off tests/external/test_security_expiry.nim && nim c -r --hints:off tests/external/test_tasks_principal.nim && nim c -r --hints:off tests/external/test_tasks_http.nim",
   "mutators": [
     "AOR",
     "ROR",

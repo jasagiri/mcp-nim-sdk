@@ -4,7 +4,7 @@
     "src/server/extensions.nim",
     "src/client/extensions.nim"
   ],
-  "testCommand": "nim c -r --hints:off tests/test_extensions.nim",
+  "testCommand": "nim c -r --hints:off tests/external/test_extensions.nim",
   "mutators": [
     "AOR",
     "ROR",

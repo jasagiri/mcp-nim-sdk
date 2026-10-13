@@ -2,7 +2,7 @@
   "sources": [
     "src/protocol/sampling_tools.nim"
   ],
-  "testCommand": "nim c -r --hints:off tests/test_sampling_tools_payload.nim && nim c -r --hints:off tests/test_server_sampling_tools.nim && nim c -r --hints:off tests/test_client_sampling_tools.nim && nim c -r --hints:off tests/test_client_server_requests.nim",
+  "testCommand": "nim c -r --hints:off tests/external/test_sampling_tools_payload.nim && nim c -r --hints:off tests/external/test_server_sampling_tools.nim && nim c -r --hints:off tests/external/test_client_sampling_tools.nim && nim c -r --hints:off tests/external/test_client_server_requests.nim",
   "mutators": [
     "AOR",
     "ROR",

@@ -2,7 +2,7 @@
   "sources": [
     "src/protocol/trace_context.nim"
   ],
-  "testCommand": "nim c -r --hints:off tests/test_trace_context.nim",
+  "testCommand": "nim c -r --hints:off tests/external/test_trace_context.nim",
   "mutators": [
     "AOR",
     "ROR",

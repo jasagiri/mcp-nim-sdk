@@ -6,7 +6,7 @@
     "src/transport/sse_legacy.nim",
     "src/transport/first_of.nim"
   ],
-  "testCommand": "nim c -r --hints:off tests/test_http_client_streams.nim && nim c -r --hints:off tests/test_streamable_http.nim && nim c -r --hints:off tests/test_http_sse_legacy.nim && nim c -r --hints:off tests/test_http_error_propagation.nim && nim c -r --hints:off tests/test_auth_http_methods.nim && nim c -r --hints:off tests/test_http_unresponsive.nim && nim c -r --hints:off tests/test_param_headers_http.nim && nim c -r --hints:off tests/test_security_wire_headers.nim && nim c -r --hints:off tests/test_security_wire_limits.nim && nim c -r --hints:off -d:ssl tests/test_security_wire_tls.nim && nim c -r --hints:off tests/test_auth_failure.nim && nim c -r --hints:off tests/test_auth_client_flow.nim",
+  "testCommand": "nim c -r --hints:off tests/external/test_http_client_streams.nim && nim c -r --hints:off tests/external/test_streamable_http.nim && nim c -r --hints:off tests/external/test_http_sse_legacy.nim && nim c -r --hints:off tests/external/test_http_error_propagation.nim && nim c -r --hints:off tests/external/test_auth_http_methods.nim && nim c -r --hints:off tests/external/test_http_unresponsive.nim && nim c -r --hints:off tests/external/test_param_headers_http.nim && nim c -r --hints:off tests/external/test_security_wire_headers.nim && nim c -r --hints:off tests/external/test_security_wire_limits.nim && nim c -r --hints:off tests/external/test_auth_failure.nim && nim c -r --hints:off tests/external/test_auth_client_flow.nim",
   "mutators": [
     "AOR",
     "ROR",

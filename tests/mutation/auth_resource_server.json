@@ -3,7 +3,7 @@
     "src/auth/resource_server.nim",
     "src/transport/auth_hook.nim"
   ],
-  "testCommand": "nim c -r --hints:off tests/test_auth_resource_server.nim && nim c -r --hints:off tests/test_security_http.nim",
+  "testCommand": "nim c -r --hints:off tests/external/test_auth_resource_server.nim && nim c -r --hints:off tests/external/test_security_http.nim",
   "mutators": [
     "AOR",
     "ROR",

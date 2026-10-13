@@ -2,7 +2,7 @@
   "sources": [
     "src/protocol/param_headers.nim"
   ],
-  "testCommand": "nim c -r --hints:off tests/test_param_headers.nim && nim c -r --hints:off tests/test_param_headers_http.nim",
+  "testCommand": "nim c -r --hints:off tests/external/test_param_headers.nim && nim c -r --hints:off tests/external/test_param_headers_http.nim",
   "mutators": [
     "AOR",
     "ROR",

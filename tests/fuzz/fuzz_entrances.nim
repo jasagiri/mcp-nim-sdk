@@ -7,7 +7,7 @@
 ##     tests/fuzz/fuzz_entrances.nim [runs per target] [target ...]
 ##
 ## A finding is printed and saved under tests/fuzz/corpus/<target>/, where
-## `tests/test_fuzz_regressions.nim` runs it from then on. Exits 1 if
+## `tests/internal/test_fuzz_regressions.nim` runs it from then on. Exits 1 if
 ## anything was found.
 
 import std/[os, strutils]

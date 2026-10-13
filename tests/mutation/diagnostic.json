@@ -2,7 +2,7 @@
   "sources": [
     "src/protocol/diagnostic.nim"
   ],
-  "testCommand": "nim c -r --hints:off tests/test_security_diagnostic.nim",
+  "testCommand": "nim c -r --hints:off tests/external/test_security_diagnostic.nim",
   "mutators": [
     "AOR",
     "ROR",

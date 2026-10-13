@@ -276,3 +276,13 @@ Scenario の文言を直したもの (2026-10-13、利用者の指示。仕様 I
 `server/tools` を公開にした (2026-10-13、利用者の決定): `import mcp` が export する。`MCP-CONTENT-FIELDS-8` に結ばれた 5 本は、確かめ方は変えずに E になった。`import mcp` だけで組み立ての手続きに届くことを確かめるテスト 3 本 (`tests/test_tool_builders.nim`) を足した。README の「Features, at run time」に案内がある。上の「分け方」と「分類とは別に見つかったこと」が `server/tools` について言っていること (入口から届かない、決まっていない) は、分類した時点の話である。
 
 確かめ方: 足したテストは、リードが書いたもの (アドレス、正規表現、ストリーム、30 行) と、ワーカー (Claude Sonnet) 1 人が書いたもの (認可、ヘッダ、25 行ぶん)。ワーカーの差分はリードが、既存の行を消していないこと、外のアドレスへ接続しないこと、例外を捨てていないことについて読み、3 ファイルを既定の版で流した。ワーカーのテスト本文を 1 行ずつ読み直してはいない (補助手続きと、認可応答・ヘッダの宣言のテストを読んだ)。期待値を誤らせると落ちることは、足したテストについては確かめていない。
+
+## 2026-10-13: 分類を置き場に移した
+
+この文書と [test-classification.tsv](test-classification.tsv) は、手で付けた分類の記録である。2026-10-13 に、分類を置き場に移した (ADR-KURA-0008 §3): 外部仕様テストは `tests/external/`、内部実装テストは `tests/internal/` にある。**これ以後、分類はこの文書ではなく置き場が言う。** この文書と TSV は更新しない。
+
+- 混ざっていたファイル 21 本は、テストの塊ごとに 2 つに割った (`tests/external/test_X.nim` と `tests/internal/test_X_internal.nim`)。テストの本文は変えていない: 割る前のコミット (9453f398ae51) の 2,140 本と 1 本ずつ突き合わせ、文面が違うのは、流し方を案内する文のパスを直した 1 本だけである。
+- 外部仕様テストは、入口 (`mcp`、`auth/client`、`auth/resource_server`、`transport/http_compat`、`server/request_state`) と、入口が丸ごと export するモジュールだけを import する。`nimble specCoverage` がそれを確かめ (nim-spec-coverage の `--external`・`--entry`)、外部仕様テストの無い仕様 ID と、入口の外を読む外部仕様テストがあれば失敗する。結果は [g1-spec-coverage.md](g1-spec-coverage.md) の末尾の 2 つの節にある。
+- 上の「分け方」で認めていた例外は無くなった。版と機能の表 (`protocol/features`) は入口が export する。テストの補助 (`sse_reader`、`auth_fixtures`) は、SDK の内側の部品を借りない形に書き直した。
+- 割るときに、テストの本文が非公開の名前を使っていた 1 本を、外部から内部へ移した (`test_mrtr`)。
+- 変異検査のジョブ (`tests/mutation/*.json`) は、外部仕様テストだけを走らせる。内部だけのテスト 10 件を、ジョブの `testCommand` から外した。

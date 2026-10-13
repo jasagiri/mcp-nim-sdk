@@ -11,7 +11,7 @@
   テストを E / I / 足場に分けた結果は [test-classification.md](test-classification.md) にあり、本線では 469 件のうち
   5 件に E テストが 1 本も結ばれていない (2026-10-13。分類した時点では 48 件。表は系列ごとに作り直す)。
   その分類で「公開」とした範囲と、説明の無い公開シンボルの数は [public-surface.md](public-surface.md)。
-- 行の名前のテストがそのファイルに実在するかは、道具ではなく `tests/test_spec_coverage.nim` が
+- 行の名前のテストがそのファイルに実在するかは、道具ではなく `tests/internal/test_spec_coverage.nim` が
   `nimble test` のたびに確かめる。
 - 行のテストが、その Scenario の言う振る舞いを実際に確かめているかは、どちらでも分からない。
 

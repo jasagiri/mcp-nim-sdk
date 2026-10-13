@@ -311,7 +311,7 @@ and a client that polls and listens: [examples/draft_events_client.nim](examples
 ```sh
 nimble test                # every test with this checkout's default version
 nimble testAllVersions     # the same, once per released version as the default
-nim c -r -d:mcpDefaultProtocolVersion=2025-06-18 tests/test_legacy_handshake.nim
+nim c -r -d:mcpDefaultProtocolVersion=2025-06-18 tests/external/test_legacy_handshake.nim
 ```
 
 On a branch that adds to another, `MCP_TEST_BASE=<commit> nimble testAllVersions` runs this checkout's default version in full and, for the other versions, only the tests built from a file that differs from that commit; `MCP_TEST_BASE=<commit> nimble affectedTests` lists them. It reads what the compiler recorded when it last built each test, so a file that only an older version compiles in is not seen: run without `MCP_TEST_BASE` before a release.

@@ -2,7 +2,7 @@
   "sources": [
     "src/transport/stdio.nim"
   ],
-  "testCommand": "nim c -r --hints:off tests/test_stdio.nim && nim c -r --hints:off tests/test_silent_dead.nim",
+  "testCommand": "nim c -r --hints:off tests/external/test_stdio.nim && nim c -r --hints:off tests/external/test_silent_dead.nim",
   "mutators": [
     "AOR",
     "ROR",

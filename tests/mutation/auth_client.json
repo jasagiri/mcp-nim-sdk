@@ -3,7 +3,7 @@
     "src/auth/client.nim",
     "src/auth/policy.nim"
   ],
-  "testCommand": "nim c -r --hints:off tests/test_auth_client_flow.nim && nim c -r --hints:off tests/test_security_auth.nim && nim c -r --hints:off tests/test_security_address.nim",
+  "testCommand": "nim c -r --hints:off tests/external/test_auth_client_flow.nim && nim c -r --hints:off tests/external/test_security_auth.nim && nim c -r --hints:off tests/external/test_security_address.nim",
   "mutators": [
     "AOR",
     "ROR",

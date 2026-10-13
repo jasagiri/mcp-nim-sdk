@@ -8,7 +8,7 @@ Feature: Reading a Server-Sent Events stream
   line longer than the limit given to the parser is an error, decided before
   the line ends. The tests of the parser's other rules (field names, the one
   leading space, line ends, comments, id, retry) are those of
-  tests/test_event_stream.nim; they are not given a Scenario here.
+  tests/external/test_event_stream.nim; they are not given a Scenario here.
 
   @spec:MCP-SSE-1
   Scenario: A byte order mark counts only at the start of the stream

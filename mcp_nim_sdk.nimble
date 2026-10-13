@@ -31,6 +31,21 @@ proc nimFilesIn(dir, pattern: string): seq[string] =
       if file.len > 0:
         result.add(file)
 
+const testDirs = ["tests/external", "tests/internal"]
+  ## Where the tests are (ADR-KURA-0008): the external tests, which reach
+  ## the SDK through its entries only, and the internal ones.
+
+proc testFiles(): seq[string] =
+  for dir in testDirs:
+    result.add nimFilesIn(dir, "test_*.nim")
+
+proc testFile(name: string): string =
+  ## The path of the test called `name`, whichever directory holds it.
+  for dir in testDirs:
+    if fileExists(dir & "/" & name & ".nim"):
+      return dir & "/" & name & ".nim"
+  raise newException(OSError, "no test called " & name & " under " & testDirs.join(" or "))
+
 const sslTests = ["test_security_wire_tls"]
   ## Tests that need `-d:ssl` (a TLS server and the https client). Built
   ## without it they fail on purpose, so the generic loop leaves them out and
@@ -71,9 +86,9 @@ proc covered(selection: Selection, files: seq[string], cache: string): seq[strin
 
 proc runTests(extraFlags: string, selection = everything()) =
   exec "mkdir -p build/tests"
-  let files = nimFilesIn("tests", "test_*.nim")
+  let files = testFiles()
   if files.len == 0:
-    raise newException(OSError, "No test files found in tests/")
+    raise newException(OSError, "No test files found in " & testDirs.join(" or "))
   let chosen = selection.covered(files, TestCache)
   for file in chosen:
     if file.splitFile.name in sslTests:
@@ -89,7 +104,7 @@ proc runSslTests(extraFlags: string) =
   exec "mkdir -p build/tests"
   for name in sslTests:
     echo "Running test (-d:ssl): " & name
-    exec "nim c -r -d:ssl " & extraFlags & " -o:build/tests/" & name & " tests/" & name & ".nim"
+    exec "nim c -r -d:ssl " & extraFlags & " -o:build/tests/" & name & " " & testFile(name)
 
 proc compileOnly(dir: string, extraFlags: string, selection = everything()) =
   ## Programs that are not tests but must keep compiling.
@@ -122,7 +137,7 @@ proc runModernOnlyTests() =
   for name in modernOnlyTests:
     echo "Running test (2026-07-28 only): " & name
     exec "nim c -r -d:mcpDefaultProtocolVersion=2026-07-28 -d:mcpOldestProtocolVersion=2026-07-28" &
-         " --nimcache:build/nc_modern_only -o:build/tests/modern_only_" & name & " tests/" & name & ".nim"
+         " --nimcache:build/nc_modern_only -o:build/tests/modern_only_" & name & " " & testFile(name)
 
 task testSsl, "Run the tests that need -d:ssl":
   runSslTests("")
@@ -154,7 +169,7 @@ task testAllVersions, "Run tests once per released protocol version as the build
     echo "=== default protocol version " & version & " ==="
     let flag = "-d:mcpDefaultProtocolVersion=" & version
     let selection = if base.len > 0 and version != own: Selection(base: base) else: everything()
-    generateDocs(flag)  # tests/test_docs_version.nim compares the files with the build's version
+    generateDocs(flag)  # tests/internal/test_docs_version.nim compares the files with the build's version
     runTests(flag, selection)
     compileOnly("tests/interop", flag, selection)
     compileOnly("examples", flag, selection)
@@ -165,7 +180,7 @@ task affectedTests, "List the tests that testAllVersions runs for the other vers
   let base = getEnv("MCP_TEST_BASE")
   if base.len == 0:
     raise newException(ValueError, "set MCP_TEST_BASE to the commit to compare with")
-  for file in Selection(base: base).covered(nimFilesIn("tests", "test_*.nim"), TestCache):
+  for file in Selection(base: base).covered(testFiles(), TestCache):
     if file.splitFile.name notin sslTests:
       echo file
 
@@ -173,11 +188,23 @@ task genDocs, "Regenerate README.md and docs/ from templates/":
   generateDocs("")
 
 task specCoverage, "Measure specification coverage (G1) with ../nim-spec-coverage and write docs/quality/g1-spec-coverage.md":
-  # Fails when a declared specification has no test in specs/tests.map.
+  # Fails when a declared specification has no external test in specs/tests.map,
+  # or when an external test reads a module no entry exports.
   # The tool is a sibling package; NIM_SPEC_COVERAGE names it from a checkout that has no such sibling.
   let tool = getEnv("NIM_SPEC_COVERAGE", "../nim-spec-coverage")
   exec "nim c --hints:off --nimcache:build/nimcache/spec_coverage -o:build/bin/spec_coverage " & tool & "/src/spec_coverage.nim"
-  exec "build/bin/spec_coverage . --scenarios specs > docs/quality/g1-spec-coverage.md"
+  # An identifier counts as covered by an external test only: a test under
+  # tests/external, which may read the entries below and what they export
+  # whole. The entries are what the README and the modules' documentation
+  # tell a user to import; an extension is one module under src/ext.
+  var entries = @["src/mcp.nim", "src/auth/client.nim", "src/auth/resource_server.nim",
+                  "src/transport/http_compat.nim", "src/server/request_state.nim"]
+  if dirExists("src/ext"):
+    entries.add nimFilesIn("src/ext", "*.nim")
+  var options = " --scenarios specs --tests tests/external --tests tests/internal --external tests/external"
+  for entry in entries:
+    options.add " --entry " & entry
+  exec "build/bin/spec_coverage ." & options & " > docs/quality/g1-spec-coverage.md"
 
 task docs, "Generate API documentation":
   exec "mkdir -p build/doc"

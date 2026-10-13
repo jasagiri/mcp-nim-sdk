@@ -5,7 +5,7 @@
     "src/server/elicit.nim",
     "src/client/elicitation.nim"
   ],
-  "testCommand": "nim c -r --hints:off tests/test_elicitation_payload.nim && nim c -r --hints:off tests/test_server_elicitation.nim && nim c -r --hints:off tests/test_client_elicitation.nim && nim c -r --hints:off tests/test_mrtr.nim && nim c -r --hints:off tests/test_tasks_end_to_end.nim",
+  "testCommand": "nim c -r --hints:off tests/external/test_elicitation_payload.nim && nim c -r --hints:off tests/external/test_server_elicitation.nim && nim c -r --hints:off tests/external/test_client_elicitation.nim && nim c -r --hints:off tests/external/test_mrtr.nim && nim c -r --hints:off tests/external/test_tasks_end_to_end.nim",
   "mutators": [
     "AOR",
     "ROR",
