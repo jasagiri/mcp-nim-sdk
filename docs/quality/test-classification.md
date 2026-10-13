@@ -10,7 +10,7 @@
 | 足場 (S) | 315 | どちらでもない。うち 305 件は呼び口を公開側へ移せば E になる、10 件は消してよい |
 
 仕様 ID 469 件のうち、**E テストが 1 本も結ばれていない ID は 48 件** (うち 45 件は、結ばれたテストの呼び口を移せば E になる)。一覧は末尾。
-[g1-spec-coverage.md](g1-spec-coverage.md) の「469/469」は「対応表に行がある」の数で、E テストがあることまでは言っていない。この 48 件がその差である。
+`nimble specCoverage` の表 (g1-spec-coverage.md。2026-10-13 から追跡していない) の「469/469」は「対応表に行がある」の数で、E テストがあることまでは言っていない。この 48 件がその差である。
 
 1 件ごとの行 (E でないテスト全部と、印の付いた E のテスト) は [test-classification.tsv](test-classification.tsv) にある。
 
@@ -282,7 +282,7 @@ Scenario の文言を直したもの (2026-10-13、利用者の指示。仕様 I
 この文書と [test-classification.tsv](test-classification.tsv) は、手で付けた分類の記録である。2026-10-13 に、分類を置き場に移した (ADR-KURA-0008 §3): 外部仕様テストは `tests/external/`、内部実装テストは `tests/internal/` にある。**これ以後、分類はこの文書ではなく置き場が言う。** この文書と TSV は更新しない。
 
 - 混ざっていたファイル 21 本は、テストの塊ごとに 2 つに割った (`tests/external/test_X.nim` と `tests/internal/test_X_internal.nim`)。テストの本文は変えていない: 割る前のコミット (9453f398ae51) の 2,140 本と 1 本ずつ突き合わせ、文面が違うのは、流し方を案内する文のパスを直した 1 本だけである。
-- 外部仕様テストは、入口 (`mcp`、`auth/client`、`auth/resource_server`、`transport/http_compat`、`server/request_state`) と、入口が丸ごと export するモジュールだけを import する。`nimble specCoverage` がそれを確かめ (nim-spec-coverage の `--external`・`--entry`)、外部仕様テストの無い仕様 ID と、入口の外を読む外部仕様テストがあれば失敗する。結果は [g1-spec-coverage.md](g1-spec-coverage.md) の末尾の 2 つの節にある。
+- 外部仕様テストは、入口 (`mcp`、`auth/client`、`auth/resource_server`、`transport/http_compat`、`server/request_state`) と、入口が丸ごと export するモジュールだけを import する。`nimble specCoverage` がそれを確かめ (nim-spec-coverage の `--external`・`--entry`)、外部仕様テストの無い仕様 ID と、入口の外を読む外部仕様テストがあれば失敗する。結果は `nimble specCoverage` の表 (g1-spec-coverage.md。2026-10-13 から追跡していない) の末尾の 2 つの節にある。
 - 上の「分け方」で認めていた例外は無くなった。版と機能の表 (`protocol/features`) は入口が export する。テストの補助 (`sse_reader`、`auth_fixtures`) は、SDK の内側の部品を借りない形に書き直した。
 - 割るときに、テストの本文が非公開の名前を使っていた 1 本を、外部から内部へ移した (`test_mrtr`)。
 - 変異検査のジョブ (`tests/mutation/*.json`) は、外部仕様テストだけを走らせる。内部だけのテスト 10 件を、ジョブの `testCommand` から外した。

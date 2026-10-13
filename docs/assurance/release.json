@@ -10,8 +10,7 @@
      "supports": true,
      "kind": "measurement",
      "ref": "2026-10-13、本線 f508412bc5c1: nimble specCoverage (nim-spec-coverage --scenarios) で宣言 469、対応表に行のある ID 469、終了コード 0。tests/internal/test_spec_coverage.nim が同じコミットの通しで通る",
-     "note": "これが言うのは「対応表に行があり、その名前のテストが実在する」まで。そのテストが外部仕様テストかどうかは言わない",
-     "file": "../quality/g1-spec-coverage.md"
+     "note": "これが言うのは「対応表に行があり、その名前のテストが実在する」まで。そのテストが外部仕様テストかどうかは言わない"
     },
     {
      "supports": false,

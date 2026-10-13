@@ -187,7 +187,7 @@ task affectedTests, "List the tests that testAllVersions runs for the other vers
 task genDocs, "Regenerate README.md and docs/ from templates/":
   generateDocs("")
 
-task specCoverage, "Measure specification coverage (G1) with ../nim-spec-coverage and write docs/quality/g1-spec-coverage.md":
+task specCoverage, "Measure specification coverage (G1) with ../nim-spec-coverage and write build/g1-spec-coverage.md":
   # Fails when a declared specification has no external test in specs/tests.map,
   # or when an external test reads a module no entry exports.
   # The tool is a sibling package; NIM_SPEC_COVERAGE names it from a checkout that has no such sibling.
@@ -204,7 +204,9 @@ task specCoverage, "Measure specification coverage (G1) with ../nim-spec-coverag
   var options = " --scenarios specs --tests tests/external --tests tests/internal --external tests/external"
   for entry in entries:
     options.add " --entry " & entry
-  exec "build/bin/spec_coverage ." & options & " > docs/quality/g1-spec-coverage.md"
+  # The report is an output, not a record: it is written under build/ and not
+  # committed, so that a commit cannot carry a report of another state.
+  exec "build/bin/spec_coverage ." & options & " > build/g1-spec-coverage.md"
 
 task docs, "Generate API documentation":
   exec "mkdir -p build/doc"

@@ -1,6 +1,7 @@
 # G1 仕様網羅: 表の読み方
 
-[g1-spec-coverage.md](g1-spec-coverage.md) は `nimble specCoverage` の出力である (手で書き換えない)。
+表は `nimble specCoverage` の出力で、`build/g1-spec-coverage.md` に書かれる。2026-10-13 から追跡していない
+(生成物をコミットすると、測ったときと違う状態のコミットに古い表が残るため)。読みたいときに生成する。
 道具は `../nim-spec-coverage` で、`specs/*.feature` の `@spec:ID` を宣言として読み、`specs/tests.map`
 (`ID | テストのファイル | テストの名前`) の行でテストと結ぶ (`--scenarios specs`、ADR-SPC-0001 の SCN-01〜06)。
 系列ごとに仕様の数が違うので、表は系列 (本線、拡張、下書き) ごとに生成し直す。
