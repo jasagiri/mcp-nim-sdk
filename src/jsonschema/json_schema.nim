@@ -32,6 +32,8 @@
 
 import std/[algorithm, json, math, strutils, tables, unicode]
 import ./json_schema_regex
+export json_schema_regex.RegexLimits, json_schema_regex.DefaultRegexLimits,
+       json_schema_regex.DefaultMaxRegexSteps  # what `SchemaLimits` is made of
 
 type
   SchemaDialect* = enum

@@ -21,7 +21,9 @@ import ../transport/auth_hook
 import ./policy
 import ./oauth/[authcode, challenge, discovery, errors, metadata, registration, tokens, urls]
 
+import ../transport/address_policy
 export errors, tokens, urls.FetchPolicy, urls.defaultFetchPolicy
+export address_policy.HostResolver  # the type of `FetchPolicy.resolver`
 
 const
   StepUpWindow = initDuration(seconds = 60)

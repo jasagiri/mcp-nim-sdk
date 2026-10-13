@@ -30,6 +30,7 @@ import ./transport
 import ./event_stream
 import ./http_wire as wire
 import ./auth_hook
+export auth_hook  # the type of the `auth` field
 import ../protocol/types
 import ../protocol/diagnostic
 import ../protocol/modern

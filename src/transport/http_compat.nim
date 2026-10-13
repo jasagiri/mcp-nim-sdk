@@ -12,6 +12,7 @@ import std/[asyncdispatch, httpcore, json]
 import ./transport
 import ./http
 import ./sse_legacy
+export sse_legacy  # the type of the `legacy` field, and the HTTP+SSE client by itself
 import ../protocol/types
 
 type

@@ -8,6 +8,7 @@ import protocol/types
 import protocol/lifecycle
 import protocol/modern
 import protocol/content
+import protocol/features
 import jsonschema/json_schema
 import server/server
 import server/elicit
@@ -34,7 +35,7 @@ import transport/http
 import transport/http_server
 import transport/event_stream
 
-export types, lifecycle, modern, content, json_schema
+export types, lifecycle, modern, content, features, json_schema
 export server, client
 export tools, resources, prompts, utilities, roots, sampling, elicit, elicitation
 export serverTools

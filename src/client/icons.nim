@@ -21,6 +21,7 @@ import ../protocol/base64_shape
 import ../transport/transport
 import ../transport/http_wire as wire
 import ../transport/address_policy
+export address_policy.HostResolver  # the type of `IconFetchOptions.resolver`
 import ../transport/guarded_wire
 
 type

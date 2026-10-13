@@ -54,6 +54,7 @@ import ./transport
 import ./sse_stream
 import ./first_of
 import ./auth_hook
+export auth_hook  # the type of the `auth` field
 import ../protocol/types
 import ../protocol/diagnostic
 import ../protocol/modern
