@@ -5,6 +5,7 @@
 ## basic/transports/streamable-http "Custom Headers from Tool Parameters".
 
 import std/[unittest, asyncdispatch, httpclient, json, options, strutils, unicode]
+import std/os
 import protocol/types
 import protocol/modern
 import protocol/param_headers
@@ -394,3 +395,65 @@ suite "x-mcp-header: server validation":
     let declared = declaredParamHeaders(sqlSchema)
     let error = mismatchOf(declared, %*{"region": "x"}, [("Mcp-Param-Region", repeat("y", 5000))])
     check error.get.message.len < 300
+
+suite "x-mcp-header: tool declarations seen through the public entries":
+
+  proc loggedWhile(body: proc()): string =
+    ## Everything the code under test wrote to stderr.
+    let path = getTempDir() / "mcp-param-headers-" & $getCurrentProcessId() & ".log"
+    let saved = stderr
+    stderr = open(path, fmWrite)
+    try:
+      body()
+    finally:
+      stderr.close()
+      stderr = saved
+    result = readFile(path)
+    removeFile(path)
+
+  proc reasonFor(inputSchema: JsonNode): string =
+    ## What a server says when its tools/list leaves out the tool "t": the
+    ## text of its stderr.
+    let url = startServerWith(inputSchema)
+    result = loggedWhile(proc() = check not isListed(url))
+
+  test "Given items, additionalProperties, anyOf and a property named x-mcp-header with one annotated property, when the tool is listed and called, then it is valid and only the annotated property needs a header":
+    modernOnly:
+      let url = startServerWith(schema(%*{
+        "list": {"type": "array", "items": {"type": "string"}},
+        "free": {"type": "object", "additionalProperties": {"type": "integer"}},
+        "pick": {"anyOf": [{"type": "string"}, {"type": "integer"}]},
+        "inner": {"type": "object", "properties": {"x-mcp-header": {"type": "string"}}},
+        "id": {"type": "string", "x-mcp-header": "Id"}}))
+      check isListed(url)
+      let arguments = %*{"list": ["x"], "free": {"k": 1}, "pick": "p",
+                         "inner": {"x-mcp-header": "v"}, "id": "abc"}
+      check accepts(url, arguments, [("Mcp-Param-Id", "abc")])
+      check rejectsAsMismatch(url, arguments, @[])
+      check rejectsAsMismatch(url, arguments, [("Mcp-Param-Id", "abd")])
+
+  test "Given an invalid declaration on a nested property, when the server lists tools, then the reason it logs names that property":
+    modernOnly:
+      let reason = reasonFor(schema(%*{
+        "target": {"type": "object", "properties": {
+          "zone": {"type": "number", "x-mcp-header": "Zone"}}}}))
+      check "not listing tool 't'" in reason
+      check "'target.zone'" in reason
+
+  test "Given an invalid declaration on the schema root, when the server lists tools, then the reason it logs names the schema root":
+    modernOnly:
+      let reason = reasonFor(%*{"type": "object", "x-mcp-header": "A"})
+      check "not listing tool 't'" in reason
+      check "the schema root" in reason
+
+  test "Given an empty name, when the server lists tools, then the reason it logs names the property and says the name is not to be empty":
+    modernOnly:
+      let reason = reasonFor(schema(%*{"a": {"type": "string", "x-mcp-header": ""}}))
+      check "'a'" in reason
+      check "empty" in reason
+
+  test "Given a name that is not empty but invalid, when the server lists tools, then the reason it logs does not speak of emptiness":
+    modernOnly:
+      let reason = reasonFor(schema(%*{"a": {"type": "string", "x-mcp-header": "Bad Name"}}))
+      check "'a'" in reason
+      check "empty" notin reason

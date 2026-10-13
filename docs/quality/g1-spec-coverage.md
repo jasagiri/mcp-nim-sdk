@@ -48,7 +48,7 @@ joined to tests by the rows of
 | MCP-AUTH-7 | tests/test_auth_resource_server.nim (2) |
 | MCP-AUTH-8 | tests/test_auth_resource_server.nim (1) |
 | MCP-AUTH-9 | tests/test_auth_resource_server.nim (1) |
-| MCP-AUTH-10 | tests/test_auth_oauth_basics.nim (9) |
+| MCP-AUTH-10 | tests/test_auth_oauth_basics.nim (14), tests/test_auth_resource_server.nim (4) |
 | MCP-AUTH-11 | tests/test_auth_client_flow.nim (3), tests/test_auth_oauth_basics.nim (1) |
 | MCP-AUTH-12 | tests/test_auth_client_flow.nim (2), tests/test_auth_oauth_basics.nim (3) |
 | MCP-AUTH-13 | tests/test_auth_client_flow.nim (2), tests/test_auth_oauth_basics.nim (2) |
@@ -70,13 +70,13 @@ joined to tests by the rows of
 | MCP-AUTH-29 | tests/test_auth_client_flow.nim (11) |
 | MCP-AUTH-30 | tests/test_auth_oauth_basics.nim (7) |
 | MCP-AUTH-31 | tests/test_auth_failure.nim (5) |
-| MCP-AUTH-34 | tests/test_auth_oauth_basics.nim (6) |
+| MCP-AUTH-34 | tests/test_auth_oauth_basics.nim (14) |
 | MCP-AUTH-35 | tests/test_auth_oauth_basics.nim (11) |
 | MCP-AUTH-36 | tests/test_auth_oauth_basics.nim (5) |
 | MCP-AUTH-37 | tests/test_auth_oauth_basics.nim (5) |
 | MCP-AUTH-38 | tests/test_auth_oauth_basics.nim (2) |
 | MCP-AUTH-39 | tests/test_auth_oauth_basics.nim (2) |
-| MCP-AUTH-40 | tests/test_auth_oauth_basics.nim (2) |
+| MCP-AUTH-40 | tests/test_auth_oauth_basics.nim (5) |
 | MCP-AUTH-41 | tests/test_auth_oauth_basics.nim (1), tests/test_security_auth_tokens.nim (10) |
 | MCP-AUTH-42 | tests/test_auth_oauth_basics.nim (5) |
 | MCP-COMPLETION-1 | tests/test_server_completion.nim (4) |
@@ -223,7 +223,7 @@ joined to tests by the rows of
 | MCP-HTTPSTREAM-17 | tests/test_version_floor.nim (1) |
 | MCP-HTTPSTREAM-18 | tests/test_security_http.nim (2) |
 | MCP-HTTPSTREAM-19 | tests/test_http_streams.nim (4) |
-| MCP-HTTPSTREAM-20 | tests/test_http_streams.nim (5) |
+| MCP-HTTPSTREAM-20 | tests/test_http_streams.nim (7) |
 | MCP-LIFECYCLE-1 | tests/test_legacy_handshake.nim (4) |
 | MCP-LIFECYCLE-2 | tests/test_legacy_handshake.nim (5) |
 | MCP-LIFECYCLE-3 | tests/test_legacy_handshake.nim (4) |
@@ -345,7 +345,7 @@ joined to tests by the rows of
 | MCP-SEC-WIRE-6 | tests/test_security_address.nim (2) |
 | MCP-SEC-WIRE-7 | tests/test_security_icons.nim (1) |
 | MCP-SEC-WIRE-10 | tests/test_security_icons.nim (1) |
-| MCP-SEC-WIRE-11 | tests/test_security_address.nim (2) |
+| MCP-SEC-WIRE-11 | tests/test_security_address.nim (4) |
 | MCP-SEC-WIRE-8 | tests/test_security_icons.nim (3) |
 | MCP-SEC-AUTH-1 | tests/test_security_auth.nim (3) |
 | MCP-SEC-AUTH-2 | tests/test_security_auth.nim (1) |
@@ -365,10 +365,10 @@ joined to tests by the rows of
 | MCP-SEC-SCHEMA-11 | tests/test_json_schema.nim (4) |
 | MCP-SEC-SCHEMA-12 | tests/test_json_schema.nim (6) |
 | MCP-SEC-SCHEMA-13 | tests/test_json_schema.nim (9) |
-| MCP-SEC-SCHEMA-14 | tests/test_security_schema.nim (4) |
+| MCP-SEC-SCHEMA-14 | tests/test_security_schema.nim (7) |
 | MCP-SEC-SWEEP-6 | tests/test_fuzz_regressions.nim (3) |
-| MCP-SEC-WIRE-12 | tests/test_security_address.nim (12) |
-| MCP-SEC-WIRE-13 | tests/test_security_address.nim (6) |
+| MCP-SEC-WIRE-12 | tests/test_security_address.nim (24) |
+| MCP-SEC-WIRE-13 | tests/test_security_address.nim (11) |
 | MCP-SEC-WIRE-14 | tests/test_security_address.nim (2) |
 | MCP-SEC-WIRE-15 | tests/test_http_wire_internals.nim (1), tests/test_security_wire_headers.nim (11) |
 | MCP-SEC-WIRE-16 | tests/test_security_wire_headers.nim (9) |
@@ -376,7 +376,7 @@ joined to tests by the rows of
 | MCP-SEC-WIRE-18 | tests/test_security_wire_headers.nim (13) |
 | MCP-SEC-WIRE-19 | tests/test_http_wire_internals.nim (1), tests/test_security_wire_headers.nim (2) |
 | MCP-SEC-WIRE-20 | tests/test_security_wire_headers.nim (1), tests/test_security_wire_tls.nim (2) |
-| MCP-SEC-WIRE-21 | tests/test_security_address.nim (3) |
+| MCP-SEC-WIRE-21 | tests/test_security_address.nim (7) |
 | MCP-SEC-HTTP-8 | tests/test_security_http.nim (1) |
 | MCP-SERVERREQ-1 | tests/test_server_requests.nim (1) |
 | MCP-SERVERREQ-2 | tests/test_server_requests.nim (2) |
@@ -414,7 +414,7 @@ joined to tests by the rows of
 | MCP-HTTP-11 | tests/test_param_headers_http.nim (2) |
 | MCP-HTTP-12 | tests/test_param_headers.nim (7), tests/test_param_headers_http.nim (3) |
 | MCP-HTTP-13 | tests/test_param_headers.nim (17) |
-| MCP-HTTP-24 | tests/test_param_headers.nim (3) |
+| MCP-HTTP-24 | tests/test_param_headers.nim (8) |
 | MCP-HTTP-25 | tests/test_param_headers.nim (3) |
 | MCP-HTTP-14 | tests/test_streamable_http.nim (6) |
 | MCP-HTTP-15 | tests/test_version_floor.nim (4) |

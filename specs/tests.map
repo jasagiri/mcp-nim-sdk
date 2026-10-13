@@ -386,6 +386,8 @@ MCP-HTTPSTREAM-20 | tests/test_http_streams.nim | Given a stream with nothing to
 MCP-HTTPSTREAM-20 | tests/test_http_streams.nim | Given a stream that finishes, when its events are written, then the server closes the connection of a client that asked to keep it
 MCP-HTTPSTREAM-20 | tests/test_http_streams.nim | Given a client that sent a stray byte, when it then closes the connection, then the server notices
 MCP-HTTPSTREAM-20 | tests/test_http_streams.nim | Given events that no connection has written, when one resumes after the last of them, then the stream still reports nothing written
+MCP-HTTPSTREAM-20 | tests/test_http_streams.nim | Given a client that asked to keep its connection, when the event stream of its request ends, then the server closes the connection
+MCP-HTTPSTREAM-20 | tests/test_http_streams.nim | Given a client that sent a stray byte into its event stream, when it then closes the connection, then the server is told the request was cancelled
 MCP-HTTPGET-1 | tests/test_http_streams.nim | Given a session, when the client opens GET, then the server's own notifications arrive on it
 MCP-HTTPGET-1 | tests/test_http_streams.nim | Given a notification sent to every client, when two sessions listen, then each hears it once
 MCP-HTTPGET-1 | tests/test_http_streams.nim | Given a notification sent before the client opened GET, when it opens, then the notification is waiting
@@ -540,6 +542,15 @@ MCP-AUTH-10 | tests/test_auth_oauth_basics.nim | Given only a Basic challenge or
 MCP-AUTH-10 | tests/test_auth_oauth_basics.nim | Given garbage, when parsed, then parsing terminates
 MCP-AUTH-10 | tests/test_auth_oauth_basics.nim | Given parameters, when formatted, then quotes and backslashes are escaped
 MCP-AUTH-10 | tests/test_auth_oauth_basics.nim | Given a newline in a value, when formatted, then it is refused
+MCP-AUTH-10 | tests/test_auth_oauth_basics.nim | Given the MCP 401 example, when the client answers it, then it goes for the resource metadata the Bearer challenge names
+MCP-AUTH-10 | tests/test_auth_oauth_basics.nim | Given several challenges, when the client answers them, then it takes the metadata of the Bearer one, whatever the order, lines or case
+MCP-AUTH-10 | tests/test_auth_oauth_basics.nim | Given a quoted string with an escaped quote and a comma that holds another resource_metadata, when the client answers, then the string is read whole and the inner one is not taken
+MCP-AUTH-10 | tests/test_auth_oauth_basics.nim | Given only a Basic challenge or no challenge, when the client answers, then it takes no metadata from the header
+MCP-AUTH-10 | tests/test_auth_oauth_basics.nim | Given the scope of a challenge with white space and a comma inside the quotes and version <version>, when the client asks the user, then the authorization URL carries the scope whole
+MCP-AUTH-10 | tests/test_auth_resource_server.nim | Given a required scope with a quote and a backslash and version <version>, when a token lacks it, then the 403 challenge writes them escaped and a reader gets the scope back
+MCP-AUTH-10 | tests/test_auth_resource_server.nim | Given a challenge scope with a quote and a backslash and version <version>, when a request has no token, then the 401 challenge writes them escaped from 2025-11-25 on
+MCP-AUTH-10 | tests/test_auth_resource_server.nim | Given a challenge scope with a line break and version <version>, when the hook is made, then it is refused and no header can be split
+MCP-AUTH-10 | tests/test_auth_resource_server.nim | Given a required scope with a line break and version <version>, when a token lacks it, then the answer is 500 and no challenge is written
 MCP-AUTH-11 | tests/test_auth_client_flow.nim | Given metadata at the root of the origin, when the client discovers, then it sends MCP-Protocol-Version and asks no resource metadata
 MCP-AUTH-11 | tests/test_auth_client_flow.nim | Given no metadata (404), when the client discovers, then it uses /authorize, /token and /register
 MCP-AUTH-11 | tests/test_auth_client_flow.nim | Given a failure other than 404 on the metadata URL, when the client discovers, then it does not fall back
@@ -650,6 +661,14 @@ MCP-AUTH-34 | tests/test_auth_oauth_basics.nim | Given white space around the eq
 MCP-AUTH-34 | tests/test_auth_oauth_basics.nim | Given a parameter that ends the header, when parsed, then its value is empty
 MCP-AUTH-34 | tests/test_auth_oauth_basics.nim | Given a quoted string that is cut off after a backslash, when parsed, then the backslash is kept
 MCP-AUTH-34 | tests/test_auth_oauth_basics.nim | Given a header that starts with a parameter and no scheme, when parsed, then no challenge carries it
+MCP-AUTH-34 | tests/test_auth_oauth_basics.nim | Given token68 padding before a Bearer challenge, when the client answers, then it takes the Bearer metadata
+MCP-AUTH-34 | tests/test_auth_oauth_basics.nim | Given a token68 whose padding ends a header line, when the client answers, then the next line is read on its own
+MCP-AUTH-34 | tests/test_auth_oauth_basics.nim | Given white space around the equals sign, when the client answers, then it reads what it reads without
+MCP-AUTH-34 | tests/test_auth_oauth_basics.nim | Given a resource_metadata that ends the header with no value, when the client answers, then the value is empty: nothing named is fetched and the answer is no refusal of an address
+MCP-AUTH-34 | tests/test_auth_oauth_basics.nim | Given a parameter before any scheme, when the client answers, then it belongs to no challenge and is not taken
+MCP-AUTH-34 | tests/test_auth_oauth_basics.nim | Given white space around the equals sign of an unquoted scope and version <version>, when the client asks the user, then the authorization URL carries the scope
+MCP-AUTH-34 | tests/test_auth_oauth_basics.nim | Given a scope that ends the header with no value and version <version>, when the client asks the user, then the scope is empty and the authorization URL has none
+MCP-AUTH-34 | tests/test_auth_oauth_basics.nim | Given a scope cut off after a backslash and version <version>, when the client asks the user, then the backslash is kept in the scope
 MCP-AUTH-35 | tests/test_auth_oauth_basics.nim | Given an issuer path that ends in a slash, when listing candidates, then the slash is dropped from every URL
 MCP-AUTH-35 | tests/test_auth_oauth_basics.nim | Given a 201 with a valid document, when discovering, then it is not used and every URL tried is named with its status
 MCP-AUTH-35 | tests/test_auth_oauth_basics.nim | Given a 200 whose body is not a JSON object, when discovering, then it is a failure of that URL
@@ -677,6 +696,9 @@ MCP-AUTH-39 | tests/test_auth_oauth_basics.nim | Given redirect URIs with a frag
 MCP-AUTH-39 | tests/test_auth_oauth_basics.nim | Given a plain http redirect URI to a remote host, when an authorization request is made, then no request is made
 MCP-AUTH-40 | tests/test_auth_oauth_basics.nim | Given a response whose state has the length of the request's but differs, when the code is read, then it is refused
 MCP-AUTH-40 | tests/test_auth_oauth_basics.nim | Given a response with a matching state but no code or an empty one, when the code is read, then it is refused
+MCP-AUTH-40 | tests/test_auth_oauth_basics.nim | Given a response whose state differs from the request's in one character and version <version>, when the client receives it, then it is refused for its state and no token is requested
+MCP-AUTH-40 | tests/test_auth_oauth_basics.nim | Given a response with a matching state and no code and version <version>, when the client receives it, then it is refused for its code and no token is requested
+MCP-AUTH-40 | tests/test_auth_oauth_basics.nim | Given a response with a matching state and an empty code and version <version>, when the client receives it, then it is refused for its code and no token is requested
 MCP-AUTH-41 | tests/test_auth_oauth_basics.nim | Given a token response without an access token or with an empty one, when parsed, then it is refused
 MCP-AUTH-41 | tests/test_security_auth_tokens.nim | Given a token that has been removed from a memory store, when loaded, then there is none, and the others stay
 MCP-AUTH-41 | tests/test_security_auth_tokens.nim | Given an expiry inside the default skew, at its edge, outside it, or past, when asked if the token is expired, then only the outside is not
@@ -752,6 +774,11 @@ MCP-HTTP-13 | tests/test_param_headers.nim | Given an invalid declaration, when 
 MCP-HTTP-24 | tests/test_param_headers.nim | Given keywords that hold schemas but no annotation, when declarations are read, then the tool stays valid
 MCP-HTTP-24 | tests/test_param_headers.nim | Given an invalid declaration, when declarations are read, then the reason names where it was found
 MCP-HTTP-24 | tests/test_param_headers.nim | Given an empty name, when declarations are read, then the reason says the name must not be empty
+MCP-HTTP-24 | tests/test_param_headers.nim | Given items, additionalProperties, anyOf and a property named x-mcp-header with one annotated property, when the tool is listed and called, then it is valid and only the annotated property needs a header
+MCP-HTTP-24 | tests/test_param_headers.nim | Given an invalid declaration on a nested property, when the server lists tools, then the reason it logs names that property
+MCP-HTTP-24 | tests/test_param_headers.nim | Given an invalid declaration on the schema root, when the server lists tools, then the reason it logs names the schema root
+MCP-HTTP-24 | tests/test_param_headers.nim | Given an empty name, when the server lists tools, then the reason it logs names the property and says the name is not to be empty
+MCP-HTTP-24 | tests/test_param_headers.nim | Given a name that is not empty but invalid, when the server lists tools, then the reason it logs does not speak of emptiness
 MCP-HTTP-25 | tests/test_param_headers.nim | Given an integer beyond the safe range, when headers are built, then the value is refused and no header is added
 MCP-HTTP-25 | tests/test_param_headers.nim | Given a body number written with a fraction part, when checked, then it agrees with the same integer in the header
 MCP-HTTP-25 | tests/test_param_headers.nim | Given an object or array argument, when checked, then no header value agrees with it
@@ -1661,6 +1688,8 @@ MCP-SEC-WIRE-7 | tests/test_security_icons.nim | Given an answer that comes afte
 MCP-SEC-WIRE-10 | tests/test_security_icons.nim | Given an answer that is not 200, when the fetch is refused, then the connection is closed
 MCP-SEC-WIRE-11 | tests/test_security_address.nim | Given a name that resolves to a private address, when plain http is asked for, then it is refused before any connection
 MCP-SEC-WIRE-11 | tests/test_security_address.nim | Given an answer that redirects, when no one asked for redirects to be followed, then the redirect is the answer
+MCP-SEC-WIRE-11 | tests/test_security_address.nim | Given a name that resolves to a private address the policy allows, when its metadata URL is plain http, then it is refused and the name is not even resolved
+MCP-SEC-WIRE-11 | tests/test_security_address.nim | Given a metadata URL that answers with a redirect, when the client reads it, then the redirect is reported and its target is not requested
 MCP-SEC-WIRE-8 | tests/test_security_icons.nim | Given a server whose name resolves to a loopback address, when its icon is fetched, then the fetch is refused
 MCP-SEC-WIRE-8 | tests/test_security_icons.nim | Given a server whose name resolves to a metadata service address, when its icon is fetched, then the fetch is refused
 MCP-SEC-WIRE-8 | tests/test_security_icons.nim | Given a server whose name resolves to a private address, when its icon is fetched, then it is refused unless private networks are allowed
@@ -1676,12 +1705,29 @@ MCP-SEC-WIRE-12 | tests/test_security_address.nim | Given the documentation pref
 MCP-SEC-WIRE-12 | tests/test_security_address.nim | Given the documentation prefix 3fff::/20, when classified, then it is reserved and its neighbours are not
 MCP-SEC-WIRE-12 | tests/test_security_address.nim | Given the link-local prefix fe80::/10, when classified, then its first and last address are link-local and a lookalike is not
 MCP-SEC-WIRE-12 | tests/test_security_address.nim | Given addresses of every class, when asked whether they are globally routable, then only the public ones are
+MCP-SEC-WIRE-12 | tests/test_security_address.nim | Given a name that resolves into NAT64 64:ff9b::/96, when a client is sent to it, then the IPv4 address inside it decides
+MCP-SEC-WIRE-12 | tests/test_security_address.nim | Given a name that resolves into 64:ff9b:1::/48 or to an address that shares some bytes with NAT64, when a client is sent to it, then only the first is reserved
+MCP-SEC-WIRE-12 | tests/test_security_address.nim | Given a name that resolves into 6to4 2002::/16, when a client is sent to it, then the IPv4 address in bits 16 to 47 decides
+MCP-SEC-WIRE-12 | tests/test_security_address.nim | Given a name that resolves to an IPv4-mapped address, when a client is sent to it, then the IPv4 address inside it decides, to the third octet of a documentation block
+MCP-SEC-WIRE-12 | tests/test_security_address.nim | Given a name that resolves to an address with ff in bytes 10 or 11 outside ::ffff:0:0/96, when a client is sent to it, then it is not read as IPv4-mapped
+MCP-SEC-WIRE-12 | tests/test_security_address.nim | Given a name that resolves into ::/96, when a client is sent to it, then only ::1 is loopback and the rest is reserved
+MCP-SEC-WIRE-12 | tests/test_security_address.nim | Given a name that resolves into the discard prefix 100::/64 or next to it, when a client is sent to it, then it is reserved
+MCP-SEC-WIRE-12 | tests/test_security_address.nim | Given a name that resolves into the protocol assignments 2001::/23, when a client is sent to it, then the whole block is reserved and its neighbours are public
+MCP-SEC-WIRE-12 | tests/test_security_address.nim | Given a name that resolves into the documentation prefix 2001:db8::/32, when a client is sent to it, then it is reserved and its neighbours are public
+MCP-SEC-WIRE-12 | tests/test_security_address.nim | Given a name that resolves into the documentation prefix 3fff::/20, when a client is sent to it, then it is reserved and its neighbours are public
+MCP-SEC-WIRE-12 | tests/test_security_address.nim | Given a name that resolves to the first or the last address of fe80::/10, when a client is sent to it, then it is link-local and a lookalike is public
+MCP-SEC-WIRE-12 | tests/test_security_address.nim | Given names that resolve to an address of every class, when a client is sent to them, then only the public ones are let through
 MCP-SEC-WIRE-13 | tests/test_security_address.nim | Given a literal at the top of the 32-bit range, when classified, then it is read, and one above it is a name
 MCP-SEC-WIRE-13 | tests/test_security_address.nim | Given hex digits in capitals, when classified, then they have their value
 MCP-SEC-WIRE-13 | tests/test_security_address.nim | Given a digit that its base does not have, when classified, then the text is a name
 MCP-SEC-WIRE-13 | tests/test_security_address.nim | Given an empty part, when classified, then the text is a name
 MCP-SEC-WIRE-13 | tests/test_security_address.nim | Given a last part, when it is one more than the bytes left for it hold, then the text is a name
 MCP-SEC-WIRE-13 | tests/test_security_address.nim | Given brackets that do not enclose the whole host, when it is read, then it is no address
+MCP-SEC-WIRE-13 | tests/test_security_address.nim | Given a literal at the top of the 32-bit range, when a URL names it, then it is read as an address, and one above it is a name
+MCP-SEC-WIRE-13 | tests/test_security_address.nim | Given hex digits in capitals, when a URL names the host, then they have their value
+MCP-SEC-WIRE-13 | tests/test_security_address.nim | Given a digit that its base does not have, when a URL names the host, then the text is a name
+MCP-SEC-WIRE-13 | tests/test_security_address.nim | Given an empty part, when a URL names the host, then the text is a name
+MCP-SEC-WIRE-13 | tests/test_security_address.nim | Given the last part of a host in a URL, when it is one more than the bytes left for it hold, then the text is a name
 MCP-SEC-WIRE-14 | tests/test_security_address.nim | Given hosts that stand for loopback, public and mixed addresses, when a destination is chosen, then it is loopback-only exactly when every address is loopback
 MCP-SEC-WIRE-14 | tests/test_security_address.nim | Given a host written as an address, when the system resolver is asked, then it answers with that address
 MCP-SEC-WIRE-15 | tests/test_security_wire_headers.nim | Given a header name with digits, when a request is sent, then it is accepted and sent
@@ -1731,6 +1777,10 @@ MCP-SEC-WIRE-20 | tests/test_security_wire_tls.nim | Given a handshake that ends
 MCP-SEC-WIRE-21 | tests/test_security_address.nim | Given an IPv6 address outside the global unicast block 2000::/3 and in no other class, when classified, then it is reserved
 MCP-SEC-WIRE-21 | tests/test_security_address.nim | Given an address at either edge of 2000::/3, when classified, then it is public
 MCP-SEC-WIRE-21 | tests/test_security_address.nim | Given an address outside 2000::/3 that another class already claims, when classified, then that class decides
+MCP-SEC-WIRE-21 | tests/test_security_address.nim | Given a name that resolves outside 2000::/3 to an address no other class claims, when a client is sent to it, then it is reserved
+MCP-SEC-WIRE-21 | tests/test_security_address.nim | Given a host outside 2000::/3 written as an address, when a URL names it and the policy allows loopback and private networks, then it is still refused as reserved
+MCP-SEC-WIRE-21 | tests/test_security_address.nim | Given a name that resolves to either edge of 2000::/3, when a client is sent to it, then it is public
+MCP-SEC-WIRE-21 | tests/test_security_address.nim | Given a name that resolves outside 2000::/3 to an address another class claims, when a client is sent to it, then that class decides
 MCP-SEC-AUTH-1 | tests/test_security_auth.nim | Given a client secret without an issuer and version <version>, when the client is made, then it is refused and the message says how to fix it
 MCP-SEC-AUTH-1 | tests/test_security_auth.nim | Given a client secret for one issuer and version <version>, when the resource names another, then nothing but metadata reaches it and the error names both
 MCP-SEC-AUTH-1 | tests/test_security_auth.nim | Given a public pre-registered client for one issuer and version <version>, when the resource names another, then the user is not sent there
@@ -1815,6 +1865,9 @@ MCP-SEC-SCHEMA-14 | tests/test_security_schema.nim | Given a compiled pattern, w
 MCP-SEC-SCHEMA-14 | tests/test_security_schema.nim | Given a program of exactly the size limit, when compiled, then it is accepted and one instruction more is refused
 MCP-SEC-SCHEMA-14 | tests/test_security_schema.nim | Given a pattern whose parts emit nothing, when it does as much work as the limit allows, then it is accepted and one step more is refused
 MCP-SEC-SCHEMA-14 | tests/test_security_schema.nim | Given a step budget that is exactly what a match needs, when matched, then it is answered and the budget is spent
+MCP-SEC-SCHEMA-14 | tests/test_security_schema.nim | Given a pattern whose program is exactly the size limit, when a schema with it is validated, then it is applied, and one instruction more is a SchemaLimitError
+MCP-SEC-SCHEMA-14 | tests/test_security_schema.nim | Given a pattern whose parts emit nothing, when it does as much work as the limit allows, then it is applied, and one step more is a SchemaLimitError
+MCP-SEC-SCHEMA-14 | tests/test_security_schema.nim | Given a step budget that is exactly what a pattern and its match need, when validated, then it is answered, and with one step less it is a SchemaLimitError
 MCP-SEC-SWEEP-6 | tests/test_fuzz_regressions.nim | Given the seeds of every target, when handled, then nothing is wrong
 MCP-SEC-SWEEP-6 | tests/test_fuzz_regressions.nim | Given every input kept from fuzzing, when handled, then nothing is wrong
 MCP-SEC-SWEEP-6 | tests/test_fuzz_regressions.nim | Given the corpus directory, when listed, then every directory in it is a target

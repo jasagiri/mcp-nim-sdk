@@ -379,3 +379,54 @@ suite "Resource server with this SDK's client and an authorization server":
         check seen.calls.len > 0
         check seen.calls[0][1] == url
         waitFor client.close()
+
+suite "The challenge a resource server writes, seen through the public entries":
+  # RFC 9110 5.6.4: in a quoted string a quote and a backslash are written
+  # as a backslash and the character; RFC 9110 5.5: a field value holds no
+  # line break.
+  let quoted = "scope=\"a\\\"b c\\\\d\""   # scope="a\"b c\\d"
+
+  for v in authVersions:
+    test "Given a required scope with a quote and a backslash and version " & $v &
+         ", when a token lacks it, then the 403 challenge writes them escaped and a reader gets the scope back":
+      let verdicts = validVerdicts()
+      verdicts["odd"] = TokenVerdict(kind: tvInsufficientScope, requiredScopes: @["a\"b", "c\\d"])
+      let env = startServer(v, verdicts)
+      let reply = send(env.url, HttpPost, initializeBody, {"Authorization": "Bearer odd"})
+      check reply.code == Http403
+      check reply.wwwAuthenticate.len == 1
+      check quoted in reply.wwwAuthenticate[0]
+      check bearerOf(reply.wwwAuthenticate).get.scope == some("a\"b c\\d")
+
+    test "Given a challenge scope with a quote and a backslash and version " & $v &
+         ", when a request has no token, then the 401 challenge writes them escaped from 2025-11-25 on":
+      let env = startServer(v, validVerdicts(), challengeScopes = @["a\"b", "c\\d"])
+      let reply = send(env.url, HttpPost, initializeBody)
+      check reply.code == Http401
+      check reply.wwwAuthenticate.len == 1
+      if v.has(ftIncrementalScopeConsent):
+        check quoted in reply.wwwAuthenticate[0]
+        check bearerOf(reply.wwwAuthenticate).get.scope == some("a\"b c\\d")
+      else:
+        check "scope" notin reply.wwwAuthenticate[0]
+
+    test "Given a challenge scope with a line break and version " & $v &
+         ", when the hook is made, then it is refused and no header can be split":
+      let verify: TokenVerifier = proc(token, resource: string): Future[TokenVerdict] {.async.} =
+        return TokenVerdict(kind: tvValid)
+      for scope in ["a\nb", "a\rb", "a\r\nX-Forged: y"]:
+        expect ValueError:
+          discard newResourceServerAuth(ResourceServerConfig(
+            resource: "http://127.0.0.1:1/mcp", authorizationServers: @["https://a.example"],
+            challengeScopes: @[scope], version: v, verify: verify))
+
+    test "Given a required scope with a line break and version " & $v &
+         ", when a token lacks it, then the answer is 500 and no challenge is written":
+      let verdicts = validVerdicts()
+      for scope in ["a\nb", "a\rb", "a\r\nX-Forged: y"]:
+        verdicts["odd"] = TokenVerdict(kind: tvInsufficientScope, requiredScopes: @[scope])
+        let env = startServer(v, verdicts)
+        let reply = send(env.url, HttpPost, initializeBody, {"Authorization": "Bearer odd"})
+        check reply.code == Http500
+        check not reply.headers.hasKey("WWW-Authenticate")
+        check not reply.headers.hasKey("X-Forged")

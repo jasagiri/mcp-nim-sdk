@@ -3,6 +3,7 @@
 ## taken from RFC 7636 (appendix B), RFC 8414 (3.1), RFC 9728 (3.1, 5.1) and
 ## the MCP authorization specification.
 
+import std/sequtils
 import std/[unittest, json, options, strutils, asyncdispatch, asyncnet, asynchttpserver, httpcore, net,
             nativesockets, times, uri]
 import protocol/version
@@ -921,3 +922,243 @@ suite "OAuth parsers and checks (mutation review, g2f-oauth-b)":
     let credentials = registeredWith(Http201, """{"client_id": "abc"}""")
     check credentials.clientId == "abc"
     check credentials.authMethod == "none"
+
+# The Bearer challenge and the authorization response, seen through the
+# public entries: what the client reads from a challenge is what it goes to
+# fetch (a resolver that names every host it is asked about and answers a
+# link-local address, so that nothing is ever connected to) and what the
+# user's authorization URL carries.
+
+type ChallengeProbe = object
+  hosts: seq[string]   ## every host name the client asked the resolver about
+  outcome: Outcome
+
+const
+  ProbedVersion = block:
+    ## The newest version of the build that reads the metadata URL of a
+    ## challenge; none where the build speaks no such version.
+    var found = none(McpProtocolVersion)
+    for v in SupportedProtocolVersions:
+      if v.has(ftProtectedResourceMetadata):
+        found = some(v)
+    found
+  HasProbedVersion = ProbedVersion.isSome
+  ProbedServer = "https://mcp.example.test/mcp"
+  ProbedServerHost = "mcp.example.test"
+  Named = "https://named.example.test/.well-known/oauth-protected-resource"
+
+proc probed(headers: seq[string]): ChallengeProbe =
+  ## The client of a remote server answers a 401 that carries `headers`.
+  let seen = new(seq[string])
+  var policy = defaultFetchPolicy()
+  policy.resolver = proc(host: string): seq[IpAddress] {.closure, gcsafe, raises: [CatchableError].} =
+    seen[].add host
+    @[parseIpAddress("169.254.0.1")]
+  let client = clientOf(ProbedServer, version = ProbedVersion.get, fetchPolicy = policy)
+  let outcome = reportedBy(client.handleChallenge(401, headers))
+  ChallengeProbe(hosts: seen[], outcome: outcome)
+
+proc reachedOnly(probe: ChallengeProbe, host: string): bool =
+  ## The client asked about `host` and about no host but the server's own.
+  host in probe.hosts and probe.hosts.allIt(it in [host, ProbedServerHost])
+
+proc readNothing(probe: ChallengeProbe): bool =
+  ## The client took no host from the challenge: at most it asked about the
+  ## server's own.
+  probe.hosts.allIt(it == ProbedServerHost)
+
+proc namedHostIsRefused(probe: ChallengeProbe, host: string): bool =
+  probe.reachedOnly(host) and probe.outcome.kind == "security" and
+    "link-local" in probe.outcome.msg
+
+proc scopeInUrl(url: string): string =
+  for (name, value) in decodeQuery(parseUri(url).query):
+    if name == "scope":
+      return value
+
+proc consentedFor(version: McpProtocolVersion, headerTemplate: string
+                 ): tuple[urls: seq[string], granted: bool] =
+  ## A real authorization server and resource server on loopback: the client
+  ## answers a 401 whose header is `headerTemplate`, "{prm}" standing for the
+  ## URL of the resource's metadata. `urls` are the authorization URLs the
+  ## user was sent to.
+  let authServer = startFakeAs()
+  let resourceServer = startFakeRs(authServer)
+  defer:
+    resourceServer.stop()
+    authServer.stop()
+  let seen = new(seq[string])
+  let client = clientOf(resourceServer.url, authorizerFor(authServer, seen), version)
+  let prm = "http://127.0.0.1:" & $resourceServer.port & "/.well-known/oauth-protected-resource/mcp"
+  let granted = waitFor client.handleChallenge(401, @[headerTemplate.replace("{prm}", prm)])
+  (seen[], granted)
+
+proc scopeAsked(version: McpProtocolVersion, headerTemplate: string): string =
+  let consent = consentedFor(version, headerTemplate)
+  doAssert consent.granted
+  doAssert consent.urls.len == 1
+  scopeInUrl(consent.urls[0])
+
+const scopeVersions = block:
+  var versions: seq[McpProtocolVersion]
+  for v in SupportedProtocolVersions:
+    if v.has(ftProtectedResourceMetadata) and v.has(ftIncrementalScopeConsent):
+      versions.add v
+  versions
+
+suite "A Bearer challenge seen through the public entries":
+
+  test "Given the MCP 401 example, when the client answers it, then it goes for the resource metadata the Bearer challenge names":
+    when HasProbedVersion:
+      let probe = probed(@["Bearer resource_metadata=\"https://mcp.example.com/.well-known/oauth-protected-resource\", scope=\"files:read\""])
+      check probe.namedHostIsRefused("mcp.example.com")
+    else:
+      skip()
+
+  test "Given several challenges, when the client answers them, then it takes the metadata of the Bearer one, whatever the order, lines or case":
+    when HasProbedVersion:
+      let bearer = "Bearer resource_metadata=\"https://bearer.example.test/x\""
+      check probed(@["Basic realm=\"x\", " & bearer]).namedHostIsRefused("bearer.example.test")
+      check probed(@[bearer & ", Basic realm=\"x\""]).namedHostIsRefused("bearer.example.test")
+      check probed(@["Basic realm=\"x\"", bearer]).namedHostIsRefused("bearer.example.test")
+      check probed(@["bEaReR rEsOuRcE_mEtAdAtA=\"https://bearer.example.test/x\""]).namedHostIsRefused("bearer.example.test")
+      check probed(@["Other resource_metadata=\"https://other.example.test/x\", " & bearer]
+                  ).namedHostIsRefused("bearer.example.test")
+      check probed(@[bearer & ", Other resource_metadata=\"https://other.example.test/x\""]
+                  ).namedHostIsRefused("bearer.example.test")
+    else:
+      skip()
+
+  test "Given a quoted string with an escaped quote and a comma that holds another resource_metadata, when the client answers, then the string is read whole and the inner one is not taken":
+    when HasProbedVersion:
+      let probe = probed(@["Bearer error_description=\"see \\\"x\\\", resource_metadata=\\\"https://trap.example.test/x\\\"\", resource_metadata=\"https://bearer.example.test/x\""])
+      check probe.namedHostIsRefused("bearer.example.test")
+      check "trap.example.test" notin probe.hosts
+    else:
+      skip()
+
+  test "Given only a Basic challenge or no challenge, when the client answers, then it takes no metadata from the header":
+    when HasProbedVersion:
+      check probed(@["Basic realm=\"x\""]).readNothing()
+      check probed(@["Basic realm=\"x\", resource_metadata=\"https://other.example.test/x\""]).readNothing()
+      check probed(newSeq[string]()).readNothing()
+    else:
+      skip()
+
+  for v in scopeVersions:
+    test "Given the scope of a challenge with white space and a comma inside the quotes and version " & $v &
+         ", when the client asks the user, then the authorization URL carries the scope whole":
+      let header = "Bearer error_description=\"a, \\\"b\\\"\", scope=\"files:read files:write\", resource_metadata=\"{prm}\""
+      check scopeAsked(v, header) == "files:read files:write"
+
+suite "A Bearer challenge's surroundings seen through the public entries":
+
+  test "Given token68 padding before a Bearer challenge, when the client answers, then it takes the Bearer metadata":
+    when HasProbedVersion:
+      check probed(@["Basic YWJj==, Bearer resource_metadata=\"https://bearer.example.test/x\""]
+                  ).namedHostIsRefused("bearer.example.test")
+      check probed(@["Basic YWJj=, Bearer resource_metadata=\"https://bearer.example.test/x\""]
+                  ).namedHostIsRefused("bearer.example.test")
+    else:
+      skip()
+
+  test "Given a token68 whose padding ends a header line, when the client answers, then the next line is read on its own":
+    when HasProbedVersion:
+      check probed(@["Basic YWJj==", "Bearer resource_metadata=\"https://bearer.example.test/x\""]
+                  ).namedHostIsRefused("bearer.example.test")
+      check probed(@["Basic YWJj=="]).readNothing()
+    else:
+      skip()
+
+  test "Given white space around the equals sign, when the client answers, then it reads what it reads without":
+    when HasProbedVersion:
+      check probed(@["Bearer resource_metadata = \"https://bearer.example.test/x\""]
+                  ).namedHostIsRefused("bearer.example.test")
+      check probed(@["Bearer resource_metadata\t=\t\"https://bearer.example.test/x\" , scope = read"]
+                  ).namedHostIsRefused("bearer.example.test")
+    else:
+      skip()
+
+  test "Given a resource_metadata that ends the header with no value, when the client answers, then the value is empty: nothing named is fetched and the answer is no refusal of an address":
+    when HasProbedVersion:
+      let probe = probed(@["Bearer realm=\"r\", resource_metadata="])
+      check probe.readNothing()
+      check probe.outcome.kind != "none"
+      check "link-local" notin probe.outcome.msg
+    else:
+      skip()
+
+  test "Given a parameter before any scheme, when the client answers, then it belongs to no challenge and is not taken":
+    when HasProbedVersion:
+      check probed(@["resource_metadata=\"https://trap.example.test/x\""]).readNothing()
+      check probed(@["resource_metadata=\"https://trap.example.test/x\", Bearer realm=\"r\""]).readNothing()
+      check probed(@["resource_metadata=\"https://trap.example.test/x\", Bearer resource_metadata=\"https://bearer.example.test/x\""]
+                  ).namedHostIsRefused("bearer.example.test")
+    else:
+      skip()
+
+  for v in scopeVersions:
+    test "Given white space around the equals sign of an unquoted scope and version " & $v &
+         ", when the client asks the user, then the authorization URL carries the scope":
+      check scopeAsked(v, "Bearer resource_metadata = \"{prm}\" , scope =  read") == "read"
+
+    test "Given a scope that ends the header with no value and version " & $v &
+         ", when the client asks the user, then the scope is empty and the authorization URL has none":
+      check scopeAsked(v, "Bearer resource_metadata=\"{prm}\", scope=") == ""
+
+    test "Given a scope cut off after a backslash and version " & $v &
+         ", when the client asks the user, then the backslash is kept in the scope":
+      check scopeAsked(v, "Bearer resource_metadata=\"{prm}\", scope=\"files:read\\") == "files:read\\"
+
+proc answeredWith(version: McpProtocolVersion,
+                  tamper: proc(params: seq[(string, string)]): seq[(string, string)] {.closure, gcsafe.}
+                 ): tuple[outcome: Outcome, tokenRequests: int] =
+  ## The authorization response the user's browser brings back is what
+  ## `tamper` makes of the one the authorization server's consent gives.
+  let authServer = startFakeAs()
+  let resourceServer = startFakeRs(authServer)
+  defer:
+    resourceServer.stop()
+    authServer.stop()
+  let authorize: UserAuthorizer = proc(url: string): Future[seq[(string, string)]] {.async.} =
+    return tamper(authServer.consent(url))
+  let client = clientOf(resourceServer.url, authorize, version)
+  let prm = "http://127.0.0.1:" & $resourceServer.port & "/.well-known/oauth-protected-resource/mcp"
+  let outcome = reportedBy(client.handleChallenge(401, @["Bearer resource_metadata=\"" & prm & "\""]))
+  (outcome, authServer.log.requestsTo("/token").len)
+
+suite "An authorization response seen through the public entries":
+  for v in SupportedProtocolVersions:
+    if v.has(ftProtectedResourceMetadata):
+      test "Given a response whose state differs from the request's in one character and version " & $v &
+           ", when the client receives it, then it is refused for its state and no token is requested":
+        let answered = answeredWith(v, proc(params: seq[(string, string)]): seq[(string, string)] {.closure, gcsafe.} =
+          for (name, value) in params:
+            if name == "state":
+              result.add (name, value[0 ..< value.high] & (if value[^1] == 'x': "y" else: "x"))
+            else:
+              result.add (name, value))
+        check answered.outcome.kind in ["oauth", "security"]
+        check "state" in answered.outcome.msg.toLowerAscii()
+        check answered.tokenRequests == 0
+
+      test "Given a response with a matching state and no code and version " & $v &
+           ", when the client receives it, then it is refused for its code and no token is requested":
+        let answered = answeredWith(v, proc(params: seq[(string, string)]): seq[(string, string)] {.closure, gcsafe.} =
+          for (name, value) in params:
+            if name != "code":
+              result.add (name, value))
+        check answered.outcome.kind in ["oauth", "security"]
+        check "code" in answered.outcome.msg.toLowerAscii()
+        check "state" notin answered.outcome.msg.toLowerAscii()
+        check answered.tokenRequests == 0
+
+      test "Given a response with a matching state and an empty code and version " & $v &
+           ", when the client receives it, then it is refused for its code and no token is requested":
+        let answered = answeredWith(v, proc(params: seq[(string, string)]): seq[(string, string)] {.closure, gcsafe.} =
+          for (name, value) in params:
+            result.add (name, if name == "code": "" else: value))
+        check answered.outcome.kind in ["oauth", "security"]
+        check "code" in answered.outcome.msg.toLowerAscii()
+        check "state" notin answered.outcome.msg.toLowerAscii()
+        check answered.tokenRequests == 0

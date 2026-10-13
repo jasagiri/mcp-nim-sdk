@@ -390,3 +390,37 @@ suite "regular expression limits (mutation review, g2h-js-b)":
     check budget == 0
     expect RegexLimitError:
       discard compileRegex("a").isMatch("a", 2)
+
+suite "the limits on a pattern, seen through the validator":
+
+  test "Given a pattern whose program is exactly the size limit, when a schema with it is validated, then it is applied, and one instruction more is a SchemaLimitError":
+    # `abc` is three characters and the final match: four instructions.
+    var limits = DefaultSchemaLimits
+    limits.regex.maxProgramSize = 4
+    check matches("abc", "abc", limits)
+    check not matches("abc", "abd", limits)
+    expect SchemaLimitError:
+      compiles("abcd", limits)
+    limits.regex.maxProgramSize = 3
+    expect SchemaLimitError:
+      compiles("abc", limits)
+
+  test "Given a pattern whose parts emit nothing, when it does as much work as the limit allows, then it is applied, and one step more is a SchemaLimitError":
+    # Four times the program size limit is the work allowed; `(?:)` costs one
+    # step and emits nothing, so only the work limit can stop a run of them.
+    var limits = DefaultSchemaLimits
+    limits.regex.maxProgramSize = 1
+    check matches("(?:)(?:)(?:)", "anything", limits)
+    expect SchemaLimitError:
+      compiles("(?:)(?:)(?:)(?:)", limits)
+
+  test "Given a step budget that is exactly what a pattern and its match need, when validated, then it is answered, and with one step less it is a SchemaLimitError":
+    # The budget pays for the program of `^a$` (start, the character, end and
+    # the final match: four instructions) and for one visit of each of them
+    # over "a", the character twice: once to reach it and once to consume.
+    var limits = DefaultSchemaLimits
+    limits.maxRegexSteps = 9
+    check matches("^a$", "a", limits)
+    limits.maxRegexSteps = 8
+    expect SchemaLimitError:
+      discard matches("^a$", "a", limits)

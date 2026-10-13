@@ -1274,3 +1274,38 @@ suite "the loop that writes an event stream (mutation review, g2f-hs-c)":
     stream.finish()
     check waitFor withTimeout(served.ended, 1000)
     sock.close()
+
+when SpeaksModern:
+  proc postKeepingConnection(url: string, id: int, name: string): AsyncSocket =
+    ## A raw HTTP/1.1 client that has posted a request and asked to keep the
+    ## connection.
+    let body = $(%*{"jsonrpc": "2.0", "id": id, "method": name, "params": {"_meta": {
+      "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+      "io.modelcontextprotocol/clientInfo": {"name": "c", "version": "0"},
+      "io.modelcontextprotocol/clientCapabilities": {}}}})
+    result = newAsyncSocket(buffered = false)
+    waitFor result.connect("127.0.0.1", Port(parseInt(parseUri(url).port)))
+    waitFor result.send("POST /mcp HTTP/1.1\c\LHost: localhost\c\LConnection: keep-alive\c\L" &
+      "Content-Type: application/json\c\LAccept: application/json, text/event-stream\c\L" &
+      "MCP-Protocol-Version: 2026-07-28\c\LMcp-Method: " & name & "\c\L" &
+      "Content-Length: " & $body.len & "\c\L\c\L" & body)
+
+  suite "the connection of an event stream, seen from the client":
+
+    test "Given a client that asked to keep its connection, when the event stream of its request ends, then the server closes the connection":
+      let (_, url, _) = startRaw(DefaultProtocolVersion)
+      let sock = postKeepingConnection(url, 7, "work")
+      check sock.receivedWithin("text/event-stream")
+      check sock.endsWithin()
+      sock.close()
+
+    test "Given a client that sent a stray byte into its event stream, when it then closes the connection, then the server is told the request was cancelled":
+      let (_, url, script) = startRaw(DefaultProtocolVersion)
+      let sock = postKeepingConnection(url, 8, "wait")
+      check sock.receivedWithin("\c\L\c\L")  # the head
+      waitFor sock.send("x")
+      waitFor sleepAsync(50)
+      check script.cancelled.len == 0
+      sock.close()
+      waitFor sleepAsync(100)
+      check script.cancelled.len == 1
