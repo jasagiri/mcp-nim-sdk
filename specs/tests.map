@@ -1730,6 +1730,9 @@ MCP-SEC-WIRE-13 | tests/test_security_address.nim | Given an empty part, when a 
 MCP-SEC-WIRE-13 | tests/test_security_address.nim | Given the last part of a host in a URL, when it is one more than the bytes left for it hold, then the text is a name
 MCP-SEC-WIRE-14 | tests/test_security_address.nim | Given hosts that stand for loopback, public and mixed addresses, when a destination is chosen, then it is loopback-only exactly when every address is loopback
 MCP-SEC-WIRE-14 | tests/test_security_address.nim | Given a host written as an address, when the system resolver is asked, then it answers with that address
+MCP-SEC-WIRE-14 | tests/test_security_address.nim | Given localhost resolves to loopback addresses only, when a plain http URL names it, then the request is not refused
+MCP-SEC-WIRE-14 | tests/test_security_address.nim | Given localhost resolves to a loopback and a private address, when a plain http URL names it, then it is refused as plain http, in either order
+MCP-SEC-WIRE-14 | tests/test_security_address.nim | Given a host written as a loopback address, when a URL names it, then it is judged as that address and no resolver is asked
 MCP-SEC-WIRE-15 | tests/test_security_wire_headers.nim | Given a header name with digits, when a request is sent, then it is accepted and sent
 MCP-SEC-WIRE-15 | tests/test_security_wire_headers.nim | Given a header with an empty name, when a request is sent, then it is refused and nothing is connected
 MCP-SEC-WIRE-15 | tests/test_security_wire_headers.nim | Given a path with a NUL but no space, or a space but no control character, when a request is sent, then it is refused

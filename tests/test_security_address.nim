@@ -652,3 +652,28 @@ when HasChallengeVersion:
         message = e.msg
       check "redirected (HTTP 302)" in message
       check requested == @["GET /moved HTTP/1.1"]
+
+when HasChallengeVersion:
+  suite "plain http to a name that stands for loopback, seen through the public entries":
+
+    proc plainHttpTo(addresses: seq[string]): string =
+      ## How the client of a loopback server is refused a plain http metadata
+      ## URL on localhost, when localhost resolves to `addresses` and the
+      ## policy allows loopback and private networks; "" when it is not
+      ## refused. Nothing listens on the port.
+      var policy = defaultFetchPolicy()
+      policy.allowPrivateNetworks = true
+      policy.timeoutMs = 200
+      policy.resolver = resolving({"localhost": addresses})
+      refusalOf(policy, LoopbackServer, "http://localhost:1/x")
+
+    test "Given localhost resolves to loopback addresses only, when a plain http URL names it, then the request is not refused":
+      check plainHttpTo(@["127.0.0.1", "::1"]) == ""
+
+    test "Given localhost resolves to a loopback and a private address, when a plain http URL names it, then it is refused as plain http, in either order":
+      check "plain http" in plainHttpTo(@["127.0.0.1", "10.0.0.5"])
+      check "plain http" in plainHttpTo(@["10.0.0.5", "127.0.0.1"])
+
+    test "Given a host written as a loopback address, when a URL names it, then it is judged as that address and no resolver is asked":
+      check seenHost("127.0.0.1") == "loopback"
+      check seenHost("[::1]") == "loopback"

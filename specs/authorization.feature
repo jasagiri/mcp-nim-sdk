@@ -100,8 +100,8 @@ Feature: Authorization
   Scenario: A client reads the Bearer challenge
     Given the WWW-Authenticate headers of the specification's examples
     When the client parses them
-    Then it finds resource_metadata, scope, error and the other parameters, selects the Bearer challenge among several, and reads quoted strings whole
-    And a header it formats escapes quotes and backslashes and refuses a newline
+    Then it finds resource_metadata, scope and error, selects the Bearer challenge among several, and reads quoted strings whole
+    And a header a resource server writes escapes quotes and backslashes in a scope and refuses a line break
 
   # Discovery
 

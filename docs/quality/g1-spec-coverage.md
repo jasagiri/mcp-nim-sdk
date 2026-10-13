@@ -369,7 +369,7 @@ joined to tests by the rows of
 | MCP-SEC-SWEEP-6 | tests/test_fuzz_regressions.nim (3) |
 | MCP-SEC-WIRE-12 | tests/test_security_address.nim (24) |
 | MCP-SEC-WIRE-13 | tests/test_security_address.nim (11) |
-| MCP-SEC-WIRE-14 | tests/test_security_address.nim (2) |
+| MCP-SEC-WIRE-14 | tests/test_security_address.nim (5) |
 | MCP-SEC-WIRE-15 | tests/test_http_wire_internals.nim (1), tests/test_security_wire_headers.nim (11) |
 | MCP-SEC-WIRE-16 | tests/test_security_wire_headers.nim (9) |
 | MCP-SEC-WIRE-17 | tests/test_security_wire_headers.nim (4) |

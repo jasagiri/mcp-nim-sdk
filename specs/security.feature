@@ -189,7 +189,7 @@ Feature: Security properties
     Then the client has closed the connection without reading the body
 
   @spec:MCP-SEC-WIRE-11
-  Scenario: A guarded request is plain http for loopback only and follows no redirect unless asked
+  Scenario: A request to a URL from the network is plain http for loopback only and follows no redirect unless asked
     Given a request to a host that resolves to an address the policy allows
     When the scheme is http and the address is not loopback
     Then the request is refused before any connection
@@ -328,8 +328,8 @@ Feature: Security properties
   @spec:MCP-SEC-SCHEMA-14
   Scenario: The limits on a pattern are exact
     Given a pattern whose program is exactly the size limit, a pattern that does exactly the work allowed, and a match that needs exactly the step budget
-    When each is compiled or matched
-    Then it is accepted, and one instruction, one step more is a RegexLimitError
+    When a schema with that pattern is validated
+    Then the pattern is applied, and with one instruction or one step more the validation is a SchemaLimitError
 
   @spec:MCP-SEC-SWEEP-6
   Scenario: The inputs that fuzzing found stay handled
@@ -352,11 +352,11 @@ Feature: Security properties
     And the last part must fit in the bytes left for it, so that 127.16777215 is loopback and 127.16777216 and 4294967296 are names
 
   @spec:MCP-SEC-WIRE-14
-  Scenario: A destination is loopback-only exactly when every address of the host is loopback
-    Given a host that is an address, or a name that resolves to several
-    When a destination is chosen under a policy that allows them
-    Then it is loopback-only if all of its addresses are loopback, and not if any is not
-    And the host written as an address is answered by the system resolver with that address
+  Scenario: Plain http reaches a name only when every address of the name is loopback
+    Given a name that stands for loopback, such as localhost, and resolves to several addresses
+    When a plain http URL from the network names it under a policy that allows those addresses
+    Then the request goes out if all of its addresses are loopback, and is refused before any connection if any is not, in whatever order they come
+    And a host written as an address is judged as that address, and no resolver is asked about it
 
   @spec:MCP-SEC-WIRE-15
   Scenario: The request is written as HTTP/1.1 asks
