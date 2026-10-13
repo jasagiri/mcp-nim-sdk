@@ -114,6 +114,15 @@ suite "generated documentation":
         checkpoint $feature & ": " & evidence
         check fileExists(Root / evidence)
 
+  # Not an external test: it reads the repository's own README. The validator
+  # says which dialects it takes by refusing the others, and the specification
+  # asks that they be documented (2025-11-25 and later, server/tools).
+  test "Given the dialects the validator takes, when the README is read, then it names each of them and what happens to any other":
+    let readme = readFile(Root / "README.md")
+    check "JSON Schema 2020-12" in readme
+    check "draft-07" in readme
+    check "UnsupportedDialectError" in readme
+
   test "Given templates with a mistake, when rendered, then ValueError names it instead of producing a page":
     expect ValueError: discard render("{{#if ftNoSuchFeature}}\nx\n{{/if}}", Root, mpv20260728)
     expect ValueError: discard render("{{#if ftTools}}\nx", Root, mpv20260728)

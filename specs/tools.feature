@@ -53,3 +53,16 @@ Feature: Tools
     Given a handler that lists its tools in a fixed order, over one page or several
     When a client lists the tools more than once
     Then each list holds the tools in the order the handler gave them
+
+  # not met
+  @spec:MCP-TOOLS-9 @feature:ftTools
+  Scenario: A tool is not listed with a null inputSchema
+    Given a server whose handler lists a tool whose inputSchema is null, in 2025-11-25 or later
+    When a client sends tools/list
+    Then the tool is not listed with a null inputSchema: the answer is an internal error, or lists no such tool
+
+  @spec:MCP-TOOLS-10 @feature:ftPerRequestMetadata
+  Scenario: A tool whose inputSchema is not an object schema is not listed
+    Given a server that lists a tool whose inputSchema has no type object at its root, in 2026-07-28
+    When a client lists the tools
+    Then the answer is an internal error, the tool being the server's defect

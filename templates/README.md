@@ -120,6 +120,8 @@ A server declares a capability in `newMcpServer` and registers the handlers that
 
 The example writes its tool definition and its result as JSON. A server can build them with procedures instead: `createToolInfo` with `createInputSchema` and the `create…Property` procedures for an item of `tools/list`, and `createToolResult` with `createTextToolContent` and the other `create…ToolContent` procedures for the answer of a call ([src/server/tools.nim](src/server/tools.nim)). They produce the same JSON and leave out the fields that were not given.
 
+A tool's `inputSchema` and `outputSchema` are validated as JSON Schema 2020-12, which a schema without `$schema` is taken to be, or as draft-07 when the schema names it. A schema that names any other dialect is refused with `UnsupportedDialectError`: a schema the SDK cannot check is reported, never taken as satisfied.
+
 [examples/features_client.nim](examples/features_client.nim) does the same for a client:
 
 ```nim
@@ -338,12 +340,26 @@ A client is guarded the other way round: what it fetches because a server said s
 
 ## Changes that break code written for earlier commits
 
-These came with the security review of 2026-10-06. Each refuses something that used to be accepted.
+These came with the security review of 2026-10-06 and with the reading of the specification sentence by sentence of 2026-10-13. Each refuses something that used to be accepted.
 
 | Was | Is now |
 |---|---|
 | A transport bound to a loopback address answered any `Host` | It answers loopback names and those in `allowedHosts`; others get 403 |
 | A JSON Schema of any depth and a `pattern` of any cost were checked | Checking stops with `SchemaLimitError` or `RegexLimitError` beyond the limits (`SchemaLimits`, `RegexLimits`); patterns are matched without backtracking, so a hostile one costs time in proportion to the text |
+| A string that is not UTF-8 in a message was written as it was | A request or a notification that holds one is not sent (`McpTransportError`); a response is sent as an internal error. Nothing is replaced |
+| A handler's result the specification does not allow was passed on | The peer gets an internal error and the cause goes to stderr: an image or a `blob` that is not base64, an image without `mimeType`, an embedded resource without `uri`, `mimeType` and `text` or `blob`, and, where the version has them, an `inputSchema` that is not an object schema (2025-11-25 on; its root `type: "object"` in 2026-07-28), a `ttlMs` below zero or a `cacheScope` other than `public` and `private` (2026-07-28) |
+| `prompts/get` called the handler whatever the arguments | A required argument of the listed prompt that is missing, or `arguments` that is not an object, is answered with invalid params and the handler is not called |
+| The request id a caller chose could repeat | `ValueError` for an id in flight; before 2026-07-28 also for an id the session has used (the client remembers up to `MaxChosenRequestIds` of them and refuses a further one) |
+| A client answered a root that is no `file://` URI as it was | The server gets an internal error and the cause goes to stderr |
+| A client's handler that raised sent the exception's whole text, with the traceback of a debug build | It sends the message alone |
+| `ErrStreamClosed`, the transport's own error for a request lost with its stream, was -32000 | It is -1000: outside the range JSON-RPC and MCP reserve |
+{{#if spoken:ftSampling}}
+| `createMessage` sent `includeContext` of `thisServer` or `allServers` to any client (2025-11-25 on), and a `tool_result` whatever its `structuredContent` | `McpCapabilityError` unless the client declared `sampling.context`; `McpPayloadError` when the `structuredContent` does not conform to the `outputSchema` of its tool |
+{{/if}}
+{{#if spoken:ftMultiRoundTripRequests}}
+| `requireInputs` and `newInputRequired` let a later request replace an earlier one under the same key | `McpPayloadError` |
+| A 2026-07-28 client answered a request of the server with method not found | It writes no response, as the specification asks, and says so on stderr |
+{{/if}}
 {{#if spoken:ftAuthorization}}
 | `newResourceServerAuth(config, mcpPath)` protected one path | `newResourceServerAuth(config)`: the transport protects every MCP endpoint it serves |
 | A pre-registered client's secret went to whichever authorization server the MCP server named | `PreRegisteredClient` with a `clientSecret` needs `issuer`; the secret is sent to that authorization server only |

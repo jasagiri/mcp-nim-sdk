@@ -8,6 +8,7 @@ import ../protocol/modern
 import ../protocol/param_headers
 import ../protocol/features
 import ../protocol/content
+import ../protocol/result_shape
 import ../jsonschema/json_schema
 import ../protocol/log_level
 import ../protocol/sampling_tools
@@ -835,6 +836,18 @@ proc listRoots*(server: McpServer, session = "", relatedRequestId = "",
     raise newException(McpRemoteError, "roots/list: the result has no roots array")
   return roots.getElems()
 
+func samplingContextUnavailable(params: JsonNode, version: McpProtocolVersion,
+                                capability: McpSamplingCapability): Option[string] =
+  ## `includeContext` thisServer and allServers are soft-deprecated: servers
+  ## "SHOULD NOT use them unless the client declares `sampling.context`"
+  ## (client/sampling, 2025-11-25 and later). The SDK keeps the SHOULD NOT for
+  ## its own handlers, as it does for `sampling.tools`.
+  if version < mpv20251125 or params.isNil or params.kind != JObject or capability.context:
+    return none(string)
+  if params{"includeContext"}.getStr("none") in ["thisServer", "allServers"]:
+    return some("the client did not declare the sampling.context capability")
+  none(string)
+
 proc createMessage*(server: McpServer, session: string, params: JsonNode,
                     relatedRequestId = "", relatedTask = ""): Future[JsonNode] {.async.} =
   ## Ask the client on `session` for an LLM completion (`sampling/createMessage`);
@@ -847,7 +860,12 @@ proc createMessage*(server: McpServer, session: string, params: JsonNode,
                                              known.clientCapabilities.get.sampling.get)
   if unavailable.isSome:
     raise newException(McpCapabilityError, "sampling/createMessage: " & unavailable.get)
+  let noContext = samplingContextUnavailable(params, version,
+                                             known.clientCapabilities.get.sampling.get)
+  if noContext.isSome:
+    raise newException(McpCapabilityError, "sampling/createMessage: " & noContext.get)
   raiseIfAny("sampling/createMessage", createMessageParamsProblems(params, version))
+  raiseIfAny("sampling/createMessage", samplingToolResultProblems(params))
   let answer = resultOf(await server.request(session, "sampling/createMessage", params,
                                              relatedRequestId, relatedTask = relatedTask),
                         "sampling/createMessage")
@@ -961,6 +979,16 @@ proc withoutInvalidParamHeaders(response: JsonRpcResponse): JsonRpcResponse =
 proc toolFailureResult(message: string): JsonNode =
   %*{"content": [{"type": "text", "text": message}], "isError": true}
 
+proc logDefect(methodName, why: string) =
+  ## A handler's result the specification does not allow: the cause stays on
+  ## this side, a peer gets no internal detail.
+  stderr.writeLine("[mcp-server] " & peerText(methodName) & ": " & why)
+
+proc handlerDefect(methodName, why: string): ref McpRequestError =
+  ## What the client is told of a handler's defect: an internal error.
+  logDefect(methodName, why)
+  newRequestError(ErrInternal, "Internal error")
+
 proc requireObjectResult(request: JsonRpcRequest, node: JsonNode): Option[JsonRpcResponse] =
   if node.isNil or node.kind != JObject:
     some(newJsonRpcErrorResponse(request.id, ErrInternal,
@@ -979,26 +1007,42 @@ proc scoped(server: McpServer, ctx: McpRequestContext, methodName: string,
   let chosen = server.listScope(ctx, methodName)
   if chosen.isNil: registered else: chosen
 
-proc toolDefinition(server: McpServer, ctx: McpRequestContext,
-                    name: string): Future[Option[JsonNode]] {.async.} =
-  ## The entry the tool list publishes for `name`: what the server says about
-  ## a tool is stated once, there. The list is read afresh: tools may change
-  ## between calls.
-  let toolsList = server.scoped(ctx, "tools/list", server.toolsList)
-  if toolsList.isNil:
+proc listedEntry(server: McpServer, ctx: McpRequestContext, methodName: string,
+                 registered: ListHandler, name: string): Future[Option[JsonNode]] {.async.} =
+  ## The entry the list of `methodName` publishes for `name`: what the server
+  ## says about a tool or a prompt is stated once, there. The list is read
+  ## afresh: the entries may change between calls.
+  let list = server.scoped(ctx, methodName, registered)
+  if list.isNil:
     return none(JsonNode)
   var cursor = none(string)
   for _ in 1 .. MaxToolListPages:
-    let page = await toolsList(cursor)
-    for tool in page.items:
-      if tool{"name"}.getStr() == name:
-        return some(tool)
+    let page = await list(cursor)
+    for entry in page.items:
+      if entry{"name"}.getStr() == name:
+        return some(entry)
     if page.nextCursor.isNone:
       return none(JsonNode)
     cursor = page.nextCursor
-  stderr.writeLine("[mcp-server] tools/list of this server has more than " &
+  stderr.writeLine("[mcp-server] " & methodName & " of this server has more than " &
                    $MaxToolListPages & " pages; '" & name & "' was not found")
   none(JsonNode)
+
+proc toolDefinition(server: McpServer, ctx: McpRequestContext,
+                    name: string): Future[Option[JsonNode]] =
+  ## The entry the tool list publishes for `name`.
+  server.listedEntry(ctx, "tools/list", server.toolsList, name)
+
+proc missingPromptArgument(prompt: Option[JsonNode], arguments: JsonNode): Option[string] =
+  ## The first argument the prompt lists as required that `arguments` lacks.
+  ## A prompt the server does not list has nothing to check against.
+  if prompt.isNone or prompt.get{"arguments"}.isNil or prompt.get["arguments"].kind != JArray:
+    return none(string)
+  for listed in prompt.get["arguments"]:
+    if listed.kind == JObject and listed{"required"}.getBool(false) and
+       listed{"name"}.kind == JString and not arguments.hasKey(listed["name"].getStr()):
+      return some(listed["name"].getStr())
+  none(string)
 
 proc outputProblems(name: string, version: McpProtocolVersion, schema,
                     callResult: JsonNode): seq[string] =
@@ -1147,6 +1191,9 @@ proc dispatchStandard(server: McpServer, request: JsonRpcRequest,
     if uri.isNone:
       return missingParam(request, "uri")
     let contents = await server.resourceRead(ctx, uri.get)
+    let problems = resourceContentsProblems(contents)
+    if problems.len > 0:
+      raise handlerDefect("resources/read", problems.join("; "))
     return newJsonRpcResponse(request.id, %*{"contents": contents})
 
   of "resources/subscribe", "resources/unsubscribe":
@@ -1185,7 +1232,11 @@ proc dispatchStandard(server: McpServer, request: JsonRpcRequest,
         var tool = item
         for transform in transforms:
           tool = transform(ctx, tool)
-        toolFor(version, tool))
+        let listed = toolFor(version, tool)
+        let problems = toolListingProblems(version, listed)
+        if problems.len > 0:
+          raise handlerDefect("tools/list", problems.join("; "))
+        listed)
     if ctx.version.has(ftParameterHeaders):
       return withoutInvalidParamHeaders(page)
     return page
@@ -1247,11 +1298,22 @@ proc dispatchStandard(server: McpServer, request: JsonRpcRequest,
     if name.isNone:
       return missingParam(request, "name")
     let arguments = request.params{"arguments"}
-    let prompt = await server.promptGet(ctx, name.get,
-      if arguments.isNil: newJObject() else: arguments)
+    if not arguments.isNil and arguments.kind != JObject:
+      return newJsonRpcErrorResponse(request.id, ErrInvalidParams,
+        "prompts/get arguments must be an object")
+    let given = if arguments.isNil: newJObject() else: arguments
+    let absent = missingPromptArgument(
+      await server.listedEntry(ctx, "prompts/list", server.promptsList, name.get), given)
+    if absent.isSome:
+      return newJsonRpcErrorResponse(request.id, ErrInvalidParams,
+        "Missing required argument: " & absent.get)
+    let prompt = await server.promptGet(ctx, name.get, given)
     let malformed = requireObjectResult(request, prompt)
     if malformed.isSome:
       return malformed.get
+    let problems = promptResultProblems(prompt)
+    if problems.len > 0:
+      raise handlerDefect("prompts/get", problems.join("; "))
     return newJsonRpcResponse(request.id, promptResultFor(ctx.version, prompt))
 
   of "completion/complete":
@@ -1301,7 +1363,12 @@ proc inputRequiredResponse(request: JsonRpcRequest, ctx: McpRequestContext,
   let problem = invalidInputRequired(asked.inputRequests, asked.requestState)
   if problem.isSome:
     return defect(problem.get)
-  let payloadProblems = inputRequestProblems(asked.inputRequests, ctx.version)
+  var payloadProblems = inputRequestProblems(asked.inputRequests, ctx.version)
+  if payloadProblems.len == 0 and not asked.inputRequests.isNil:
+    for key, entry in asked.inputRequests.pairs:
+      if entry{"method"}.getStr() == SamplingMethod:
+        for problem in samplingToolResultProblems(entry{"params"}):
+          payloadProblems.add "inputRequests[\"" & key & "\"]: " & problem
   if payloadProblems.len > 0:
     return defect(payloadProblems.join("; "))
   let missing = missingCapabilities(asked.inputRequests, ctx.clientCapabilities)
@@ -1409,6 +1476,10 @@ proc handleModernRequest(server: McpServer, request: JsonRpcRequest,
     let unusable = server.unusableResultType(request, ctx, payload)
     if unusable.isSome:
       return unusable.get
+    let hintProblem = cacheHintProblem(request.`method`, payload)
+    if hintProblem.isSome:
+      logDefect(request.`method`, hintProblem.get)
+      return newJsonRpcErrorResponse(request.id, ErrInternal, "Internal error")
     response.result = some(completeResult(
       request.`method`, payload, server.serverInfo, server.cachePolicy))
   return response

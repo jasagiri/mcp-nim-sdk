@@ -81,7 +81,6 @@ Feature: Requests the server makes of the client
     Given a 2026-07-28 client
     When the server tries to ask for a message, or a handler asks during a call
     Then it raises, or the call fails, and nothing is sent
-    And a client that is sent a request in a 2026-07-28 connection answers method not found
 
   @spec:MCP-CLIENTREQ-1 @feature:ftSampling
   Scenario: A client answers a sampling request through its handler
@@ -134,3 +133,22 @@ Feature: Requests the server makes of the client
     Given a version before 2026-07-28, two clients that declared roots, and a handler the server's application registered for notifications/roots/list_changed
     When one client sends the notification, once or twice
     Then the handler is called with that client's session, asks only that client for roots/list, and gets the list in the answer, the second answer being the one it gets the second time
+
+  @spec:MCP-SERVERREQ-15 @feature:ftSampling
+  Scenario: A client before 2026-07-28 answers the requests of the server
+    Given a connection of a version before 2026-07-28
+    When the server sends a request the client serves, or one it does not
+    Then the client answers with the result, or with method not found
+
+  @spec:MCP-SERVERREQ-16 @feature:ftServerInitiatedRequests
+  Scenario: A 2026-07-28 client writes no response to a request of the server (stdio and Streamable HTTP)
+    Given a 2026-07-28 connection over stdio or Streamable HTTP
+    When the server sends the client a request, of a method the client has a handler for or not
+    Then the client writes no JSON-RPC response, says on stderr that it ignored the request, and goes on with its own requests
+
+  # not met
+  @spec:MCP-SERVERREQ-17 @feature:ftRoots
+  Scenario: A client lists only roots that are file URIs
+    Given a client with a roots provider that offers a root whose uri is not a file:// URI
+    When the server asks for the roots (roots/list before 2026-07-28, or as an input request in 2026-07-28)
+    Then the client does not send that root: the answer is an error, or lists file:// URIs only

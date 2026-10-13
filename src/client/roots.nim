@@ -1,7 +1,7 @@
 ## Roots: the client tells servers which parts of the filesystem they may
 ## work in. The server asks with roots/list (before 2026-07-28).
 
-import asyncdispatch, json, options
+import asyncdispatch, json, options, strutils
 import ./client
 import ../protocol/types
 import ../protocol/features
@@ -17,7 +17,9 @@ proc setRootsProvider*(client: McpClient, provider: McpRootsProvider,
                        listChanged: bool = true) =
   ## Declare the roots capability and answer roots/list from `provider`.
   ## `listChanged` states that the client will call `notifyRootsListChanged`
-  ## when the roots change. Call before connect().
+  ## when the roots change. Call before connect(). A root whose URI does not
+  ## start with `file://` is not sent: the request fails with an internal
+  ## error and the cause goes to stderr.
   client.requireNotConnected("the roots provider")
   client.capabilities.roots = some(McpRootsCapability(listChanged: listChanged))
   client.registerRequestHandler("roots/list",
@@ -25,6 +27,9 @@ proc setRootsProvider*(client: McpClient, provider: McpRootsProvider,
       let roots = await provider()
       let list = newJArray()
       for root in roots:
+        if not root.uri.startsWith("file://"):
+          raise newException(McpProtocolError,
+            "roots/list: a root's uri is not a file:// URI")
         let item = %*{"uri": root.uri}
         if root.name.isSome: item["name"] = %root.name.get
         list.add item

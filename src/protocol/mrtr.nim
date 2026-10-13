@@ -130,7 +130,7 @@ func inputRequestProblems*(requests: JsonNode,
 func undeclaredPart(inputMethod: string, params, declared: JsonNode): Option[JsonNode] {.raises: [].} =
   ## What an input request of `inputMethod` needs of its capability that
   ## `declared` (the client's object for that capability) lacks: the
-  ## elicitation mode, or the tools of sampling.
+  ## elicitation mode, or the tools and the context of sampling.
   case inputMethod
   of ElicitationMethod:
     let mode =
@@ -139,9 +139,17 @@ func undeclaredPart(inputMethod: string, params, declared: JsonNode): Option[Jso
     if not modeSupported(declared.fromJson(McpElicitationCapability), mode):
       return some(%*{$mode: {}})
   of SamplingMethod:
+    var missing = newJObject()
     let tools = declared{"tools"}
     if params.usesTools and (tools.isNil or tools.kind != JObject):
-      return some(%*{"tools": {}})
+      missing["tools"] = newJObject()
+    let context = declared{"context"}
+    if not params.isNil and params.kind == JObject and
+       params{"includeContext"}.getStr("none") in ["thisServer", "allServers"] and
+       (context.isNil or context.kind != JObject):
+      missing["context"] = newJObject()
+    if missing.len > 0:
+      return some(missing)
   else:
     discard
   none(JsonNode)

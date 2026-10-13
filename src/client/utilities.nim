@@ -4,6 +4,7 @@ import asyncdispatch, json, options
 import ./client
 import ./content
 import ../protocol/types
+import ../protocol/diagnostic
 import ../protocol/features
 import ../protocol/log_level
 import ../protocol/completion as completionTypes
@@ -14,7 +15,12 @@ proc ping*(client: McpClient,
            options: McpRequestOptions = McpRequestOptions()) {.async.} =
   ## Succeeds when the server answers. Before 2026-07-28 only.
   client.requireFeature(ftPing, "ping")
-  discard await client.callMethod("ping", newJObject(), options)
+  try:
+    discard await client.callMethod("ping", newJObject(), options)
+  except CatchableError as e:
+    stderr.writeLine("[mcp-client] ping failed with " & $e.name & ": " &
+                     peerText(e.plainMessage))
+    raise
 
 proc setLoggingLevel*(client: McpClient, level: McpLogLevel,
                       options: McpRequestOptions = McpRequestOptions()) {.async.} =

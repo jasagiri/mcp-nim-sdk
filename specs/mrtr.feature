@@ -136,3 +136,9 @@ Feature: Multi round-trip requests (2026-07-28)
     Given a retry that carries answers under keys the server did not ask for
     When the server runs the request
     Then they are ignored, and what is still missing is asked for again
+
+  @spec:MCP-MRTR-23 @feature:ftMultiRoundTripRequests
+  Scenario: The keys of the input requests of one answer are unique
+    Given a handler that asks for two different requests under one key
+    When it is called
+    Then the answer is an error and no request is lost silently

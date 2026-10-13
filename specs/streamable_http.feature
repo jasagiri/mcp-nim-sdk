@@ -331,3 +331,9 @@ Feature: Streamable HTTP transport
     Given many clients that initialize
     When the server issues their sessions
     Then every session id is non-empty and made only of the characters 0x21 to 0x7E
+
+  @spec:MCP-HTTP-49 @feature:ftPerRequestMetadata
+  Scenario: A request lost with its event stream is not reported as a code that JSON-RPC or MCP reserves
+    Given a request answered on an event stream
+    When the stream ends before the response and the transport stands in for it
+    Then the code it reports (ErrStreamClosed) is outside -32768 to -32000, so it is neither a code of the legacy range nor one that MCP allocates

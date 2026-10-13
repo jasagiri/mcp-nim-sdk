@@ -264,14 +264,17 @@ suite "notifications from the server":
 if SpeaksModern:
   suite "server requests in the 2026-07-28 protocol":
 
-    test "Given a 2026-07-28 connection, when the server sends a request, then the client answers method not found":
-      # The era has no server-initiated requests, even for a declared capability.
+    test "Given a 2026-07-28 connection, when the server sends a request, then the client writes no response":
+      # The era has no server-initiated requests, even for a declared capability,
+      # and its client MUST NOT write JSON-RPC responses (stdio, Streamable HTTP).
       let peer = startPeer(nil, modern = true)
       discard peer.connectedClient(DefaultProtocolVersion, proc(client: McpClient) =
         client.setSamplingHandler(echoSampler))
       for name in ["ping", "sampling/createMessage"]:
         peer.ask(%name, name, samplingParams)
-        check peer.responseTo(name)["error"]["code"].getInt() == -32601
+        check peer.responseTo(name).isNil
+      for message in peer.received:
+        check not (message.hasKey("id") and not message.hasKey("method"))
 
   suite "roots in the 2026-07-28 protocol":
 

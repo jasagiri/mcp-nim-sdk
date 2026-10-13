@@ -288,3 +288,9 @@ Feature: Event streams over Streamable HTTP
     Given two requests in progress
     When the server sends a notification for one of them and another that belongs to no request
     Then each stream carries only the notifications of its own request and the unrelated one is on neither
+
+  @spec:MCP-HTTPSTREAM-27 @feature:ftJsonRpcBatch
+  Scenario: A client reads a batch carried in one event of a stream (2025-03-26)
+    Given a version 2025-03-26 connection and a stream whose event holds an array of messages
+    When the client reads it (POST stream or GET stream)
+    Then the messages are delivered one by one

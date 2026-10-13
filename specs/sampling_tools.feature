@@ -97,3 +97,25 @@ Feature: Sampling with tools
     Given a sampling answer whose stopReason is a string the specification does not list
     When the client's handler gives it, or the server reads it, in any version that has sampling
     Then the client sends it as it is, and the server returns the answer with it, with or without tools in the request
+
+  # rule
+  # not met
+  @spec:MCP-SAMPLING-TOOLS-15 @feature:ftSampling
+  Scenario: includeContext other than none is sent only to a client that declared sampling.context
+    Given a client that declared sampling without the context capability, in 2025-11-25 or later
+    When the server asks with includeContext thisServer or allServers (sampling/createMessage, or an input request in 2026-07-28)
+    Then the server raises with a capability error (or the answer is an error) and sends nothing
+
+  @spec:MCP-SAMPLING-TOOLS-16 @feature:ftSampling
+  Scenario: A server does not ask for context from a client that did not declare sampling.context
+    Given a client that declared sampling without context, in 2025-11-25 or 2026-07-28
+    When the server asks for a sample with includeContext thisServer or allServers
+    Then the ask is refused and nothing is sent, in 2026-07-28 the request being answered with an error and not input_required
+    And includeContext none, or none at all, and any includeContext to a client that declared sampling.context, are sent
+
+  @spec:MCP-SAMPLING-TOOLS-17 @feature:ftSamplingTools
+  Scenario: A tool result in a sample request conforms to the outputSchema of its tool
+    Given a sampling request whose tools list a tool with an outputSchema and whose messages hold a tool_result of that tool with structuredContent
+    When the structuredContent breaks the outputSchema, in 2025-11-25 or 2026-07-28
+    Then the ask is refused and nothing is sent, in 2026-07-28 the request being answered with an error and not input_required
+    And a structuredContent that conforms is sent

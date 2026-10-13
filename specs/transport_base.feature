@@ -90,3 +90,17 @@ Feature: What every transport shares
     Given a request that times out and a connection that is closed
     When the client reports them
     Then each is a local error of its own kind and neither is the error a client raises for a peer's JSON-RPC error
+
+  @spec:MCP-TRANSPORT-14
+  Scenario: A request is not sent under an id that another request in flight has
+    Given a client with a request in flight under an id the caller chose
+    When the caller starts another request under the same id, in any version
+    Then the second is refused with an error to the caller and the wire carries one request with that id
+
+  @spec:MCP-TRANSPORT-15
+  Scenario: Before 2026-07-28 a request is not sent under an id the session has used
+    Given a client of a version before 2026-07-28 whose request under a chosen id was answered
+    When the caller starts another request under the same id
+    Then it is refused with an error to the caller and nothing is sent
+    And the client remembers at most MaxChosenRequestIds ids of at most MaxChosenRequestIdBytes bytes each, and refuses a further chosen id instead of forgetting an old one
+    And an id the client makes itself is a UUID and is not remembered

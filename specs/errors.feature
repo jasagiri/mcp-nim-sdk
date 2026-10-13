@@ -7,3 +7,9 @@ Feature: JSON-RPC errors
     When it answers with a JSON-RPC error
     Then the message is on one line, holds no second sentence and is short
     And a handler that fails with a message of its own is told to the peer as "Internal error", without that message
+
+  @spec:MCP-ERRORS-2
+  Scenario: A client's error carries the message of its handler and no traceback
+    Given a client whose handler for a request of the server fails, by refusing with an error of its own or with any other exception
+    When the client answers the server
+    Then the message of the JSON-RPC error is the message the handler wrote, on one line, with no trace of where the exception passed

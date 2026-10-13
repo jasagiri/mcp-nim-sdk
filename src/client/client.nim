@@ -1,6 +1,6 @@
 ## MCP client implementation
 
-import asyncdispatch, json, options, tables, strutils, sequtils, uuids
+import asyncdispatch, json, options, tables, sets, strutils, sequtils, uuids
 import ../protocol/types
 import ../protocol/diagnostic
 import ../protocol/lifecycle
@@ -130,6 +130,9 @@ type
     pendingRequests*: Table[string, Future[JsonRpcResponse]]
     progressCallbacks: Table[string, McpProgressCallback]
     nextProgressToken: int
+    chosenRequestIds: HashSet[string]
+      ## The ids callers chose for requests before 2026-07-28, which forbids
+      ## using an id twice in a session; see `claimRequestId`.
     subscriptions*: Table[string, McpSubscription]
       ## The open `subscriptions/listen` streams, by request id.
     maxInputRounds*: int
@@ -159,6 +162,11 @@ type
 const
   DefaultRequestTimeoutMs* = 60_000
   DefaultMaxInputRounds* = 10
+  MaxChosenRequestIds* = 4096
+    ## How many ids chosen by callers a session before 2026-07-28 remembers.
+    ## Ids the client makes are UUIDs and are not remembered; the set holds at
+    ## most this many ids of at most `MaxChosenRequestIdBytes` bytes each.
+  MaxChosenRequestIdBytes* = 256
 
 proc newMcpClient*(
   clientInfo: McpClientInfo,
@@ -178,6 +186,7 @@ proc newMcpClient*(
     maxInputRounds: DefaultMaxInputRounds,
     subscriptions: initTable[string, McpSubscription](),
     pendingRequests: initTable[string, Future[JsonRpcResponse]](),
+    chosenRequestIds: initHashSet[string](),
     progressCallbacks: initTable[string, McpProgressCallback](),
     requestHandlers: initTable[string, McpServerRequestHandler](),
     notificationHandlers: initTable[string, proc(notification: JsonRpcNotification): Future[void] {.async.}]()
@@ -212,10 +221,8 @@ proc failPending(client: McpClient, reason: string) =
 
 proc requestAllowed(client: McpClient, methodName: string): bool =
   ## Whether the server may send `methodName` to this client: only when the
-  ## client declared the capability behind it, and never in the era without
-  ## server-initiated requests.
-  if client.usesModernProtocol:
-    return false
+  ## client declared the capability behind it. (The era without
+  ## server-initiated requests never gets here: see `processRequest`.)
   case methodName
   of "sampling/createMessage": client.capabilities.sampling.isSome
   of "roots/list": client.capabilities.roots.isSome
@@ -229,6 +236,14 @@ proc logHandlerFailure(what: string) =
                    $getCurrentException().name & ": " & peerText(getCurrentExceptionMsg()))
 
 proc processRequest(client: McpClient, request: JsonRpcRequest): Future[void] {.async.} =
+  if client.usesModernProtocol:
+    # The client writes no response in this era (stdio and Streamable HTTP):
+    # a request from the server has no place to be answered, so it is only
+    # reported.
+    stderr.writeLine("[mcp-client] request " & peerText(request.`method`) &
+                     " from the server ignored: a " & $client.negotiatedVersion.get &
+                     " client writes no responses")
+    return
   var response: JsonRpcResponse
   if request.`method` == "ping" and not client.usesModernProtocol and
      "ping" notin client.requestHandlers:
@@ -241,10 +256,10 @@ proc processRequest(client: McpClient, request: JsonRpcRequest): Future[void] {.
     try:
       response = await client.requestHandlers[request.`method`](request)
     except McpRequestError as e:
-      response = newJsonRpcErrorResponse(request.id, e.code, e.msg, e.data)
+      response = newJsonRpcErrorResponse(request.id, e.code, e.plainMessage, e.data)
     except CatchableError as e:
       logHandlerFailure("handler for " & peerText(request.`method`))
-      response = newJsonRpcErrorResponse(request.id, -32603, e.msg)
+      response = newJsonRpcErrorResponse(request.id, -32603, e.plainMessage)
   response.idNode = request.idNode
   await client.transport.sendResponse(response)
 
@@ -396,6 +411,28 @@ proc ensureOpen(client: McpClient) =
   if client.transport.isNil or client.state == mlsShutdown:
     raise newException(McpConnectionClosedError, "the client is not connected")
 
+proc claimRequestId(client: McpClient, id: string) =
+  ## A request id MUST NOT be used while its request is in flight and, before
+  ## 2026-07-28, not at all again in the session. Raises ValueError, with
+  ## nothing sent, for an id a caller chose that breaks that. Only chosen ids
+  ## are remembered (a bounded set): the ones the client makes are UUIDs. A
+  ## session that has used up the set refuses further chosen ids, because
+  ## forgetting an old one would allow it again.
+  if id in client.pendingRequests:
+    raise newException(ValueError, "request id " & peerText(id) & " is in flight")
+  if client.usesModernProtocol:
+    return
+  if id in client.chosenRequestIds:
+    raise newException(ValueError, "request id " & peerText(id) &
+      " was used before in this session")
+  if id.len > MaxChosenRequestIdBytes:
+    raise newException(ValueError, "request id is longer than " &
+      $MaxChosenRequestIdBytes & " bytes")
+  if client.chosenRequestIds.len >= MaxChosenRequestIds:
+    raise newException(ValueError, "this session has used " &
+      $MaxChosenRequestIds & " chosen request ids; let the client make them")
+  client.chosenRequestIds.incl id
+
 type StartedRequest = tuple[id: string, response: Future[JsonRpcResponse], sent: Future[void]]
 
 proc beginRequest(client: McpClient, methodName: string, params: JsonNode,
@@ -405,6 +442,8 @@ proc beginRequest(client: McpClient, methodName: string, params: JsonNode,
   ## caller that waited for it could not time out on a server that never
   ## does. When sending fails, `response` fails with the transport's error.
   client.ensureOpen()
+  if id.len > 0:
+    client.claimRequestId(id)
   let id = if id.len > 0: id else: $genUUID()
   let promise = newFuture[JsonRpcResponse]("McpClient.request")
   client.pendingRequests[id] = promise
@@ -447,6 +486,8 @@ proc abandon*(client: McpClient, id, methodName, reason: string,
   ## Stop waiting for `id` and tell the server to stop working on it.
   ## `unsent`: the transport is still sending the request (over HTTP, still
   ## waiting for the server to start answering), so that is given up too.
+  stderr.writeLine("[mcp-client] request " & peerText(id) & " abandoned" &
+                   (if reason.len > 0: ": " & peerText(reason) else: ""))
   client.pendingRequests.del(id)
   if unsent:
     client.transport.cancelRequest(id)

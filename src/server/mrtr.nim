@@ -17,17 +17,31 @@
 ## something it did not declare is answered with the missing-capability
 ## error, not sent.
 
-import std/[json, options, tables]
+import std/[json, options, sets, tables]
 import ./server
 import ../protocol/mrtr
+import ../protocol/payload
 
 export mrtr
 
+func refuseDuplicateKeys(requests: openArray[InputRequestSpec]) {.raises: [McpPayloadError].} =
+  ## Keys of one `inputRequests` map are unique, and the client answers by
+  ## key: of two requests under one key, one would silently replace the other.
+  var seen = initHashSet[string]()
+  var duplicates: seq[string]
+  for request in requests:
+    if request.key in seen:
+      duplicates.add "the key '" & request.key & "' is used by more than one input request"
+    seen.incl request.key
+  raiseIfAny("inputRequests", duplicates)
+
 func newInputRequired*(requests: openArray[InputRequestSpec] = [],
-                       requestState = none(string)): ref McpInputRequired =
+                       requestState = none(string)): ref McpInputRequired
+                      {.raises: [McpPayloadError].} =
   ## The exception that makes the server answer `input_required`. At least
   ## one request or a state is needed; a handler that raises it with neither
-  ## is a defect.
+  ## is a defect. Raises `McpPayloadError` when two requests share a key.
+  refuseDuplicateKeys(requests)
   result = (ref McpInputRequired)(msg: "input required", requestState: requestState)
   if requests.len > 0:
     result.inputRequests = requestsToJson(requests)
@@ -44,7 +58,9 @@ proc requireInputs*(ctx: McpRequestContext, requests: openArray[InputRequestSpec
                     requestState = none(string)): Table[string, JsonNode] =
   ## The client's answers to all of `requests`. When some are missing this
   ## raises `McpInputRequired` for those only, so the handler stops there and
-  ## the client is asked again, as the specification asks.
+  ## the client is asked again, as the specification asks. Raises
+  ## `McpPayloadError` when two requests share a key.
+  refuseDuplicateKeys(requests)
   var missing: seq[InputRequestSpec]
   for request in requests:
     let answer = ctx.inputResponse(request.key)

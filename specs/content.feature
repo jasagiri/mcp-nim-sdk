@@ -309,3 +309,25 @@ Feature: Content of tools, resources and prompts
     Then with the default options it is refused and the refusal names image/svg+xml
     And with SVG allowed its bytes come back unchanged with the type SVG
     And SVG labelled as another type is refused whether SVG is allowed or not
+
+  # rule
+  # not met
+  @spec:MCP-CONTENT-FIELDS-13 @feature:ftPrompts
+  Scenario: An image of a prompt is base64 with a mimeType
+    Given a prompt handler that returns an image block whose data is not base64 or that has no mimeType
+    When a client sends prompts/get
+    Then the answer is an internal error and no image is sent
+
+  # rule
+  # not met
+  @spec:MCP-CONTENT-FIELDS-14 @feature:ftPrompts
+  Scenario: An embedded resource of a prompt has a uri, a mimeType and its text or blob
+    Given a prompt handler that returns an embedded resource without a uri, without a mimeType, or with neither text nor blob
+    When a client sends prompts/get
+    Then the answer is an internal error and no such resource is sent
+
+  @spec:MCP-CONTENT-FIELDS-15 @feature:ftJsonSchema2020
+  Scenario: The dialects the SDK validates are named in its documentation
+    Given the SDK's documentation of JSON Schema
+    When a reader looks for the dialects it supports
+    Then 2020-12 and draft-07 are named

@@ -130,3 +130,9 @@ Feature: Progress and cancellation
     Given a request with a progress token
     When progress and total are fractional, from the server's handler or from a server to the client's callback
     Then the values arrive exactly as given
+
+  @spec:MCP-CANCEL-11 @feature:ftCancellation
+  Scenario: A client says why it gave up on a request
+    Given a request the caller cancels with a reason
+    When the client abandons it
+    Then the client writes the reason to stderr as well as sending it

@@ -126,3 +126,11 @@ Feature: Resources
     Given a server that answers resources/read with -32002 or -32602 and the uri in the data
     When a client reads the resource, in any version
     Then the call fails with the code it was given and the uri, and the client carries on
+
+  # rule
+  # not met
+  @spec:MCP-RESOURCES-17 @feature:ftResources
+  Scenario: The blob of a resource is base64
+    Given a resource handler that returns contents whose blob is not base64
+    When a client sends resources/read
+    Then the answer is an internal error and no such blob is sent

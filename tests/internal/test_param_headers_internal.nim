@@ -122,7 +122,12 @@ suite "x-mcp-header: valid declarations":
   test "Given no schema at all, when declarations are read, then it is valid and binds nothing":
     modernOnly:
       check isPublished(nil)
-      check isPublished(%"not a schema")
+    # A tool whose inputSchema is not an object is no longer listed at all
+    # (server/tools: the schema MUST be a JSON Schema object), so what the
+    # reader of declarations makes of one is asked of the reader itself.
+    let declared = declaredParamHeaders(%"not a schema")
+    check declared.invalid.isNone
+    check declared.bindings.len == 0
 
   test "Given an annotated property in a nested object, when declarations are read, then the path follows the properties keys":
     let declared = declaredParamHeaders(schema(%*{

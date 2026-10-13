@@ -1,6 +1,6 @@
 ## MCP transport layer
 
-import asyncdispatch, json, options
+import asyncdispatch, json, options, unicode
 import ../protocol/types
 from ../protocol/modern import ErrInternal
 import ../protocol/diagnostic
@@ -122,6 +122,48 @@ method protocolVersionNegotiated*(t: McpTransport, version: McpProtocolVersion) 
 proc wireId(id: string, idNode: JsonNode): JsonNode =
   if idNode.isNil: %id else: idNode
 
+func isUtf8(text: string): bool {.raises: [].} =
+  ## Whether `text` is UTF-8 as RFC 3629 has it. `validateUtf8` lets the
+  ## surrogates U+D800..U+DFFF through (ED A0..BF xx), which UTF-8 has not.
+  if validateUtf8(text) != -1:
+    return false
+  for i in 0 ..< text.len - 1:
+    if text[i] == '\xED' and text[i + 1] >= '\xA0':
+      return false
+  true
+
+func notUtf8(node: JsonNode, at: string): string {.raises: [].} =
+  ## Where in `node` a string (a value or a member name) is not UTF-8, as a
+  ## path from `at`; "" when every string is.
+  if node.isNil:
+    return ""
+  case node.kind
+  of JString:
+    if not isUtf8(node.str): return at
+  of JArray:
+    for i in 0 ..< node.len:
+      let item = node[i]
+      let found = notUtf8(item, at & "[" & $i & "]")
+      if found.len > 0: return found
+  of JObject:
+    for name, value in node.pairs:
+      if not isUtf8(name): return at & ": a member name"
+      let found = notUtf8(value, at & "." & name)
+      if found.len > 0: return found
+  else:
+    discard
+  ""
+
+proc requireUtf8(message: JsonNode, what: string) {.raises: [McpTransportError].} =
+  ## JSON-RPC messages are UTF-8 (basic/transports). A string that is not
+  ## would be written as it is and make the whole message something else, so
+  ## the message is not sent. The bytes are not replaced: what would arrive
+  ## is not what the caller meant.
+  let where = notUtf8(message, what)
+  if where.len > 0:
+    raise newException(McpTransportError,
+      "a message must be UTF-8, and a string is not: " & peerText(where))
+
 proc toJson*(request: JsonRpcRequest): JsonNode =
   result = %*{
     "jsonrpc": request.jsonrpc,
@@ -130,6 +172,7 @@ proc toJson*(request: JsonRpcRequest): JsonNode =
   }
   if not request.params.isNil:
     result["params"] = request.params
+  requireUtf8(result, "request " & request.`method`)
 
 proc toJson*(notification: JsonRpcNotification): JsonNode =
   result = %*{
@@ -138,6 +181,7 @@ proc toJson*(notification: JsonRpcNotification): JsonNode =
   }
   if not notification.params.isNil:
     result["params"] = notification.params
+  requireUtf8(result, "notification " & notification.`method`)
 
 proc toJson*(response: JsonRpcResponse): JsonNode =
   ## A response carries exactly one of result and error.
@@ -159,6 +203,17 @@ proc toJson*(response: JsonRpcResponse): JsonNode =
     stderr.writeLine("[mcp-transport] response " & peerText(response.id) &
                      " has neither a result nor an error; sent as an internal error")
     result["error"] = %*{"code": ErrInternal, "message": "Internal error"}
+  # A response is owed: one that cannot be written as UTF-8 is answered with
+  # an internal error instead, as a response without a result is above.
+  let where = notUtf8(result, "response")
+  if where.len > 0:
+    stderr.writeLine("[mcp-transport] response " & peerText(response.id) &
+                     " holds a string that is not UTF-8 (" & peerText(where) &
+                     "); sent as an internal error")
+    let id = result["id"]
+    result = %*{"jsonrpc": response.jsonrpc,
+                "id": (if notUtf8(id, "").len > 0: newJNull() else: id),
+                "error": {"code": ErrInternal, "message": "Internal error"}}
 
 proc encodeMessage*(request: JsonRpcRequest): string = $request.toJson()
 proc encodeMessage*(notification: JsonRpcNotification): string = $notification.toJson()

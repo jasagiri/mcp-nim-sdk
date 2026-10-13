@@ -36,3 +36,12 @@ Feature: Prompts
     Given a prompt handler that returns something that is not an object
     When a client sends prompts/get
     Then the answer is an internal error
+
+  # rule
+  # not met
+  @spec:MCP-PROMPTS-6 @feature:ftPrompts
+  Scenario: The arguments of a prompt are checked against what the prompt lists
+    Given a server that lists a prompt with a required argument
+    When a client sends prompts/get without that argument
+    Then the answer is invalid params and the handler does not run
+    And with the argument the handler runs

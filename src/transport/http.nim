@@ -45,10 +45,12 @@ const
     ## 30 s allows for a slow link and a busy server, not for a silent one.
   DefaultReconnectDelayMs* = 500
   DefaultMaxReconnects* = 5
-  ErrStreamClosed* = -32000
-    ## Local error (implementation-defined range): the event stream of a
-    ## request ended before its response arrived. The request is lost; the
-    ## caller may send it again.
+  ErrStreamClosed* = -1000
+    ## Local error: the event stream of a request ended before its response
+    ## arrived. The request is lost; the caller may send it again. The code
+    ## is outside -32768 to -32000, which JSON-RPC and MCP reserve, so no
+    ## code MCP allocates (the legacy -32000 to -32019 included) stands in
+    ## for it; 2026-07-28 allocates no code to local errors.
   SessionHeader = "Mcp-Session-Id"
   ErrorBodyPreview = 512
   DeleteTimeoutMs = 5000
@@ -161,6 +163,16 @@ proc deliver(t: StreamableHttpTransport, message: JsonNode) =
   else:
     t.inbox.addLast(message)
 
+proc messagesIn(t: StreamableHttpTransport, message: JsonNode): seq[JsonNode] =
+  ## What a stream event or a body carries: in the version that has JSON-RPC
+  ## batches an array is its messages, one by one; in any other it is one
+  ## value, as the peer sent it, for the receiver to refuse.
+  if message.kind == JArray and t.negotiated.isSome and
+     t.negotiated.get.has(ftJsonRpcBatch):
+    message.elems
+  else:
+    @[message]
+
 proc parseMessage(t: StreamableHttpTransport, text: string): JsonNode =
   if text.len > t.maxResponseSize:
     raise newException(McpTransportError,
@@ -251,11 +263,11 @@ proc consume(t: StreamableHttpTransport, response: WireResponse,
           result.lastEventId = event.id
         if event.data.len == 0:
           continue
-        let message = t.parseMessage(event.data)
-        if not result.answered and isResponse(message) and message{"id"} == requestId:
-          result.answered = true
-        result.delivered = true
-        t.deliver(message)
+        for message in t.messagesIn(t.parseMessage(event.data)):
+          if not result.answered and isResponse(message) and message{"id"} == requestId:
+            result.answered = true
+          result.delivered = true
+          t.deliver(message)
   except CatchableError as e:
     # close() and cancelRequest end open streams on purpose; that is not a
     # failure.
@@ -431,7 +443,8 @@ proc postOnce(t: StreamableHttpTransport, body: string,
 
   if response.code.is2xx:
     if text.len > 0:
-      t.deliver(t.parseMessage(text))
+      for message in t.messagesIn(t.parseMessage(text)):
+        t.deliver(message)
     return
 
   if not t.auth.isNil and response.code.int in [401, 403]:

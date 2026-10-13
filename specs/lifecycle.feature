@@ -169,3 +169,15 @@ Feature: Starting a conversation
     Given a version before 2026-07-28 and a peer that never answers
     When the caller pings and each ping times out
     Then each ping raises a timeout error, and the caller can close the client, after which it can no longer ping
+
+  @spec:MCP-LIFECYCLE-23 @feature:ftCacheHints
+  Scenario: In 2026-07-28 a server never sends a ttlMs below zero
+    Given a 2026-07-28 server whose handler's result says a ttlMs that is negative or not a number
+    When a client asks for a cacheable result
+    Then the answer is an internal error and carries no result
+
+  @spec:MCP-LIFECYCLE-24 @feature:ftPing
+  Scenario: A failed ping is logged
+    Given a ping that times out
+    When it fails
+    Then the client writes the failure to stderr
