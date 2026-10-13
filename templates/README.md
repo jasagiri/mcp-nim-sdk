@@ -316,6 +316,8 @@ nimble testAllVersions     # the same, once per released version as the default
 nim c -r -d:mcpDefaultProtocolVersion=2025-06-18 tests/external/test_legacy_handshake.nim
 ```
 
+The property tests (`tests/external/test_*_prop.nim`) use nim-propcheck, a package that is not published: `nim.cfg` reads it from `../nim-propcheck/src`, so the tests need it checked out beside this directory. A program that uses the SDK does not need it.
+
 On a branch that adds to another, `MCP_TEST_BASE=<commit> nimble testAllVersions` runs this checkout's default version in full and, for the other versions, only the tests built from a file that differs from that commit; `MCP_TEST_BASE=<commit> nimble affectedTests` lists them. It reads what the compiler recorded when it last built each test, so a file that only an older version compiles in is not seen: run without `MCP_TEST_BASE` before a release.
 
 `DefaultProtocolVersion`, `OldestProtocolVersion` and `SupportedProtocolVersions` (in `protocol/version`, exported by `mcp`) tell a program what it was built to speak.
