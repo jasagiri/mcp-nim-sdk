@@ -23,6 +23,11 @@ type
       ## it (which is how a 2026-07-28 client cancels). `requestId` is the id
       ## the transport handed to `receive`. The server should stop working on
       ## the request; a response sent for it afterwards is dropped.
+    onRequestLost*: proc(requestId: string, reason: string) {.closure.}
+      ## Called by a client transport when a request it sent will get no
+      ## response (see `McpRequestLostError`). `requestId` is the id of the
+      ## request. This is how a local loss is told apart from a response of
+      ## the peer: the transport delivers nothing in `receiveMessage` for it.
     servesExtensionMethod*: proc(methodName: string): bool {.closure, gcsafe.}
       ## Whether the server behind this transport serves `methodName` for an
       ## extension; nil when nobody said. A transport that applies rules per
@@ -52,6 +57,10 @@ type
     principal*: Option[string]
       ## Who the transport's authorization says sent the message (the
       ## subject of the access token); none where there is no authorization.
+    peer*: string
+      ## The network address of the peer that sent the message, where the
+      ## transport has one; empty where it has not (stdio). A header such as
+      ## X-Forwarded-For is not trusted to name it.
 
   McpTransportError* = object of CatchableError
     code*: int
@@ -64,6 +73,21 @@ type
     ## a server that speaks another version.
     status*: int
       ## The HTTP status of the refusal.
+
+  McpSessionExpiredError* = object of McpTransportError
+    ## The server answered a request that carried a session id with HTTP 404:
+    ## it ended that session. The request was not carried out and is not sent
+    ## again; the caller decides whether to send it anew.
+    current*: bool
+      ## The session ended was the one the transport was using, which the
+      ## transport has now dropped; false for a request of an older session.
+    renewed*: bool
+      ## A new session has been started (the client's doing, after this error
+      ## was raised by the transport).
+
+  McpRequestLostError* = object of McpTransportError
+    ## The event stream of a request ended before its response arrived and
+    ## could not be resumed. The request is lost; the caller may send it again.
 
   McpTransportClosedError* = object of McpTransportError
     ## The peer closed the connection. For a stdio server this is how a

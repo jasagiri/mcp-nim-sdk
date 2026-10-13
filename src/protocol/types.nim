@@ -26,6 +26,10 @@ type
       ## Who the transport's authorization says sent the request (the subject
       ## of the access token); none without authorization. Not part of the
       ## wire format.
+    peer*: string
+      ## The network address the request came from, for a transport that has
+      ## one (Streamable HTTP, HTTP+SSE); empty otherwise. Not part of the
+      ## wire format.
     relatedRequestId*: string
       ## For a request the server sends while it handles a client request:
       ## the id of that client request, so that an HTTP transport can put it on

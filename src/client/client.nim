@@ -1,6 +1,7 @@
 ## MCP client implementation
 
 import asyncdispatch, json, options, tables, sets, strutils, sequtils, uuids
+import std/[monotimes, times]
 import ../protocol/types
 import ../protocol/diagnostic
 import ../protocol/lifecycle
@@ -127,9 +128,21 @@ type
     requestTimeoutMs*: int
       ## How long a request waits for its response unless its
       ## McpRequestOptions say otherwise. 0 waits without limit.
+    pingIntervalMs*: int
+      ## How often an idle connection is checked with a ping (versions that
+      ## have ping). 0 turns the checks off.
+    pingTimeoutMs*: int
+      ## How long a ping waits for its answer before the connection is taken
+      ## for lost and closed.
     pendingRequests*: Table[string, Future[JsonRpcResponse]]
     progressCallbacks: Table[string, McpProgressCallback]
     nextProgressToken: int
+    lastActivity: MonoTime
+      ## When a message last went out or came in; the connection is idle when
+      ## that was `pingIntervalMs` ago.
+    keepAliveRunning: bool
+    awaitingInitialize: bool
+      ## initialize is sent and not answered: nothing but ping may go out.
     chosenRequestIds: HashSet[string]
       ## The ids callers chose for requests before 2026-07-28, which forbids
       ## using an id twice in a session; see `claimRequestId`.
@@ -162,6 +175,7 @@ type
 const
   DefaultRequestTimeoutMs* = 60_000
   DefaultMaxInputRounds* = 10
+  DefaultPingIntervalMs* = 30_000
   MaxChosenRequestIds* = 4096
     ## How many ids chosen by callers a session before 2026-07-28 remembers.
     ## Ids the client makes are UUIDs and are not remembered; the set holds at
@@ -183,6 +197,8 @@ proc newMcpClient*(
     serverInfo: none(McpServerInfo),
     probeTimeoutMs: 5000,
     requestTimeoutMs: DefaultRequestTimeoutMs,
+    pingIntervalMs: DefaultPingIntervalMs,
+    pingTimeoutMs: DefaultRequestTimeoutMs,
     maxInputRounds: DefaultMaxInputRounds,
     subscriptions: initTable[string, McpSubscription](),
     pendingRequests: initTable[string, Future[JsonRpcResponse]](),
@@ -382,6 +398,7 @@ proc processMessages*(client: McpClient): Future[void] {.async.} =
   try:
     while true:
       let json = await client.transport.receiveMessage()
+      client.lastActivity = getMonoTime()
 
       if isRequest(json):
         let request = decodeRequest(json)
@@ -442,6 +459,10 @@ proc beginRequest(client: McpClient, methodName: string, params: JsonNode,
   ## caller that waited for it could not time out on a server that never
   ## does. When sending fails, `response` fails with the transport's error.
   client.ensureOpen()
+  client.lastActivity = getMonoTime()
+  if client.awaitingInitialize and methodName notin ["initialize", "ping"]:
+    raise newException(McpError, methodName &
+      ": the server has not answered initialize yet; only ping may be sent before")
   if id.len > 0:
     client.claimRequestId(id)
   let id = if id.len > 0: id else: $genUUID()
@@ -476,10 +497,19 @@ proc startRequest*(client: McpClient, methodName: string, params: JsonNode,
     raise started.response.readError()
   return (id: started.id, response: started.response)
 
+proc renewSession(client: McpClient, expired: ref McpSessionExpiredError): Future[void] {.async.}
+
 proc sendNotification*(client: McpClient, methodName: string, params: JsonNode): Future[void] {.async.} =
+  ## Raises McpSessionExpiredError when the server ended the session (see
+  ## `sendRequest`).
   client.ensureOpen()
+  client.lastActivity = getMonoTime()
   let notification = newJsonRpcNotification(methodName, params)
-  await client.transport.sendNotification(notification)
+  try:
+    await client.transport.sendNotification(notification)
+  except McpSessionExpiredError as expired:
+    await client.renewSession(expired)
+    raise
 
 proc abandon*(client: McpClient, id, methodName, reason: string,
               unsent = false) {.async.} =
@@ -637,8 +667,8 @@ proc listToolsAgainFor(client: McpClient, toolName: string,
                    $MaxToolListPagesOnMismatch & " pages; '" & toolName & "' was not found")
   return false
 
-proc sendRequest*(client: McpClient, methodName: string, params: JsonNode,
-                  options: McpRequestOptions = McpRequestOptions()): Future[JsonRpcResponse] {.async.} =
+proc sendWithInputRounds(client: McpClient, methodName: string, params: JsonNode,
+                         options: McpRequestOptions): Future[JsonRpcResponse] {.async.} =
   ## Send a request and wait for its response. A JSON-RPC error response is
   ## returned, not raised; see `callMethod` for the raising form. Raises
   ## McpTimeoutError, McpCancelledError or McpConnectionClosedError when no
@@ -691,6 +721,29 @@ proc sendRequest*(client: McpClient, methodName: string, params: JsonNode,
         raise newException(ValueError,
           methodName & ": the server answered with unknown resultType " & $declared)
       return response
+
+proc sendRequest*(client: McpClient, methodName: string, params: JsonNode,
+                  options: McpRequestOptions = McpRequestOptions()): Future[JsonRpcResponse] {.async.} =
+  ## Send a request and wait for its response. A JSON-RPC error response is
+  ## returned, not raised; see `callMethod` for the raising form. Raises
+  ## McpTimeoutError, McpCancelledError or McpConnectionClosedError when no
+  ## response will come, McpRequestLostError when the request's event stream
+  ## ended without its response.
+  ##
+  ## Over Streamable HTTP, before 2026-07-28, a request that gets 404 in a
+  ## session the server ended raises McpSessionExpiredError. By then the
+  ## client has started a new session (one initialize, no session id) and
+  ## `renewed` says whether that worked. The request itself is not sent again:
+  ## it may have effects, and only the caller knows whether doing it twice is
+  ## harmless. The next request goes out in the new session.
+  ##
+  ## Multi round-trip (2026-07-28) and header-mismatch retries: see
+  ## `sendWithInputRounds`.
+  try:
+    return await client.sendWithInputRounds(methodName, params, options)
+  except McpSessionExpiredError as expired:
+    await client.renewSession(expired)
+    raise
 
 proc requireFeature*(client: McpClient, feature: McpFeature, operation: string) =
   ## Raise McpUnsupportedError unless the negotiated version has `feature`.
@@ -779,6 +832,57 @@ proc extractServerCapabilities(json: JsonNode): McpServerCapabilities =
     if other.len > 0:
       result.additional = some(other)
 
+proc keepAlive(client: McpClient, transport: McpTransport) {.async.} =
+  ## Ping the server whenever the connection has been idle for
+  ## `pingIntervalMs`, for as long as this connection lasts. A ping that gets
+  ## no answer in `pingTimeoutMs`, or whose sending fails, takes the
+  ## connection for lost: it is closed and what waits on it ends with
+  ## McpConnectionClosedError. A server that answers the ping with an error
+  ## is alive and is left alone. Not awaited by anyone: its end is logged.
+  let interval = client.pingIntervalMs
+  if interval <= 0 or client.keepAliveRunning:
+    return
+  client.keepAliveRunning = true
+  try:
+    while client.state != mlsShutdown and client.transport == transport:
+      let idle = int((getMonoTime() - client.lastActivity).inMilliseconds)
+      if idle < interval:
+        await sleepAsync(interval - idle)
+        continue
+      if client.state != mlsOperational:
+        # A new session is being started; try again after another interval.
+        client.lastActivity = getMonoTime()
+        continue
+      try:
+        discard await client.callMethod("ping", newJObject(),
+          McpRequestOptions(timeoutMs: some(client.pingTimeoutMs)))
+      except McpRequestError as e:
+        stderr.writeLine("[mcp-client] keepalive ping answered with an error: " &
+                         peerText(e.plainMessage))
+      except McpSessionExpiredError as e:
+        stderr.writeLine("[mcp-client] keepalive ping found the session ended: " &
+                         peerText(e.plainMessage))
+      except CatchableError as e:
+        if client.state == mlsShutdown:
+          return
+        let why = $e.name & ": " & e.plainMessage
+        stderr.writeLine("[mcp-client] keepalive ping failed with " & peerText(why) &
+                         "; closing the connection")
+        client.state = mlsShutdown
+        client.failPending("the connection was closed after a keepalive ping failed (" &
+                           why & ")")
+        try:
+          await transport.close()
+        except CatchableError as closing:
+          stderr.writeLine("[mcp-client] closing the connection failed: " &
+                           peerText(closing.plainMessage))
+        return
+  except CatchableError as e:
+    stderr.writeLine("[mcp-client] keepalive ended with " & $e.name & ": " &
+                     peerText(e.plainMessage))
+  finally:
+    client.keepAliveRunning = false
+
 type ModernServerRefusedInitialize = object of ValueError
   ## The server answered initialize with a 2026-07-28 error: it is a
   ## modern server, whatever the probe showed.
@@ -810,7 +914,12 @@ proc initialize*(client: McpClient): Future[McpServerCapabilities] {.async.} =
     client.legacyExtensions
   )
 
-  let response = await client.sendRequest("initialize", request.params)
+  client.awaitingInitialize = true
+  var response: JsonRpcResponse
+  try:
+    response = await client.sendRequest("initialize", request.params)
+  finally:
+    client.awaitingInitialize = false
 
   if response.error.isSome:
     let error = response.error.get
@@ -847,7 +956,33 @@ proc initialize*(client: McpClient): Future[McpServerCapabilities] {.async.} =
   # Change state
   client.state = mlsOperational
 
+  if serverVersion.get.has(ftPing):
+    asyncCheck client.keepAlive(client.transport)
+
   return capabilities
+
+proc renewSession(client: McpClient, expired: ref McpSessionExpiredError): Future[void] {.async.} =
+  ## The server ended the session the transport was using (and the transport
+  ## dropped it): start a new one with one initialize, which replaces the
+  ## negotiated version and the server's capabilities. When that fails, no
+  ## more is tried: the client is closed to further requests. An error about
+  ## an older session needs nothing.
+  if not expired.current or client.state == mlsShutdown:
+    return
+  stderr.writeLine("[mcp-client] the server ended the session; starting a new one")
+  client.state = mlsUninitialized
+  try:
+    discard await client.initialize()
+  except CatchableError as e:
+    client.state = mlsShutdown
+    stderr.writeLine("[mcp-client] a new session could not be started: " &
+                     $e.name & ": " & peerText(e.plainMessage))
+    var failed = newException(McpSessionExpiredError,
+      "the server ended the session and a new one could not be started: " & e.plainMessage, e)
+    failed.code = expired.code
+    failed.current = true
+    raise failed
+  expired.renewed = true
 
 proc capabilities*(client: McpClient): Option[McpServerCapabilities] =
   ## Server capabilities learned during `connect()`.
@@ -945,6 +1080,13 @@ proc connect*(client: McpClient, transport: McpTransport): Future[void] {.async.
   ## when this client speaks 2026-07-28 and the server does too, otherwise
   ## with the initialize handshake.
   client.transport = transport
+  transport.onRequestLost = proc(requestId: string, reason: string) =
+    let waiting = client.pendingRequests.getOrDefault(requestId)
+    if waiting.isNil or waiting.finished:
+      return
+    client.pendingRequests.del(requestId)
+    waiting.fail(newException(McpRequestLostError,
+      "request " & peerText(requestId) & " lost: " & reason))
 
   # Start message processing
   asyncCheck client.processMessages()

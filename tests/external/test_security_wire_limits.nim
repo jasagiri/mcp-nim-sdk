@@ -89,8 +89,12 @@ suite "a server that sends too much or too little":
     let server = startServer(streamBytes = 5000)
     let transport = newStreamableHttpTransport(server.url)
     transport.maxResponseSize = 1000
+    var lost: seq[string]
+    transport.onRequestLost = proc(requestId: string, reason: string) = lost.add requestId
     waitFor transport.sendRequest(newJsonRpcRequest("r1", "tools/call", newJObject()))
-    let next = transport.receiveMessage()
-    check next.outcome == "ok"
-    check next.read()["error"]["code"].getInt() == ErrStreamClosed
+    var waited = 0
+    while lost.len == 0 and waited < 3000:
+      waitFor sleepAsync(10)
+      waited += 10
+    check lost == @["r1"]
 

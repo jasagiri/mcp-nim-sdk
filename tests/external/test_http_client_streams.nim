@@ -73,16 +73,29 @@ proc notification(n: int): JsonNode =
   %*{"jsonrpc": "2.0", "method": "notifications/progress",
      "params": {"progressToken": "t", "progress": n}}
 
+var lostIds: seq[string]
+var lostSeen = 0
+
+proc lostRequest(transport: StreamableHttpTransport, timeoutMs = 3000): string =
+  ## The id of the next request the transport reported as lost; "" when none
+  ## was reported within `timeoutMs`.
+  var waited = 0
+  while lostIds.len <= lostSeen and waited < timeoutMs:
+    waitFor sleepAsync(10)
+    waited += 10
+  if lostIds.len > lostSeen:
+    result = lostIds[lostSeen]
+    inc lostSeen
+
 proc ask(transport: StreamableHttpTransport, id = "r1") =
+  ## The loss handler is set before the request goes out.
+  transport.onRequestLost = proc(requestId: string, reason: string) = lostIds.add requestId
   waitFor transport.sendRequest(newJsonRpcRequest(id, "tools/call", newJObject()))
 
 proc received(transport: StreamableHttpTransport, timeoutMs = 3000): JsonNode =
   let next = transport.receiveMessage()
   doAssert waitFor withTimeout(next, timeoutMs), "no message within " & $timeoutMs & " ms"
   next.read()
-
-proc isLocalStreamClosed(message: JsonNode): bool =
-  message{"error", "code"}.getInt() == ErrStreamClosed
 
 proc redirectTo(socket: AsyncSocket, code: int, location: string): Future[void] =
   socket.send("HTTP/1.1 " & $code & " Redirect\c\LLocation: " & location &
@@ -365,7 +378,7 @@ if speaks >= mpv20250326:
       let transport = resumingTransport(url)
       transport.ask()
       discard transport.received()
-      check transport.received().isLocalStreamClosed
+      check transport.lostRequest() == "r1"
       check gets == 0
       waitFor transport.close()
 
@@ -379,7 +392,7 @@ if speaks >= mpv20250326:
       let transport = resumingTransport(url)
       transport.maxReconnects = 2
       transport.ask()
-      check transport.received().isLocalStreamClosed
+      check transport.lostRequest() == "r1"
       check gets == 2
       waitFor transport.close()
 
@@ -395,7 +408,7 @@ if speaks >= mpv20250326:
       let transport = resumingTransport(url)
       transport.ask()
       discard transport.received()
-      check transport.received().isLocalStreamClosed
+      check transport.lostRequest() == "r1"
       check gets == 1
       waitFor transport.close()
 
@@ -433,7 +446,7 @@ if speaks >= mpv20250326:
       transport.protocolVersionNegotiated(mpv20241105)
       transport.ask()
       discard transport.received()
-      check transport.received().isLocalStreamClosed
+      check transport.lostRequest() == "r1"
       check gets == 0
       waitFor transport.close()
 
@@ -650,7 +663,7 @@ proc requestIsForgotten(transport: StreamableHttpTransport) =
   ## "r1" may keep it silent.
   transport.ask()
   check transport.received()["method"].getStr() == "notifications/progress"
-  check transport.received().isLocalStreamClosed
+  check transport.lostRequest() == "r1"
 
 suite "client: what an exchange leaves behind (mutation review, g2g-hc-b)":
 
@@ -848,7 +861,7 @@ suite "client: limits, errors and the end of a stream (mutation review, g2g-hc-a
     let transport = newStreamableHttpTransport(url)
     transport.ask()
     check transport.received()["id"].getStr() == "other"
-    check transport.received().isLocalStreamClosed
+    check transport.lostRequest() == "r1"
     waitFor transport.close()
 
   test "Given a stream with a request of the server that has the id of the posted request, when it ends without the response, then the stream-closed error is delivered":
@@ -858,7 +871,7 @@ suite "client: limits, errors and the end of a stream (mutation review, g2g-hc-a
     let transport = newStreamableHttpTransport(url)
     transport.ask()
     check transport.received()["method"].getStr() == "ping"
-    check transport.received().isLocalStreamClosed
+    check transport.lostRequest() == "r1"
     waitFor transport.close()
 
   test "Given a request whose event stream is open, when the client closes, then no stream-closed error is delivered":
@@ -905,7 +918,7 @@ suite "client: limits, errors and the end of a stream (mutation review, g2g-hc-a
     waitFor sleepAsync(100)
     transport.ask()
     check transport.received()["params"]["progress"].getInt() == 2
-    check transport.received().isLocalStreamClosed
+    check transport.lostRequest() == "r1"
     waitFor transport.close()
 
 if speaks >= mpv20250326:

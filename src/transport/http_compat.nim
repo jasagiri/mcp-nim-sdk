@@ -65,6 +65,8 @@ template sendFirst(t: AutoHttpTransport, viaStreamable, viaLegacy: untyped) =
       t.choose(hcStreamable)
 
 method sendRequest*(t: AutoHttpTransport, request: JsonRpcRequest): Future[void] {.async.} =
+  # The wrapped transport reports a lost request; this one has the handler.
+  t.streamable.onRequestLost = t.onRequestLost
   sendFirst(t, t.streamable.sendRequest(request), t.legacy.sendRequest(request))
 
 method sendNotification*(t: AutoHttpTransport, notification: JsonRpcNotification): Future[void] {.async.} =

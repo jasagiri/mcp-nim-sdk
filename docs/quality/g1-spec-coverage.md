@@ -21,6 +21,7 @@ Also from the `@spec:ID` tags of the Scenarios in
 `specs/pagination.feature`
 `specs/progress_cancellation.feature`
 `specs/prompts.feature`
+`specs/rate_limit.feature`
 `specs/request_hooks.feature`
 `specs/resources.feature`
 `specs/sampling_tools.feature`
@@ -96,7 +97,7 @@ joined to tests by the rows of
 | MCP-COMPLETION-5 | tests/external/test_client_operations.nim (3) |
 | MCP-COMPLETION-6 | tests/external/test_client_operations.nim (3) |
 | MCP-COMPLETION-7 | tests/external/test_server_completion_g0b.nim (2) |
-| MCP-COMPLETION-8 | tests/external/test_server_completion_g0b.nim (1) |
+| MCP-COMPLETION-8 | tests/external/test_request_rate_fix.nim (1), tests/external/test_server_completion_g0b.nim (1) |
 | MCP-COMPLETION-9 | tests/external/test_client_completion_g0b.nim (5) |
 | MCP-SCHEMA-1 | tests/external/test_json_schema.nim (5) |
 | MCP-SCHEMA-2 | tests/external/test_json_schema.nim (5) |
@@ -257,6 +258,9 @@ joined to tests by the rows of
 | MCP-HTTPSTREAM-25 | tests/external/test_http_server_g0a.nim (1) |
 | MCP-HTTPSTREAM-26 | tests/external/test_http_server_g0a.nim (1) |
 | MCP-HTTPSTREAM-27 | tests/external/test_http_client_fix.nim (5) |
+| MCP-HTTPSTREAM-28 | tests/external/test_session_expiry_fix.nim (7) |
+| MCP-HTTPSTREAM-29 | tests/external/test_sse_takeover_retry_fix.nim (5) |
+| MCP-HTTPSTREAM-30 | tests/external/test_sse_takeover_retry_fix.nim (1) |
 | MCP-LIFECYCLE-1 | tests/external/test_legacy_handshake.nim (4) |
 | MCP-LIFECYCLE-2 | tests/external/test_legacy_handshake.nim (5) |
 | MCP-LIFECYCLE-3 | tests/external/test_legacy_handshake.nim (4) |
@@ -283,6 +287,9 @@ joined to tests by the rows of
 | MCP-LIFECYCLE-22 | tests/external/test_ping_g0e.nim (1) |
 | MCP-LIFECYCLE-23 | tests/external/test_ttl_not_negative_fix.nim (6) |
 | MCP-LIFECYCLE-24 | tests/external/test_client_notices_fix.nim (2) |
+| MCP-LIFECYCLE-25 | tests/external/test_initialize_order_fix.nim (4) |
+| MCP-LIFECYCLE-26 | tests/external/test_client_keepalive_fix.nim (6) |
+| MCP-LIFECYCLE-27 | tests/external/test_client_keepalive_fix.nim (3) |
 | MCP-LOGGING-1 | tests/external/test_server_logging.nim (3) |
 | MCP-LOGGING-2 | tests/external/test_server_logging.nim (3) |
 | MCP-LOGGING-3 | tests/external/test_server_logging.nim (3) |
@@ -342,12 +349,17 @@ joined to tests by the rows of
 | MCP-PROGRESS-8 | tests/external/test_progress_g0e.nim (1) |
 | MCP-PROGRESS-9 | tests/external/test_progress_g0e.nim (2) |
 | MCP-CANCEL-11 | tests/external/test_client_notices_fix.nim (3) |
+| MCP-PROGRESS-10 | tests/external/test_progress_rate_fix.nim (5) |
 | MCP-PROMPTS-1 | tests/external/test_server_errors.nim (1), tests/external/test_server_resources_prompts.nim (1) |
 | MCP-PROMPTS-2 | tests/external/test_client_operations.nim (5) |
 | MCP-PROMPTS-3 | tests/external/test_server_resources_prompts.nim (2) |
 | MCP-PROMPTS-4 | tests/external/test_server_errors.nim (1), tests/external/test_server_resources_prompts.nim (1) |
 | MCP-PROMPTS-5 | tests/external/test_server_errors.nim (1) |
 | MCP-PROMPTS-6 | tests/external/test_handler_results_fix.nim (5) |
+| MCP-RATE-1 | tests/external/test_request_rate_fix.nim (6) |
+| MCP-RATE-2 | tests/external/test_request_rate_fix.nim (8) |
+| MCP-RATE-3 | tests/external/test_request_rate_fix.nim (1) |
+| MCP-RATE-4 | tests/external/test_request_rate_fix.nim (2) |
 | MCP-HOOKS-1 | tests/external/test_request_hooks.nim (4) |
 | MCP-HOOKS-2 | tests/external/test_request_hooks.nim (4) |
 | MCP-HOOKS-3 | tests/external/test_request_hooks.nim (1) |
@@ -526,7 +538,7 @@ joined to tests by the rows of
 | MCP-HTTP-46 | tests/external/test_http_client_g0a.nim (1), tests/external/test_http_server_g0a.nim (2) |
 | MCP-HTTP-47 | tests/external/test_http_server_g0a.nim (1) |
 | MCP-HTTP-48 | tests/external/test_http_server_g0a.nim (1) |
-| MCP-HTTP-49 | tests/external/test_http_client_fix.nim (1) |
+| MCP-HTTP-49 | tests/external/test_http_client_fix.nim (1), tests/external/test_request_lost_fix.nim (7) |
 | MCP-SUBSCRIBE-1 | tests/external/test_subscriptions.nim (5) |
 | MCP-SUBSCRIBE-2 | tests/external/test_subscriptions.nim (3) |
 | MCP-SUBSCRIBE-3 | tests/external/test_subscriptions.nim (5) |
@@ -618,7 +630,7 @@ joined to tests by the rows of
 | MCP-VERSION-9 | tests/external/test_version_floor.nim (2) |
 | MCP-VERSION-11 | tests/external/test_client_era_cache_g0c.nim (2) |
 
-Declared: 578  Covered: 578  Uncovered: 0
+Declared: 589  Covered: 589  Uncovered: 0
 
 ## Uncovered declared IDs
 

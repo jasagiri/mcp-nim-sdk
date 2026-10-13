@@ -1,6 +1,6 @@
 ## MCP server implementation
 
-import std/[asyncdispatch, json, options, sequtils, sets, strutils, tables]
+import std/[asyncdispatch, json, monotimes, options, sequtils, sets, strutils, tables, times]
 import ../protocol/types
 import ../protocol/diagnostic
 import ../protocol/lifecycle
@@ -19,6 +19,7 @@ import ../protocol/subscriptions
 import ./subscriptions
 import ../transport/transport
 import ./errors
+import ./rate_limit
 import ./pagination
 import ./completion
 import ../protocol/tasks
@@ -85,6 +86,11 @@ type
       ## carries it too.
     lastProgress: float
     progressSent: bool
+    progressSentAt: MonoTime
+    heldProgress: JsonNode
+      ## The newest progress notification that the rate limit kept back, sent
+      ## when the interval has passed or the request ends; nil when none.
+    progressFlushScheduled: bool
     cancellable: bool
     cancelled*: bool
     cancelReason*: string
@@ -181,6 +187,20 @@ type
     serverInfo*: McpServerInfo
     instructions*: string
       ## How to use this server; sent with server/discover when not empty.
+    rateLimiter: RateLimiter
+    maxRequestsPerSecond*: int
+      ## How many requests one sender may make per second (and in one burst):
+      ## a sender is the principal the transport's authorization names, else
+      ## the session, else the whole connection. A request beyond it is
+      ## answered with `ErrRateLimited` and no handler runs. 0: no limit.
+    maxProgressPerSecond*: int
+      ## How many progress notifications `reportProgress` sends per second for
+      ## one request; the ones in between are dropped and the last one is
+      ## always sent. 0: all are sent.
+    maxRateLimitedSenders*: int
+      ## How many senders the rate limit tells apart at once; beyond it the
+      ## senders that have been quiet longest are forgotten, which gives them
+      ## a full allowance again.
     cachePolicy*: CachePolicy
       ## What 2026-07-28 clients are told about reusing list and read
       ## results. The default tells them not to.
@@ -246,6 +266,15 @@ type
     listHandler*: Option[proc(): Future[seq[JsonNode]] {.async.}]
     getHandler*: Option[proc(name: string, arguments: JsonNode): Future[JsonNode] {.async.}]
 
+const
+  DefaultMaxRequestsPerSecond* = 100
+    ## Far above what a person or an agent loop sends, and it admits a burst
+    ## of 100: a completion request per keystroke stays well under it.
+  DefaultMaxProgressPerSecond* = 20
+    ## A client draws at most a few frames a second from progress.
+  DefaultMaxRateLimitedSenders* = 4096
+    ## About four times the default session count.
+
 # Forward declarations
 proc registerRequestHandler*(server: McpServer, methodName: string,
     handler: proc(request: JsonRpcRequest): Future[JsonRpcResponse] {.async.})
@@ -266,6 +295,10 @@ proc newMcpServer*(
     sessions: initTable[string, McpSession](),
     protocolVersion: protocolVersion,
     serverInfo: serverInfo,
+    rateLimiter: newRateLimiter(),
+    maxRequestsPerSecond: DefaultMaxRequestsPerSecond,
+    maxProgressPerSecond: DefaultMaxProgressPerSecond,
+    maxRateLimitedSenders: DefaultMaxRateLimitedSenders,
     cachePolicy: UncachedPolicy,
     capabilities: capabilities,
     extensionMethods: initTable[string, ExtensionMethod](),
@@ -692,6 +725,46 @@ proc relatedNotification(ctx: McpRequestContext, methodName: string, params: Jso
     result.params = withRelatedTask(result.params, scope.taskId)
     result.relatedRequestId = scope.resultStream()
 
+func progressIntervalMs(ctx: McpRequestContext): int =
+  ## The least time between two progress notifications of the request.
+  let perSecond = ctx.server.maxProgressPerSecond
+  if perSecond > 0: 1000 div perSecond else: 0
+
+proc progressWanted(ctx: McpRequestContext, now: MonoTime): bool =
+  ## Whether the interval since the last notification has passed.
+  ctx.progressSentAt == default(MonoTime) or
+    (now - ctx.progressSentAt).inMilliseconds >= ctx.progressIntervalMs
+
+proc flushProgress(ctx: McpRequestContext): Future[void] {.async.} =
+  ## Send the progress notification the rate limit held back, if one is held
+  ## and the request still takes notifications. What is held is cleared before
+  ## the send, so a flush that races another sends it once.
+  let held = ctx.heldProgress
+  ctx.heldProgress = nil
+  if held.isNil or ctx.finished or ctx.cancelled:
+    return
+  ctx.progressSentAt = getMonoTime()
+  await ctx.server.transport.sendNotification(ctx.relatedNotification("notifications/progress", held))
+
+proc flushProgressLater(ctx: McpRequestContext, waitMs: int) {.async.} =
+  ## Send what the rate limit held back once the interval has passed. A
+  ## failure has no caller to go to: it is logged, as a failed notification
+  ## of a handler would be.
+  await sleepAsync(waitMs)
+  ctx.progressFlushScheduled = false
+  try:
+    await ctx.flushProgress()
+  except CatchableError as e:
+    stderr.writeLine("[mcp-server] could not send held progress: " &
+                     $e.name & ": " & peerText(e.msg))
+
+proc scheduleProgressFlush(ctx: McpRequestContext) =
+  if ctx.progressFlushScheduled:
+    return
+  ctx.progressFlushScheduled = true
+  let sinceMs = (getMonoTime() - ctx.progressSentAt).inMilliseconds.int
+  asyncCheck ctx.flushProgressLater(max(1, ctx.progressIntervalMs - sinceMs))
+
 proc reportProgress*(ctx: McpRequestContext, progress: float,
                      total: Option[float] = none(float),
                      message = ""): Future[void] {.async.} =
@@ -710,6 +783,16 @@ proc reportProgress*(ctx: McpRequestContext, progress: float,
     params["total"] = %total.get
   if message.len > 0 and ctx.version.has(ftProgressMessage):
     params["message"] = %message
+  let perSecond = ctx.server.maxProgressPerSecond
+  if perSecond > 0 and not ctx.progressWanted(getMonoTime()):
+    # Too soon after the last one: this replaces what was held, so the newest
+    # value is the one that goes out, as soon as the interval has passed or at
+    # the latest when the request ends (`flushProgress`).
+    ctx.heldProgress = params
+    ctx.scheduleProgressFlush()
+    return
+  ctx.heldProgress = nil
+  ctx.progressSentAt = getMonoTime()
   await ctx.server.transport.sendNotification(ctx.relatedNotification("notifications/progress", params))
 
 func logParams(level: McpLogLevel, data: JsonNode, logger: string): JsonNode =
@@ -1484,9 +1567,41 @@ proc handleModernRequest(server: McpServer, request: JsonRpcRequest,
       request.`method`, payload, server.serverInfo, server.cachePolicy))
   return response
 
+proc rateLimited(server: McpServer, request: JsonRpcRequest): Option[JsonRpcResponse] =
+  ## The answer to a request whose sender is over its allowance
+  ## (`maxRequestsPerSecond`), or none. The sender is the principal the
+  ## transport's authorization names, else the session, else the network
+  ## address the request came from (the 2026-07-28 Streamable HTTP has no
+  ## sessions; the address is the TCP peer, as for the limit on sessions per
+  ## address, so behind a reverse proxy every client has the proxy's address),
+  ## else the whole connection (stdio, which has one peer). A ping counts like any request: left out, a flood of pings
+  ## would pass; the allowance is far above a health check's rate.
+  let perSecond = server.maxRequestsPerSecond
+  if perSecond <= 0:
+    return none(JsonRpcResponse)
+  let (kind, sender) =
+    if request.principal.isSome: ("principal", "p:" & request.principal.get)
+    elif request.session.len > 0: ("session", "s:" & request.session)
+    elif request.peer.len > 0: ("address", "a:" & request.peer)
+    else: ("connection", "c:")
+  let verdict = server.rateLimiter.take(sender, perSecond,
+                                        max(1, server.maxRateLimitedSenders))
+  if verdict.allowed:
+    return none(JsonRpcResponse)
+  if verdict.firstRefusal:
+    stderr.writeLine("[mcp-server] a " & kind & " is over " & $perSecond &
+                     " requests per second; its requests are refused until it slows down")
+  some(newJsonRpcErrorResponse(request.id, ErrRateLimited, "Too many requests",
+                               %*{"retryAfterMs": verdict.retryAfterMs}))
+
 proc serve(server: McpServer, request: JsonRpcRequest,
            ctx: McpRequestContext): Future[JsonRpcResponse] {.async.} =
   var response: JsonRpcResponse
+  let limited = server.rateLimited(request)
+  if limited.isSome:
+    response = limited.get
+    response.idNode = request.idNode
+    return response
   if server.isModernPath(request):
     response = await server.handleModernRequest(request, ctx)
   else:
@@ -1495,6 +1610,8 @@ proc serve(server: McpServer, request: JsonRpcRequest,
       response = newJsonRpcErrorResponse(request.id, metaError.get.code, metaError.get.message)
     else:
       response = await server.handleStandardRequest(request, ctx)
+  # The last progress the rate limit held back goes out before the answer.
+  await ctx.flushProgress()
   response.idNode = request.idNode
   return response
 
@@ -1581,6 +1698,7 @@ proc processMessages*(server: McpServer): Future[void] {.async.} =
         request.session = incoming.session
         request.paramHeaders = incoming.paramHeaders
         request.principal = incoming.principal
+        request.peer = incoming.peer
         asyncCheck server.processRequest(request)
       elif isNotification(json):
         var notification = decodeNotification(json)

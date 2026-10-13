@@ -465,11 +465,15 @@ suite "HTTP client transport with hand-written servers":
                             "params": {"progressToken": "p", "progress": 1}})),
         newHttpHeaders({"Content-Type": "text/event-stream"})))
     let transport = newStreamableHttpTransport(url)
+    var lost: seq[string]
+    transport.onRequestLost = proc(requestId: string, reason: string) = lost.add requestId
     waitFor transport.sendRequest(newJsonRpcRequest("r1", "tools/call", newJObject()))
     discard waitFor transport.receiveMessage()
-    let standIn = waitFor transport.receiveMessage()
-    check standIn["id"].getStr() == "r1"
-    check standIn["error"]["code"].getInt() == ErrStreamClosed
+    var waited = 0
+    while lost.len == 0 and waited < 3000:
+      waitFor sleepAsync(10)
+      waited += 10
+    check lost == @["r1"]
     waitFor transport.close()
 
   test "Given an HTTP error with a JSON-RPC error body, when a request is sent, then the error arrives as the response":

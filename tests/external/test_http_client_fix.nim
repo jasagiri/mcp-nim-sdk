@@ -159,15 +159,17 @@ suite "a batch in an event of a stream (2025-03-26)":
 
 suite "a request whose event stream ended before its response":
 
-  test "Given an event stream that ends before the response, when the transport stands in for it, then the code is in no range that JSON-RPC or MCP reserves":
+  test "Given an event stream that ends before the response, when the transport reports it, then no message stands in for the response":
     let url = streamAnswering(proc(id: JsonNode): seq[JsonNode] = @[])
     let transport = newStreamableHttpTransport(url)
     transport.sessionId = some("s-1")
     transport.protocolVersionNegotiated(DefaultProtocolVersion)
+    var lost: seq[string]
+    transport.onRequestLost = proc(requestId: string, reason: string) = lost.add requestId
     waitFor transport.sendRequest(newJsonRpcRequest("r1", "tools/call", newJObject()))
-    let standIn = transport.received()
-    check standIn{"id"}.getStr() == "r1"
-    let code = standIn{"error", "code"}.getInt()
-    check code == ErrStreamClosed
-    check not (code <= -32000 and code >= -32768)
+    let next = transport.receiveMessage()
+    check not waitFor withTimeout(next, 300)
+    check lost == @["r1"]
     waitFor transport.close()
+    if next.failed:
+      discard next.readError()

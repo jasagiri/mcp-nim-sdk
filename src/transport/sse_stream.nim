@@ -51,6 +51,11 @@ proc newSseStream*(id: string, maxEvents = DefaultMaxStreamEvents,
 
 func isFinished*(s: SseStream): bool = s.finished
 func lastSeq*(s: SseStream): int = s.nextSeq - 1
+func attachments*(s: SseStream): int =
+  ## How many connections have served this stream so far; the newest is this
+  ## number-th.
+  s.attachment
+
 func writtenUpTo*(s: SseStream): int =
   ## The newest event any connection has written; a connection that opens
   ## without `Last-Event-ID` continues after it.
@@ -127,7 +132,8 @@ proc writeHead*(req: Request, code: HttpCode, headers: HttpHeaders): Future[void
 
 proc serveStream*(req: Request, stream: SseStream, afterSeq: int,
                   headers: HttpHeaders, gone: Future[void],
-                  keepAliveMs = DefaultKeepAliveMs): Future[SseEnd] {.async.} =
+                  keepAliveMs = DefaultKeepAliveMs,
+                  retryMs = 0): Future[SseEnd] {.async.} =
   ## Answer `req` with `stream`: the events after `afterSeq`, then each new
   ## one, until the stream is finished, the peer leaves, or another
   ## connection attaches to the stream. Closes the connection.
@@ -136,6 +142,12 @@ proc serveStream*(req: Request, stream: SseStream, afterSeq: int,
   ## cache control of an event stream are added here. `gone` is the
   ## `watchDisconnect` of this connection: a connection must be watched once
   ## only, as each watcher consumes what the peer sends.
+  ##
+  ## When another connection takes the stream over, this one is closed
+  ## without the stream being finished: with a positive `retryMs` it first
+  ## tells the client how long to wait before it reconnects (the `retry`
+  ## field), as the specification asks of a server that closes a connection
+  ## of a stream it keeps.
   inc stream.attachment
   let mine = stream.attachment
   stream.wake()  # a connection already serving the stream notices and leaves
@@ -172,6 +184,8 @@ proc serveStream*(req: Request, stream: SseStream, afterSeq: int,
         stream.written = max(stream.written, last)
       if stream.attachment != mine:
         result = seReplaced
+        if retryMs > 0:
+          await req.client.send("retry: " & $retryMs & "\n\n")
         break
       if stream.finished and cursor >= stream.lastSeq:
         break

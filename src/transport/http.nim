@@ -45,12 +45,6 @@ const
     ## 30 s allows for a slow link and a busy server, not for a silent one.
   DefaultReconnectDelayMs* = 500
   DefaultMaxReconnects* = 5
-  ErrStreamClosed* = -1000
-    ## Local error: the event stream of a request ended before its response
-    ## arrived. The request is lost; the caller may send it again. The code
-    ## is outside -32768 to -32000, which JSON-RPC and MCP reserve, so no
-    ## code MCP allocates (the legacy -32000 to -32019 included) stands in
-    ## for it; 2026-07-28 allocates no code to local errors.
   SessionHeader = "Mcp-Session-Id"
   ErrorBodyPreview = 512
   DeleteTimeoutMs = 5000
@@ -189,10 +183,17 @@ func jsonRpcErrorIn(body: JsonNode): bool =
   body.kind == JObject and body{"jsonrpc"}.getStr() == "2.0" and
     body{"error"}.kind == JObject and body{"error", "code"}.kind == JInt
 
-proc streamClosed(requestId: JsonNode): JsonNode =
-  %*{"jsonrpc": "2.0", "id": requestId, "error": {
-    "code": ErrStreamClosed,
-    "message": "The event stream ended before the response arrived"}}
+proc reportLost(t: StreamableHttpTransport, requestId: JsonNode) =
+  ## The request will get no response. It is not made into a message: a
+  ## message with an error in it is what the peer sends, and the receiver
+  ## could not tell the two apart.
+  let id = if requestId.kind == JString: requestId.getStr() else: $requestId
+  const reason = "the event stream ended before the response arrived"
+  if t.onRequestLost.isNil:
+    stderr.writeLine("[mcp-http] request " & peerText(id) & " lost: " & reason &
+                     "; nobody is told")
+  else:
+    t.onRequestLost(id, reason)
 
 proc httpError(response: WireResponse, url, text: string): ref McpTransportError =
   result = newException(McpTransportError,
@@ -343,7 +344,7 @@ proc pump(t: StreamableHttpTransport, response: WireResponse,
   if not answered and t.canResume and key notin t.abandoned:
     answered = await t.resume(outcome, requestId)
   if not answered and not t.closed and key notin t.abandoned:
-    t.deliver(streamClosed(requestId))
+    t.reportLost(requestId)
   t.abandoned.excl key
 
 proc listen(t: StreamableHttpTransport) {.async.} =
@@ -453,6 +454,24 @@ proc postOnce(t: StreamableHttpTransport, body: string,
     for value in seq[string](response.headers.getOrDefault("WWW-Authenticate")):
       challenged.wwwAuthenticate.add value
     raise challenged
+
+  # 404 for a request that carried the session id: the server ended the
+  # session (before 2026-07-28). The id is dropped, so the next initialize has
+  # none; whoever sent the request decides what to do about it.
+  if response.code == Http404 and t.negotiated.isSome and
+     t.negotiated.get.has(ftHttpSessions):
+    var sent = none(string)
+    for (name, value) in extraHeaders:
+      if name == SessionHeader:
+        sent = some(value)
+    if sent.isSome:
+      var expired = newException(McpSessionExpiredError,
+        "HTTP 404 from " & t.baseUrl & ": the server ended the session")
+      expired.code = 404
+      expired.current = t.sessionId == sent
+      if expired.current:
+        t.sessionId = none(string)
+      raise expired
 
   # 2026-07-28 servers report protocol errors with an HTTP error status and
   # a JSON-RPC error body; that is an answer, not a transport failure.

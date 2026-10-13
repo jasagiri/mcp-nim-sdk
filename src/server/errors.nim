@@ -11,6 +11,14 @@ export diagnostic.plainMessage
 const
   ErrInvalidRequest* = -32600
   ErrResourceNotFoundLegacy* = -32002
+  ErrRateLimited* = 429
+    ## The specification names no code for a request refused because its
+    ## sender is too fast. Of the JSON-RPC range (-32768 to -32000), 2026-07-28
+    ## basic/index reserves -32020 and below to MCP ("Implementations MUST NOT
+    ## emit any code from this sub-range that is not defined by this
+    ## specification") and asks that "New error codes for purposes not defined
+    ## by this specification SHOULD be allocated outside the JSON-RPC reserved
+    ## range". 429 is outside it, and is the HTTP status that says the same.
     ## The code for an unknown resource before 2026-07-28.
 
 type

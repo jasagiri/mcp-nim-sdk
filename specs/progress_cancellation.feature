@@ -136,3 +136,10 @@ Feature: Progress and cancellation
     Given a request the caller cancels with a reason
     When the client abandons it
     Then the client writes the reason to stderr as well as sending it
+
+  @spec:MCP-PROGRESS-10 @feature:ftProgress
+  Scenario: Progress notifications of one request are limited, and the last one always arrives
+    Given a server that allows two progress notifications per second and a handler that reports ten steps at once
+    When the client calls it with a progress token
+    Then fewer than ten notifications arrive, in growing order, the last of them for step ten, and before the response
+    And with maxProgressPerSecond 0 all ten arrive, and by default (20 per second) the first and the last of five arrive

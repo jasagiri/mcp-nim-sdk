@@ -246,6 +246,7 @@ MCP-COMPLETION-6 | tests/external/test_client_operations.nim | Given 2024-11-05,
 MCP-COMPLETION-7 | tests/external/test_server_completion_g0b.nim | Given a completion handler that breaks, when a client completes, then the answer is an internal error without the cause
 MCP-COMPLETION-7 | tests/external/test_server_completion_g0b.nim | Given a completion handler that broke, when the client completes again, then the server still answers
 MCP-COMPLETION-8 | tests/external/test_server_completion_g0b.nim | Given an interceptor that refuses the third completion request, when a client completes three times, then the third is refused and the handler is not run for it
+MCP-COMPLETION-8 | tests/external/test_request_rate_fix.nim | Given a limit of 2 per second, when a client sends three completion requests, then the third is refused and the handler is not run for it
 MCP-COMPLETION-9 | tests/external/test_client_completion_g0b.nim | Given an answer with values only, when a client completes, then the values are read and total and hasMore are absent
 MCP-COMPLETION-9 | tests/external/test_client_completion_g0b.nim | Given an answer with no values, when a client completes, then there are no suggestions and no error
 MCP-COMPLETION-9 | tests/external/test_client_completion_g0b.nim | Given an answer with a total and no hasMore, when a client completes, then the total is read and hasMore is absent
@@ -291,6 +292,11 @@ MCP-PROGRESS-8 | tests/external/test_progress_g0e.nim | Given many requests acti
 MCP-PROGRESS-9 | tests/external/test_progress_g0e.nim | Given a server that sends fractional progress and total, when the client has a callback, then the callback sees the exact values
 MCP-PROGRESS-9 | tests/external/test_progress_g0e.nim | Given a handler that reports fractional progress and total, when the client has a token, then they are sent as given
 MCP-PROGRESS-7 | tests/external/test_progress_g0e.nim | Given a server that keeps sending progress, when the request's timeout passes, then the request times out and the server is told
+MCP-PROGRESS-10 | tests/external/test_progress_rate_fix.nim | Given a limit of 2 per second, when a handler reports ten steps at once, then fewer arrive, the last one among them, in growing order
+MCP-PROGRESS-10 | tests/external/test_progress_rate_fix.nim | Given a limit of 0, when a handler reports ten steps at once, then all ten arrive
+MCP-PROGRESS-10 | tests/external/test_progress_rate_fix.nim | Given the default limit, when a handler reports five steps at once, then the first and the last arrive
+MCP-PROGRESS-10 | tests/external/test_progress_rate_fix.nim | Given a limit of 2 per second, when the handler stops reporting after the last step, then the last value arrives before the request ends
+MCP-PROGRESS-10 | tests/external/test_progress_rate_fix.nim | Given a limit of 4 per second, when a handler reports steadily over a second, then about four arrive
 MCP-CANCEL-1 | tests/external/test_server_progress_cancel.nim | Given a request in flight, when the client cancels it, then no response is sent and the handler sees the cancellation
 MCP-CANCEL-1 | tests/external/test_server_progress_cancel.nim | Given a numeric request id, when the client cancels it, then the request is cancelled
 MCP-CANCEL-1 | tests/external/test_server_progress_cancel.nim | Given a handler waiting on whenCancelled, when the client cancels, then the wait ends
@@ -455,6 +461,19 @@ MCP-HTTPSTREAM-27 | tests/external/test_http_client_fix.nim | Given a batch whos
 MCP-HTTPSTREAM-27 | tests/external/test_http_client_fix.nim | Given a POST answered by a JSON body that is a batch, when the client reads it, then the messages are delivered one by one
 MCP-HTTPSTREAM-27 | tests/external/test_http_client_fix.nim | Given a GET stream whose one event holds a batch of two notifications, when the client reads it, then the two notifications are delivered one by one
 MCP-HTTPSTREAM-27 | tests/external/test_http_client_fix.nim | Given a version without batches and an event that holds an array, when the client reads it, then the array is one value, as sent
+MCP-HTTPSTREAM-28 | tests/external/test_session_expiry_fix.nim | Given a session that got 404, when the client sends a request, then it raises McpSessionExpiredError after starting a new session with one initialize and does not send the request again
+MCP-HTTPSTREAM-28 | tests/external/test_session_expiry_fix.nim | Given a client that started a new session, when the caller sends the request anew, then it is answered in the new session
+MCP-HTTPSTREAM-28 | tests/external/test_session_expiry_fix.nim | Given a session that got 404 and a server that refuses the new initialize, when the client tries, then it raises, tries no more and the client is closed
+MCP-HTTPSTREAM-28 | tests/external/test_session_expiry_fix.nim | Given two requests in flight in the ended session, when both get 404, then one new session is started
+MCP-HTTPSTREAM-28 | tests/external/test_session_expiry_fix.nim | Given a 404 for a request without a session id, when the client sends it, then it is an ordinary HTTP error and no initialize follows
+MCP-HTTPSTREAM-28 | tests/external/test_session_expiry_fix.nim | Given a notification that gets 404 in an ended session, when the client sends it, then it raises McpSessionExpiredError and starts a new session
+MCP-HTTPSTREAM-28 | tests/external/test_session_expiry_fix.nim | Given a session the server ended, when the client sends a request and gets 404, then it holds a new session and the next request is answered
+MCP-HTTPSTREAM-29 | tests/external/test_sse_takeover_retry_fix.nim | Given a GET stream taken over by a second connection, when the server closes the first, then it sent a retry field before closing
+MCP-HTTPSTREAM-29 | tests/external/test_sse_takeover_retry_fix.nim | Given a stream of a request taken over by a GET with Last-Event-ID, when the server closes the first connection, then it sent a retry field before closing
+MCP-HTTPSTREAM-29 | tests/external/test_sse_takeover_retry_fix.nim | Given sseRetryMs set to 250, when a stream is taken over, then the first connection is told 250
+MCP-HTTPSTREAM-29 | tests/external/test_sse_takeover_retry_fix.nim | Given sseRetryMs set to 0, when a stream is taken over, then no retry field is sent
+MCP-HTTPSTREAM-29 | tests/external/test_sse_takeover_retry_fix.nim | Given a session of 2025-03-26 or 2025-06-18, when a stream is taken over, then no retry field is sent because those versions do not define the polling
+MCP-HTTPSTREAM-30 | tests/external/test_sse_takeover_retry_fix.nim | Given a stream taken over, when the server closes the first connection, then it records the takeover on stderr without the session id
 MCP-HTTPGET-1 | tests/external/test_http_streams.nim | Given a session, when the client opens GET, then the server's own notifications arrive on it
 MCP-HTTPGET-1 | tests/external/test_http_streams.nim | Given a notification sent to every client, when two sessions listen, then each hears it once
 MCP-HTTPGET-1 | tests/external/test_http_streams.nim | Given a notification sent before the client opened GET, when it opens, then the notification is waiting
@@ -926,6 +945,19 @@ MCP-LIFECYCLE-23 | tests/external/test_ttl_not_negative_fix.nim | Given a handle
 MCP-LIFECYCLE-23 | tests/external/test_ttl_not_negative_fix.nim | Given a handler whose tools/list result says a ttlMs that is a fraction or a boolean, when a 2026-07-28 client lists tools, then the answer is an internal error
 MCP-LIFECYCLE-23 | tests/external/test_ttl_not_negative_fix.nim | Given a handler whose tools/list result says a cacheScope that is neither public nor private, when a 2026-07-28 client lists tools, then the answer is an internal error
 MCP-LIFECYCLE-23 | tests/external/test_ttl_not_negative_fix.nim | Given a handler whose tools/list result says ttlMs 5 and cacheScope public, when a 2026-07-28 client lists tools, then both are sent as set
+MCP-LIFECYCLE-25 | tests/external/test_initialize_order_fix.nim | Given a client that has sent initialize, when the caller sends tools/list before the answer, then it is refused and not on the wire
+MCP-LIFECYCLE-25 | tests/external/test_initialize_order_fix.nim | Given a client that has sent initialize, when the caller pings before the answer, then the ping is sent
+MCP-LIFECYCLE-25 | tests/external/test_initialize_order_fix.nim | Given a client whose initialize was answered, when the caller sends tools/list, then it is sent
+MCP-LIFECYCLE-25 | tests/external/test_initialize_order_fix.nim | Given a client whose initialize failed, when the caller sends tools/list, then it is not refused for waiting on initialize
+MCP-LIFECYCLE-27 | tests/external/test_client_keepalive_fix.nim | Given a new client, when its settings are read, then it pings every 30000 ms and waits as long as for any request
+MCP-LIFECYCLE-27 | tests/external/test_client_keepalive_fix.nim | Given an interval of 0, when time passes, then no ping is sent
+MCP-LIFECYCLE-27 | tests/external/test_client_keepalive_fix.nim | Given the default interval, when the connection is new, then no ping is sent yet
+MCP-LIFECYCLE-26 | tests/external/test_client_keepalive_fix.nim | Given an idle connection and an interval, when time passes, then the client pings again and again
+MCP-LIFECYCLE-26 | tests/external/test_client_keepalive_fix.nim | Given traffic more often than the interval, when time passes, then no ping is sent
+MCP-LIFECYCLE-26 | tests/external/test_client_keepalive_fix.nim | Given a client that is closed, when time passes, then no more pings are sent
+MCP-LIFECYCLE-26 | tests/external/test_client_keepalive_fix.nim | Given a 2026-07-28 connection, when time passes, then no ping is sent
+MCP-LIFECYCLE-26 | tests/external/test_client_keepalive_fix.nim | Given a peer that never answers pings, when one times out, then the client closes, waiting requests end with McpConnectionClosedError and stderr says why
+MCP-LIFECYCLE-26 | tests/external/test_client_keepalive_fix.nim | Given a peer that answers a ping with an error, when it does, then the connection stays open
 MCP-SCHEMA-1 | tests/external/test_json_schema.nim | Given a schema without $schema, when its dialect is asked, then it is 2020-12
 MCP-SCHEMA-1 | tests/external/test_json_schema.nim | Given $schema naming 2020-12, when its dialect is asked, then it is 2020-12
 MCP-SCHEMA-1 | tests/external/test_json_schema.nim | Given $schema naming draft-07 with or without the empty fragment, when its dialect is asked, then it is draft-07
@@ -1801,7 +1833,14 @@ MCP-HTTP-46 | tests/external/test_http_server_g0a.nim | Given a session, when a 
 MCP-HTTP-47 | tests/external/test_http_server_g0a.nim | Given a transport made with the defaults, when it is started, then its socket is bound to 127.0.0.1 and not to every interface
 MCP-HTTP-48 | tests/external/test_http_server_g0a.nim | Given many clients that initialize, when the server issues their sessions, then every id is made of visible ASCII characters only
 MCP-HTTP-45 | tests/external/test_http_server_g0a.nim | Given an Mcp-Name that decodes to the tool's name, when its markers are lowercase, then the request is served, and when they are in capitals, then it is not decoded and the answer is a header mismatch
-MCP-HTTP-49 | tests/external/test_http_client_fix.nim | Given an event stream that ends before the response, when the transport stands in for it, then the code is in no range that JSON-RPC or MCP reserves
+MCP-HTTP-49 | tests/external/test_request_lost_fix.nim | Given a stream that ends before the response, when the client sent the request, then it raises McpRequestLostError and not McpRequestError
+MCP-HTTP-49 | tests/external/test_request_lost_fix.nim | Given a stream that ends before the response, when a loss is raised, then it is a McpTransportError
+MCP-HTTP-49 | tests/external/test_request_lost_fix.nim | Given a peer that answers with an error of code -1000, when the client sent the request, then it raises McpRequestError with that code
+MCP-HTTP-49 | tests/external/test_request_lost_fix.nim | Given a client that lost a request, when it sends the next, then the connection still works
+MCP-HTTP-49 | tests/external/test_request_lost_fix.nim | Given a transport whose stream ends before the response, when it has a loss handler, then the handler gets the id and receiveMessage gets nothing
+MCP-HTTP-49 | tests/external/test_request_lost_fix.nim | Given a transport with no loss handler, when a stream ends before the response, then stderr says the request was lost
+MCP-HTTP-49 | tests/external/test_request_lost_fix.nim | Given a peer's error response with code -1000, when a transport reads it, then it is delivered as a message
+MCP-HTTP-49 | tests/external/test_http_client_fix.nim | Given an event stream that ends before the response, when the transport reports it, then no message stands in for the response
 MCP-SEC-SCHEMA-1 | tests/external/test_security_schema.nim | Given a plain pattern, when 4 MiB of text is matched, then the process survives and answers
 MCP-SEC-SCHEMA-1 | tests/external/test_security_schema.nim | Given a lookahead, when long text is matched, then it is answered
 MCP-SEC-SCHEMA-2 | tests/external/test_security_schema.nim | Given patterns that backtrack exponentially, when matched, then each answers at once
@@ -2121,3 +2160,20 @@ MCP-META-1 | tests/external/test_meta_keys_g0f.nim | Given a server that answers
 MCP-META-2 | tests/external/test_meta_keys_g0f.nim | Given requests whose _meta holds unknown reserved keys with any value, when the server answers, then it answers as it would without them
 MCP-META-2 | tests/external/test_meta_keys_g0f.nim | Given a reserved key the server reads and a value of the wrong type, when a request carries it, then the answer is invalid params and never an internal error
 MCP-META-2 | tests/external/test_meta_values_client_g0f.nim | Given results whose _meta holds reserved keys of any value, when the client reads them, then the content comes through
+MCP-RATE-4 | tests/external/test_request_rate_fix.nim | Given a server with the default settings, then it allows 100 requests per second and 20 progress notifications per second
+MCP-RATE-4 | tests/external/test_request_rate_fix.nim | Given a limit of 0, when a client sends many requests, then none is refused
+MCP-RATE-1 | tests/external/test_request_rate_fix.nim | Given a limit of 2 per second, when a client sends three completion requests, then the third is refused and the handler is not run for it
+MCP-RATE-1 | tests/external/test_request_rate_fix.nim | Given a refused request, then the error says how long to wait
+MCP-RATE-1 | tests/external/test_request_rate_fix.nim | Given a limit of 2 per second, when a client of a version with ping sends pings, then the third is refused too
+MCP-RATE-1 | tests/external/test_request_rate_fix.nim | Given the error of a refused request, then its code is outside the range JSON-RPC and MCP reserve
+MCP-RATE-1 | tests/external/test_request_rate_fix.nim | Given a sender that keeps sending over its allowance, when requests pass now and then, then stderr says it once
+MCP-RATE-1 | tests/external/test_request_rate_fix.nim | Given a sender that was over its allowance, when it has been quiet until the allowance is full and goes over again, then stderr says it again
+MCP-RATE-2 | tests/external/test_request_rate_fix.nim | Given a limit of 2 per second and a client that has used it up, when it waits, then it is answered again
+MCP-RATE-2 | tests/external/test_request_rate_fix.nim | Given two sessions, when one has used its allowance, then the other is still answered
+MCP-RATE-2 | tests/external/test_request_rate_fix.nim | Given a limit of 2 per second, when one principal uses two sessions, then they share one allowance and another principal has its own
+MCP-RATE-2 | tests/external/test_request_rate_fix.nim | Given requests without a principal and without a session, when they come from different addresses, then each address has its own allowance
+MCP-RATE-2 | tests/external/test_request_rate_fix.nim | Given requests without a principal and without a session, when they come from one address, then they share one allowance
+MCP-RATE-2 | tests/external/test_request_rate_fix.nim | Given a request with a session, when its address is another one, then the session still decides
+MCP-RATE-2 | tests/external/test_request_rate_fix.nim | Given requests without an address, a principal or a session, as on stdio, then the connection is the one sender
+MCP-RATE-2 | tests/external/test_request_rate_fix.nim | Given a Streamable HTTP server of 2026-07-28 without authorization, when two connections from one address make three requests, then the third is refused
+MCP-RATE-3 | tests/external/test_request_rate_fix.nim | Given a limit of 2 senders, when a third sender speaks, then the sender quiet longest is forgotten and has its full allowance again

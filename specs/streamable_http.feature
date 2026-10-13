@@ -333,7 +333,9 @@ Feature: Streamable HTTP transport
     Then every session id is non-empty and made only of the characters 0x21 to 0x7E
 
   @spec:MCP-HTTP-49 @feature:ftPerRequestMetadata
-  Scenario: A request lost with its event stream is not reported as a code that JSON-RPC or MCP reserves
+  Scenario: A request lost with its event stream is told on a path of its own, not as a message of the peer
     Given a request answered on an event stream
-    When the stream ends before the response and the transport stands in for it
-    Then the code it reports (ErrStreamClosed) is outside -32768 to -32000, so it is neither a code of the legacy range nor one that MCP allocates
+    When the stream ends before the response and cannot be resumed
+    Then the transport delivers no message for it and calls its onRequestLost handler with the request id
+    And the client ends the request with McpRequestLostError, a McpTransportError, which no JSON-RPC error of the peer becomes
+    And an error response of the peer, whatever its code (-1000 included), is a McpRequestError

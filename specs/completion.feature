@@ -54,10 +54,11 @@ Feature: Argument completion
     And the next completion/complete on the same session is answered
 
   @spec:MCP-COMPLETION-8 @feature:ftCompletion
-  Scenario: An application can limit the completion requests a server serves
-    Given a server with a completion handler and a request interceptor that refuses completion/complete after the second
-    When a client sends three completion/complete requests
-    Then the first two are answered by the handler and the third gets the interceptor's error without the handler running
+  Scenario: A server limits the completion requests it serves
+    Given a server with a completion handler that allows two requests per second per sender
+    When one client sends three completion/complete requests in the same second
+    Then the first two are answered by the handler and the third gets the error 429 without the handler running
+    And an application can still refuse requests of its own with a request interceptor
 
   @spec:MCP-COMPLETION-9 @feature:ftCompletion
   Scenario: A client reads a completion that leaves out its optional parts

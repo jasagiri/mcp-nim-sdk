@@ -294,3 +294,27 @@ Feature: Event streams over Streamable HTTP
     Given a version 2025-03-26 connection and a stream whose event holds an array of messages
     When the client reads it (POST stream or GET stream)
     Then the messages are delivered one by one
+
+  @spec:MCP-HTTPSTREAM-28 @feature:ftHttpSessions
+  Scenario: A client whose session got 404 starts a new session and does not repeat the request (versions 2025-03-26 to 2025-11-25)
+    Given a session the server ended
+    When the client sends a request or a notification that carries the session id and gets 404
+    Then the transport drops the id, the client sends one initialize without a session id and holds the new session with its negotiated version and capabilities
+    And the request is not sent again: the caller gets McpSessionExpiredError, whose renewed field says the new session was started
+    And when that initialize fails too, no further attempt is made, the caller gets McpSessionExpiredError (with the failure as parent, renewed false) and the client is closed to requests
+    And requests in flight in the same ended session start one new session between them
+    And a 404 for a request that carried no session id is an ordinary HTTP error
+
+  @spec:MCP-HTTPSTREAM-29 @feature:ftSsePolling
+  Scenario: A server that closes a connection of a stream it keeps sends retry first (2025-11-25)
+    Given a GET stream, or the stream of a request, taken over by a second connection, in 2025-11-25 or later
+    When the server closes the first connection
+    Then it sent a retry field with the transport's sseRetryMs (1000 unless set) before closing
+    And with sseRetryMs 0, and in 2025-03-26 and 2025-06-18, it sent none
+
+  @spec:MCP-HTTPSTREAM-30 @feature:ftHttpGetStream
+  Scenario: The server records that a stream was taken over, without the session id
+    Given a session whose stream a second connection takes over
+    When the server closes the first connection
+    Then stderr has one line that says which kind of stream was taken over and by which connection of the stream
+    And the line does not carry the session id

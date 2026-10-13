@@ -181,3 +181,28 @@ Feature: Starting a conversation
     Given a ping that times out
     When it fails
     Then the client writes the failure to stderr
+
+  @spec:MCP-LIFECYCLE-25 @feature:ftInitializeHandshake
+  Scenario: A client sends nothing but ping until initialize is answered
+    Given a client of a version before 2026-07-28 that has sent initialize and has no answer
+    When the caller asks it for another request, such as tools/list
+    Then the caller gets an error, nothing is queued, and that request is never on the wire
+    And a ping is sent
+    And once initialize failed or was answered the request is not refused for that reason
+
+  @spec:MCP-LIFECYCLE-26 @feature:ftPing
+  Scenario: A client checks an idle connection with pings (versions before 2026-07-28)
+    Given a connected client with pingIntervalMs greater than 0
+    When the connection has been idle for pingIntervalMs
+    Then the client sends a ping
+    And traffic in either direction counts as activity, so a busy connection is not pinged
+    And a ping that gets no answer within pingTimeoutMs, or whose sending fails, closes the connection: waiting requests end with McpConnectionClosedError and stderr says the keepalive ping failed
+    And a server that answers the ping with an error is alive and the connection stays open
+    And closing the client stops the pings, and a 2026-07-28 connection has none
+
+  @spec:MCP-LIFECYCLE-27 @feature:ftPing
+  Scenario: How often a client pings is configurable
+    Given a new client
+    Then pingIntervalMs is 30000 (0 turns the pings off) and pingTimeoutMs is the default request timeout (60000)
+    When the caller sets either before connect
+    Then pings follow that interval and wait that long

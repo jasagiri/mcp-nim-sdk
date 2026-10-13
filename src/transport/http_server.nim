@@ -83,6 +83,10 @@ const
     ## stuck is what makes this grow); each is at most `maxBodySize`.
   DefaultMaxStoredStreams* = 64
   DefaultSessionIdleTimeoutMs* = 30 * 60 * 1000
+  DefaultSseRetryMs* = 1000
+    ## What a client of 2025-11-25 or later is told to wait before it
+    ## reconnects to a stream whose connection the server closes. A second
+    ## per second is far below what makes a takeover loop a flood.
   SweepIntervalMs = 250
   SessionHeader = "Mcp-Session-Id"
   ErrParse = -32700
@@ -206,6 +210,10 @@ type
     sessionIdleTimeoutMs*: int
       ## A session unused for this long, with nothing in progress, is
       ## dropped; 0 keeps sessions until DELETE.
+    sseRetryMs*: int
+      ## 2025-11-25 and later: the `retry` field the server sends before it
+      ## closes the connection of a stream it keeps, which is when a newer
+      ## connection takes the stream over. 0 sends none.
     legacySsePath*: string
       ## Where the HTTP+SSE transport of 2024-11-05 opens its event stream;
       ## "" does not serve it.
@@ -247,6 +255,7 @@ proc newHttpServerTransport*(host: string = "127.0.0.1",
     maxStreamEvents:  DefaultMaxStreamEvents,
     maxStoredStreams: DefaultMaxStoredStreams,
     sessionIdleTimeoutMs: DefaultSessionIdleTimeoutMs,
+    sseRetryMs:       DefaultSseRetryMs,
     legacySsePath:    "/sse",
     legacyMessagesPath: "/messages",
     documents:        initTable[string, HttpDocument](),
@@ -560,10 +569,11 @@ func httpStatusFor(response: JsonRpcResponse, modern: bool): HttpCode =
   else: Http200
 
 proc enqueue(t: HttpServerTransport, message: JsonNode, session: string,
-             principal: Option[string],
+             principal: Option[string], peer: string,
              paramHeaders = none(seq[(string, string)])) =
   let incoming = McpIncoming(message: message, session: session,
-                             paramHeaders: paramHeaders, principal: principal)
+                             paramHeaders: paramHeaders, principal: principal,
+                             peer: peer)
   if t.receiveWaiters.len > 0:
     t.receiveWaiters.popFirst().complete(incoming)
   else:
@@ -580,7 +590,7 @@ proc exchangeOf(t: HttpServerTransport, session: string, clientId: JsonNode): Op
   none(string)
 
 proc enqueueFromClient(t: HttpServerTransport, message: JsonNode, session: string,
-                       principal: Option[string]) =
+                       principal: Option[string], peer: string) =
   ## A notification or response the client posted. The server knows requests
   ## by the ids this transport made, not by the ones clients chose, so a
   ## `notifications/cancelled` is rewritten to name the sender's own request
@@ -600,9 +610,9 @@ proc enqueueFromClient(t: HttpServerTransport, message: JsonNode, session: strin
       return
     let rewritten = message.copy()
     rewritten["params"]["requestId"] = %exchangeId.get
-    t.enqueue(rewritten, session, principal)
+    t.enqueue(rewritten, session, principal, peer)
     return
-  t.enqueue(message, session, principal)
+  t.enqueue(message, session, principal, peer)
 
 proc invalidRequest(message: string): JsonRpcError =
   JsonRpcError(code: ErrInvalidRequest, message: message)
@@ -742,6 +752,21 @@ func allowedMethods(t: HttpServerTransport, req: Request): seq[HttpMethod] =
   # posts here instead of using HTTP+SSE.
   if t.speaksLegacy: result.add HttpDelete
 
+proc serveSessionStream(t: HttpServerTransport, req: Request, session: Session,
+                        stream: SseStream, after: int, gone: Future[void],
+                        kind: string): Future[SseEnd] {.async.} =
+  ## Serve `stream` to a client of `session`. When a newer connection takes it
+  ## over, the client of this one is told how long to wait before it
+  ## reconnects (2025-11-25 and later), and the takeover is recorded: a second
+  ## connection that names the session is also what a leaked session id looks
+  ## like. The record leaves out the id.
+  let polling = not session.isNil and session.version.has(ftSsePolling)
+  result = await serveStream(req, stream, after, securityHeaders(), gone,
+                             retryMs = if polling: t.sseRetryMs else: 0)
+  if result == seReplaced:
+    stderr.writeLine("[mcp-http-server] the " & kind & " was taken over by connection " &
+                     $stream.attachments)
+
 proc handleGet(t: HttpServerTransport, req: Request,
                principal: Option[string]) {.async.} =
   ## The stream of messages that belong to no request, or the rest of an
@@ -787,7 +812,8 @@ proc handleGet(t: HttpServerTransport, req: Request,
   inc session.busy
   let gone = watchDisconnect(req.client)
   try:
-    discard await serveStream(req, stream, after, securityHeaders(), gone)
+    discard await t.serveSessionStream(req, session, stream, after, gone,
+      if lastEventId.isSome: "stream resumed by GET" else: "GET stream")
   finally:
     dec session.busy
     session.touch()
@@ -916,7 +942,7 @@ proc handlePost(t: HttpServerTransport, req: Request,
   if requests.len == 0:
     # Notifications and responses: nothing to answer on this exchange.
     for item in items:
-      t.enqueueFromClient(item, sessionId, principal)
+      t.enqueueFromClient(item, sessionId, principal, req.hostname)
     await req.respondEmpty(Http202)
     return
 
@@ -929,7 +955,7 @@ proc handlePost(t: HttpServerTransport, req: Request,
     discard group.stream.push("")
   for item in items:
     if not isRequest(item):
-      t.enqueueFromClient(item, sessionId, principal)
+      t.enqueueFromClient(item, sessionId, principal, req.hostname)
       continue
     inc t.exchangeCount
     let exchangeId = "http-" & $t.exchangeCount
@@ -937,7 +963,7 @@ proc handlePost(t: HttpServerTransport, req: Request,
     t.exchanges[exchangeId] = Exchange(group: group, idNode: item["id"])
     let forwarded = item.copy()
     forwarded["id"] = %exchangeId
-    t.enqueue(forwarded, sessionId, principal,
+    t.enqueue(forwarded, sessionId, principal, req.hostname,
               if modern: some(req.paramHeaders) else: none(seq[(string, string)]))
 
   # The connection is watched for the whole exchange, which is why it is
@@ -957,7 +983,8 @@ proc handlePost(t: HttpServerTransport, req: Request,
 
   if not session.isNil:
     t.rememberStream(session, group.stream)
-  let ended = await serveStream(req, group.stream, 0, securityHeaders(), gone)
+  let ended = await t.serveSessionStream(req, session, group.stream, 0, gone,
+                                         "stream of a request")
   if ended == seClientGone and modern and group.pending > 0:
     t.cancel(group)
 
@@ -1013,9 +1040,9 @@ proc handleLegacyPost(t: HttpServerTransport, req: Request,
     t.exchanges[exchangeId] = Exchange(legacySession: id, idNode: message["id"])
     let forwarded = message.copy()
     forwarded["id"] = %exchangeId
-    t.enqueue(forwarded, id, principal)
+    t.enqueue(forwarded, id, principal, req.hostname)
   else:
-    t.enqueueFromClient(message, id, principal)
+    t.enqueueFromClient(message, id, principal, req.hostname)
   await req.respondEmpty(Http202)
 
 proc authenticate(t: HttpServerTransport, req: Request
