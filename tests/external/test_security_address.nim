@@ -2,7 +2,7 @@
 ## network: judged on the address a host stands for, in whatever notation,
 ## and on what a name resolves to, never on the text of the URL.
 
-import std/[unittest, asyncdispatch, asyncnet, net, nativesockets, options, strutils]
+import std/[unittest, asyncdispatch, net, nativesockets, options, strutils]
 import auth/client
 import auth/oauth/errors
 import protocol/[version, features]
@@ -305,6 +305,7 @@ proc answering(asked: ref seq[string], address: string): HostResolver =
     @[parseIpAddress(address)]
 
 when HasChallengeVersion:
+  import std/asyncnet   # here only: a build without such a version would import it unused
   suite "plain http and redirects, seen through the public entries":
 
     test "Given a name that resolves to a private address the policy allows, when its metadata URL is plain http, then it is refused and the name is not even resolved":
