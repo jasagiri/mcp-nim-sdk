@@ -81,3 +81,19 @@ Feature: Sampling with tools
     Given the answer to a createMessage request
     When its content is an array in a version without sampling tools, holds a block of an unknown type, or completes without a tool use under a toolChoice that is not required
     Then the array and the unknown block are reported, and a completion without a tool use is valid unless the mode is required and no earlier message used a tool
+
+  # rule
+  @spec:MCP-SAMPLING-TOOLS-13 @feature:ftSampling
+  Scenario: A sampling message has a role of user or assistant and a content
+    Given the messages of a createMessage request
+    When a message has any role other than user or assistant, no role, or no content block
+    Then the server raises and sends nothing (or, from 2026-07-28, the answer is an internal error and nothing is asked)
+    And a client that receives such a request answers invalid params without calling its handler
+    And a user message and an assistant message with content are sent as given
+
+  # rule
+  @spec:MCP-SAMPLING-TOOLS-14 @feature:ftSampling
+  Scenario: A stop reason is any string
+    Given a sampling answer whose stopReason is a string the specification does not list
+    When the client's handler gives it, or the server reads it, in any version that has sampling
+    Then the client sends it as it is, and the server returns the answer with it, with or without tools in the request

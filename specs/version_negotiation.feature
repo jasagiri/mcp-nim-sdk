@@ -70,3 +70,9 @@ Feature: Protocol versions
     When a client sends initialize
     Then the error is unsupported protocol version and names the versions the server speaks
     And any other request without the per-request fields is invalid params
+
+  @spec:MCP-VERSION-11
+  Scenario: A client settles the era of a server when it connects and keeps it
+    Given a 2026-07-28 client that connected to a 2026-07-28 server, or to a legacy one
+    When it makes further requests
+    Then it sent server/discover once, initialize once for a legacy server and never for a modern one, and no probe per request

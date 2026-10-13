@@ -122,3 +122,15 @@ Feature: Requests the server makes of the client
     Given a request of the server that the client has answered
     When the client answers the same id again
     Then the first answer stands and the server goes on
+
+  @spec:MCP-SERVERREQ-13 @feature:ftRoots
+  Scenario: A roots provider that fails is answered with an internal error
+    Given a client whose roots provider raises, in a version before 2026-07-28
+    When the server sends roots/list
+    Then the answer is the error -32603 and no result, and the client stays operational
+
+  @spec:MCP-SERVERREQ-14 @feature:ftRoots
+  Scenario: A server that is told the client's roots changed can ask that client for them again
+    Given a version before 2026-07-28, two clients that declared roots, and a handler the server's application registered for notifications/roots/list_changed
+    When one client sends the notification, once or twice
+    Then the handler is called with that client's session, asks only that client for roots/list, and gets the list in the answer, the second answer being the one it gets the second time

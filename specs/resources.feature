@@ -113,3 +113,16 @@ Feature: Resources
     Given a server with resources, prompts and tools handlers
     When resources/read has no uri, prompts/get or tools/call has no name, or the value is not a string
     Then the answer is invalid params
+
+  # rule
+  @spec:MCP-RESOURCES-15 @feature:ftResources
+  Scenario: A resource handler that breaks is an internal error without the cause
+    Given a server whose resources/list or resources/read handler raises whatever it likes
+    When a client lists or reads resources
+    Then the answer is the error -32603, carries no result, and does not name the cause
+
+  @spec:MCP-RESOURCES-16 @feature:ftResources
+  Scenario: A client takes -32002 and -32602 as the answer to a resource that is not there
+    Given a server that answers resources/read with -32002 or -32602 and the uri in the data
+    When a client reads the resource, in any version
+    Then the call fails with the code it was given and the uri, and the client carries on

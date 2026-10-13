@@ -93,3 +93,15 @@ Feature: Subscriptions (2026-07-28)
     Given a server that honors all or part of a filter, a request that cannot be sent, and a zero timeout
     When the client listens
     Then it reports exactly the types, uris and tasks left out, keeps no subscription for an unsent request and does not time out on a zero timeout
+
+  @spec:MCP-SUBSCRIBE-16 @feature:ftSubscriptionsListen
+  Scenario: On stdio a message of another subscription may come before an acknowledgment
+    Given two subscriptions on one stdio channel
+    When a message of the first arrives before the acknowledgment of the second
+    Then the second is acknowledged and the message goes to the first only
+
+  @spec:MCP-SUBSCRIBE-17 @feature:ftSubscriptionsListen
+  Scenario: A subscription does not outlive its connection
+    Given an open subscription
+    When the connection is lost
+    Then the client's stream is lost, it does not listen again by itself, a client on a new connection listens afresh, and the server holds nothing of it

@@ -39,3 +39,17 @@ Feature: Tools
     Given a server with tool handlers and no tools capability, or the tools capability and no call handler
     When a client sends tools/list or tools/call
     Then the answer is method not found
+
+  # rule
+  @spec:MCP-TOOLS-7 @feature:ftTools
+  Scenario: Tool names are compared as they are written
+    Given tools whose names differ only in letter case, or a name that matches another tool only when case is ignored
+    When a client calls them
+    Then each call is checked against the schema of the tool of exactly that name, and a name that is not listed is left to the handler
+
+  # rule
+  @spec:MCP-TOOLS-8 @feature:ftTools
+  Scenario: The tool list keeps the order of the handler on every request
+    Given a handler that lists its tools in a fixed order, over one page or several
+    When a client lists the tools more than once
+    Then each list holds the tools in the order the handler gave them

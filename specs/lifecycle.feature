@@ -125,3 +125,47 @@ Feature: Starting a conversation
     Given a session whose initialize has been answered
     When the same session sends initialize again
     Then the answer is the invalid request error and the first handshake stands
+
+  @spec:MCP-LIFECYCLE-16 @feature:ftCacheHints
+  Scenario: In 2026-07-28 every cacheable method answers with the server's cache policy
+    Given a 2026-07-28 server with a cache policy, or with none
+    When a client asks server/discover, prompts/list, resources/list, resources/templates/list or resources/read
+    Then each complete result carries ttlMs and cacheScope from the policy
+    And without a policy each is marked not reusable and private
+
+  @spec:MCP-LIFECYCLE-17 @feature:ftCacheHints
+  Scenario: In 2026-07-28 every page of a list carries the same cacheScope
+    Given a 2026-07-28 server with any cache policy and a list of several pages
+    When a client follows tools/list, prompts/list, resources/list or resources/templates/list from the first page to the last
+    Then every page carries the policy's cacheScope and ttlMs
+
+  @spec:MCP-LIFECYCLE-18 @feature:ftCacheHints
+  Scenario: In 2026-07-28 a client keeps no cache of results
+    Given a 2026-07-28 client and a server whose results say they are fresh for ten minutes
+    When the client lists tools twice, lists with a cursor, reads different resources, and sends the same request carrying requestState twice
+    Then each request is sent to the server and each answer is the server's answer to that request
+
+  @spec:MCP-LIFECYCLE-19 @feature:ftInitializeHandshake
+  Scenario: initialize names the client
+    Given a client of a version before 2026-07-28
+    When it connects
+    Then initialize carries the client's name and version as clientInfo
+
+  @spec:MCP-LIFECYCLE-20
+  Scenario: A client does not ask a server for what it did not declare
+    Given a server that declares only prompts, only tools, or neither logging nor resource subscriptions
+    When the client lists tools, calls one, lists or reads resources, lists or gets prompts, sets a log level or subscribes to a resource that the server did not declare
+    Then it fails with an error that names the missing capability, in any version
+    And nothing but the handshake has been sent
+
+  @spec:MCP-LIFECYCLE-21 @feature:ftPerRequestMetadata
+  Scenario: Requests of several conversations that overlap are served each on its own
+    Given a 2026-07-28 server and three requests with different declared capabilities in flight at once
+    When they finish in another order
+    Then each is answered on its own id and its handler saw its own declared capabilities
+
+  @spec:MCP-LIFECYCLE-22 @feature:ftPing
+  Scenario: A ping that gets no answer is reported and the caller can give up the connection
+    Given a version before 2026-07-28 and a peer that never answers
+    When the caller pings and each ping times out
+    Then each ping raises a timeout error, and the caller can close the client, after which it can no longer ping

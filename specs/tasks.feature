@@ -170,3 +170,45 @@ Feature: Tasks
     Given a receiver of tasks
     When it is asked for a method of the tasks family that it does not have
     Then the answer is Method not found
+
+  @spec:MCP-TASKS-26 @feature:ftTasks
+  Scenario: A task goes on reporting progress under the token of its request
+    Given a task-augmented request with a progressToken that was answered with its CreateTaskResult
+    When the task reports progress
+    Then each notification carries the token of the original request
+
+  @spec:MCP-TASKS-27 @feature:ftTasks
+  Scenario: A task sends no progress once it is terminal
+    Given a task that is completed, failed or cancelled
+    When its context reports progress
+    Then nothing is sent
+
+  @spec:MCP-TASKS-28 @feature:ftTasks
+  Scenario: The error of a task method says what went wrong
+    Given a task method asked about a task that does not exist, a task that is over, a cursor nobody issued, or past a limit of tasks
+    When it is refused
+    Then the message names the cause
+
+  @spec:MCP-TASKS-29 @feature:ftTasks
+  Scenario: A status notification does not repeat the task id in related-task metadata
+    Given a task whose status changes
+    When the receiver sends notifications/tasks/status
+    Then the task id is in the params and io.modelcontextprotocol/related-task is not in _meta
+
+  @spec:MCP-TASKS-30 @feature:ftTasks
+  Scenario: A failed task says why
+    Given a task whose request ended in a tool error, a JSON-RPC error or an exception
+    When the requestor asks with tasks/get
+    Then the failed task has a statusMessage
+
+  @spec:MCP-TASKS-31 @feature:ftTasks
+  Scenario: tasks/get over Streamable HTTP is answered without an event stream
+    Given a working task and a completed one on a 2025-11-25 Streamable HTTP server
+    When the client polls with tasks/get
+    Then the answer is not an event stream
+
+  @spec:MCP-TASKS-32 @feature:ftTasks
+  Scenario: A client may drop the stream of tasks/get or tasks/result
+    Given a task on a 2025-11-25 Streamable HTTP server
+    When the client disconnects while tasks/get or tasks/result is in progress
+    Then the task goes on and later tasks/get and tasks/result still work

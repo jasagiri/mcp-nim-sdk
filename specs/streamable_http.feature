@@ -286,3 +286,48 @@ Feature: Streamable HTTP transport
     Given a request whose event stream already carried an event id
     When the client cancels the request
     Then the stream is not asked for again with Last-Event-ID and no answer of that request is delivered
+
+  @spec:MCP-HTTP-42 @feature:ftStreamableHttp
+  Scenario: A client posts each message on its own
+    Given a client of a Streamable HTTP endpoint
+    When it sends a request, a notification, a response and another request
+    Then each is an HTTP POST of its own and holds exactly one JSON-RPC message, not an array
+
+  @spec:MCP-HTTP-43 @feature:ftStreamableHttp
+  Scenario: A client posts UTF-8 (a rule)
+    Given a client of a Streamable HTTP endpoint
+    When it posts a request whose strings are of any script
+    Then the body is valid UTF-8 and the server reads the same strings, and a UTF-8 answer is read back unchanged
+    And a string holding bytes that are not UTF-8 is never posted as such: the send is refused or the bytes are replaced
+
+  @spec:MCP-HTTP-44 @feature:ftMirroredHeaders
+  Scenario: A client carries a name that is not plain ASCII in Mcp-Name in the Base64 form (a rule, 2026-07-28)
+    Given a tools/call, resources/read or prompts/get whose name or URI is plain ASCII, non-ASCII, padded with spaces, contains a newline, or looks like the Base64 sentinel
+    When the client sends it
+    Then Mcp-Name is the plain value for plain ASCII
+    And otherwise it is =?base64?...?= with the markers in lowercase and the Base64 of the UTF-8 value
+
+  @spec:MCP-HTTP-45 @feature:ftMirroredHeaders
+  Scenario: A server does not decode a Base64 value whose markers are not lowercase (2026-07-28)
+    Given a tools/call whose Mcp-Name decodes to the tool's name
+    When the markers are lowercase, the request is served
+    And when they are in capitals or mixed case, the value is not decoded and the answer is 400 header mismatch
+
+  @spec:MCP-HTTP-46 @feature:ftStreamableHttp
+  Scenario: Header names are compared without regard to case (a rule)
+    Given a server of 2026-07-28, or of a version with sessions, and a client
+    When a request's header names (MCP-Protocol-Version, Mcp-Method, Mcp-Name, Mcp-Session-Id, Content-Type) are spelt in any case
+    Then the server reads them as with the usual spelling, and a differing Mcp-Name or an unknown session is still refused
+    And a client reads the session id and the event stream from an answer whose header names are spelt in any case
+
+  @spec:MCP-HTTP-47 @feature:ftStreamableHttp
+  Scenario: A server made with the defaults listens on 127.0.0.1 only
+    Given a server transport made with the defaults
+    When it is started
+    Then its host is 127.0.0.1 and its socket is bound to that address, not to every interface
+
+  @spec:MCP-HTTP-48 @feature:ftHttpSessions
+  Scenario: Session ids are visible ASCII (a rule, versions with sessions)
+    Given many clients that initialize
+    When the server issues their sessions
+    Then every session id is non-empty and made only of the characters 0x21 to 0x7E

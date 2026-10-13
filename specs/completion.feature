@@ -45,3 +45,23 @@ Feature: Argument completion
     When a client of 2025-03-26 or later completes an argument
     Then the client refuses without sending, whereas in 2024-11-05 the declaration is not needed
     And completing with context in 2024-11-05 is refused
+
+  @spec:MCP-COMPLETION-7 @feature:ftCompletion
+  Scenario: A completion handler that breaks is an internal error
+    Given a server with a completion handler that fails with an error that is not a request error
+    When a client sends completion/complete
+    Then the answer is the error -32603 and does not carry the cause
+    And the next completion/complete on the same session is answered
+
+  @spec:MCP-COMPLETION-8 @feature:ftCompletion
+  Scenario: An application can limit the completion requests a server serves
+    Given a server with a completion handler and a request interceptor that refuses completion/complete after the second
+    When a client sends three completion/complete requests
+    Then the first two are answered by the handler and the third gets the interceptor's error without the handler running
+
+  @spec:MCP-COMPLETION-9 @feature:ftCompletion
+  Scenario: A client reads a completion that leaves out its optional parts
+    Given a connected client and a server whose completion has values only, an empty values list, or values and a total without hasMore
+    When the client completes an argument
+    Then the values are read, and total and hasMore are absent where the server left them out
+    And a completion without values, or with a hasMore that is not a boolean, is a protocol error

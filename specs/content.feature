@@ -280,3 +280,32 @@ Feature: Content of tools, resources and prompts
     Then it has no title, icons, annotations or outputSchema
     And a result built without isError is not an error
     And schemas built without a description or a required list carry neither
+
+  @spec:MCP-CONTENT-FIELDS-9 @feature:ftPrompts
+  Scenario: Images and embedded resources reach the client with their fields
+    Given a prompt message with an image, a text resource or a blob resource, or a tool result that embeds resources
+    When a client gets the prompt or calls the tool
+    Then each block arrives as the handler built it, with the uri, the mimeType and the text or the blob
+    And a client reading an image without data or mimeType, or an embedded resource without a uri, reports a protocol error
+
+  @spec:MCP-CONTENT-FIELDS-10 @feature:ftTools
+  Scenario: A tool result may embed a resource
+    Given a tool whose result holds embedded text and blob resources
+    When a client calls the tool, in any version
+    Then both resources arrive as built, and the client reads their uri, mimeType and text or blob
+
+  @spec:MCP-CONTENT-FIELDS-11 @feature:ftJsonSchema2020
+  Scenario: A $ref that leaves the schema document is never fetched
+    Given a schema with a $ref to a network address, a file or another document, at the top, in a property or in allOf
+    When an instance is validated against it
+    Then the schema is reported as one that cannot be checked, and nothing connects to the address
+    And the SDK has no mode that fetches such a reference
+    And a $ref into the schema's own document is followed
+
+  @spec:MCP-CONTENT-FIELDS-12 @feature:ftIcons
+  Scenario: An SVG icon is refused unless the application says it can handle SVG, and is then handed over untouched (rule)
+    Given an icon whose bytes are SVG however the markup opens: bare, after an XML declaration, a comment, a doctype, a byte order mark, or in capitals
+    When the client fetches it
+    Then with the default options it is refused and the refusal names image/svg+xml
+    And with SVG allowed its bytes come back unchanged with the type SVG
+    And SVG labelled as another type is refused whether SVG is allowed or not

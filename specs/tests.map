@@ -84,6 +84,16 @@ MCP-STDIO-6 | tests/external/test_stdio.nim | Given a child that exits when its 
 MCP-STDIO-6 | tests/external/test_stdio.nim | Given a child that ignores the closing of its stdin, when the client closes the transport, then the child is terminated
 MCP-STDIO-6 | tests/external/test_stdio.nim | Given a child that also ignores SIGTERM, when the client closes the transport, then the child is killed
 MCP-STDIO-6 | tests/external/test_stdio.nim | Given a client, when it closes the transport, then the descriptors of the child's pipes are released
+MCP-STDIO-7 | tests/external/test_stdio_messages_g0a.nim | Given lines of every kind on its stdin, when a server reads them, then every line it writes to its stdout is a JSON-RPC message
+MCP-STDIO-7 | tests/external/test_stdio_messages_g0a.nim | Given a line that is not JSON, when a server reads it, then what it writes in answer is a parse error with a null id
+MCP-STDIO-7 | tests/external/test_stdio_messages_g0a.nim | Given a server that answers a call, when its stdout is read, then the answer is the only thing on it and it is a response to that call
+MCP-STDIO-8 | tests/external/test_stdio_messages_g0a.nim | Given a session that connects, lists, calls, gives up on a slow call and closes, when its server records stdin, then every line is a JSON-RPC request or notification
+MCP-STDIO-9 | tests/external/test_stdio_messages_g0a.nim | Given strings of every script, when a message is sent, then the bytes written are valid UTF-8 and read back as the same strings
+MCP-STDIO-9 | tests/external/test_stdio_messages_g0a.nim | Given a line of UTF-8 bytes, when a transport reads it, then the strings are the characters the bytes encode
+MCP-STDIO-10 | tests/external/test_stdio_messages_g0a.nim | Given a server that exits while a call is waiting, when the client waits, then the call fails as a closed connection and closing the client succeeds
+MCP-STDIO-11 | tests/external/test_stdio_messages_g0a.nim | Given a 2026-07-28 server over stdio that lists a tool whose x-mcp-header is invalid, when the client lists tools and calls it, then the tool is listed and the call is sent
+MCP-STDIO-12 | tests/external/test_stdio_exit_g0d.nim | Given a server that exits while a request waits, when the output stream ends, then the request fails as a closed connection
+MCP-STDIO-12 | tests/external/test_stdio_exit_g0d.nim | Given a server that has exited, when the client sends another request, then it fails as a closed connection and close completes
 MCP-HTTP-1 | tests/external/test_streamable_http.nim | Given a path other than the endpoint, when posted to, then the answer is 404
 MCP-HTTP-1 | tests/external/test_streamable_http.nim | Given the endpoint, when it receives PUT, then the answer is 405 naming the allowed methods
 MCP-HTTP-1 | tests/external/test_streamable_http.nim | Given a body that is not JSON, when posted, then the answer is 400 with a parse error
@@ -166,6 +176,9 @@ MCP-RESOURCES-12 | tests/external/test_client_operations.nim | Given a 2026-07-2
 MCP-RESOURCES-13 | tests/external/test_server_resources_prompts.nim | Given the capabilities declared but no handlers, when a client calls the methods, then the method is not found
 MCP-RESOURCES-14 | tests/external/test_server_resources_prompts.nim | Given a read or a get whose required string parameter is missing or not a string, when it is sent, then the answer is invalid params
 MCP-RESOURCES-14 | tests/external/test_server_errors.nim | Given a call whose name is missing or not a string, when it is sent, then the answer is invalid params
+MCP-RESOURCES-15 | tests/external/test_resource_failures_g0c.nim | Given a resources/read handler that raises, when a client reads, then the answer is -32603 without the cause
+MCP-RESOURCES-15 | tests/external/test_resource_failures_g0c.nim | Given a resources/list handler that raises, when a client lists, then the answer is -32603 without the cause
+MCP-RESOURCES-16 | tests/external/test_client_resource_error_g0c.nim | Given a server that answers -32002 or -32602, when the client reads, then the call fails with that code and the uri, and the client carries on
 MCP-LISTCHANGED-1 | tests/external/test_server_notifications.nim | Given two initialized clients, when the tool list changes, then each is told on its own session
 MCP-LISTCHANGED-1 | tests/external/test_server_notifications.nim | Given resources, prompts and tools, when each list changes, then each notification has its method
 MCP-LISTCHANGED-1 | tests/external/test_server_notifications.nim | Given a server that did not declare listChanged, when a list changes, then nothing is sent
@@ -219,6 +232,14 @@ MCP-COMPLETION-5 | tests/external/test_client_operations.nim | Given a completio
 MCP-COMPLETION-6 | tests/external/test_client_operations.nim | Given 2025-03-26 or later without the completions capability, when completing, then McpUnsupportedError is raised
 MCP-COMPLETION-6 | tests/external/test_client_operations.nim | Given 2024-11-05, when completing, then the server need not declare completions
 MCP-COMPLETION-6 | tests/external/test_client_operations.nim | Given 2024-11-05, when completing with context, then McpUnsupportedError is raised
+MCP-COMPLETION-7 | tests/external/test_server_completion_g0b.nim | Given a completion handler that breaks, when a client completes, then the answer is an internal error without the cause
+MCP-COMPLETION-7 | tests/external/test_server_completion_g0b.nim | Given a completion handler that broke, when the client completes again, then the server still answers
+MCP-COMPLETION-8 | tests/external/test_server_completion_g0b.nim | Given an interceptor that refuses the third completion request, when a client completes three times, then the third is refused and the handler is not run for it
+MCP-COMPLETION-9 | tests/external/test_client_completion_g0b.nim | Given an answer with values only, when a client completes, then the values are read and total and hasMore are absent
+MCP-COMPLETION-9 | tests/external/test_client_completion_g0b.nim | Given an answer with no values, when a client completes, then there are no suggestions and no error
+MCP-COMPLETION-9 | tests/external/test_client_completion_g0b.nim | Given an answer with a total and no hasMore, when a client completes, then the total is read and hasMore is absent
+MCP-COMPLETION-9 | tests/external/test_client_completion_g0b.nim | Given an answer whose completion has no values, when a client completes, then McpProtocolError is raised
+MCP-COMPLETION-9 | tests/external/test_client_completion_g0b.nim | Given an answer whose hasMore is not a boolean, when a client completes, then McpProtocolError is raised
 MCP-LOGGING-1 | tests/external/test_server_logging.nim | Given no setLevel, when a handler logs at every level, then the client gets every message
 MCP-LOGGING-1 | tests/external/test_server_logging.nim | Given a log message, when it is sent, then it carries level, logger and data and belongs to the request
 MCP-LOGGING-1 | tests/external/test_server_logging.nim | Given a log message without a logger, when it is sent, then it carries no logger key
@@ -254,6 +275,11 @@ MCP-PROGRESS-5 | tests/external/test_client_requests.nim | Given a caller's own 
 MCP-PROGRESS-5 | tests/external/test_client_requests.nim | Given a request with a callback, when the server sends progress, then the callback sees each update in order
 MCP-PROGRESS-5 | tests/external/test_client_requests.nim | Given a finished request, when a late progress arrives, then the callback is not called
 MCP-PROGRESS-5 | tests/external/test_client_requests.nim | Given progress for an unknown token, when it arrives, then the client carries on
+MCP-PROGRESS-6 | tests/external/test_wire_client_g0d.nim | Given a request that has a timeout, when progress keeps arriving, then the request still times out before the progress ends
+MCP-PROGRESS-8 | tests/external/test_progress_g0e.nim | Given many requests active at once, when the client sends them with progress callbacks, then no two carry the same token, and a token is not reused after one ends
+MCP-PROGRESS-9 | tests/external/test_progress_g0e.nim | Given a server that sends fractional progress and total, when the client has a callback, then the callback sees the exact values
+MCP-PROGRESS-9 | tests/external/test_progress_g0e.nim | Given a handler that reports fractional progress and total, when the client has a token, then they are sent as given
+MCP-PROGRESS-7 | tests/external/test_progress_g0e.nim | Given a server that keeps sending progress, when the request's timeout passes, then the request times out and the server is told
 MCP-CANCEL-1 | tests/external/test_server_progress_cancel.nim | Given a request in flight, when the client cancels it, then no response is sent and the handler sees the cancellation
 MCP-CANCEL-1 | tests/external/test_server_progress_cancel.nim | Given a numeric request id, when the client cancels it, then the request is cancelled
 MCP-CANCEL-1 | tests/external/test_server_progress_cancel.nim | Given a handler waiting on whenCancelled, when the client cancels, then the wait ends
@@ -285,6 +311,10 @@ MCP-CANCEL-5 | tests/external/test_http_streams.nim | Given a cancelled request,
 MCP-CANCEL-6 | tests/external/test_http_streams.nim | Given a request whose connection was cut, when the server finishes it, then it was not treated as cancelled
 MCP-CANCEL-7 | tests/external/test_server_progress_cancel.nim | Given a detached request, when it is cancelled twice, then the handler sees it and the second call changes nothing
 MCP-CANCEL-7 | tests/external/test_server_progress_cancel.nim | Given a detached request that has been answered, when it is cancelled, then its context does not become cancelled
+MCP-CANCEL-8 | tests/external/test_cancel_notice_g0e.nim | Given a request in flight, when the client cancels it with a reason, then the server says on stderr that it was cancelled and why
+MCP-CANCEL-9 | tests/external/test_cancel_notice_g0e.nim | Given a request in flight, when notifications/cancelled arrives malformed, then the request is not cancelled and is answered
+MCP-CANCEL-10 | tests/external/test_cancel_notice_g0e.nim | Given requests that are cancelled, fail or end, when a subscription is ended by the server, then the only notifications/cancelled names the listen request
+MCP-CANCEL-10 | tests/external/test_cancel_notice_g0e.nim | Given a 2026-07-28 session, when the server is asked to send a request to the client, then it refuses and sends nothing
 MCP-SERVERREQ-1 | tests/external/test_server_requests.nim | Given a client that can sample, when the server asks for a message, then the request names the session and the result comes back
 MCP-SERVERREQ-2 | tests/external/test_server_requests.nim | Given a client with roots, when the server lists them, then the roots come back
 MCP-SERVERREQ-2 | tests/external/test_server_requests.nim | Given a client that answers roots/list without a roots array, when the server lists them, then McpRemoteError is raised
@@ -315,6 +345,9 @@ MCP-SERVERREQ-11 | tests/external/test_server_requests.nim | Given a request tha
 MCP-SERVERREQ-11 | tests/external/test_server_requests.nim | Given a request that runs as a task, when the client answers its ask with an error, then the task is told it needs input no longer
 MCP-SERVERREQ-11 | tests/external/test_server_requests.nim | Given a request that runs as no task, when it asks the client, then the ask belongs to the request itself
 MCP-SERVERREQ-12 | tests/external/test_server_requests.nim | Given an answer that arrives twice, when the second arrives, then it is ignored and the first answer stands
+MCP-SERVERREQ-13 | tests/external/test_roots_failure_g0c.nim | Given a roots provider that raises, when the server asks for the roots, then the answer is -32603 and the client is still operational
+MCP-SERVERREQ-14 | tests/external/test_roots_changed_g0f.nim | Given a client with roots, when it says its roots changed, then the server asks that client for the list and its handler gets the new one
+MCP-SERVERREQ-14 | tests/external/test_roots_changed_g0f.nim | Given a client that says its roots changed twice, when each is answered, then the second answer is the list the handler gets
 MCP-CLIENTREQ-1 | tests/external/test_client_server_requests.nim | Given a sampling handler, when the server asks, then the request is parsed and the result is sent in wire form
 MCP-CLIENTREQ-1 | tests/external/test_client_server_requests.nim | Given a sampling handler, when the client connects, then initialize declares sampling
 MCP-CLIENTREQ-1 | tests/external/test_client_server_requests.nim | Given a handler that refuses, when the server asks, then the handler's error code is sent
@@ -388,6 +421,12 @@ MCP-HTTPSTREAM-20 | tests/internal/test_http_streams_internal.nim | Given a clie
 MCP-HTTPSTREAM-20 | tests/internal/test_http_streams_internal.nim | Given events that no connection has written, when one resumes after the last of them, then the stream still reports nothing written
 MCP-HTTPSTREAM-20 | tests/external/test_http_streams.nim | Given a client that asked to keep its connection, when the event stream of its request ends, then the server closes the connection
 MCP-HTTPSTREAM-20 | tests/external/test_http_streams.nim | Given a client that sent a stray byte into its event stream, when it then closes the connection, then the server is told the request was cancelled
+MCP-HTTPSTREAM-21 | tests/external/test_http_client_g0a.nim | Given comment lines before, between and inside events, when the stream is read, then they are ignored and only the two messages arrive
+MCP-HTTPSTREAM-22 | tests/external/test_http_client_g0a.nim | Given a GET stream and two request streams open together, when the server speaks on each, then all three deliver and were open at the same time
+MCP-HTTPSTREAM-23 | tests/external/test_http_client_g0a.nim | Given a session id and a server that redirects the next POST to another origin, when the client sends it, then it raises and the other origin sees nothing
+MCP-HTTPSTREAM-24 | tests/external/test_http_server_g0a.nim | Given a request in progress while a GET stream is open, when the server answers, then the response is on the stream of the request and the GET stream carries only what the server said on its own
+MCP-HTTPSTREAM-25 | tests/external/test_http_server_g0a.nim | Given a request whose answer takes longer than the idle limit of sessions, when the server answers at last, then the stream stayed open and carries the response
+MCP-HTTPSTREAM-26 | tests/external/test_http_server_g0a.nim | Given two requests in progress, when the server sends a notification for one and another that belongs to no request, then each stream carries only the notifications of its own request
 MCP-HTTPGET-1 | tests/external/test_http_streams.nim | Given a session, when the client opens GET, then the server's own notifications arrive on it
 MCP-HTTPGET-1 | tests/external/test_http_streams.nim | Given a notification sent to every client, when two sessions listen, then each hears it once
 MCP-HTTPGET-1 | tests/external/test_http_streams.nim | Given a notification sent before the client opened GET, when it opens, then the notification is waiting
@@ -505,6 +544,28 @@ MCP-TRANSPORT-3 | tests/external/test_transport.nim | Given a response with a re
 MCP-TRANSPORT-3 | tests/external/test_transport.nim | Given a response with an empty object as result, when encoded, then it is an empty success
 MCP-TRANSPORT-3 | tests/external/test_transport.nim | Given a response with an error, when encoded, then the error is on the wire
 MCP-TRANSPORT-3 | tests/external/test_transport.nim | Given a response with neither result nor error, when encoded, then it is an internal error that tells the peer nothing, and one line is logged
+MCP-TRANSPORT-6 | tests/external/test_wire_server_g0d.nim | Given requests that fail in different ways, when the server answers, then each answer has an integer code and a message and no result
+MCP-TRANSPORT-6 | tests/external/test_wire_server_g0d.nim | Given a handler that raises its own error, when the server answers, then the code and the message are the handler's
+MCP-TRANSPORT-6 | tests/external/test_wire_server_g0d.nim | Given a handler that breaks, when the server answers, then the code is the internal error and the message does not carry the cause
+MCP-TRANSPORT-6 | tests/external/test_wire_server_g0d.nim | Given an unknown method, when the server answers, then the code is method not found
+MCP-TRANSPORT-6 | tests/external/test_wire_server_g0d.nim | Given an error response, when it is encoded, then it carries the error alone with an integer code
+MCP-TRANSPORT-7 | tests/external/test_wire_server_g0d.nim | Given a handler whose result is an object of its own shape, when the server answers, then every member arrives as the handler gave it
+MCP-TRANSPORT-9 | tests/external/test_wire_server_g0d.nim | Given a request with a progress token and a list change, when the server notifies, then no notification carries an id
+MCP-TRANSPORT-9 | tests/external/test_wire_client_g0d.nim | Given a client that connects and gives up a request, when it notifies, then no notification carries an id
+MCP-TRANSPORT-4 | tests/external/test_wire_server_g0d.nim | Given several requests to a client, when the server sends them, then each id is a string and none is used twice
+MCP-TRANSPORT-4 | tests/external/test_wire_client_g0d.nim | Given a client that makes several requests, when they are sent, then every id is a string, none is empty and none is used twice
+MCP-TRANSPORT-5 | tests/external/test_wire_server_g0d.nim | Given several requests to a client, when the server sends them, then each id is a string and none is used twice
+MCP-TRANSPORT-5 | tests/external/test_wire_client_g0d.nim | Given a client that makes several requests, when they are sent, then every id is a string, none is empty and none is used twice
+MCP-TRANSPORT-5 | tests/external/test_wire_client_g0d.nim | Given requests that time out and requests that are answered, when they are sent, then no id is used twice
+MCP-TRANSPORT-8 | tests/external/test_wire_server_g0d.nim | Given a response that holds both a result and an error, when it is encoded, then it carries the error alone
+MCP-TRANSPORT-8 | tests/external/test_wire_server_g0d.nim | Given a response with a result, when it is encoded, then it carries the result alone
+MCP-TRANSPORT-8 | tests/external/test_wire_server_g0d.nim | Given an error response, when it is encoded, then it carries the error alone with an integer code
+MCP-TRANSPORT-10 | tests/external/test_wire_client_g0d.nim | Given a request whose _meta holds reserved keys the SDK does not define, when the client sends it, then they go out with the values they had
+MCP-TRANSPORT-10 | tests/external/test_meta_reserved_g0d.nim | Given a request whose _meta holds reserved keys with any kind of value, when the server serves it, then it is answered normally and the handler sees every key as sent
+MCP-TRANSPORT-12 | tests/external/test_error_codes_g0d.nim | Given requests that fail in the ways a server fails, when it answers in 2026-07-28, then every code is one the specification defines
+MCP-TRANSPORT-12 | tests/external/test_error_codes_g0d.nim | Given a resource that does not exist, when it is read in 2026-07-28, then the code is not the legacy -32002
+MCP-TRANSPORT-11 | tests/external/test_error_codes_g0d.nim | Given errors with codes in the legacy sub-range, when a server answers a request with one, then the client raises the peer's error with that code and goes on
+MCP-TRANSPORT-13 | tests/external/test_error_codes_g0d.nim | Given a request that timed out and a connection that was closed, when they fail, then neither is a peer's error
 MCP-AUTH-1 | tests/external/test_auth_resource_server.nim | Given a request without a token and version <version>, when posted, then the answer is 401 with a Bearer challenge
 MCP-AUTH-1 | tests/external/test_auth_resource_server.nim | Given a token the verifier rejects and version <version>, when posted, then the answer is 401 invalid_token
 MCP-AUTH-2 | tests/external/test_auth_resource_server.nim | Given a token the verifier accepts and version <version>, when posted, then the request reaches the MCP server
@@ -715,6 +776,18 @@ MCP-AUTH-42 | tests/external/test_auth_oauth_basics.nim | Given an error answer 
 MCP-AUTH-42 | tests/external/test_auth_oauth_basics.nim | Given an OAuth error answer, when the error is built, then the description follows only when there is one
 MCP-AUTH-42 | tests/external/test_auth_oauth_basics.nim | Given a registration response without a client_id or with an empty one, when read, then registration fails
 MCP-AUTH-42 | tests/internal/test_auth_oauth_basics_internal.nim | Given a registration response with a client_id, when read, then the client is known by it
+MCP-AUTH-43 | tests/external/test_auth_client_g0f.nim | Given a token store of the application and version <version>, when the client authorizes, then both tokens are saved there and the second request presents the stored one
+MCP-AUTH-43 | tests/external/test_auth_client_g0f.nim | Given two configurations made with the defaults and version <version>, when the first client has authorized, then the second does not present its token and authorizes itself
+MCP-AUTH-43 | tests/external/test_auth_client_g0f.nim | Given tokens that were issued and then a user who refuses a new authorization and version <version>, when the request fails, then neither the error nor stderr repeats a token
+MCP-AUTH-44 | tests/external/test_auth_resource_g0f.nim | Given tokens that are good, rejected, short of scope and one that makes the verifier fail, and version <version>, when each is posted, then no answer and nothing on stderr repeats the token
+MCP-AUTH-45 | tests/external/test_auth_resource_g0f.nim | Given a token the verifier accepts for a subject and version <version>, when a handler runs, then it is told the subject and nothing it can read holds the token
+MCP-AUTH-46 | tests/external/test_auth_resource_g0f.nim | Given a token that lacks scope and version <version>, when posted, then the 403 challenge names the same resource metadata as the 401 one, where the version has it
+MCP-AUTH-47 | tests/external/test_auth_client_g0f.nim | Given redirect URIs on a remote host and on this machine and version <version>, when the client registers, then the first are web applications and the others native, from 2026-07-28
+MCP-AUTH-48 | tests/external/test_auth_client_g0f.nim | Given an authorization server that refuses registration and version <version>, when the client is made to authorize, then it fails saying registration failed, and a later try registers again
+MCP-AUTH-48 | tests/external/test_auth_client_g0f.nim | Given a refused registration and version <version>, when the application makes a new client with another redirect URI, then that one registers with it
+MCP-AUTH-49 | tests/external/test_auth_client_g0f.nim | Given version <version>, when the client registers, then grant_types holds authorization_code and refresh_token
+MCP-AUTH-50 | tests/external/test_auth_client_g0f.nim | Given an application that chose offline_access among its scopes and version <version>, when the client authorizes, then the authorization request asks for it as chosen and no token request carries a scope
+MCP-AUTH-50 | tests/external/test_auth_client_g0f.nim | Given an authorization server that lists offline_access and version <version>, when the application chose no scopes, then the client does not ask for it
 MCP-HTTP-10 | tests/external/test_param_headers_http.nim | Given a tool with x-mcp-header, when a call carries the matching header, then the answer is 200
 MCP-HTTP-10 | tests/external/test_param_headers_http.nim | Given a tool with x-mcp-header, when the header differs from the body, then the answer is 400 header mismatch
 MCP-HTTP-10 | tests/external/test_param_headers_http.nim | Given a tool with x-mcp-header, when the call omits the header though the body has the value, then the answer is 400 header mismatch
@@ -798,6 +871,19 @@ MCP-LIFECYCLE-14 | tests/external/test_era_matrix.nim | Given a peer that refuse
 MCP-LIFECYCLE-14 | tests/external/test_era_matrix.nim | Given a peer silent to the probe that refuses initialize with another error naming a modern version, when the client connects, then connect fails without discovering again
 MCP-LIFECYCLE-14 | tests/external/test_era_matrix.nim | Given a transport that never finishes sending the probe, when the probe times out, then the client cancels it, leaves nothing pending and sends initialize
 MCP-LIFECYCLE-15 | tests/external/test_legacy_handshake.nim | Given a session that has sent initialize, when it sends initialize again, then the answer is invalid request and the first handshake stands
+MCP-LIFECYCLE-16 | tests/external/test_cache_hints_g0b.nim | Given a public cache policy, when each cacheable method is asked, then its complete result carries that ttlMs and cacheScope
+MCP-LIFECYCLE-16 | tests/external/test_cache_hints_g0b.nim | Given a server with no cache policy, when each cacheable method is asked, then its result is not reusable and private
+MCP-LIFECYCLE-17 | tests/external/test_cache_hints_g0b.nim | Given any cache policy, when every page of a list is followed, then every page carries the policy's cacheScope and ttlMs
+MCP-LIFECYCLE-18 | tests/external/test_client_no_cache_g0b.nim | Given a list result fresh for ten minutes, when the client lists again, then the second request is sent
+MCP-LIFECYCLE-18 | tests/external/test_client_no_cache_g0b.nim | Given a list result fresh for ten minutes, when the client lists with a cursor, then the request is sent and the first page is not served for it
+MCP-LIFECYCLE-18 | tests/external/test_client_no_cache_g0b.nim | Given two resources read in turn, when the client reads another uri, then each answer is its own and each request is sent
+MCP-LIFECYCLE-18 | tests/external/test_client_no_cache_g0b.nim | Given the same request carrying requestState sent twice, when the client sends it, then both are sent
+MCP-LIFECYCLE-19 | tests/external/test_wire_client_g0d.nim | Given a client of a version before 2026-07-28, when it connects, then initialize carries its name and version as clientInfo
+MCP-LIFECYCLE-20 | tests/external/test_wire_client_g0d.nim | Given a server that declares only prompts, when the client lists tools or reads resources, then it fails naming the capability and sends nothing
+MCP-LIFECYCLE-20 | tests/external/test_wire_client_g0d.nim | Given a server that declares only tools, when the client lists prompts or gets one, then it fails naming the capability and sends nothing
+MCP-LIFECYCLE-20 | tests/external/test_wire_client_g0d.nim | Given a server without logging or resource subscriptions, when the client sets a level or subscribes, then it fails and sends nothing
+MCP-LIFECYCLE-21 | tests/external/test_modern_conversations_g0d.nim | Given requests of three conversations in flight at once, when they finish in another order, then each is answered on its own id with its own declared capabilities
+MCP-LIFECYCLE-22 | tests/external/test_ping_g0e.nim | Given a peer that never answers, when pings time out one after another, then each raises McpTimeoutError and the caller can close the connection
 MCP-SCHEMA-1 | tests/external/test_json_schema.nim | Given a schema without $schema, when its dialect is asked, then it is 2020-12
 MCP-SCHEMA-1 | tests/external/test_json_schema.nim | Given $schema naming 2020-12, when its dialect is asked, then it is 2020-12
 MCP-SCHEMA-1 | tests/external/test_json_schema.nim | Given $schema naming draft-07 with or without the empty fragment, when its dialect is asked, then it is draft-07
@@ -1027,6 +1113,14 @@ MCP-ELICIT-URL-5 | tests/external/test_client_elicitation.nim | Given a -32042 e
 MCP-ELICIT-10 | tests/external/test_server_elicitation.nim | Given a handler that asks in url mode, when a tool is called, then the request belongs to the tool call and the answer drives the result
 MCP-ELICIT-10 | tests/external/test_tasks_end_to_end.nim | Given a tool that elicits in form or url mode inside a task, when the client has answered, then the task is working again while the tool goes on
 MCP-ELICIT-10 | tests/external/test_client_elicitation.nim | Given an accepted URL request, when a completion arrives without a string id, then it is ignored and the real one still reaches the callback
+MCP-ELICIT-11 | tests/external/test_elicitation_url_g0c.nim | Given a string that is not a URL, when the server asks in url mode, then it raises and sends nothing
+MCP-ELICIT-11 | tests/external/test_elicitation_url_g0c.nim | Given a URL, when the server asks in url mode, then the request carries it as given
+MCP-ELICIT-11 | tests/external/test_elicitation_url_g0c.nim | Given a handler whose url is not a URL, when the tool is called, then it is an internal error and nothing is asked
+MCP-ELICIT-11 | tests/external/test_elicitation_url_g0c.nim | Given a handler whose url is a URL, when the tool is called, then the answer asks for it as given
+MCP-ELICIT-12 | tests/external/test_elicitation_url_g0c.nim | Given a question put to one client, when another client answers with the same id, then the question stays open until the client asked answers
+MCP-ELICIT-13 | tests/external/test_error_codes_g0d.nim | Given a version before 2026-07-28, when a URL elicitation is required, then the error carries -32042, and from 2026-07-28 it cannot be built
+MCP-ELICIT-14 | tests/external/test_elicitation_id_g0f.nim | Given ids of every awkward shape, when a URL request arrives, then the handler sees the id exactly
+MCP-ELICIT-14 | tests/external/test_elicitation_id_g0f.nim | Given an accepted request, when a completion names the id only after normalizing it, then it is not that request
 MCP-SAMPLING-TOOLS-1 | tests/external/test_sampling_tools_payload.nim | Given tools and a tool choice, when the request is checked in 2025-11-25 and later, then there is nothing to report
 MCP-SAMPLING-TOOLS-1 | tests/external/test_sampling_tools_payload.nim | Given a result that stops for tool use with tool_use blocks, when checked, then it is valid
 MCP-SAMPLING-TOOLS-1 | tests/external/test_sampling_tools_payload.nim | Given tool uses, when they are read from a result, then they come back as blocks in order
@@ -1219,6 +1313,9 @@ MCP-SUBSCRIBE-15 | tests/external/test_subscriptions.nim | Given an acknowledgme
 MCP-SUBSCRIBE-15 | tests/external/test_subscriptions.nim | Given an acknowledgment that honors only part of the filter, when the client reports what was not honored, then it names the types, uris and tasks left out
 MCP-SUBSCRIBE-15 | tests/external/test_subscriptions.nim | Given a request that cannot be sent, when the client listens, then the transport's error is raised and no subscription is kept
 MCP-SUBSCRIBE-15 | tests/external/test_subscriptions.nim | Given a zero timeout, when the server acknowledges after the client's default, then the client waits and returns the subscription
+MCP-SUBSCRIBE-16 | tests/external/test_subscriptions_g0e.nim | Given two subscriptions on one channel, when a message of the first comes before the acknowledgment of the second, then the second is acknowledged and the message stays with the first
+MCP-SUBSCRIBE-17 | tests/external/test_subscriptions_g0e.nim | Given an open subscription, when the connection ends and another is made, then the client listens again only when asked to and the first subscription was lost
+MCP-SUBSCRIBE-17 | tests/external/test_subscriptions_g0e.nim | Given an open subscription on a server, when the connection is lost, then the server holds nothing of it
 MCP-MRTR-16 | tests/external/test_mrtr.nim | Given a handler whose input request breaks the rules of its method, when it is called, then it is an internal error and nothing is asked
 MCP-MRTR-16 | tests/external/test_mrtr.nim | Given input requests whose params break the rules of their method, when checked, then each problem names its request
 MCP-MRTR-17 | tests/external/test_mrtr.nim | Given a URL elicitation or sampling with tools, when compared with a client's capabilities, then the mode and the tools must be declared too
@@ -1227,6 +1324,13 @@ MCP-MRTR-17 | tests/external/test_mrtr.nim | Given a client that declared sampli
 MCP-MRTR-17 | tests/external/test_mrtr.nim | Given a URL elicitation, when the client declared only the form mode, then it raises without calling the handler or retrying
 MCP-MRTR-18 | tests/external/test_mrtr.nim | Given a form elicitation, when the client's handler accepts, then the retry carries the ElicitResult
 MCP-MRTR-18 | tests/external/test_mrtr.nim | Given a form elicitation, when the client's handler answers outside the schema, then the request is abandoned and nothing is retried
+MCP-MRTR-19 | tests/external/test_mrtr_g0e.nim | Given a handler that asks for a request that is no elicitation, sampling or roots request, when it is called, then it is an internal error and nothing is asked
+MCP-MRTR-20 | tests/external/test_mrtr_g0e.nim | Given an input_required answer, when the client never retries, then the request is already answered and the server serves other requests
+MCP-MRTR-20 | tests/external/test_mrtr_g0e.nim | Given a server that is asked again, when the client asks the same request twice without answering, then each time the server asks again
+MCP-MRTR-20 | tests/external/test_mrtr_g0e.nim | Given the first request answered by one server, when the retry goes to another server that never saw the first, then the retry completes
+MCP-MRTR-22 | tests/external/test_mrtr_g0e.nim | Given a retry with answers it did not ask for, when the server runs the request, then they are ignored and the request completes
+MCP-MRTR-22 | tests/external/test_mrtr_g0e.nim | Given a retry with only answers it did not ask for, when the server runs the request, then it asks again for what it needs
+MCP-MRTR-21 | tests/external/test_mrtr_g0e.nim | Given a request that waits for its input answers while another request is sent, when both run, then the other request carries none of the first one's state or answers
 MCP-AUDIO-4 | tests/external/test_client_server_requests.nim | Given a handler that answers with audio, when the version has no audio content, then the answer says so in text
 MCP-VERSION-2 | tests/external/test_version_floor.nim | Given a build, when its versions are listed, then they are every version from the oldest to the default
 MCP-VERSION-2 | tests/external/test_version_floor.nim | Given a ceiling, when the spoken versions up to it are listed, then none is older than the build's oldest
@@ -1237,6 +1341,8 @@ MCP-VERSION-10 | tests/external/test_version_build_config.nim | Given an oldest 
 MCP-VERSION-10 | tests/external/test_version_build_config.nim | Given an oldest version newer than the default, when the build is checked, then it fails naming both
 MCP-VERSION-9 | tests/external/test_version_floor.nim | Given an initialize request, when the server speaks no legacy version, then the error names the versions it speaks
 MCP-VERSION-9 | tests/external/test_version_floor.nim | Given a request without the per-request fields, when the server speaks no legacy version, then it is invalid params
+MCP-VERSION-11 | tests/external/test_client_era_cache_g0c.nim | Given a 2026-07-28 server, when the client makes three requests after connecting, then it probed with server/discover once and never initialized
+MCP-VERSION-11 | tests/external/test_client_era_cache_g0c.nim | Given a legacy server, when the client makes three requests after connecting, then it probed and initialized once each and sent no further probe
 MCP-HTTP-15 | tests/external/test_version_floor.nim | Given a GET that names no version and no session, when it arrives, then it is 400 where a spoken version has the stream and 405 otherwise
 MCP-HTTP-15 | tests/external/test_version_floor.nim | Given a DELETE that names no version and no session, when it arrives, then it is 400 where a spoken version has sessions and 405 otherwise
 MCP-HTTP-15 | tests/external/test_version_floor.nim | Given a method the endpoint does not serve, when it arrives, then Allow names what the spoken versions use
@@ -1429,6 +1535,9 @@ MCP-TOOLS-4 | tests/external/test_tool_input_validation.nim | Given arguments th
 MCP-TOOLS-5 | tests/external/test_tool_input_validation.nim | Given an inputSchema the server cannot check, when the tool is called, then it is an internal error and the handler does not run
 MCP-TOOLS-6 | tests/external/test_server_errors.nim | Given tool handlers but no tools capability, when a tool is listed or called, then the method is not found
 MCP-TOOLS-6 | tests/external/test_server_errors.nim | Given the tools capability but no call handler, when a tool is called, then the method is not found
+MCP-TOOLS-7 | tests/external/test_tool_listing_g0c.nim | Given tools echo and ECHO with different required arguments, when each is called with its own, then each is checked against its own schema
+MCP-TOOLS-7 | tests/external/test_tool_listing_g0c.nim | Given only a tool echo that needs n, when Echo is called without it, then Echo is not echo and the handler is asked
+MCP-TOOLS-8 | tests/external/test_tool_listing_g0c.nim | Given a handler that lists zeta, alpha, mid and beta over two pages, when a client lists them twice, then both lists are in that order
 MCP-HTTP-18 | tests/external/test_param_headers_http.nim | Given a tool that gained x-mcp-header after it was listed, when the call is refused as a header mismatch, then the client lists the tools again and retries with the header
 MCP-HTTP-18 | tests/external/test_param_headers_http.nim | Given a call that is refused as a header mismatch again after the tools were listed again, when it is answered, then the error is returned and the client does not retry a second time
 MCP-HTTP-18 | tests/external/test_param_headers_http.nim | Given a tool call that the server answers, when it is sent over HTTP, then the client does not read the tool list again
@@ -1451,6 +1560,15 @@ MCP-TASKS-24 | tests/external/test_tasks_principal.nim | Given a task made by on
 MCP-TASKS-24 | tests/external/test_tasks_principal.nim | Given an authorized request, when a tool runs, then ctx.principal is the subject of the token
 MCP-TASKS-24 | tests/external/test_tasks_principal.nim | Given an endpoint without authorization, when a tool runs, then ctx.principal is none and tasks belong to the session
 MCP-TASKS-25 | tests/external/test_tasks_store.nim | Given a method that is no task method, when answered, then it is not found
+MCP-TASKS-26 | tests/external/test_tasks_g0e.nim | Given a task-augmented request with a progress token, when the task reports after the CreateTaskResult, then the notification carries the token of the request
+MCP-TASKS-27 | tests/external/test_tasks_g0e.nim | Given a task that reached completed, failed or cancelled, when its context reports progress, then nothing is sent
+MCP-TASKS-28 | tests/external/test_tasks_g0e.nim | Given a task that does not exist, a task that is over and a cursor nobody issued, when the requestor asks, then each message names the cause
+MCP-TASKS-28 | tests/external/test_tasks_g0e.nim | Given a limit of active tasks, when it is reached, then the refusal says that a limit was reached
+MCP-TASKS-30 | tests/external/test_tasks_g0e.nim | Given a tool that reports an error, raises a JSON-RPC error or breaks, when tasks/get is asked, then the failed task has a statusMessage
+MCP-TASKS-29 | tests/external/test_tasks_g0e.nim | Given a task that changes status, when the receiver announces it, then the notification names the task in its params and carries no related-task metadata
+MCP-TASKS-31 | tests/external/test_tasks_http_g0e.nim | Given a working task and a completed one, when tasks/get is asked, then the answer is not an event stream
+MCP-TASKS-32 | tests/external/test_tasks_http_g0e.nim | Given a tasks/get request, when the client disconnects without reading the answer, then the task and the next requests are unharmed
+MCP-TASKS-32 | tests/external/test_tasks_http_g0e.nim | Given a tasks/result request that waits, when the client disconnects, then the task goes on and a later tasks/result returns its result
 MCP-CONTENT-FIELDS-1 | tests/external/test_client_field_types.nim | Given a tool whose title is a number, when tools are listed, then it is a protocol error naming the field
 MCP-CONTENT-FIELDS-1 | tests/external/test_client_field_types.nim | Given a resource whose mimeType is an object, when resources are listed, then it is a protocol error
 MCP-CONTENT-FIELDS-1 | tests/external/test_client_field_types.nim | Given a nextCursor that is a number, when tools are listed, then it is a protocol error
@@ -1460,6 +1578,19 @@ MCP-CONTENT-FIELDS-1 | tests/external/test_client_field_types.nim | Given option
 MCP-CONTENT-FIELDS-2 | tests/external/test_client_operations.nim | Given a content block that is not an object, when it is parsed, then McpProtocolError is raised
 MCP-CONTENT-FIELDS-2 | tests/external/test_client_operations.nim | Given an embedded resource block without its resource object, when it is parsed, then McpProtocolError is raised
 MCP-CONTENT-FIELDS-2 | tests/external/test_client_operations.nim | Given an embedded resource without a mimeType, when it is written back, then no mimeType key is written
+MCP-CONTENT-FIELDS-10 | tests/external/test_embedded_content_g0c.nim | Given a tool result that embeds a text resource and a blob resource, when the tool is called, then both arrive as the handler built them
+MCP-CONTENT-FIELDS-10 | tests/external/test_client_embedded_content_g0c.nim | Given a tool result that embeds resources, when the tool is called, then they are read with their fields
+MCP-CONTENT-FIELDS-9 | tests/external/test_embedded_content_g0c.nim | Given a prompt with an image and embedded resources, when it is got, then each message carries the block with its uri, mimeType and text or blob
+MCP-CONTENT-FIELDS-9 | tests/external/test_client_embedded_content_g0c.nim | Given a prompt with an image and embedded resources, when it is got, then each block is read with its fields
+MCP-CONTENT-FIELDS-9 | tests/external/test_client_embedded_content_g0c.nim | Given a prompt image without its mimeType or data, when it is got, then the answer is a protocol error
+MCP-CONTENT-FIELDS-9 | tests/external/test_client_embedded_content_g0c.nim | Given an embedded resource without its uri, when the prompt is got or the tool is called, then the answer is a protocol error
+MCP-CONTENT-FIELDS-11 | tests/external/test_schema_ref_g0d.nim | Given a $ref to a network address, when an instance is validated, then the schema is reported and nothing connects to the address
+MCP-CONTENT-FIELDS-11 | tests/external/test_schema_ref_g0d.nim | Given a $ref to a file or a relative document, when an instance is validated, then the schema is reported
+MCP-CONTENT-FIELDS-11 | tests/external/test_schema_ref_g0d.nim | Given a $ref into its own document, when an instance is validated, then it is followed
+MCP-CONTENT-FIELDS-12 | tests/external/test_icon_svg_g0f.nim | Given an SVG icon, when it is fetched with the default options, then it is refused and the refusal names the type
+MCP-CONTENT-FIELDS-12 | tests/external/test_icon_svg_g0f.nim | Given an application that allows SVG, when an SVG icon is fetched, then its bytes come back as they are, with the type SVG
+MCP-CONTENT-FIELDS-12 | tests/external/test_icon_svg_g0f.nim | Given SVG bytes that call themselves a PNG, when they are fetched, then the label does not get them through
+MCP-CONTENT-FIELDS-12 | tests/external/test_icon_svg_g0f.nim | Given an application that allows SVG, when a PNG is fetched, then it is still a PNG
 MCP-ICONS-6 | tests/internal/test_icon_fetch_internal.nim | Given an icon of an allowed type, when fetched, then the bytes and the type found in them are returned
 MCP-ICONS-6 | tests/internal/test_icon_fetch_internal.nim | Given a fetch, when the request goes out, then it carries no credentials
 MCP-ICONS-6 | tests/internal/test_icon_fetch_internal.nim | Given an icon whose Content-Type disagrees with its bytes, when fetched, then it is refused
@@ -1496,6 +1627,17 @@ MCP-SAMPLING-TOOLS-11 | tests/external/test_sampling_tools_payload.nim | Given t
 MCP-SAMPLING-TOOLS-12 | tests/external/test_sampling_tools_payload.nim | Given array content or an unknown content type in a result, when checked, then the version and the block decide
 MCP-SAMPLING-TOOLS-12 | tests/external/test_sampling_tools_payload.nim | Given a result that completes without a tool use, when the tool choice is not required, then it is valid
 MCP-SAMPLING-TOOLS-12 | tests/external/test_sampling_tools_payload.nim | Given tool choice required and a message without content, when a result completes without a tool use, then the absence of a tool use is reported
+MCP-SAMPLING-TOOLS-13 | tests/external/test_sampling_payload_g0c.nim | Given a message whose role is neither user nor assistant, or is missing, when the server asks, then it raises and sends nothing
+MCP-SAMPLING-TOOLS-13 | tests/external/test_sampling_payload_g0c.nim | Given a message without a content, or with one that is no content block, when the server asks, then it raises and sends nothing
+MCP-SAMPLING-TOOLS-13 | tests/external/test_sampling_payload_g0c.nim | Given a user message and an assistant message with content, when the server asks, then the request is sent as given
+MCP-SAMPLING-TOOLS-13 | tests/external/test_sampling_payload_g0c.nim | Given a handler whose message has a role other than user or assistant, or none, or no content, when the tool is called, then it is an internal error and nothing is asked
+MCP-SAMPLING-TOOLS-13 | tests/external/test_sampling_payload_g0c.nim | Given a user message and an assistant message with content, when the tool is called, then the answer asks for them as given
+MCP-SAMPLING-TOOLS-13 | tests/external/test_client_sampling_g0c.nim | Given a message whose role is neither user nor assistant, or is missing, or that has no content, when the server asks, then the client answers invalid params and the handler is not called
+MCP-SAMPLING-TOOLS-13 | tests/external/test_client_sampling_g0c.nim | Given an input request whose message has a role other than user or assistant, when the client reads it, then it abandons the request with invalid params, without calling the handler or retrying
+MCP-SAMPLING-TOOLS-14 | tests/external/test_sampling_payload_g0c.nim | Given an answer whose stopReason is a string the specification does not list, when the server asked, then the answer is returned with it
+MCP-SAMPLING-TOOLS-14 | tests/external/test_sampling_payload_g0c.nim | Given a request with tools and an answer with a stopReason of the client's own, when the server asked, then the answer is returned with it
+MCP-SAMPLING-TOOLS-14 | tests/external/test_client_sampling_g0c.nim | Given a handler whose answer stops for a reason the specification does not list, when the server asks, then the answer carries that stopReason
+MCP-SAMPLING-TOOLS-14 | tests/external/test_client_sampling_g0c.nim | Given a handler whose answer stops for a reason the specification does not list, when the server asks for input, then the retry carries that stopReason
 MCP-EXT-10 | tests/external/test_extensions.nim | Given extensions registered without onLegacyHandshake, when a legacy client initializes, then the request and the result are those of a peer with no extensions
 MCP-EXT-11 | tests/external/test_extensions.nim | Given an extension declared with onLegacyHandshake, when a legacy client initializes, then the request carries it and only it
 MCP-EXT-12 | tests/external/test_extensions.nim | Given a legacy client that declared an extension in initialize, when a handler asks, then it sees the settings; without the declaration it does not
@@ -1572,6 +1714,17 @@ MCP-HTTP-31 | tests/external/test_http_client_streams.nim | Given a GET stream c
 MCP-HTTP-31 | tests/external/test_http_client_streams.nim | Given GET streams whose later events carry no id, when each is cut, then every reconnection names the last id that was sent
 MCP-HTTP-31 | tests/external/test_http_client_streams.nim | Given a GET stream that is open, when the client is initialized again, then it does not open a second stream
 MCP-HTTP-31 | tests/external/test_http_client_streams.nim | Given a GET stream that ended because the server offers none, when the client is initialized again, then it asks again
+MCP-HTTP-42 | tests/external/test_http_client_g0a.nim | Given a request, a notification, a response and a second request with the params of <version>, when the client sends them, then each is a POST of its own holding one message
+MCP-HTTP-43 | tests/external/test_http_client_g0a.nim | Given strings of every script, when a request carrying one is posted, then the body is valid UTF-8 and the server reads the same string
+MCP-HTTP-44 | tests/external/test_http_client_g0a.nim | Given names the specification tabulates, when tools/call is sent, then Mcp-Name is plain for plain ASCII and in the lowercase Base64 form for the rest
+MCP-HTTP-44 | tests/external/test_http_client_g0a.nim | Given a name with spaces round it, when tools/call is sent, then Mcp-Name is in the Base64 form
+MCP-HTTP-44 | tests/external/test_http_client_g0a.nim | Given a resource URI that is not plain ASCII and a prompt name that is, when resources/read and prompts/get are sent, then only the URI is in the Base64 form
+MCP-HTTP-46 | tests/external/test_http_client_g0a.nim | Given an answer whose header names are spelt in other cases, when the client reads it, then the session id and the event stream are recognised
+MCP-HTTP-46 | tests/external/test_http_server_g0a.nim | Given the headers of a request spelt in other cases, when it is posted, then it is read as with the usual spelling, and a differing Mcp-Name is still a mismatch
+MCP-HTTP-46 | tests/external/test_http_server_g0a.nim | Given a session, when a request names it with the header spelt in other cases, then the session is found, and an unknown id is not found
+MCP-HTTP-47 | tests/external/test_http_server_g0a.nim | Given a transport made with the defaults, when it is started, then its socket is bound to 127.0.0.1 and not to every interface
+MCP-HTTP-48 | tests/external/test_http_server_g0a.nim | Given many clients that initialize, when the server issues their sessions, then every id is made of visible ASCII characters only
+MCP-HTTP-45 | tests/external/test_http_server_g0a.nim | Given an Mcp-Name that decodes to the tool's name, when its markers are lowercase, then the request is served, and when they are in capitals, then it is not decoded and the answer is a header mismatch
 MCP-SEC-SCHEMA-1 | tests/external/test_security_schema.nim | Given a plain pattern, when 4 MiB of text is matched, then the process survives and answers
 MCP-SEC-SCHEMA-1 | tests/external/test_security_schema.nim | Given a lookahead, when long text is matched, then it is answered
 MCP-SEC-SCHEMA-2 | tests/external/test_security_schema.nim | Given patterns that backtrack exponentially, when matched, then each answers at once
@@ -1878,3 +2031,13 @@ MCP-SEC-SWEEP-6 | tests/internal/test_fuzz_regressions.nim | Given the seeds of 
 MCP-SEC-SWEEP-6 | tests/internal/test_fuzz_regressions.nim | Given every input kept from fuzzing, when handled, then nothing is wrong
 MCP-SEC-SWEEP-6 | tests/internal/test_fuzz_regressions.nim | Given the corpus directory, when listed, then every directory in it is a target
 MCP-SEC-HTTP-8 | tests/external/test_security_http.nim | Given a session whose end callback raises, when the client sends DELETE, then the answer is a bare 500, the log names the failure and the server goes on
+MCP-ERRORS-1 | tests/external/test_error_message_g0f.nim | Given requests that fail in each standard way, when the server answers, then every message is one concise sentence
+MCP-ERRORS-1 | tests/external/test_error_message_g0f.nim | Given a handler that fails with a long message of its own, when the server answers, then the peer is told 'Internal error' and nothing the handler wrote
+MCP-ERRORS-1 | tests/external/test_error_message_g0f.nim | Given bodies that are not requests, when posted, then each answer carries one concise sentence
+MCP-ERRORS-1 | tests/external/test_error_message_g0f.nim | Given requests the client cannot serve, when it answers the server, then every message is one concise sentence
+MCP-META-1 | tests/external/test_meta_keys_g0f.nim | Given keys the specification calls valid and invalid, when they are judged, then each is judged as the specification says
+MCP-META-1 | tests/external/test_meta_keys_g0f.nim | Given the keys the SDK defines, when they are judged, then every one is valid
+MCP-META-1 | tests/external/test_meta_keys_g0f.nim | Given a server that answers discovery, a list, a call, a failed call and an unknown method, when its messages are read, then every _meta key in them is valid
+MCP-META-2 | tests/external/test_meta_keys_g0f.nim | Given requests whose _meta holds unknown reserved keys with any value, when the server answers, then it answers as it would without them
+MCP-META-2 | tests/external/test_meta_keys_g0f.nim | Given a reserved key the server reads and a value of the wrong type, when a request carries it, then the answer is invalid params and never an internal error
+MCP-META-2 | tests/external/test_meta_values_client_g0f.nim | Given results whose _meta holds reserved keys of any value, when the client reads them, then the content comes through

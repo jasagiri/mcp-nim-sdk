@@ -319,3 +319,58 @@ Feature: Authorization
     Given a registration response or an error answer
     When the response has no or an empty client_id, or the error answer has a description, none, or is not JSON
     Then registration fails, or the error names the status, the code and the description only when given
+
+  @spec:MCP-AUTH-43 @feature:ftAuthorization
+  Scenario: A client keeps its tokens in the store it was given and writes them nowhere else
+    Given a client with a token store of the application's own, or two clients each made with the defaults
+    When the client authorizes and the request is later refused and the user declines a new authorization
+    Then both tokens are saved to the application's store, and a client made with the defaults does not present another client's token
+    And neither the error the application receives nor stderr repeats an access token or a refresh token
+
+  @spec:MCP-AUTH-44 @feature:ftAuthorization
+  Scenario: A resource server repeats no token it receives
+    Given a protected MCP endpoint
+    When requests carry a token the verifier accepts, one it rejects, one that lacks scope, and one that makes the verifier fail
+    Then no answer, header or body, and nothing on stderr contains the token
+
+  @spec:MCP-AUTH-45 @feature:ftAuthorization
+  Scenario: A handler is told whom a token stands for and never the token
+    Given a protected MCP endpoint whose verifier names the subject of a token
+    When a handler serves a request that carried that token
+    Then the handler is told the subject, and nothing in its context, including the request's _meta, holds the token
+    And what the handler returns to the client does not hold it either
+
+  @spec:MCP-AUTH-46 @feature:ftProtectedResourceMetadata
+  Scenario: The 403 challenge names the resource metadata as the 401 challenge does
+    Given a protected MCP endpoint of 2025-06-18 or later
+    When a token lacks scope
+    Then the 403 challenge carries resource_metadata naming the same URI as the 401 challenge
+    And in 2025-03-26 neither challenge carries one
+
+  @spec:MCP-AUTH-47 @feature:ftDynamicClientRegistration
+  Scenario: A client registers as a web application when its redirect URI is on a remote host
+    Given a version of 2026-07-28 or later and an authorization server that accepts registration
+    When the redirect URI is https on a remote host, or http on localhost, 127.0.0.1 or [::1]
+    Then the registered application_type is web for the first and native for the others
+    And before 2026-07-28 no application_type is sent
+
+  @spec:MCP-AUTH-48 @feature:ftDynamicClientRegistration
+  Scenario: A refused registration is reported and does not stop a later try, or a new client with another redirect URI
+    Given an authorization server that refuses to register the client
+    When the client is made to authorize
+    Then it fails saying that registration failed, the user is never sent to consent, and nothing is registered
+    And when the server accepts registration later, the same client registers and goes on
+    And an application that makes a new client with another redirect URI has that one registered with it
+
+  @spec:MCP-AUTH-49 @feature:ftDynamicClientRegistration
+  Scenario: A registered client asks for the refresh_token grant
+    Given an authorization server that accepts registration
+    When the client registers
+    Then its grant_types hold authorization_code and refresh_token, in every version of the SDK
+
+  @spec:MCP-AUTH-50 @feature:ftAuthorization
+  Scenario: An application may ask for offline_access, and the client does not add it by itself
+    Given an application that chose its scopes
+    When the client authorizes
+    Then the authorization request carries the chosen scopes, offline_access among them, and no token request carries a scope
+    And without a choice the client does not ask for offline_access, though the authorization server lists it in scopes_supported

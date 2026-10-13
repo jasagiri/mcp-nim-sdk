@@ -86,3 +86,47 @@ Feature: Progress and cancellation
     Given a request served with serveDetached
     When its cancel is called, twice, or after the request was answered
     Then the handler sees the first cancellation and the others change nothing
+
+  @spec:MCP-PROGRESS-6 @feature:ftProgress
+  Scenario: Progress does not extend a request's timeout
+    Given a request with a timeout whose server keeps sending progress for much longer than the timeout
+    When the timeout passes
+    Then the request fails with a timeout error before the progress has ended, and the client had passed on the progress it received
+
+  @spec:MCP-CANCEL-8 @feature:ftCancellation
+  Scenario: A server says why a request was cancelled
+    Given a request in progress
+    When the client sends notifications/cancelled with a reason
+    Then the server writes a line to stderr that says the request was cancelled and gives the reason
+
+  @spec:MCP-CANCEL-9 @feature:ftCancellation
+  Scenario: A cancellation notification that cannot be read is ignored
+    Given a request in progress
+    When notifications/cancelled arrives without a usable requestId, or with params that are not an object
+    Then the request is not cancelled and is answered, and the server goes on
+
+  @spec:MCP-CANCEL-10 @feature:ftCancellation
+  Scenario: From 2026-07-28 a server sends notifications/cancelled only to end a subscription
+    Given a 2026-07-28 server with requests that are cancelled by the client or fail, and an open subscriptions/listen
+    When the server ends its subscriptions
+    Then the only notifications/cancelled it sent names the subscriptions/listen request
+    And a request of the server to the client is refused and sends nothing
+
+  @spec:MCP-PROGRESS-7 @feature:ftCancellation
+  Scenario: A request times out at its timeout whatever progress arrives
+    Given a client request with a timeout and a progress callback
+    When the server keeps sending progress after the timeout would have passed
+    Then the request raises a timeout error at its timeout, the progress before it was delivered, and the server is told to cancel it
+    And the client does not reset the timeout when progress arrives
+
+  @spec:MCP-PROGRESS-8 @feature:ftProgress
+  Scenario: Progress tokens differ across the requests that are active
+    Given any number of requests active at once, each sent with a progress callback
+    When the client sends them, and some end and more are sent
+    Then no two active requests carry the same progressToken
+
+  @spec:MCP-PROGRESS-9 @feature:ftProgress
+  Scenario: Progress and total may be fractional
+    Given a request with a progress token
+    When progress and total are fractional, from the server's handler or from a server to the client's callback
+    Then the values arrive exactly as given

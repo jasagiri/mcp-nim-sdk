@@ -135,3 +135,30 @@ Feature: Elicitation
     Then the answer is the one the handler reads, the request belongs to the tool call, and the task needs input only while the answer is outstanding
     And a completion notification without a string elicitationId is ignored
 
+  # rule
+  @spec:MCP-ELICIT-11 @feature:ftUrlElicitation
+  Scenario: The url of a URL elicitation is a URL
+    Given a server that asks the client to open a url (elicitation/create, or an input request in 2026-07-28)
+    When the url is any string that is not a URL: empty, without a scheme, with a malformed scheme
+    Then the server raises (or the answer is an internal error) and nothing is sent to the client
+    And a URL is sent as given
+
+  @spec:MCP-ELICIT-12 @feature:ftElicitation
+  Scenario: An elicitation takes its answer from the client it asked
+    Given a server that put an elicitation to one client and another client is connected
+    When the other client answers with the id of that request
+    Then the question stays open, and the answer of the client that was asked is the one the server reads
+  # The user's identity is not known to the library; in 2026-07-28 the state of a request can be sealed for a principal (MCP-MRTR-10).
+
+  @spec:MCP-ELICIT-13 @feature:ftUrlElicitation
+  Scenario: The URL elicitation required error exists in 2025-11-25 only
+    Given the error a handler raises when a request needs a URL elicitation
+    When it is built for a version before 2026-07-28 that has URL elicitation, and for 2026-07-28
+    Then the first carries -32042 and the second cannot be built
+
+  @spec:MCP-ELICIT-14 @feature:ftUrlElicitation
+  Scenario: The elicitationId of a URL request is opaque to the client (rule)
+    Given a URL request whose elicitationId is padded, in mixed case, URL shaped, non-ASCII, numeric, JSON shaped, percent encoded, or holds a line break
+    When the client hands it to the application and the server later announces the completion
+    Then the application sees the id exactly as sent
+    And a completion that names the id only after trimming it or changing its case is not that request, and one that names it exactly is

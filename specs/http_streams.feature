@@ -252,3 +252,39 @@ Feature: Event streams over Streamable HTTP
     And the server closes the connection when the stream ends, even for a client that asked to keep it
     And the departure of the peer is noticed after a stray byte as well
     And events that no connection wrote are not reported as written
+
+  @spec:MCP-HTTPSTREAM-21 @feature:ftStreamableHttp
+  Scenario: A client ignores comment lines of an event stream (a rule)
+    Given an event stream with comment lines before an event, between events, without a space after the colon, and inside an event
+    When the client reads it
+    Then the comments are ignored, only the messages are delivered, and the stream is not taken for malformed
+
+  @spec:MCP-HTTPSTREAM-22 @feature:ftHttpGetStream
+  Scenario: A client holds its GET stream and the streams of its requests at once (versions 2025-03-26 to 2025-11-25)
+    Given a session with a GET stream open
+    When two requests are answered by event streams at the same time
+    Then all three connections are open together and each delivers its messages
+
+  @spec:MCP-HTTPSTREAM-23 @feature:ftStreamableHttp
+  Scenario: A client does not hand its session id to another origin
+    Given a client that has a session id
+    When the server redirects the next POST to another origin
+    Then the client raises McpTransportError and nothing reaches the other origin
+
+  @spec:MCP-HTTPSTREAM-24 @feature:ftHttpGetStream
+  Scenario: A response travels on the stream of its request, never on the GET stream (versions 2025-03-26 to 2025-11-25)
+    Given a request in progress while the GET stream of the session is open
+    When the server answers
+    Then the response is on the stream of the request, and the GET stream carries only what the server said on its own
+
+  @spec:MCP-HTTPSTREAM-25 @feature:ftStreamableHttp
+  Scenario: The stream of a request stays open until its response, past the idle limit of sessions (versions 2025-03-26 to 2025-11-25)
+    Given a request whose answer takes longer than the idle limit of sessions
+    When the server answers at last
+    Then the stream was open all the time, the session was not dropped, and the stream carries the response
+
+  @spec:MCP-HTTPSTREAM-26 @feature:ftStreamableHttp
+  Scenario: The stream of a 2026-07-28 request carries only notifications of that request (a rule)
+    Given two requests in progress
+    When the server sends a notification for one of them and another that belongs to no request
+    Then each stream carries only the notifications of its own request and the unrelated one is on neither

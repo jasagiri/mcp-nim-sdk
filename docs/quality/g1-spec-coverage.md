@@ -9,12 +9,14 @@ Also from the `@spec:ID` tags of the Scenarios in
 `specs/completion.feature`
 `specs/content.feature`
 `specs/elicitation.feature`
+`specs/errors.feature`
 `specs/event_stream.feature`
 `specs/extensions.feature`
 `specs/http_sse.feature`
 `specs/http_streams.feature`
 `specs/lifecycle.feature`
 `specs/logging.feature`
+`specs/meta.feature`
 `specs/mrtr.feature`
 `specs/pagination.feature`
 `specs/progress_cancellation.feature`
@@ -79,12 +81,23 @@ joined to tests by the rows of
 | MCP-AUTH-40 | tests/external/test_auth_oauth_basics.nim (3), tests/internal/test_auth_oauth_basics_internal.nim (2) |
 | MCP-AUTH-41 | tests/external/test_security_auth_tokens.nim (4), tests/internal/test_auth_oauth_basics_internal.nim (1), tests/internal/test_security_auth_tokens_internal.nim (6) |
 | MCP-AUTH-42 | tests/external/test_auth_oauth_basics.nim (3), tests/internal/test_auth_oauth_basics_internal.nim (2) |
+| MCP-AUTH-43 | tests/external/test_auth_client_g0f.nim (3) |
+| MCP-AUTH-44 | tests/external/test_auth_resource_g0f.nim (1) |
+| MCP-AUTH-45 | tests/external/test_auth_resource_g0f.nim (1) |
+| MCP-AUTH-46 | tests/external/test_auth_resource_g0f.nim (1) |
+| MCP-AUTH-47 | tests/external/test_auth_client_g0f.nim (1) |
+| MCP-AUTH-48 | tests/external/test_auth_client_g0f.nim (2) |
+| MCP-AUTH-49 | tests/external/test_auth_client_g0f.nim (1) |
+| MCP-AUTH-50 | tests/external/test_auth_client_g0f.nim (2) |
 | MCP-COMPLETION-1 | tests/external/test_server_completion.nim (4) |
 | MCP-COMPLETION-2 | tests/external/test_server_completion.nim (1) |
 | MCP-COMPLETION-3 | tests/external/test_server_completion.nim (3) |
 | MCP-COMPLETION-4 | tests/external/test_server_completion.nim (3) |
 | MCP-COMPLETION-5 | tests/external/test_client_operations.nim (3) |
 | MCP-COMPLETION-6 | tests/external/test_client_operations.nim (3) |
+| MCP-COMPLETION-7 | tests/external/test_server_completion_g0b.nim (2) |
+| MCP-COMPLETION-8 | tests/external/test_server_completion_g0b.nim (1) |
+| MCP-COMPLETION-9 | tests/external/test_client_completion_g0b.nim (5) |
 | MCP-SCHEMA-1 | tests/external/test_json_schema.nim (5) |
 | MCP-SCHEMA-2 | tests/external/test_json_schema.nim (5) |
 | MCP-SCHEMA-3 | tests/external/test_json_schema.nim (9) |
@@ -130,6 +143,10 @@ joined to tests by the rows of
 | MCP-CONTENT-FIELDS-6 | tests/external/test_structured_tool_output.nim (2) |
 | MCP-CONTENT-FIELDS-7 | tests/external/test_structured_tool_output.nim (2) |
 | MCP-CONTENT-FIELDS-8 | tests/external/test_tool_annotations.nim (5), tests/external/test_tool_builders.nim (3) |
+| MCP-CONTENT-FIELDS-9 | tests/external/test_client_embedded_content_g0c.nim (3), tests/external/test_embedded_content_g0c.nim (1) |
+| MCP-CONTENT-FIELDS-10 | tests/external/test_client_embedded_content_g0c.nim (1), tests/external/test_embedded_content_g0c.nim (1) |
+| MCP-CONTENT-FIELDS-11 | tests/external/test_schema_ref_g0d.nim (3) |
+| MCP-CONTENT-FIELDS-12 | tests/external/test_icon_svg_g0f.nim (4) |
 | MCP-ELICIT-1 | tests/external/test_client_elicitation.nim (1), tests/external/test_elicitation_payload.nim (2), tests/external/test_server_elicitation.nim (2) |
 | MCP-ELICIT-2 | tests/external/test_elicitation_payload.nim (3), tests/external/test_server_elicitation.nim (1) |
 | MCP-ELICIT-3 | tests/external/test_client_elicitation.nim (1), tests/external/test_elicitation_payload.nim (7), tests/external/test_server_elicitation.nim (1) |
@@ -150,6 +167,11 @@ joined to tests by the rows of
 | MCP-ELICIT-8 | tests/external/test_elicitation_payload.nim (2) |
 | MCP-ELICIT-9 | tests/external/test_elicitation_payload.nim (2) |
 | MCP-ELICIT-10 | tests/external/test_client_elicitation.nim (1), tests/external/test_server_elicitation.nim (1), tests/external/test_tasks_end_to_end.nim (1) |
+| MCP-ELICIT-11 | tests/external/test_elicitation_url_g0c.nim (4) |
+| MCP-ELICIT-12 | tests/external/test_elicitation_url_g0c.nim (1) |
+| MCP-ELICIT-13 | tests/external/test_error_codes_g0d.nim (1) |
+| MCP-ELICIT-14 | tests/external/test_elicitation_id_g0f.nim (2) |
+| MCP-ERRORS-1 | tests/external/test_error_message_g0f.nim (4) |
 | MCP-SSE-1 | tests/external/test_event_stream.nim (1) |
 | MCP-SSE-2 | tests/external/test_event_stream.nim (1) |
 | MCP-SSE-3 | tests/external/test_event_stream.nim (1) |
@@ -224,6 +246,12 @@ joined to tests by the rows of
 | MCP-HTTPSTREAM-18 | tests/external/test_security_http.nim (2) |
 | MCP-HTTPSTREAM-19 | tests/external/test_http_streams.nim (1), tests/internal/test_http_streams_internal.nim (3) |
 | MCP-HTTPSTREAM-20 | tests/external/test_http_streams.nim (2), tests/internal/test_http_streams_internal.nim (5) |
+| MCP-HTTPSTREAM-21 | tests/external/test_http_client_g0a.nim (1) |
+| MCP-HTTPSTREAM-22 | tests/external/test_http_client_g0a.nim (1) |
+| MCP-HTTPSTREAM-23 | tests/external/test_http_client_g0a.nim (1) |
+| MCP-HTTPSTREAM-24 | tests/external/test_http_server_g0a.nim (1) |
+| MCP-HTTPSTREAM-25 | tests/external/test_http_server_g0a.nim (1) |
+| MCP-HTTPSTREAM-26 | tests/external/test_http_server_g0a.nim (1) |
 | MCP-LIFECYCLE-1 | tests/external/test_legacy_handshake.nim (4) |
 | MCP-LIFECYCLE-2 | tests/external/test_legacy_handshake.nim (5) |
 | MCP-LIFECYCLE-3 | tests/external/test_legacy_handshake.nim (4) |
@@ -241,6 +269,13 @@ joined to tests by the rows of
 | MCP-CACHE-1 | tests/external/test_modern_protocol.nim (3) |
 | MCP-LIFECYCLE-14 | tests/external/test_era_matrix.nim (7) |
 | MCP-LIFECYCLE-15 | tests/external/test_legacy_handshake.nim (1) |
+| MCP-LIFECYCLE-16 | tests/external/test_cache_hints_g0b.nim (2) |
+| MCP-LIFECYCLE-17 | tests/external/test_cache_hints_g0b.nim (1) |
+| MCP-LIFECYCLE-18 | tests/external/test_client_no_cache_g0b.nim (4) |
+| MCP-LIFECYCLE-19 | tests/external/test_wire_client_g0d.nim (1) |
+| MCP-LIFECYCLE-20 | tests/external/test_wire_client_g0d.nim (3) |
+| MCP-LIFECYCLE-21 | tests/external/test_modern_conversations_g0d.nim (1) |
+| MCP-LIFECYCLE-22 | tests/external/test_ping_g0e.nim (1) |
 | MCP-LOGGING-1 | tests/external/test_server_logging.nim (3) |
 | MCP-LOGGING-2 | tests/external/test_server_logging.nim (3) |
 | MCP-LOGGING-3 | tests/external/test_server_logging.nim (3) |
@@ -250,6 +285,8 @@ joined to tests by the rows of
 | MCP-LOGGING-7 | tests/external/test_server_logging.nim (1) |
 | MCP-LOGGING-8 | tests/external/test_client_operations.nim (1), tests/external/test_server_logging.nim (1) |
 | MCP-LOGGING-9 | tests/external/test_client_operations.nim (2), tests/external/test_client_server_requests.nim (1) |
+| MCP-META-1 | tests/external/test_meta_keys_g0f.nim (3) |
+| MCP-META-2 | tests/external/test_meta_keys_g0f.nim (2), tests/external/test_meta_values_client_g0f.nim (1) |
 | MCP-MRTR-1 | tests/external/test_mrtr.nim (7) |
 | MCP-MRTR-2 | tests/external/test_mrtr.nim (2) |
 | MCP-MRTR-3 | tests/external/test_mrtr.nim (1) |
@@ -268,6 +305,10 @@ joined to tests by the rows of
 | MCP-MRTR-16 | tests/external/test_mrtr.nim (2) |
 | MCP-MRTR-17 | tests/external/test_mrtr.nim (4) |
 | MCP-MRTR-18 | tests/external/test_mrtr.nim (2) |
+| MCP-MRTR-19 | tests/external/test_mrtr_g0e.nim (1) |
+| MCP-MRTR-20 | tests/external/test_mrtr_g0e.nim (3) |
+| MCP-MRTR-21 | tests/external/test_mrtr_g0e.nim (1) |
+| MCP-MRTR-22 | tests/external/test_mrtr_g0e.nim (2) |
 | MCP-PAGINATION-1 | tests/external/test_server_pagination.nim (4) |
 | MCP-PAGINATION-2 | tests/external/test_server_pagination.nim (5) |
 | MCP-PAGINATION-3 | tests/external/test_server_pagination.nim (1) |
@@ -285,6 +326,13 @@ joined to tests by the rows of
 | MCP-CANCEL-5 | tests/external/test_http_streams.nim (3) |
 | MCP-CANCEL-6 | tests/external/test_http_streams.nim (1) |
 | MCP-CANCEL-7 | tests/external/test_server_progress_cancel.nim (2) |
+| MCP-PROGRESS-6 | tests/external/test_wire_client_g0d.nim (1) |
+| MCP-CANCEL-8 | tests/external/test_cancel_notice_g0e.nim (1) |
+| MCP-CANCEL-9 | tests/external/test_cancel_notice_g0e.nim (1) |
+| MCP-CANCEL-10 | tests/external/test_cancel_notice_g0e.nim (2) |
+| MCP-PROGRESS-7 | tests/external/test_progress_g0e.nim (1) |
+| MCP-PROGRESS-8 | tests/external/test_progress_g0e.nim (1) |
+| MCP-PROGRESS-9 | tests/external/test_progress_g0e.nim (2) |
 | MCP-PROMPTS-1 | tests/external/test_server_errors.nim (1), tests/external/test_server_resources_prompts.nim (1) |
 | MCP-PROMPTS-2 | tests/external/test_client_operations.nim (5) |
 | MCP-PROMPTS-3 | tests/external/test_server_resources_prompts.nim (2) |
@@ -310,6 +358,8 @@ joined to tests by the rows of
 | MCP-LISTCHANGED-2 | tests/external/test_client_server_requests.nim (3) |
 | MCP-RESOURCES-13 | tests/external/test_server_resources_prompts.nim (1) |
 | MCP-RESOURCES-14 | tests/external/test_server_errors.nim (1), tests/external/test_server_resources_prompts.nim (1) |
+| MCP-RESOURCES-15 | tests/external/test_resource_failures_g0c.nim (2) |
+| MCP-RESOURCES-16 | tests/external/test_client_resource_error_g0c.nim (1) |
 | MCP-SAMPLING-TOOLS-1 | tests/external/test_client_sampling_tools.nim (2), tests/external/test_sampling_tools_payload.nim (7), tests/external/test_server_sampling_tools.nim (4) |
 | MCP-SAMPLING-TOOLS-2 | tests/external/test_client_sampling_tools.nim (2), tests/external/test_sampling_tools_payload.nim (3), tests/external/test_server_sampling_tools.nim (2) |
 | MCP-SAMPLING-TOOLS-3 | tests/external/test_client_sampling_tools.nim (1) |
@@ -322,6 +372,8 @@ joined to tests by the rows of
 | MCP-SAMPLING-TOOLS-10 | tests/external/test_sampling_tools_payload.nim (5) |
 | MCP-SAMPLING-TOOLS-11 | tests/external/test_sampling_tools_payload.nim (2) |
 | MCP-SAMPLING-TOOLS-12 | tests/external/test_sampling_tools_payload.nim (3) |
+| MCP-SAMPLING-TOOLS-13 | tests/external/test_client_sampling_g0c.nim (2), tests/external/test_sampling_payload_g0c.nim (5) |
+| MCP-SAMPLING-TOOLS-14 | tests/external/test_client_sampling_g0c.nim (2), tests/external/test_sampling_payload_g0c.nim (2) |
 | MCP-SEC-SCHEMA-1 | tests/external/test_security_schema.nim (2) |
 | MCP-SEC-SCHEMA-2 | tests/external/test_security_schema.nim (2), tests/internal/test_security_schema_internal.nim (1) |
 | MCP-SEC-SCHEMA-3 | tests/external/test_security_schema.nim (5) |
@@ -395,12 +447,20 @@ joined to tests by the rows of
 | MCP-CLIENTREQ-4 | tests/external/test_client_server_requests.nim (3) |
 | MCP-CLIENTREQ-5 | tests/external/test_client_server_requests.nim (2) |
 | MCP-SERVERREQ-12 | tests/external/test_server_requests.nim (1) |
+| MCP-SERVERREQ-13 | tests/external/test_roots_failure_g0c.nim (1) |
+| MCP-SERVERREQ-14 | tests/external/test_roots_changed_g0f.nim (2) |
 | MCP-STDIO-1 | tests/external/test_stdio.nim (4) |
 | MCP-STDIO-2 | tests/external/test_stdio.nim (2) |
 | MCP-STDIO-3 | tests/external/test_stdio.nim (3) |
 | MCP-STDIO-4 | tests/external/test_stdio.nim (2) |
 | MCP-STDIO-5 | tests/external/test_stdio.nim (8) |
 | MCP-STDIO-6 | tests/external/test_stdio.nim (6) |
+| MCP-STDIO-7 | tests/external/test_stdio_messages_g0a.nim (3) |
+| MCP-STDIO-8 | tests/external/test_stdio_messages_g0a.nim (1) |
+| MCP-STDIO-9 | tests/external/test_stdio_messages_g0a.nim (2) |
+| MCP-STDIO-10 | tests/external/test_stdio_messages_g0a.nim (1) |
+| MCP-STDIO-11 | tests/external/test_stdio_messages_g0a.nim (1) |
+| MCP-STDIO-12 | tests/external/test_stdio_exit_g0d.nim (2) |
 | MCP-HTTP-1 | tests/external/test_streamable_http.nim (6) |
 | MCP-HTTP-2 | tests/external/test_streamable_http.nim (3) |
 | MCP-HTTP-3 | tests/external/test_streamable_http.nim (2) |
@@ -442,6 +502,13 @@ joined to tests by the rows of
 | MCP-HTTP-31 | tests/external/test_http_client_streams.nim (5) |
 | MCP-HTTP-40 | tests/external/test_http_client_streams.nim (1) |
 | MCP-HTTP-41 | tests/external/test_http_client_streams.nim (2) |
+| MCP-HTTP-42 | tests/external/test_http_client_g0a.nim (1) |
+| MCP-HTTP-43 | tests/external/test_http_client_g0a.nim (1) |
+| MCP-HTTP-44 | tests/external/test_http_client_g0a.nim (3) |
+| MCP-HTTP-45 | tests/external/test_http_server_g0a.nim (1) |
+| MCP-HTTP-46 | tests/external/test_http_client_g0a.nim (1), tests/external/test_http_server_g0a.nim (2) |
+| MCP-HTTP-47 | tests/external/test_http_server_g0a.nim (1) |
+| MCP-HTTP-48 | tests/external/test_http_server_g0a.nim (1) |
 | MCP-SUBSCRIBE-1 | tests/external/test_subscriptions.nim (5) |
 | MCP-SUBSCRIBE-2 | tests/external/test_subscriptions.nim (3) |
 | MCP-SUBSCRIBE-3 | tests/external/test_subscriptions.nim (5) |
@@ -457,6 +524,8 @@ joined to tests by the rows of
 | MCP-SUBSCRIBE-13 | tests/external/test_subscriptions.nim (1) |
 | MCP-SUBSCRIBE-14 | tests/external/test_subscriptions.nim (7) |
 | MCP-SUBSCRIBE-15 | tests/external/test_subscriptions.nim (4) |
+| MCP-SUBSCRIBE-16 | tests/external/test_subscriptions_g0e.nim (1) |
+| MCP-SUBSCRIBE-17 | tests/external/test_subscriptions_g0e.nim (2) |
 | MCP-TASKS-1 | tests/external/test_legacy_handshake.nim (2), tests/external/test_tasks_end_to_end.nim (1), tests/external/test_tasks_server.nim (2) |
 | MCP-TASKS-2 | tests/external/test_tasks_client.nim (2), tests/external/test_tasks_server.nim (7) |
 | MCP-TASKS-3 | tests/external/test_tasks_client.nim (3), tests/external/test_tasks_server.nim (4) |
@@ -482,12 +551,21 @@ joined to tests by the rows of
 | MCP-TASKS-23 | tests/external/test_tasks_http.nim (1), tests/external/test_tasks_server.nim (1), tests/internal/test_tasks_http_internal.nim (1), tests/internal/test_tasks_server_internal.nim (1), tests/internal/test_tasks_store_internal.nim (1) |
 | MCP-TASKS-24 | tests/external/test_tasks_principal.nim (4) |
 | MCP-TASKS-25 | tests/external/test_tasks_store.nim (1) |
+| MCP-TASKS-26 | tests/external/test_tasks_g0e.nim (1) |
+| MCP-TASKS-27 | tests/external/test_tasks_g0e.nim (1) |
+| MCP-TASKS-28 | tests/external/test_tasks_g0e.nim (2) |
+| MCP-TASKS-29 | tests/external/test_tasks_g0e.nim (1) |
+| MCP-TASKS-30 | tests/external/test_tasks_g0e.nim (1) |
+| MCP-TASKS-31 | tests/external/test_tasks_http_g0e.nim (1) |
+| MCP-TASKS-32 | tests/external/test_tasks_http_g0e.nim (2) |
 | MCP-TOOLS-1 | tests/external/test_client_operations.nim (2), tests/external/test_era_matrix.nim (2), tests/external/test_stdio.nim (1), tests/external/test_streamable_http.nim (1) |
 | MCP-TOOLS-2 | tests/external/test_era_matrix.nim (1) |
 | MCP-TOOLS-3 | tests/external/test_tool_input_validation.nim (4) |
 | MCP-TOOLS-4 | tests/external/test_tool_input_validation.nim (1) |
 | MCP-TOOLS-5 | tests/external/test_tool_input_validation.nim (1) |
 | MCP-TOOLS-6 | tests/external/test_server_errors.nim (2) |
+| MCP-TOOLS-7 | tests/external/test_tool_listing_g0c.nim (2) |
+| MCP-TOOLS-8 | tests/external/test_tool_listing_g0c.nim (1) |
 | MCP-TRACE-1 | tests/external/test_trace_context.nim (20) |
 | MCP-TRACE-2 | tests/external/test_trace_context.nim (2) |
 | MCP-TRACE-3 | tests/external/test_trace_context.nim (3) |
@@ -496,6 +574,16 @@ joined to tests by the rows of
 | MCP-TRANSPORT-1 | tests/external/test_transport.nim (2) |
 | MCP-TRANSPORT-2 | tests/external/test_transport.nim (5) |
 | MCP-TRANSPORT-3 | tests/external/test_transport.nim (4) |
+| MCP-TRANSPORT-4 | tests/external/test_wire_client_g0d.nim (1), tests/external/test_wire_server_g0d.nim (1) |
+| MCP-TRANSPORT-5 | tests/external/test_wire_client_g0d.nim (2), tests/external/test_wire_server_g0d.nim (1) |
+| MCP-TRANSPORT-6 | tests/external/test_wire_server_g0d.nim (5) |
+| MCP-TRANSPORT-7 | tests/external/test_wire_server_g0d.nim (1) |
+| MCP-TRANSPORT-8 | tests/external/test_wire_server_g0d.nim (3) |
+| MCP-TRANSPORT-9 | tests/external/test_wire_client_g0d.nim (1), tests/external/test_wire_server_g0d.nim (1) |
+| MCP-TRANSPORT-10 | tests/external/test_meta_reserved_g0d.nim (1), tests/external/test_wire_client_g0d.nim (1) |
+| MCP-TRANSPORT-11 | tests/external/test_error_codes_g0d.nim (1) |
+| MCP-TRANSPORT-12 | tests/external/test_error_codes_g0d.nim (2) |
+| MCP-TRANSPORT-13 | tests/external/test_error_codes_g0d.nim (1) |
 | MCP-VERSION-1 | tests/external/test_version.nim (3) |
 | MCP-VERSION-2 | tests/external/test_version.nim (2), tests/external/test_version_floor.nim (2) |
 | MCP-VERSION-3 | tests/external/test_legacy_handshake.nim (2), tests/external/test_version.nim (1), tests/external/test_version_floor.nim (1) |
@@ -506,8 +594,9 @@ joined to tests by the rows of
 | MCP-VERSION-7 | tests/external/test_legacy_handshake.nim (2) |
 | MCP-VERSION-8 | tests/external/test_legacy_handshake.nim (1) |
 | MCP-VERSION-9 | tests/external/test_version_floor.nim (2) |
+| MCP-VERSION-11 | tests/external/test_client_era_cache_g0c.nim (2) |
 
-Declared: 469  Covered: 469  Uncovered: 0
+Declared: 556  Covered: 556  Uncovered: 0
 
 ## Uncovered declared IDs
 

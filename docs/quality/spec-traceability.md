@@ -197,3 +197,19 @@ SHOULD の水準 (76 文)、MAY (29 文)、小文字 (8 文) は TSV にある (
 | `prompts.feature` | 1 / 5 | MCP-PROMPTS-2 |
 | `tools.feature` | 1 / 6 | MCP-TOOLS-2 |
 
+
+## 2026-10-13: Scenario の無かった 378 行に Scenario を足した
+
+上の表で「SDK への求めだが、当たる Scenario が無い」(status `sdk`) とした 378 行 (173 文) を、1 文ずつ読み直した。規格の前後と SDK の実装を読み、Scenario と外部仕様テストを書いて流した結果:
+
+| 行き先 | 行 |
+|---|---:|
+| Scenario に結んだ (`linked`)。足した Scenario は 87、うち既にあった Scenario に結んだものは 11 行 | 236 |
+| 読み直すと SDK への求めではなかった (`application` 24、`not-normative` 13。理由は note) | 37 |
+| **SDK がその文を守っていない** (status は `sdk` のまま。note に何が起きるか) | 103 |
+| 外から見える振る舞いが無い (対応する方言を文書に書く、の 2 行) | 2 |
+
+- 足した Scenario は `specs/` の 21 のファイルにある (仕様 ID は 469 から 556 に)。確かめる外部仕様テストは `tests/external/` の `test_*_g0[a-f].nim` (39 ファイル)。
+- **開いたままの 105 行は、SDK を直すか、扱いを決めるまで閉じない。** Scenario と落ちるテストは書いてあるが、仕様にはまだ入れていない (27 の Scenario)。`spec_trace` はこの 105 行を「理由の無い行」として挙げ、1 で終わる。
+- 結んだ 236 行の `checked` は `unverified` である: ワーカー (Claude Sonnet) 6 人が結び、リードは件数と、足したテストが通ること・入口の外を読まないことを機械で確かめた。1 行ずつの読み直しはしていない。
+- 「規則」(どんな入力でも成り立つこと) と印の付いた Scenario が 20 ほどある。テストは代表値で確かめていて、性質のテスト (nim-propcheck) にはまだ上げていない。

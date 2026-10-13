@@ -112,3 +112,27 @@ Feature: Multi round-trip requests (2026-07-28)
     When the client's handler accepts with content that fits the schema
     Then the retry carries the ElicitResult under the request's key
     And when the handler answers outside the schema, the request is abandoned and nothing is retried
+
+  @spec:MCP-MRTR-19 @feature:ftMultiRoundTripRequests
+  Scenario: A server asks only for elicitation, sampling or roots
+    Given a handler that asks for a request that is none of the three
+    When it is called
+    Then the answer is an internal error and nothing is asked
+
+  @spec:MCP-MRTR-20 @feature:ftMultiRoundTripRequests
+  Scenario: A server does not wait for the client to retry
+    Given a request answered with input_required
+    When the client never retries, retries the same request again, or retries on a server that never saw the first
+    Then the first request is already answered, the server asks again each time, and the retry completes on any server
+
+  @spec:MCP-MRTR-21 @feature:ftMultiRoundTripRequests
+  Scenario: Input answers and state belong to the request that asked
+    Given one request waiting for its input answers and another request sent meanwhile
+    When both run
+    Then the other request carries no inputResponses and no requestState, nor does one sent afterwards
+
+  @spec:MCP-MRTR-22 @feature:ftMultiRoundTripRequests
+  Scenario: Answers the server did not ask for are ignored
+    Given a retry that carries answers under keys the server did not ask for
+    When the server runs the request
+    Then they are ignored, and what is still missing is asked for again
