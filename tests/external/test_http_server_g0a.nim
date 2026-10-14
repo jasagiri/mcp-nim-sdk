@@ -258,6 +258,22 @@ if SpeaksModern:
         check answer.code == 400
         check parseJson(answer.body)["error"]["code"].getInt() == -32020
 
+    test "Given an Mcp-Name with a comma, when it is the name in the body, then the request is not refused as a header mismatch":
+      # A comma is visible ASCII, so a client sends such a name as it is (not Base64).
+      let url = startServer()
+      let common = "Content-Type: application/json\c\LMCP-Protocol-Version: 2026-07-28\c\L" &
+                   "Mcp-Method: tools/call\c\L"
+      for name in ["get,weather", "get, weather"]:
+        let call = $(%*{"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+          "params": {"_meta": {
+            "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+            "io.modelcontextprotocol/clientInfo": {"name": "c", "version": "0"},
+            "io.modelcontextprotocol/clientCapabilities": {}},
+            "name": name, "arguments": {}}})
+        let answer = rawPost(url, common & "Mcp-Name: " & name & "\c\L", call)
+        checkpoint "name: " & name & ", answer: " & $answer
+        check parseJson(answer.body){"error", "code"}.getInt() != -32020
+
     test "Given the headers of a request spelt in other cases, when it is posted, then it is read as with the usual spelling, and a differing Mcp-Name is still a mismatch":
       let url = startServer()
       for names in [("content-type", "mcp-protocol-version", "mcp-method", "mcp-name"),

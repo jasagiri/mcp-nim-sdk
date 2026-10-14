@@ -161,7 +161,11 @@ type
       ## Sent with every answer: `Cache-Control`, CORS headers.
 
   HttpServerTransport* = ref object of McpTransport
-    server*:          AsyncHttpServer
+    server:           AsyncHttpServer
+      # Not exported: on a Nim whose standard library lacks `readTimeout`
+      # or `Request.headerFields` this is the type of the copy in
+      # `vendor/asynchttpserver`, which a program importing
+      # `std/asynchttpserver` could not use.
     host*:            string
     port*:            int
       ## The port to bind; 0 picks a free one. After `listen` it is the
@@ -543,19 +547,23 @@ func originAllowed(t: HttpServerTransport, origin: string): bool =
   isLoopbackOrigin(origin) or origin in t.allowedOrigins
 
 func header(req: Request, name: string): Option[string] =
-  ## A header sent on several lines (Accept often is) reads as one value.
-  ## Whitespace around a value is not part of it (RFC 9110 section 5.5).
-  if req.headers.hasKey(name):
-    some(seq[string](req.headers[name]).join(", ").strip(chars = {' ', '\t'}))
-  else: none(string)
+  ## A header sent on several lines (Accept often is) reads as one value, the
+  ## lines joined with ", " (RFC 9110 section 5.3). Read from the lines as they
+  ## arrived: `req.headers` splits a value at its commas, so "a,b" would read
+  ## back as "a, b".
+  var values: seq[string] = @[]
+  for field in req.headerFields:
+    if cmpIgnoreCase(field.name, name) == 0:
+      values.add field.value
+  if values.len > 0: some(values.join(", ")) else: none(string)
 
 func paramHeaders(req: Request): seq[(string, string)] =
-  ## The Mcp-Param-* headers of the request, one entry per line sent.
+  ## The Mcp-Param-* headers of the request, one entry per line sent, each
+  ## value as it was sent.
   let prefix = ParamHeaderPrefix.toLowerAscii()
-  for name, values in req.headers.table.pairs:
-    if name.toLowerAscii().startsWith(prefix):
-      for value in values:
-        result.add (name, value.strip(chars = {' ', '\t'}))
+  for field in req.headerFields:
+    if field.name.toLowerAscii().startsWith(prefix):
+      result.add (field.name, field.value)
 
 func namesModernVersion(req: Request): bool =
   ## Whether the version header says 2026-07-28 or later, which is how a

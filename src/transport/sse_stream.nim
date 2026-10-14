@@ -6,6 +6,10 @@
 ## the last one it saw, and a fresh connection continues the same stream.
 ## It is also how a server finds out that a client went away: the loop
 ## watches the socket while it waits for the next event.
+##
+## `import mcp` does not export this module: its procs take the `Request` of
+## `asynchttpserver_compat`, which on an older Nim is not the type of
+## `std/asynchttpserver`.
 
 import std/[asyncdispatch, asyncnet, deques, httpcore,
             options, strutils]
