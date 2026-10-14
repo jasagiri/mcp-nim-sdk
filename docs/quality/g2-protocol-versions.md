@@ -56,6 +56,30 @@ nim-muter 0.2.5 の RVR は、戻り値がリテラルのとき `default(typeof(
 
 拡張 (`mcp-2026-07-28-ext` になる系列) と下書き (`mcp-draft` になる系列) のジョブは、それぞれの系列の `g2-ext_*.md` と `g2-draft_*.md` に記録がある。どちらも初回の測定のあとに欠陥を 1 件ずつ直しているので、`ext_skills` (`frontmatter.nim`) と `draft_events` (`client.nim`) は測り直しが要る。
 
+## 2026-10-14 の状態
+
+上の表の測定は古くなっている。本線の先端 bb6744101764 と、表の「最後に測ったコミット」の間で、27 ジョブのうち 13 の対象のソースが変わった。同じやり方 (`git diff --name-only <測ったコミット> <先端> -- <sources>`) で確かめた。
+
+| ジョブ | 変わった対象のソース |
+|---|---|
+| address_policy | `src/client/icons.nim`、`src/transport/address_policy.nim` |
+| auth_client | `src/auth/client.nim` |
+| auth_oauth | `src/auth/oauth/metadata.nim`、`src/auth/oauth/tokens.nim` |
+| client | `src/client/client.nim`、`src/client/roots.nim`、`src/client/utilities.nim` |
+| content | `src/server/tools.nim` |
+| http_client | `src/transport/http.nim`、`src/transport/http_compat.nim` |
+| http_server | `src/transport/http_server.nim`、`src/transport/sse_stream.nim` |
+| jsonschema | `src/jsonschema/json_schema.nim`、`src/jsonschema/json_schema_regex.nim` |
+| lifecycle | `src/protocol/types.nim` |
+| mrtr | `src/protocol/mrtr.nim`、`src/server/mrtr.nim` |
+| param_headers | `src/protocol/param_headers.nim` |
+| server | `src/server/errors.nim`、`src/server/server.nim` |
+| transport | `src/transport/transport.nim` |
+
+残りの 14 ジョブ (auth_resource_server、base64_shape、diagnostic、elicitation、event_stream、extensions、features、modern、sampling_tools、stdio、subscriptions、tasks、trace_context、version) は対象のソースが変わっていない。ただしテストは全ジョブで変わっている (外部と内部への分け直し、性質のテストへの置き換え、代表値のテスト 20 本の削除)。消したテストが殺していた変異が、いまも殺されるかは測っていない。
+
+測り直しは利用者の指示を待つ (2026-10-14 の時点で、変異検査は投入しない)。push の前の判定はその結果による。
+
 ## 未測定
 
 | モジュール | 対応する外部仕様テスト | 追加・変更した日 |
