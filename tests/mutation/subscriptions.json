@@ -4,7 +4,7 @@
     "src/server/subscriptions.nim",
     "src/client/subscriptions.nim"
   ],
-  "testCommand": "nim c -r --hints:off tests/external/test_subscriptions.nim && nim c -r --hints:off tests/external/test_security_subscription_limits.nim",
+  "testCommand": "nim c -r --hints:off tests/external/test_subscriptions.nim && nim c -r --hints:off tests/external/test_security_subscription_limits.nim && nim c -r --hints:off tests/external/test_subscriptions_g0e.nim",
   "mutators": [
     "AOR",
     "ROR",

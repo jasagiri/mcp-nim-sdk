@@ -12,7 +12,7 @@
     "src/auth/oauth/tokens.nim",
     "src/auth/oauth/urls.nim"
   ],
-  "testCommand": "nim c -r --hints:off tests/external/test_auth_oauth_basics.nim && nim c -r --hints:off tests/external/test_auth_client_flow.nim && nim c -r --hints:off tests/external/test_security_auth_tokens.nim && nim c -r --hints:off tests/external/test_security_address.nim && nim c -r -d:ssl --hints:off tests/external/test_security_trusted_ca.nim",
+  "testCommand": "nim c -r --hints:off tests/external/test_auth_oauth_basics.nim && nim c -r --hints:off tests/external/test_auth_client_flow.nim && nim c -r --hints:off tests/external/test_security_auth_tokens.nim && nim c -r --hints:off tests/external/test_security_address.nim && nim c -r -d:ssl --hints:off tests/external/test_security_trusted_ca.nim && nim c -r --hints:off tests/external/test_auth_client_g0f.nim",
   "mutators": [
     "AOR",
     "ROR",

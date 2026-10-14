@@ -5,7 +5,7 @@
     "src/server/request_state.nim",
     "src/protocol/hmac.nim"
   ],
-  "testCommand": "nim c -r --hints:off tests/external/test_mrtr.nim && nim c -r --hints:off tests/external/test_elicitation_url_prop.nim && nim c -r --hints:off tests/external/test_sampling_context_prop.nim && nim c -r --hints:off tests/external/test_sampling_payload_prop.nim",
+  "testCommand": "nim c -r --hints:off tests/external/test_mrtr.nim && nim c -r --hints:off tests/external/test_elicitation_url_prop.nim && nim c -r --hints:off tests/external/test_sampling_context_prop.nim && nim c -r --hints:off tests/external/test_sampling_payload_prop.nim && nim c -r --hints:off tests/external/test_mrtr_g0e.nim && nim c -r --hints:off tests/external/test_input_request_keys_fix.nim && nim c -r --hints:off tests/external/test_sampling_asks_fix.nim && nim c -r --hints:off tests/external/test_elicitation_url_g0c.nim",
   "mutators": [
     "AOR",
     "ROR",

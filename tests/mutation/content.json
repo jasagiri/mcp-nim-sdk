@@ -3,7 +3,7 @@
     "src/protocol/content.nim",
     "src/server/tools.nim"
   ],
-  "testCommand": "nim c -r --hints:off tests/external/test_tool_annotations.nim && nim c -r --hints:off tests/external/test_audio_content.nim && nim c -r --hints:off tests/external/test_structured_tool_output.nim && nim c -r --hints:off tests/external/test_resource_links.nim && nim c -r --hints:off tests/external/test_title_fields.nim && nim c -r --hints:off tests/external/test_icons.nim && nim c -r --hints:off tests/external/test_implementation_info.nim && nim c -r --hints:off tests/external/test_tool_listing_prop.nim && nim c -r --hints:off tests/external/test_handler_results_prop.nim",
+  "testCommand": "nim c -r --hints:off tests/external/test_tool_annotations.nim && nim c -r --hints:off tests/external/test_audio_content.nim && nim c -r --hints:off tests/external/test_structured_tool_output.nim && nim c -r --hints:off tests/external/test_resource_links.nim && nim c -r --hints:off tests/external/test_title_fields.nim && nim c -r --hints:off tests/external/test_icons.nim && nim c -r --hints:off tests/external/test_implementation_info.nim && nim c -r --hints:off tests/external/test_tool_listing_prop.nim && nim c -r --hints:off tests/external/test_handler_results_prop.nim && nim c -r --hints:off tests/external/test_tool_builders.nim && nim c -r --hints:off tests/external/test_tool_listing_g0c.nim && nim c -r --hints:off tests/external/test_schema_ref_g0d.nim && nim c -r --hints:off tests/external/test_embedded_content_g0c.nim && nim c -r --hints:off tests/external/test_handler_results_fix.nim",
   "mutators": [
     "AOR",
     "ROR",

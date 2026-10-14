@@ -2,7 +2,7 @@
   "sources": [
     "src/transport/transport.nim"
   ],
-  "testCommand": "nim c -r --hints:off tests/external/test_era_matrix.nim && nim c -r --hints:off tests/external/test_legacy_handshake.nim && nim c -r --hints:off tests/external/test_stdio.nim && nim c -r --hints:off tests/external/test_auth_failure.nim && nim c -r --hints:off tests/external/test_transport.nim && nim c -r --hints:off tests/external/test_wire_prop.nim",
+  "testCommand": "nim c -r --hints:off tests/external/test_era_matrix.nim && nim c -r --hints:off tests/external/test_legacy_handshake.nim && nim c -r --hints:off tests/external/test_stdio.nim && nim c -r --hints:off tests/external/test_auth_failure.nim && nim c -r --hints:off tests/external/test_transport.nim && nim c -r --hints:off tests/external/test_wire_prop.nim && nim c -r --hints:off tests/external/test_wire_server_g0d.nim && nim c -r --hints:off tests/external/test_wire_client_g0d.nim && nim c -r --hints:off tests/external/test_client_request_ids_fix.nim && nim c -r --hints:off tests/external/test_error_codes_g0d.nim && nim c -r --hints:off tests/external/test_meta_reserved_g0d.nim",
   "mutators": [
     "AOR",
     "ROR",

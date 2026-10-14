@@ -3,7 +3,7 @@
     "src/jsonschema/json_schema.nim",
     "src/jsonschema/json_schema_regex.nim"
   ],
-  "testCommand": "nim c -r --hints:off tests/external/test_json_schema.nim && nim c -r --hints:off tests/external/test_structured_tool_output.nim && nim c -r --hints:off tests/external/test_security_schema.nim",
+  "testCommand": "nim c -r --hints:off tests/external/test_json_schema.nim && nim c -r --hints:off tests/external/test_structured_tool_output.nim && nim c -r --hints:off tests/external/test_security_schema.nim && nim c -r --hints:off tests/external/test_schema_ref_g0d.nim",
   "mutators": [
     "AOR",
     "ROR",
