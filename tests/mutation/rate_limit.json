@@ -1,0 +1,24 @@
+{
+  "sources": [
+    "src/server/rate_limit.nim"
+  ],
+  "testCommand": "nim c -r --hints:off tests/external/test_request_rate_fix.nim && nim c -r --hints:off tests/external/test_progress_rate_fix.nim",
+  "mutators": [
+    "AOR",
+    "ROR",
+    "LOR",
+    "BLR",
+    "SDL",
+    "RVR"
+  ],
+  "parallelism": 0,
+  "timeoutMs": 0,
+  "minScore": 0.0,
+  "reports": [
+    "console",
+    "json"
+  ],
+  "outputDir": ".nim-muter/rate_limit",
+  "incremental": false,
+  "network": "loopback"
+}

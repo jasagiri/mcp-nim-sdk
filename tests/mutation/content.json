@@ -3,7 +3,7 @@
     "src/protocol/content.nim",
     "src/server/tools.nim"
   ],
-  "testCommand": "nim c -r --hints:off tests/external/test_tool_annotations.nim && nim c -r --hints:off tests/external/test_audio_content.nim && nim c -r --hints:off tests/external/test_structured_tool_output.nim && nim c -r --hints:off tests/external/test_resource_links.nim && nim c -r --hints:off tests/external/test_title_fields.nim && nim c -r --hints:off tests/external/test_icons.nim && nim c -r --hints:off tests/external/test_implementation_info.nim",
+  "testCommand": "nim c -r --hints:off tests/external/test_tool_annotations.nim && nim c -r --hints:off tests/external/test_audio_content.nim && nim c -r --hints:off tests/external/test_structured_tool_output.nim && nim c -r --hints:off tests/external/test_resource_links.nim && nim c -r --hints:off tests/external/test_title_fields.nim && nim c -r --hints:off tests/external/test_icons.nim && nim c -r --hints:off tests/external/test_implementation_info.nim && nim c -r --hints:off tests/external/test_tool_listing_prop.nim && nim c -r --hints:off tests/external/test_handler_results_prop.nim",
   "mutators": [
     "AOR",
     "ROR",
@@ -20,5 +20,7 @@
     "json"
   ],
   "outputDir": ".nim-muter/content",
-  "incremental": false
+  "incremental": false,
+  "network": "loopback",
+  "setup": "p=\"$(cd ../../../.. && pwd)/nim-propcheck\"; test -d \"$p\" && { test -e ../nim-propcheck || ln -s \"$p\" ../nim-propcheck || test -e ../nim-propcheck; }"
 }

@@ -20,5 +20,6 @@
     "json"
   ],
   "outputDir": ".nim-muter/lifecycle",
-  "incremental": false
+  "incremental": false,
+  "network": "loopback"
 }

@@ -1,0 +1,25 @@
+{
+  "sources": [
+    "src/protocol/result_shape.nim"
+  ],
+  "testCommand": "nim c -r --hints:off tests/external/test_handler_results_fix.nim && nim c -r --hints:off tests/external/test_handler_results_prop.nim && nim c -r --hints:off tests/external/test_cache_hints_g0b.nim && nim c -r --hints:off tests/external/test_cache_hints_prop.nim && nim c -r --hints:off tests/external/test_embedded_content_g0c.nim && nim c -r --hints:off tests/external/test_tool_listing_prop.nim",
+  "mutators": [
+    "AOR",
+    "ROR",
+    "LOR",
+    "BLR",
+    "SDL",
+    "RVR"
+  ],
+  "parallelism": 0,
+  "timeoutMs": 0,
+  "minScore": 0.0,
+  "reports": [
+    "console",
+    "json"
+  ],
+  "outputDir": ".nim-muter/result_shape",
+  "incremental": false,
+  "network": "loopback",
+  "setup": "p=\"$(cd ../../../.. && pwd)/nim-propcheck\"; test -d \"$p\" && { test -e ../nim-propcheck || ln -s \"$p\" ../nim-propcheck || test -e ../nim-propcheck; }"
+}

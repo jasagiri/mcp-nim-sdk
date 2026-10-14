@@ -23,5 +23,6 @@
     "json"
   ],
   "outputDir": ".nim-muter/http_client",
-  "incremental": false
+  "incremental": false,
+  "network": "loopback"
 }

@@ -30,5 +30,6 @@
     "json"
   ],
   "outputDir": ".nim-muter/auth_oauth",
-  "incremental": false
+  "incremental": false,
+  "network": "loopback"
 }

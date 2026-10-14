@@ -163,6 +163,22 @@ jobs:
           ../nim-muter/bin/nim-muter run --config tests/mutation/param_headers.json || status=$?
           cp .nim-muter/param_headers/report.json "$KURATSUGI_RESULT_DIR/param_headers.report.json" || exit 1
           exit $status
+  rate_limit:
+    steps:
+      - name: nim-muter rate_limit
+        run: |
+          status=0
+          ../nim-muter/bin/nim-muter run --config tests/mutation/rate_limit.json || status=$?
+          cp .nim-muter/rate_limit/report.json "$KURATSUGI_RESULT_DIR/rate_limit.report.json" || exit 1
+          exit $status
+  result_shape:
+    steps:
+      - name: nim-muter result_shape
+        run: |
+          status=0
+          ../nim-muter/bin/nim-muter run --config tests/mutation/result_shape.json || status=$?
+          cp .nim-muter/result_shape/report.json "$KURATSUGI_RESULT_DIR/result_shape.report.json" || exit 1
+          exit $status
   sampling_tools:
     steps:
       - name: nim-muter sampling_tools

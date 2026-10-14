@@ -3,7 +3,7 @@
     "src/transport/http_server.nim",
     "src/transport/sse_stream.nim"
   ],
-  "testCommand": "nim c -r --hints:off tests/external/test_http_streams.nim && nim c -r --hints:off tests/external/test_streamable_http.nim && nim c -r --hints:off tests/external/test_http_sse_legacy.nim && nim c -r --hints:off tests/external/test_version_floor.nim && nim c -r --hints:off tests/external/test_param_headers_http.nim && nim c -r --hints:off tests/external/test_subscriptions.nim && nim c -r --hints:off -d:mcpOldestProtocolVersion=2026-07-28 tests/external/test_version_floor.nim && nim c -r --hints:off tests/external/test_security_http.nim && nim c -r --hints:off tests/external/test_http_documents.nim",
+  "testCommand": "nim c -r --hints:off tests/external/test_http_streams.nim && nim c -r --hints:off tests/external/test_streamable_http.nim && nim c -r --hints:off tests/external/test_http_sse_legacy.nim && nim c -r --hints:off tests/external/test_version_floor.nim && nim c -r --hints:off tests/external/test_param_headers_http.nim && nim c -r --hints:off tests/external/test_subscriptions.nim && nim c -r --hints:off -d:mcpOldestProtocolVersion=2026-07-28 tests/external/test_version_floor.nim && nim c -r --hints:off tests/external/test_security_http.nim && nim c -r --hints:off tests/external/test_http_documents.nim && nim c -r --hints:off tests/external/test_error_message_prop.nim",
   "mutators": [
     "AOR",
     "ROR",
@@ -20,5 +20,7 @@
     "json"
   ],
   "outputDir": ".nim-muter/http_server",
-  "incremental": false
+  "incremental": false,
+  "network": "loopback",
+  "setup": "p=\"$(cd ../../../.. && pwd)/nim-propcheck\"; test -d \"$p\" && { test -e ../nim-propcheck || ln -s \"$p\" ../nim-propcheck || test -e ../nim-propcheck; }"
 }

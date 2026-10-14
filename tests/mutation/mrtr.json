@@ -2,9 +2,10 @@
   "sources": [
     "src/protocol/mrtr.nim",
     "src/server/mrtr.nim",
-    "src/server/request_state.nim"
+    "src/server/request_state.nim",
+    "src/protocol/hmac.nim"
   ],
-  "testCommand": "nim c -r --hints:off tests/external/test_mrtr.nim",
+  "testCommand": "nim c -r --hints:off tests/external/test_mrtr.nim && nim c -r --hints:off tests/external/test_elicitation_url_prop.nim && nim c -r --hints:off tests/external/test_sampling_context_prop.nim && nim c -r --hints:off tests/external/test_sampling_payload_prop.nim",
   "mutators": [
     "AOR",
     "ROR",
@@ -21,5 +22,7 @@
     "json"
   ],
   "outputDir": ".nim-muter/mrtr",
-  "incremental": false
+  "incremental": false,
+  "network": "loopback",
+  "setup": "p=\"$(cd ../../../.. && pwd)/nim-propcheck\"; test -d \"$p\" && { test -e ../nim-propcheck || ln -s \"$p\" ../nim-propcheck || test -e ../nim-propcheck; }"
 }

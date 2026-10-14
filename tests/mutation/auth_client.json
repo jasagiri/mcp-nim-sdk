@@ -20,5 +20,6 @@
     "json"
   ],
   "outputDir": ".nim-muter/auth_client",
-  "incremental": false
+  "incremental": false,
+  "network": "loopback"
 }
