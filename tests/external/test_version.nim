@@ -53,6 +53,22 @@ suite "protocol version: what this build speaks":
         check $OldestProtocolVersion in message
         check $DefaultProtocolVersion in message
 
+  test "Given a registration that targets a version, when a side limited to each ceiling makes it, then it is refused exactly when that side speaks neither the target nor a later version":
+    for ceiling in SupportedProtocolVersions:
+      for target in McpProtocolVersion:
+        checkpoint $ceiling & " / " & $target
+        if target <= ceiling:
+          requireVersionSpoken(ceiling, target, "the widgets extension")
+        else:
+          var message = ""
+          try:
+            requireVersionSpoken(ceiling, target, "the widgets extension")
+          except ValueError as e:
+            message = e.msg
+          check "the widgets extension" in message
+          check $target in message
+          check $ceiling in message
+
 suite "protocol version: eras":
 
   test "Given each version, when asked whether it is modern, then only 2026-07-28 onward is":

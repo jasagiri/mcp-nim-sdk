@@ -85,6 +85,7 @@ nim-muter 0.2.5 の RVR は、戻り値がリテラルのとき `default(typeof(
 | モジュール | 対応する外部仕様テスト | 追加・変更した日 |
 |---|---|---|
 | `tools/gen_docs.nim` | `tests/test_docs_version.nim` | 2026-10-06 |
+| `src/protocol/version.nim` (`requireVersionSpoken`) | `tests/external/test_version.nim` | 2026-10-15 |
 | `src/protocol/lifecycle.nim` | `tests/test_legacy_handshake.nim` | 2026-10-05 |
 | `src/server/server.nim` | `tests/test_legacy_handshake.nim`, `tests/test_era_matrix.nim` | 2026-10-05 |
 | `src/client/client.nim` | `tests/test_legacy_handshake.nim`, `tests/test_era_matrix.nim` | 2026-10-05 |

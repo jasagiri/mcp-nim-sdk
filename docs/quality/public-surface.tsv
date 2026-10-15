@@ -503,6 +503,7 @@ protocol/version	latestLegacyVersion
 protocol/version	negotiateLegacyVersion
 protocol/version	parseProtocolVersion
 protocol/version	requireSupported
+protocol/version	requireVersionSpoken
 protocol/version	spokenVersionsUpTo
 protocol/version	versionsUpTo
 server/completion	argumentName

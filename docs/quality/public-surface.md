@@ -4,7 +4,7 @@
 export を絞るか、説明を足すかは、別の判断として扱う。
 
 テストの分類では「README の入口から `export` で届くもの」を公開とした。その範囲を機械的に数えると、
-**入口から届くモジュールは 51 個、公開のシンボルは 1016 個で、うち 714 個は README にも `docs/*.md` にも名前が出てこない。**
+**入口から届くモジュールは 51 個、公開のシンボルは 1017 個で、うち 715 個は README にも `docs/*.md` にも名前が出てこない。**
 README は使い方の説明で、型や手続きの一覧ではないので、この数は「誤って公開されている数」ではない。
 継ぎ目のために `*` が付いただけのものと、利用者に使わせるつもりのものが混ざっている、という数である。
 
@@ -54,7 +54,7 @@ README は使い方の説明で、型や手続きの一覧ではないので、�
 | `protocol/tasks` | 58 | 48 | `DefaultMaxActivePerOwner`、`DefaultMaxTasks`、`DefaultMaxTasksPerOwner`、`DefaultMaxTtlMs`、`McpTask` |
 | `protocol/trace_context` | 16 | 16 | `MetaBaggage`、`MetaTraceparent`、`MetaTracestate`、`TraceContext`、`baggage` |
 | `protocol/types` | 70 | 30 | `JsonRpcError`、`JsonRpcNotification`、`JsonRpcRequest`、`JsonRpcResponse`、`McpClientCapabilities` |
-| `protocol/version` | 13 | 10 | `FirstModernProtocolVersion`、`McpProtocolVersion`、`isModern`、`isSupported`、`latestLegacyVersion` |
+| `protocol/version` | 14 | 11 | `FirstModernProtocolVersion`、`McpProtocolVersion`、`isModern`、`isSupported`、`latestLegacyVersion` |
 | `server/completion` | 7 | 5 | `argumentName`、`parseCompletionRequest`、`reference`、`resolved`、`toJson` |
 | `server/elicit` | 4 | 2 | `notifyElicitationComplete`、`urlElicitationRequired` |
 | `server/errors` | 21 | 15 | `ErrInvalidRequest`、`ErrResourceNotFoundLegacy`、`McpCancelled`、`McpCapabilityError`、`McpInputRequired` |

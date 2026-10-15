@@ -76,3 +76,10 @@ Feature: Protocol versions
     Given a 2026-07-28 client that connected to a 2026-07-28 server, or to a legacy one
     When it makes further requests
     Then it sent server/discover once, initialize once for a legacy server and never for a modern one, and no probe per request
+
+  @spec:MCP-VERSION-12
+  Scenario: A registration that targets a version is refused by a side that does not speak it
+    Given a server or client limited to a ceiling, and a registration that targets version T
+    When the registration is made
+    Then it is accepted when the side speaks T or a later version
+    And otherwise ValueError is raised naming what was registered, T and the ceiling

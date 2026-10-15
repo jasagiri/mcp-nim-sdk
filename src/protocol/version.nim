@@ -70,6 +70,19 @@ func requireSupported*(v: McpProtocolVersion) {.raises: [ValueError].} =
       "protocol version " & $v & " is outside what this build speaks, " &
       $OldestProtocolVersion & " to " & $DefaultProtocolVersion)
 
+func requireVersionSpoken*(ceiling, target: McpProtocolVersion, what: string) {.raises: [ValueError].} =
+  ## Raises ValueError, naming `what`, `target` and `ceiling`, unless a server
+  ## or client limited to `ceiling` speaks `target` or a later version. For a
+  ## registration of something defined for `target` (an extension or a draft
+  ## of an extension): one that could never take effect is refused, not
+  ## ignored. The core calls it nowhere; nothing changes without such a
+  ## registration.
+  for v in spokenVersionsUpTo(ceiling):
+    if v >= target:
+      return
+  raise newException(ValueError, what & " targets protocol version " & $target &
+    ", which this side does not speak (it speaks up to " & $ceiling & ")")
+
 func isModern*(v: McpProtocolVersion): bool {.raises: [].} =
   v >= FirstModernProtocolVersion
 
