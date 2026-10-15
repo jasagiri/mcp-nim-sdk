@@ -4,6 +4,9 @@
 
 import std/[algorithm, json]
 import ../auth/oauth/sha256
+import nim_secret   # foundation/nim-secret — constantTimeEquals
+
+export nim_secret.constantTimeEquals
 
 func toBytes*(text: string): seq[byte] {.raises: [].} =
   result = newSeq[byte](text.len)
@@ -24,15 +27,6 @@ func hmacSha256*(key, message: string): Sha256Digest {.raises: [].} =
   inner.add toBytes(message)
   outer.add @(sha256(inner))
   sha256(outer)
-
-func constantTimeEquals*(a, b: string): bool {.raises: [].} =
-  ## Without stopping at the first difference.
-  if a.len != b.len:
-    return false
-  var difference = 0
-  for i in 0 ..< a.len:
-    difference = difference or (ord(a[i]) xor ord(b[i]))
-  difference == 0
 
 func canonicalJson*(node: JsonNode): string {.raises: [].} =
   ## The same text for the same value, whatever order the keys arrived in.
