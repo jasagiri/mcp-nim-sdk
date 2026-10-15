@@ -491,8 +491,16 @@ suite "The Host header names this server (MCP-SEC-HTTP-5)":
   test "Given a transport bound to loopback, when a request names a loopback host with a port, then it is served":
     let env = startOpen()
     let port = $env.transport.port
-    for host in ["localhost", "localhost:" & port, "127.0.0.1:" & port, "[::1]:" & port, "LOCALHOST"]:
+    for host in ["localhost", "localhost:" & port, "127.0.0.1:" & port, "[::1]:" & port, "LOCALHOST",
+                 "127.0.0.2:" & port, "[0:0:0:0:0:0:0:1]:" & port]:   # nim-loopback LB-01, 02
       check sendAs(host, env.base & "/mcp", HttpPost, rpc(1, "ping")) != Http403
+
+  test "Given a transport bound to loopback, when a request names a host that only looks like loopback, then the answer is 403":
+    # nim-loopback LB-01, 04: 0177 may be read as octal; a port that is not a number is not a port
+    let env = startOpen()
+    let port = $env.transport.port
+    for host in ["0177.0.0.1:" & port, "127.0.0.1:http", "localhost.:" & port, "127.0.0.1.evil.example"]:
+      check sendAs(host, env.base & "/mcp", HttpPost, rpc(1, "ping")) == Http403
 
   test "Given allowed hosts, when a request names one of them or another, then the first is served and the second is 403":
     let env = startOpen()

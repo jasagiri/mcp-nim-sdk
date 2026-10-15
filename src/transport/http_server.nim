@@ -50,6 +50,7 @@
 
 import std/[asyncdispatch, asyncnet, asynchttpserver, httpcore, json, tables, deques,
              options, uri, nativesockets, sysrand, strutils, sequtils, times]
+import nim_loopback   # foundation/nim-loopback — one rule for loopback
 import ./transport
 import ./sse_stream
 import ./first_of
@@ -503,8 +504,7 @@ proc respondError(req: Request, code: HttpCode, id: JsonNode,
   req.respondJson(code, response.toJson())
 
 func isLoopbackOrigin(origin: string): bool =
-  let host = parseUri(origin).hostname
-  host in ["localhost", "127.0.0.1", "::1", "[::1]"]
+  isLoopbackUrl(origin)   # foundation/nim-loopback LB-05
 
 func hostName(hostHeader: string): string =
   ## The name in a Host header value: lower case, without port or brackets.
@@ -516,7 +516,7 @@ func hostName(hostHeader: string): string =
   if colon >= 0 and value.count(':') == 1: value[0 ..< colon] else: value
 
 func bindsLoopback(t: HttpServerTransport): bool =
-  t.host.hostName in ["localhost", "127.0.0.1", "::1"]
+  isLoopbackAuthority(t.host.strip())   # foundation/nim-loopback LB-01..04
 
 func hostAllowed(t: HttpServerTransport, hostHeader: Option[string]): bool =
   ## Whether the request is addressed to this server (see `allowedHosts`).
@@ -526,7 +526,7 @@ func hostAllowed(t: HttpServerTransport, hostHeader: Option[string]): bool =
     return false
   let name = hostHeader.get.hostName
   let full = hostHeader.get.strip().toLowerAscii()
-  name in ["localhost", "127.0.0.1", "::1"] or
+  isLoopbackAuthority(full) or
     t.allowedHosts.anyIt(it.toLowerAscii() == name or it.toLowerAscii() == full)
 
 func originAllowed(t: HttpServerTransport, origin: string): bool =

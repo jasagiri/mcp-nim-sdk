@@ -120,6 +120,12 @@ suite "HTTP endpoint (every era)":
   test "Given a loopback Origin, when posted, then the request is served":
     let (_, url, _) = startServer()
     check send(url, HttpPost, legacyInitialize(), {"Origin": "http://localhost:3000"}).code == Http200
+    check send(url, HttpPost, legacyInitialize(), {"Origin": "http://127.0.0.2:3000"}).code == Http200   # nim-loopback LB-01
+
+  test "Given an Origin that only looks like loopback, when posted, then the answer is 403":
+    let (_, url, _) = startServer()
+    for origin in ["http://127.0.0.1.evil.example", "http://127.0.0.1@evil.example", "http://0177.0.0.1:3000"]:
+      check send(url, HttpPost, legacyInitialize(), {"Origin": origin}).code == Http403
 
   test "Given an Origin the operator allowed, when posted, then the request is served":
     let (transport, url, _) = startServer()
