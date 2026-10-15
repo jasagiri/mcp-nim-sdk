@@ -108,6 +108,8 @@ When this SDK is a dependency, name the branch of the version you want in your `
 
 Requirements: Nim 2.2.12 or newer, the default memory management (`--mm:orc`), and the `uuids` and `nimcrypto` packages (nimcrypto computes SHA-256 and HMAC-SHA256, which the standard library does not have, for PKCE, the sealed request state and the signed webhooks). No other define is needed; there is none per feature.
 
+Three packages from the same foundation tree are not in the nimble registry and are found by path: `nim-bearer-challenge` (reads `WWW-Authenticate` challenges, for the OAuth client and the resource server), `nim-secret` (compares secrets in constant time, for the HMAC checks) and `nim-loopback` (decides whether a Host, an Origin or a bind address is loopback, for the HTTP server's checks). Check them out next to this repository (`../nim-bearer-challenge`, `../nim-secret`, `../nim-loopback`), where `nim.cfg` finds them; elsewhere pass `--path:` to each one's `src`.
+
 ### 2. Features, at run time
 
 A server declares a capability in `newMcpServer` and registers the handlers that answer it. A client registers a handler before `connect`, which declares the capability for it. Each side is then offered only what the version the two settled on has, so the same program serves old and new peers.
