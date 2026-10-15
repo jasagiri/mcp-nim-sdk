@@ -651,15 +651,6 @@ MCP-AUTH-7 | tests/external/test_auth_resource_server.nim | Given version <versi
 MCP-AUTH-7 | tests/external/test_auth_resource_server.nim | Given a request without a token and version <version>, when posted, then the answer is 401 with a Bearer challenge
 MCP-AUTH-8 | tests/external/test_auth_resource_server.nim | Given challenge scopes configured and version <version>, when a request has no token, then the scope appears exactly from 2025-11-25 on
 MCP-AUTH-9 | tests/external/test_auth_resource_server.nim | Given an authorization server and version <version>, when the client connects, then it authorizes and lists tools through the protected endpoint
-MCP-AUTH-10 | tests/internal/test_auth_oauth_basics_internal.nim | Given the MCP 401 example, when parsed, then resource_metadata and scope are found
-MCP-AUTH-10 | tests/internal/test_auth_oauth_basics_internal.nim | Given the MCP insufficient_scope example, when parsed, then every parameter is found
-MCP-AUTH-10 | tests/internal/test_auth_oauth_basics_internal.nim | Given several challenges in one header, when parsed, then the Bearer one is selected
-MCP-AUTH-10 | tests/internal/test_auth_oauth_basics_internal.nim | Given a quoted string with an escaped quote and a comma, when parsed, then it is unescaped whole
-MCP-AUTH-10 | tests/internal/test_auth_oauth_basics_internal.nim | Given an unquoted token value and mixed case, when parsed, then names are case-insensitive
-MCP-AUTH-10 | tests/internal/test_auth_oauth_basics_internal.nim | Given only a Basic challenge or nothing, when parsed, then there is no Bearer challenge
-MCP-AUTH-10 | tests/internal/test_auth_oauth_basics_internal.nim | Given garbage, when parsed, then parsing terminates
-MCP-AUTH-10 | tests/internal/test_auth_oauth_basics_internal.nim | Given parameters, when formatted, then quotes and backslashes are escaped
-MCP-AUTH-10 | tests/internal/test_auth_oauth_basics_internal.nim | Given a newline in a value, when formatted, then it is refused
 MCP-AUTH-10 | tests/external/test_auth_oauth_basics.nim | Given the MCP 401 example, when the client answers it, then it goes for the resource metadata the Bearer challenge names
 MCP-AUTH-10 | tests/external/test_auth_oauth_basics.nim | Given several challenges, when the client answers them, then it takes the metadata of the Bearer one, whatever the order, lines or case
 MCP-AUTH-10 | tests/external/test_auth_oauth_basics.nim | Given a quoted string with an escaped quote and a comma that holds another resource_metadata, when the client answers, then the string is read whole and the inner one is not taken
@@ -773,12 +764,6 @@ MCP-AUTH-31 | tests/external/test_auth_failure.nim | Given a hook that fails, wh
 MCP-AUTH-31 | tests/external/test_auth_failure.nim | Given a hook that always says it improved things, when the server keeps refusing, then McpAuthorizationError ends the attempts
 MCP-AUTH-31 | tests/external/test_auth_failure.nim | Given a transport without authorization, when the server answers 403, then McpAuthorizationError carries the status
 MCP-AUTH-31 | tests/external/test_auth_failure.nim | Given a server that refuses the authorization for good, when a client connects, then it fails with McpAuthorizationError
-MCP-AUTH-34 | tests/internal/test_auth_oauth_basics_internal.nim | Given a Basic challenge with token68 padding before a Bearer one, when parsed, then the Bearer parameters are found
-MCP-AUTH-34 | tests/internal/test_auth_oauth_basics_internal.nim | Given a token68 whose padding ends the header, when parsed, then parsing ends with the challenge
-MCP-AUTH-34 | tests/internal/test_auth_oauth_basics_internal.nim | Given white space around the equals sign, when parsed, then the values are the same as without it (RFC 9110 11.2 BWS)
-MCP-AUTH-34 | tests/internal/test_auth_oauth_basics_internal.nim | Given a parameter that ends the header, when parsed, then its value is empty
-MCP-AUTH-34 | tests/internal/test_auth_oauth_basics_internal.nim | Given a quoted string that is cut off after a backslash, when parsed, then the backslash is kept
-MCP-AUTH-34 | tests/internal/test_auth_oauth_basics_internal.nim | Given a header that starts with a parameter and no scheme, when parsed, then no challenge carries it
 MCP-AUTH-34 | tests/external/test_auth_oauth_basics.nim | Given token68 padding before a Bearer challenge, when the client answers, then it takes the Bearer metadata
 MCP-AUTH-34 | tests/external/test_auth_oauth_basics.nim | Given a token68 whose padding ends a header line, when the client answers, then the next line is read on its own
 MCP-AUTH-34 | tests/external/test_auth_oauth_basics.nim | Given white space around the equals sign, when the client answers, then it reads what it reads without
