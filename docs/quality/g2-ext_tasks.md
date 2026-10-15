@@ -4,6 +4,7 @@
 対象は `src/ext/tasks.nim` と `src/ext/tasks/{client,server,wire}.nim`。`src/ext/**` は測定後に変わっていないので、行番号は今のものと同じ。 (2026-10-12 より前の話。下記。)
 
 2026-10-12 に `src/ext/tasks/client.nim` と `src/ext/tasks/server.nim` を変えた (冗長な削除と届かない枝を消した)。次の測定で測り直す。以降の行番号はずれる。
+2026-10-15 に登録の版の確かめを `official_common.requireTargetSpoken` (公式拡張ごとの対象の版) に替えたので、それ以後の行番号はずれている (`g2-protocol-versions.md` の「未測定 (公式拡張の対象の版)」)。
 
 | 全変異 | killed | timeout | survived | runError | compileError |
 |---:|---:|---:|---:|---:|---:|

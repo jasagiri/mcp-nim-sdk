@@ -436,7 +436,7 @@ import mcp
 import ext/tasks        # one import per extension the program uses
 ```
 
-Extensions of the `extensions` capability are agreed in protocol version `2026-07-28`; turning one on in a build that does not speak that version raises `ValueError` rather than doing nothing. Where an extension has both sides declare it, a peer that did not is answered `-32021` when it calls one of its methods; Skills is declared by the server alone. MCP Apps is the exception its specification makes: a host declares it in the `initialize` handshake of earlier versions as well.
+Extensions of the `extensions` capability are agreed in protocol version `2026-07-28`; turning one on in a server or client limited to an older version, or in a build that does not speak 2026-07-28, raises `ValueError` naming the extension and that version rather than doing nothing. Each official extension states the version it targets as `targetVersion` of the `OfficialExtension` table, which its module exports. Where an extension has both sides declare it, a peer that did not is answered `-32021` when it calls one of its methods; Skills is declared by the server alone. MCP Apps is the exception its specification makes: a host declares it in the `initialize` handshake of earlier versions as well.
 
 #### Official extensions
 

@@ -17,11 +17,11 @@ import std/[asyncdispatch, base64, json, options, os, sets, strutils,
             tables, unicode]
 import ../../server/server
 import ../../server/extensions
-import ../../protocol/features
 import ../../protocol/modern
 import ../../protocol/types
 import ./frontmatter
 import ./model
+import ../official_common
 
 type
   SkillFile* = object
@@ -347,12 +347,12 @@ proc registerSkills*(server: McpServer, catalog: SkillCatalog, directoryRead = f
   ## Skill files are readable through `resources/read` by every client; the
   ## skills methods answer clients that declared the extension.
   ##
-  ## Raises ValueError when the server speaks no 2026-07-28 (the extension
-  ## cannot be declared there; it is not ignored silently), or when the
-  ## extension or one of its methods is already registered.
-  if not server.protocolVersion.has(ftExtensions):
-    raise newException(ValueError, SkillsExtensionId & " needs protocol version 2026-07-28 " &
-      "or later, and this server speaks up to " & $server.protocolVersion)
+  ## Raises ValueError, naming the extension and its target version, when
+  ## the server is limited to a version older than the target
+  ## (`officialSkills`; the extension cannot be declared there, and it is not
+  ## ignored silently), or when the extension or one of its methods is
+  ## already registered.
+  requireTargetSpoken(server.protocolVersion, officialSkills)
   if server.capabilities.extensions.isSome and
      server.capabilities.extensions.get.hasKey(SkillsExtensionId):
     raise newException(ValueError, SkillsExtensionId & " is already registered")

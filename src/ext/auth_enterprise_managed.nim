@@ -26,6 +26,13 @@
 ## client has no business with the IdP's keys: `checkIdentityAssertionGrant`
 ## checks the claims that decide where the grant may be sent), and the
 ## authorization-server side (validating an ID-JAG is that server's job).
+##
+## The declaration targets protocol version 2026-07-28
+## (`officialEnterpriseManaged` in the table of `ext/official_common`): a
+## server or client limited to an older version refuses
+## `advertiseEnterpriseManaged`, `declareEnterpriseManaged` and
+## `enableEnterpriseManaged` with ValueError naming the extension and that
+## version.
 
 import std/[asyncdispatch, json, math, options, strutils, times]
 import ../protocol/version
@@ -40,6 +47,8 @@ import ../auth/oauth/[discovery, errors, grants, jwt, metadata, metadata_fields,
                       tokens, urls]
 import bearer_challenge  # foundation/nim-bearer-challenge
 import ./auth_shared
+import ./official_common
+export OfficialExtension, targetVersion, displayName
 
 export grants.ClientAuthentication, grants.secretBasic, grants.secretPost,
        grants.privateKeyJwt, grants.publicClient
@@ -402,18 +411,21 @@ proc asHttpAuth*(c: EnterpriseManagedAuth): HttpClientAuth =
 
 proc declareEnterpriseManaged*(client: McpClient) =
   ## Declares the extension in the capabilities of every 2026-07-28 request.
-  ## Call before connect(). Raises ValueError in a build that speaks no
-  ## version with the `extensions` capability.
-  requireExtensionsCapability(EnterpriseManagedExtensionId)
+  ## Call before connect(). Raises ValueError, naming the extension and its
+  ## target version, when this client is limited to a version older than the
+  ## target (`officialEnterpriseManaged`).
+  requireTargetSpoken(client.protocolVersion, officialEnterpriseManaged)
   client.declareExtension(EnterpriseManagedExtensionId)
 
 proc advertiseEnterpriseManaged*(server: McpServer) =
   ## Lists the extension in the server's capabilities. The extension's own
   ## text asks an MCP server for nothing else: the profile is advertised by its
   ## authorization server (`authorization_grant_profiles_supported`), and the
-  ## token's audience is checked by `auth/resource_server`. Raises ValueError
-  ## in a build that speaks no version with the `extensions` capability.
-  requireExtensionsCapability(EnterpriseManagedExtensionId)
+  ## token's audience is checked by `auth/resource_server`. Raises
+  ## ValueError, naming the extension and its target version, when this
+  ## server is limited to a version older than the target
+  ## (`officialEnterpriseManaged`).
+  requireTargetSpoken(server.protocolVersion, officialEnterpriseManaged)
   server.registerExtension(EnterpriseManagedExtensionId)
 
 proc enableEnterpriseManaged*(client: McpClient, transport: StreamableHttpTransport,

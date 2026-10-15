@@ -22,13 +22,13 @@ import ../../client/subscriptions
 import ../../protocol/types
 import ../../protocol/diagnostic
 import ../../protocol/features
-import ../../protocol/version
 import ../../protocol/lifecycle
 import ../../protocol/mrtr
 import ../../protocol/tasks
 import ../../protocol/task_methods
 import ../../protocol/subscriptions
 import ./wire
+import ../official_common
 
 export wire, tasks
 
@@ -49,12 +49,10 @@ type
 
 proc enableTasksExtension*(client: McpClient) =
   ## Declare `io.modelcontextprotocol/tasks` in the capabilities of every
-  ## request. Call before connect(). Raises ValueError when this client does
-  ## not speak 2026-07-28, the only version with extensions.
-  if mpv20260728 notin spokenVersionsUpTo(client.protocolVersion):
-    raise newException(ValueError,
-      "the Tasks extension needs 2026-07-28, which this client does not speak (it speaks up to " &
-      $client.protocolVersion & ")")
+  ## request. Call before connect(). Raises ValueError, naming the extension
+  ## and its target version, when this client is limited to a version older
+  ## than the target (`officialTasks`).
+  requireTargetSpoken(client.protocolVersion, officialTasks)
   client.declareExtension(TasksExtensionId, nil, resultTypes = [TaskResultType])
 
 proc requireDeclared(client: McpClient, operation: string) =

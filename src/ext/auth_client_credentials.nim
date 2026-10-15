@@ -22,6 +22,13 @@
 ##
 ## The SDK does not sign: `signer` is a `JwtSigner` around the application's
 ## RSA / ECDSA / EdDSA implementation or KMS.
+##
+## The declaration targets protocol version 2026-07-28
+## (`officialClientCredentials` in the table of `ext/official_common`): a
+## server or client limited to an older version refuses
+## `advertiseClientCredentials`, `declareClientCredentials` and
+## `enableClientCredentials` with ValueError naming the extension and that
+## version.
 
 import std/[asyncdispatch, options, strutils, times]
 import ../protocol/version
@@ -35,6 +42,8 @@ import ../auth/policy
 import ../auth/oauth/[errors, grants, jwt, metadata, metadata_fields, tokens, urls]
 import bearer_challenge  # foundation/nim-bearer-challenge
 import ./auth_shared
+import ./official_common
+export OfficialExtension, targetVersion, displayName
 
 export grants.ClientAuthMethod, jwt.JwtSigner, jwt.newJwtSigner
 export urls.FetchPolicy, urls.defaultFetchPolicy  # the type of the config's `fetchPolicy`
@@ -233,18 +242,20 @@ proc asHttpAuth*(c: ClientCredentialsAuth): HttpClientAuth =
 
 proc declareClientCredentials*(client: McpClient) =
   ## Declares the extension in the capabilities of every 2026-07-28 request.
-  ## Call before connect(). Raises ValueError in a build that speaks no
-  ## version with the `extensions` capability.
-  requireExtensionsCapability(ClientCredentialsExtensionId)
+  ## Call before connect(). Raises ValueError, naming the extension and its
+  ## target version, when this client is limited to a version older than the
+  ## target (`officialClientCredentials`).
+  requireTargetSpoken(client.protocolVersion, officialClientCredentials)
   client.declareExtension(ClientCredentialsExtensionId)
 
 proc advertiseClientCredentials*(server: McpServer) =
   ## Lists the extension in the server's capabilities (the extension's page
   ## calls this optional but recommended for discovery). Accepting tokens is
   ## the resource server's job (`auth/resource_server`); this declares
-  ## nothing but the fact. Raises ValueError in a build that speaks no
-  ## version with the `extensions` capability.
-  requireExtensionsCapability(ClientCredentialsExtensionId)
+  ## nothing but the fact. Raises ValueError, naming the extension and its
+  ## target version, when this server is limited to a version older than the
+  ## target (`officialClientCredentials`).
+  requireTargetSpoken(server.protocolVersion, officialClientCredentials)
   server.registerExtension(ClientCredentialsExtensionId)
 
 proc enableClientCredentials*(client: McpClient, transport: StreamableHttpTransport,

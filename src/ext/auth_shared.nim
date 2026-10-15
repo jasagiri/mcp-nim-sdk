@@ -1,14 +1,12 @@
 ## What the two authorization extensions (`auth_client_credentials`,
 ## `auth_enterprise_managed`) have in common: finding the authorization
-## server of an MCP server, choosing scopes from a challenge, and the one
-## rule about declaring an extension in a build.
+## server of an MCP server and choosing scopes from a challenge. The version
+## each of them targets is in the table of `ext/official_common`.
 ##
 ## Based on the ext-auth repository at
 ## fb374c7db2b34f18ca9183882e0beecdf661892b (see docs/quality/ext-auth.md).
 
 import std/[asyncdispatch, options, strutils]
-import ../protocol/version
-import ../protocol/features
 import ../auth/policy
 import ../auth/oauth/[discovery, errors, metadata, urls]
 
@@ -24,15 +22,6 @@ type
       ## `scopes_supported` of the protected resource metadata.
 
   AuthorizationServerChooser* = proc(servers: seq[string]): string {.closure, gcsafe.}
-
-proc requireExtensionsCapability*(id: string) {.raises: [ValueError].} =
-  ## Declaring `id` goes through the `extensions` capability, which exists
-  ## from 2026-07-28. A build that speaks nothing newer cannot honor the
-  ## declaration, so it is refused instead of ignored.
-  if not DefaultProtocolVersion.has(ftExtensions):
-    raise newException(ValueError,
-      "cannot declare " & id & ": the extensions capability exists from 2026-07-28 " &
-      "and this build speaks up to " & $DefaultProtocolVersion)
 
 func firstAuthorizationServer*(servers: seq[string]): string {.raises: [].} =
   servers[0]

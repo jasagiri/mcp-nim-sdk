@@ -14,10 +14,17 @@
 ## or any other frontmatter field, ask a user for approval, or cache to disk.
 ## Those belong to the host; `contentBinding` and `skillStoragePath` are the
 ## pieces the SDK offers for them.
+##
+## Targets protocol version 2026-07-28 (`officialSkills` in the table of
+## `ext/official_common`): a server or client limited to an older version
+## refuses `registerSkills` and `declareSkills` with ValueError naming the
+## extension and that version.
 
 import ./skills/frontmatter
 import ./skills/model
 import ./skills/catalog
 import ./skills/consumer
+import ./official_common
 
 export frontmatter, model, catalog, consumer
+export OfficialExtension, targetVersion, displayName

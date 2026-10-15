@@ -252,3 +252,12 @@ nim-muter 0.2.5 の RVR は、戻り値がリテラルのとき `default(typeof(
 ID-JAG の再利用の無効化、リフレッシュトークンの保持)、`tests/test_ext_auth_enterprise_managed.nim`
 が落ちるかを確かめた。7 通りとも検出された。これは網羅的な変異検査の代わりにはならない。
 `auth_client_credentials.nim` と `jwt.nim` / `grants.nim` は手でも測っていない。
+
+## 未測定 (公式拡張の対象の版)
+
+2026-10-15: 公式拡張 (Tasks、Skills、OAuth client credentials、enterprise-managed authorization) ごとに対象の版を `src/ext/official_common.nim` の表 (`OfficialExtension`、`targetVersion`) に書き、登録はどれも `requireTargetSpoken` (本線の `requireVersionSpoken` を使う) を通るようにした。認可の 2 つはビルドの既定の版ではなく側 (server / client) の上限の版で確かめるようになり、`auth_shared.requireExtensionsCapability` は消えた。Skills の client の `declareSkills` にも版の確かめが入った。どのジョブでも測っていない。
+
+| モジュール | 対応する外部仕様テスト | 追加・変更した日 |
+|---|---|---|
+| `src/ext/official_common.nim` (表と `requireTargetSpoken`) | `tests/external/test_ext_targets.nim` | 2026-10-15 |
+| `src/ext/tasks/{server,client}.nim`、`src/ext/skills/{catalog,consumer}.nim`、`src/ext/auth_client_credentials.nim`、`src/ext/auth_enterprise_managed.nim`、`src/ext/auth_shared.nim` (登録の版の確かめ) | `tests/external/test_ext_targets.nim` | 2026-10-15 |

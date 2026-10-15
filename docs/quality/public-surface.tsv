@@ -375,10 +375,11 @@ ext/auth_shared	AuthorizationServerChooser
 ext/auth_shared	ResourceAuthorization
 ext/auth_shared	discoverResourceAuthorization
 ext/auth_shared	firstAuthorizationServer
-ext/auth_shared	requireExtensionsCapability
 ext/auth_shared	requireIssuer
 ext/auth_shared	resourceScopes
 ext/auth_shared	unionOf
+ext/official_common	displayName
+ext/official_common	requireTargetSpoken
 ext/skills/catalog	DynamicSkillFiles
 ext/skills/catalog	SkillCatalog
 ext/skills/catalog	SkillFile

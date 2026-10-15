@@ -21,6 +21,7 @@ import ../../client/extensions
 import ../../client/resources
 import ./frontmatter
 import ./model
+import ../official_common
 
 type
   RejectedSkill* = object
@@ -63,7 +64,10 @@ proc declareSkills*(client: McpClient) =
   ## Say in this client's capabilities that it understands the extension.
   ## The specification does not ask it: servers declare the extension and a
   ## client calls `skills/list` after seeing that, declared or not. Call
-  ## before connect(). Only a 2026-07-28 connection carries it.
+  ## before connect(). Only a 2026-07-28 connection carries it, so a client
+  ## limited to an older version (`officialSkills`) refuses it with
+  ## ValueError naming the extension and its target version.
+  requireTargetSpoken(client.protocolVersion, officialSkills)
   client.declareExtension(SkillsExtensionId)
 
 proc skillsOffered*(client: McpClient): bool =

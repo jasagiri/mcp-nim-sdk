@@ -10,9 +10,16 @@
 ##
 ## Import it as `import ext/tasks`. `enableTasksExtension` is one name for
 ## both sides: it takes a `McpServer` or a `McpClient`.
+##
+## Targets protocol version 2026-07-28 (`officialTasks` in the table of
+## `ext/official_common`): a server or client limited to an older version
+## refuses `enableTasksExtension` with ValueError naming the extension and
+## that version.
 
 import ./tasks/wire
 import ./tasks/server
 import ./tasks/client
+import ./official_common
 
 export wire, server, client
+export OfficialExtension, targetVersion, displayName

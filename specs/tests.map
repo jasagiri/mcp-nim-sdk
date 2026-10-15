@@ -2750,3 +2750,5 @@ MCP-EXT-SKILLS-33 | tests/external/test_ext_skills_frontmatter.nim | Given a com
 MCP-EXT-SKILLS-33 | tests/external/test_ext_skills_frontmatter.nim | Given a comment in the middle of a multi-line plain scalar, when read, then FrontmatterError is raised
 MCP-EXT-SKILLS-34 | tests/external/test_ext_skills_frontmatter.nim | Given a comment indented less than the content of a block scalar, when read, then the scalar ends before it
 MCP-EXT-SKILLS-34 | tests/external/test_ext_skills_frontmatter.nim | Given content after a line that ended a block scalar, when read, then FrontmatterError is raised
+MCP-EXT-TARGET-1 | tests/external/test_ext_targets.nim | Given each official extension and each version this build speaks as the ceiling, when every registration of the extension is made below its target, then each is refused naming the extension and the target
+MCP-EXT-TARGET-2 | tests/external/test_ext_targets.nim | Given each official extension and each version this build speaks as the ceiling, when the extension is registered at or above its target, then every registration is accepted and the first call is answered

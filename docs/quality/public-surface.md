@@ -4,7 +4,7 @@
 export を絞るか、説明を足すかは、別の判断として扱う。
 
 テストの分類では「README の入口から `export` で届くもの」を公開とした。その範囲を機械的に数えると、
-**入口から届くモジュールは 70 個、公開のシンボルは 1345 個で、うち 966 個は README にも `docs/*.md` にも名前が出てこない。**
+**入口から届くモジュールは 71 個、公開のシンボルは 1348 個で、うち 967 個は README にも `docs/*.md` にも名前が出てこない。**
 README は使い方の説明で、型や手続きの一覧ではないので、この数は「誤って公開されている数」ではない。
 継ぎ目のために `*` が付いただけのものと、利用者に使わせるつもりのものが混ざっている、という数である。
 
@@ -44,7 +44,8 @@ README は使い方の説明で、型や手続きの一覧ではないので、�
 | `ext/apps/provider` | 17 | 11 | `AppsRegistry`、`UiResource`、`addUiResource`、`blob`、`hasUiResource` |
 | `ext/auth_client_credentials` | 25 | 18 | `AssertionAudience`、`ClientCredentialsAuth`、`ClientCredentialsConfig`、`ClientCredentialsExtensionId`、`advertiseClientCredentials` |
 | `ext/auth_enterprise_managed` | 33 | 25 | `EnterpriseManagedAuth`、`EnterpriseManagedConfig`、`EnterpriseManagedExtensionId`、`GrantProfileIdJag`、`IdJagJwtType` |
-| `ext/auth_shared` | 11 | 8 | `AuthorizationServerChooser`、`ResourceAuthorization`、`discoverResourceAuthorization`、`firstAuthorizationServer`、`requireExtensionsCapability` |
+| `ext/auth_shared` | 10 | 7 | `AuthorizationServerChooser`、`ResourceAuthorization`、`discoverResourceAuthorization`、`firstAuthorizationServer`、`requireIssuer` |
+| `ext/official_common` | 4 | 2 | `displayName`、`requireTargetSpoken` |
 | `ext/skills` | 0 | 0 |  |
 | `ext/skills/catalog` | 14 | 7 | `DynamicSkillFiles`、`SkillCatalog`、`SkillFile`、`addDynamicSkill`、`addSkill` |
 | `ext/skills/consumer` | 31 | 23 | `DirectoryChild`、`LoadedSkill`、`RejectedSkill`、`SkillHandle`、`SkillListing` |

@@ -26,7 +26,6 @@ import ../../server/extensions
 import ../../protocol/types
 import ../../protocol/diagnostic
 import ../../protocol/features
-import ../../protocol/version
 import ../../protocol/modern
 import ../../protocol/mrtr
 import ../../protocol/tasks
@@ -34,6 +33,7 @@ import ../../protocol/task_methods
 import ../../protocol/extensions
 import ../../protocol/subscriptions
 import ./wire
+import ../official_common
 
 export wire, tasks
 
@@ -318,13 +318,11 @@ proc enableTasksExtension*(server: McpServer, config = TasksExtensionConfig(),
   ## Let clients that declare `io.modelcontextprotocol/tasks` get a task for
   ## the `tools/call` that `config.decide` picks. `store` may be the one the
   ## core's `enableTasks` uses: enable the core first, so that the status
-  ## changes of its tasks keep reaching its own callback. Raises ValueError
-  ## when this build does not speak 2026-07-28, which is the only version
-  ## with extensions: nothing is declared silently.
-  if mpv20260728 notin spokenVersionsUpTo(server.protocolVersion):
-    raise newException(ValueError,
-      "the Tasks extension needs 2026-07-28, which this server does not speak (it speaks up to " &
-      $server.protocolVersion & ")")
+  ## changes of its tasks keep reaching its own callback. Raises ValueError,
+  ## naming the extension and its target version, when this server is
+  ## limited to a version older than the target (`officialTasks`): nothing is
+  ## declared silently.
+  requireTargetSpoken(server.protocolVersion, officialTasks)
   let ext = TasksExtension(
     server: server, config: config, inputs: initTable[string, TaskInputs](),
     store: if store.isNil: newTaskStore() else: store)
