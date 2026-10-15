@@ -106,7 +106,7 @@ let server = newMcpServer(info, protocolVersion = mpv20250326, capabilities = ca
 
 When this SDK is a dependency, name the branch of the version you want in your `.nimble` file (see [Install](#install)); the branch sets the default, and the defines above still apply. When working in a checkout of this repository, `nim.cfg` already adds `src` to the path; elsewhere pass `--path:<checkout>/src`.
 
-Requirements: Nim 2.2.12 or newer, the default memory management (`--mm:orc`), and the `uuids` package. No other define is needed; there is none per feature.
+Requirements: Nim 2.2.12 or newer, the default memory management (`--mm:orc`), and the `uuids` and `nimcrypto` packages (nimcrypto computes SHA-256 and HMAC-SHA256, which the standard library does not have, for PKCE, the sealed request state and the signed webhooks). No other define is needed; there is none per feature.
 
 ### 2. Features, at run time
 

@@ -33,3 +33,7 @@ suite "SHA-256":
       "b35439a4ac6f0948b6d6f9e3c6af0f5f590ce20f1bde7090ef7970686ec6738a"
     check sha256('a'.repeat(64)).toHex ==
       "ffe054fe7ae0cb6dc65c3af9b61d5209f439851db43d0ba5997337df154668eb"
+
+  test "Given 'abc' as bytes, when hashed, then it is the same FIPS 180-4 vector as the text":
+    check sha256(@[byte 0x61, 0x62, 0x63]).toHex ==
+      "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"

@@ -91,7 +91,7 @@ README は使い方の説明で、型や手続きの一覧ではないので、�
 | `jsonschema/json_schema_regex` | `jsonschema/json_schema` | `test_json_schema.nim`、`test_security_schema.nim` |
 | `protocol/base64_shape` | `client/icons`、`protocol/modern`、`server/pagination` | `test_base64_shape.nim` |
 | `protocol/features` | `auth/policy`、`auth/resource_server`、`client/client`、`client/extensions` ほか 15 | `gen_docs.nim`、`server_harness.nim`、`test_auth_client_flow.nim`、`test_auth_resource_server.nim` ほか 12 |
-| `protocol/hmac` | `server/request_state` | `test_mrtr.nim` |
+| `protocol/hmac` | `server/request_state` | `test_mrtr.nim`、`test_protocol_hmac.nim` |
 | `protocol/implementation_status` | **無し** | `gen_docs.nim`、`test_docs_version.nim`、`test_spec_coverage.nim` |
 | `protocol/param_headers` | `server/server`、`transport/http`、`transport/http_server` | `test_param_headers.nim` |
 | `server/request_state` | **無し** | `test_mrtr.nim` |
