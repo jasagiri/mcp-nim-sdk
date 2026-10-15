@@ -21,7 +21,8 @@ import std/[json, options, strutils]
 import transport/[event_stream, address_policy]
 import protocol/[trace_context, modern, diagnostic]
 import jsonschema/[json_schema, json_schema_regex]
-import auth/oauth/[challenge, urls, errors]
+import auth/oauth/[urls, errors]
+import bearer_challenge  # foundation/nim-bearer-challenge: parseChallenges
 import server/pagination
 import server/errors as server_errors
 

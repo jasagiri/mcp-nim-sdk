@@ -12,7 +12,7 @@ import protocol/types
 import protocol/version
 import protocol/features
 import auth/resource_server
-import auth/oauth/challenge
+import bearer_challenge
 import ../external/auth_fixtures
 
 const authVersions = block:

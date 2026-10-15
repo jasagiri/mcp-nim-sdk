@@ -19,7 +19,8 @@ import std/[asyncdispatch, options, strutils, tables, times, uri]
 import ../protocol/version
 import ../transport/auth_hook
 import ./policy
-import ./oauth/[authcode, challenge, discovery, errors, metadata, registration, tokens, urls]
+import ./oauth/[authcode, discovery, errors, metadata, registration, tokens, urls]
+import bearer_challenge  # foundation/nim-bearer-challenge
 
 import ../transport/address_policy
 export errors, tokens, urls.FetchPolicy, urls.defaultFetchPolicy

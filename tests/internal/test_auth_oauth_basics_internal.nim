@@ -10,7 +10,7 @@ import protocol/version
 import protocol/features
 import auth/client
 import auth/resource_server
-import auth/oauth/[pkce, challenge, urls, metadata, discovery, errors, fetch, jsonfield, authcode, registration]
+import auth/oauth/[pkce, urls, metadata, discovery, errors, fetch, jsonfield, authcode, registration]
 import ../external/auth_fixtures
 
 type
@@ -241,53 +241,8 @@ suite "PKCE":
     check not isValidCodeVerifier("a".repeat(129))
     check isValidCodeVerifier("a".repeat(128))
 
-suite "WWW-Authenticate":
-  test "Given the MCP 401 example, when parsed, then resource_metadata and scope are found":
-    let header = "Bearer resource_metadata=\"https://mcp.example.com/.well-known/oauth-protected-resource\",\n" &
-                 "                         scope=\"files:read\""
-    let c = bearerChallenge([header]).get
-    check c.resourceMetadata.get == "https://mcp.example.com/.well-known/oauth-protected-resource"
-    check c.scope.get == "files:read"
-
-  test "Given the MCP insufficient_scope example, when parsed, then every parameter is found":
-    let header = "Bearer error=\"insufficient_scope\", scope=\"files:read files:write user:profile\", " &
-                 "resource_metadata=\"https://mcp.example.com/.well-known/oauth-protected-resource\", " &
-                 "error_description=\"Additional file write permission required\""
-    let c = bearerChallenge([header]).get
-    check c.error.get == "insufficient_scope"
-    check c.scope.get == "files:read files:write user:profile"
-    check c.errorDescription.get == "Additional file write permission required"
-
-  test "Given several challenges in one header, when parsed, then the Bearer one is selected":
-    let c = bearerChallenge(["Basic realm=\"x\", Bearer realm=\"mcp\", error=\"invalid_token\""]).get
-    check c.realm.get == "mcp"
-    check c.error.get == "invalid_token"
-
-  test "Given a quoted string with an escaped quote and a comma, when parsed, then it is unescaped whole":
-    let c = bearerChallenge(["Bearer error_description=\"say \\\"hi\\\", please\", scope=\"a\""]).get
-    check c.errorDescription.get == "say \"hi\", please"
-    check c.scope.get == "a"
-
-  test "Given an unquoted token value and mixed case, when parsed, then names are case-insensitive":
-    let c = bearerChallenge(["bearer Scope=read"]).get
-    check c.scope.get == "read"
-
-  test "Given only a Basic challenge or nothing, when parsed, then there is no Bearer challenge":
-    check bearerChallenge(["Basic realm=\"x\""]).isNone
-    check bearerChallenge(newSeq[string]()).isNone
-    check bearerChallenge([""]).isNone
-
-  test "Given garbage, when parsed, then parsing terminates":
-    discard parseChallenges("=,=,\"\"\"==")
-    discard parseChallenges("Bearer a=\"unterminated")
-
-  test "Given parameters, when formatted, then quotes and backslashes are escaped":
-    check formatBearerChallenge({"error": "invalid_token", "error_description": "a \"b\" \\"}) ==
-      "Bearer error=\"invalid_token\", error_description=\"a \\\"b\\\" \\\\\""
-
-  test "Given a newline in a value, when formatted, then it is refused":
-    expect ValueError:
-      discard formatBearerChallenge({"error_description": "x\r\nSet-Cookie: a=b"})
+# The WWW-Authenticate suite moved with the module to foundation/nim-bearer-challenge
+# (tests/test_bearer_challenge.nim, BCH-01..04) on 2026-10-15.
 
 suite "Well-known URLs":
   test "Given an issuer with a path, when building RFC 8414 URLs, then the suffix is inserted before the path":
@@ -455,40 +410,8 @@ suite "Metadata validation":
     check m.tokenEndpoint == "https://api.example.com/token"
     check m.registrationEndpoint.get == "https://api.example.com/register"
 
-suite "WWW-Authenticate edges (mutation review, g2f-oauth-a)":
-  test "Given a Basic challenge with token68 padding before a Bearer one, when parsed, then the Bearer parameters are found":
-    # RFC 9110 11.2: token68 may end in any number of "=".
-    let header = "Basic YWJj==, Bearer resource_metadata=\"https://mcp.example.com/prm\", scope=\"read\""
-    let challenges = parseChallenges(header)
-    check challenges.len == 2
-    check challenges[0].scheme == "Basic"
-    check challenges[0].params.len == 0
-    let bearer = bearerChallenge([header]).get
-    check bearer.resourceMetadata == some("https://mcp.example.com/prm")
-    check bearer.scope == some("read")
-
-  test "Given a token68 whose padding ends the header, when parsed, then parsing ends with the challenge":
-    let challenges = parseChallenges("Basic YWJj==")
-    check challenges.len == 1
-    check challenges[0].scheme == "Basic"
-    check challenges[0].params.len == 0
-
-  test "Given white space around the equals sign, when parsed, then the values are the same as without it (RFC 9110 11.2 BWS)":
-    let bearer = bearerChallenge(["Bearer realm = \"a b\" , scope =  read"]).get
-    check bearer.realm == some("a b")
-    check bearer.scope == some("read")
-
-  test "Given a parameter that ends the header, when parsed, then its value is empty":
-    check bearerChallenge(["Bearer realm="]).get.realm == some("")
-    check bearerChallenge(["Bearer realm=  "]).get.realm == some("")
-
-  test "Given a quoted string that is cut off after a backslash, when parsed, then the backslash is kept":
-    check bearerChallenge(["Bearer realm=\"a\\"]).get.realm == some("a\\")
-
-  test "Given a header that starts with a parameter and no scheme, when parsed, then no challenge carries it":
-    for c in parseChallenges("realm=\"x\""):
-      check c.params.len == 0
-    check bearerChallenge(["realm=\"x\", Bearer scope=\"s\""]).get.scope == some("s")
+# "WWW-Authenticate edges (mutation review, g2f-oauth-a)" moved with the module to
+# foundation/nim-bearer-challenge (tests/test_bearer_challenge.nim, BCH-01) on 2026-10-15.
 
 suite "Candidate URLs of an issuer with a trailing slash (mutation review, g2f-oauth-a)":
   test "Given an issuer path that ends in a slash, when listing candidates, then the slash is dropped from every URL":

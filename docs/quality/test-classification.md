@@ -67,7 +67,7 @@
 | `test_extensions.nim` | 40 | 40 | 0 | 0 | E | 多数は E (SessionedTransport/loopback の JSON-RPC と公開の拡張 API (server/extensions・client/extensions が protocol/extensions を export)。)。E でない件は版選別の protocol/features・server/tools・auth/oauth の補助・transport/auth_hook など非公開シンボルを使う (not-e.tsv 参照)。 |  |  |
 | `test_features.nim` | 12 | 0 | 12 | 0 | I | 全件が機能表と上流の変更履歴の整合を確かめる門 (R5)。SDK の振る舞いは見ていない。 | SDK の振る舞いではなく、リポジトリの (機能表 src/protocol/features.nim と上流の変更履歴・仕様ページ名) の整合を確かめる門。protocol/features は入口から届かない。 |  |
 | `test_first_of.nim` | 10 | 0 | 4 | 6 | mixed | transport/first_of は入口から届かない内部部品。6 件は公開の口 (McpCancelToken を共有した要求など) から確かめられる S、4 件は『何も起きない』ことの観測不能・受信ループの競合で I。 | 完了した待ちのあとで残りの future が失敗しても『何も起きない』ことは、通信にも公開の戻り値にも現れず、外から観測できない。 / 誰も待っていない間に future が終わる競合 (受信ループが別の仕事をしている間) は、外からは非決定的にしか作れない。 / 鳴ったベルを聞いたあとの次の待ちが再び待つ、という内部ループの待ち合わせの順序は、外から決定的に再現できない。 ほか 1 通り | 足場 6 件は呼び口を移せば E |
-| `test_fuzz_regressions.nim` | 3 | 0 | 3 | 0 | I | 入口から届かない読み手を含め、任意のバイト列を各読み手へ直接流す。外から全ての読み手へ送る口が無いので I。最後の 1 件はコーパスと Entrances の名前の整合の門。 | 任意のバイト列を読む各読み手 (入口から届かない transport/address_policy・auth/oauth/{challenge,urls}・protocol/diagnostic を含む) を、トランスポート越しに 1 件ずつ外から叩く口が無い。 / SDK の振る舞いではなく、リポジトリの (tests/fuzz/corpus の各ディレクトリと Entrances の名前) の整合を確かめる門。 |  |
+| `test_fuzz_regressions.nim` | 3 | 0 | 3 | 0 | I | 入口から届かない読み手を含め、任意のバイト列を各読み手へ直接流す。外から全ての読み手へ送る口が無いので I。最後の 1 件はコーパスと Entrances の名前の整合の門。 | 任意のバイト列を読む各読み手 (入口から届かない transport/address_policy・auth/oauth/urls・foundation/nim-bearer-challenge の `parseChallenges` (2026-10-15 に auth/oauth/challenge から移した)・protocol/diagnostic を含む) を、トランスポート越しに 1 件ずつ外から叩く口が無い。 / SDK の振る舞いではなく、リポジトリの (tests/fuzz/corpus の各ディレクトリと Entrances の名前) の整合を確かめる門。 |  |
 | `test_http_client_streams.nim` | 70 | 70 | 0 | 0 | E | 生のソケットで書いたサーバに対し公開の StreamableHttpTransport を動かし、ワイヤ上のメッセージ・ヘッダ・接続の閉じ方を見る。全件 E。stderr の文字列断片を固定する 6 件に wording。 |  |  |
 | `test_http_documents.nim` | 8 | 8 | 0 | 0 | E | HttpServerTransport.documents に置いた文書を実際の HTTP クライアントで叩き、状態・ヘッダ・本文だけを見る。全件 E (認可フックを差し込む 1 件は HttpServerAuth を使う)。 |  |  |
 | `test_http_error_propagation.nim` | 4 | 4 | 0 | 0 | E | モックの HTTP サーバに対する公開のトランスポートの sendRequest/sendNotification が McpTransportError を上げるかだけを見る。全件 E (tests.map に行なし)。 |  |  |
@@ -219,7 +219,7 @@ E テストが 1 本も結ばれていない仕様 ID は **17 件** になっ�
 
 - 応答の「読み終えた」状態や本文の値が、公開のクライアントからは見えない (`transport/http_wire` の `WireResponse`、`request`)。
 - 接続先の分類の結果、とくに「公開」「通る」側 (`transport/address_policy` の `classifyHost`・`classifyAddress`・`chooseDestination`・`parseHostLiteral`・`resolveHost`、`transport/guarded_wire` の `guardedRequest`、`auth/oauth/urls` の `checkFetchUrl`)。
-- 挑戦ヘッダの `realm`・`error_description` や解析の構造、認可の部品の戻り値 (`auth/oauth/challenge` の `parseChallenges`、`auth/oauth/{authcode,discovery,metadata,registration,jsonfield}`)。
+- 挑戦ヘッダの `realm`・`error_description` や解析の構造、認可の部品の戻り値 (`parseChallenges`。2026-10-15 に `foundation/nim-bearer-challenge` へ移した。`auth/oauth/{authcode,discovery,metadata,registration,jsonfield}`)。
 - 正規表現のプログラムの大きさと残りの歩数 (`jsonschema/json_schema_regex` の `Regex.size`、`isMatch` の予算)。
 - `x-mcp-header` の束縛の個数 (`protocol/param_headers` の `declaredParamHeaders`)、イベントストリームの終わり方の値 (`transport/sse_stream`)。
 - ツールの組み立ての手続き (`server/tools`。`src/` のどこからも呼ばれず、入口からも届かない)、アイコンの取得の差し替え口 (`IconFetchOptions.get`)。

@@ -18,7 +18,8 @@ import std/[asyncdispatch, json, options, strutils]
 import ../protocol/version
 import ../protocol/features
 import ../transport/auth_hook
-import ./oauth/[challenge, errors, urls]
+import ./oauth/[errors, urls]
+import bearer_challenge  # foundation/nim-bearer-challenge
 
 const MaxTokenLength = 8192
   ## A bearer token longer than this is refused without being handed to the

@@ -79,7 +79,7 @@ README は使い方の説明で、型や手続きの一覧ではないので、�
 | モジュール | src の中で import しているモジュール | 直接 import しているテスト・道具 |
 |---|---|---|
 | `auth/oauth/authcode` | `auth/client` | `test_auth_oauth_basics.nim`、`test_security_auth_tokens.nim` |
-| `auth/oauth/challenge` | `auth/client`、`auth/resource_server` | `test_auth_oauth_basics.nim`、`test_auth_resource_server.nim` |
+| ~~`auth/oauth/challenge`~~ | (2026-10-15 に `foundation/nim-bearer-challenge` へ移した。いまは SDK の外の依存) | — |
 | `auth/oauth/discovery` | `auth/client`、`auth/policy` | `test_auth_oauth_basics.nim` |
 | `auth/oauth/fetch` | `auth/oauth/authcode`、`auth/oauth/discovery`、`auth/oauth/registration` | `test_auth_oauth_basics.nim`、`test_security_address.nim`、`test_security_auth_tokens.nim`、`test_security_diagnostic_auth.nim` |
 | `auth/oauth/jsonfield` | `auth/oauth/authcode`、`auth/oauth/registration` | `test_auth_oauth_basics.nim` |

@@ -7,6 +7,8 @@
 |---:|---:|---:|---:|---:|---:|
 | 333 | 228 | 5 | 81 | 0 | 19 |
 
+**2026-10-15 の注記**: `src/auth/oauth/challenge.nim` は `foundation/nim-bearer-challenge` (`src/bearer_challenge.nim`) へ移した。下の challenge.nim の 16 件は移す前の記録として残す。生き残りを殺した規則 (token68 の詰め物、`=` の前後の空白、値の無い引数、scheme より前の引数、バックスラッシュで切れた引用文字列) は、移した先の E テスト (BCH-01) に直接書き写した。次の測定はあちらで行い、このジョブの `sources` からは外した。
+
 生き残り 81 件の分類 (2 人で分担し、下の 2 節に 1 件ずつ記録した)。
 
 | 分類 | challenge / discovery / fetch / urls / sha256 | authcode / jsonfield / metadata / registration / tokens | 計 |

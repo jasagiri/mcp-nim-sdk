@@ -1,7 +1,6 @@
 {
   "sources": [
     "src/auth/oauth/authcode.nim",
-    "src/auth/oauth/challenge.nim",
     "src/auth/oauth/discovery.nim",
     "src/auth/oauth/errors.nim",
     "src/auth/oauth/fetch.nim",
