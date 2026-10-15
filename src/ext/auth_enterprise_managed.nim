@@ -36,8 +36,9 @@ import ../client/extensions as client_extensions
 import ../server/server
 import ../server/extensions as server_extensions
 import ../auth/policy
-import ../auth/oauth/[challenge, discovery, errors, grants, jwt, metadata, metadata_fields,
+import ../auth/oauth/[discovery, errors, grants, jwt, metadata, metadata_fields,
                       tokens, urls]
+import bearer_challenge  # foundation/nim-bearer-challenge
 import ./auth_shared
 
 export grants.ClientAuthentication, grants.secretBasic, grants.secretPost,

@@ -32,7 +32,8 @@ import ../client/extensions as client_extensions
 import ../server/server
 import ../server/extensions as server_extensions
 import ../auth/policy
-import ../auth/oauth/[challenge, errors, grants, jwt, metadata, metadata_fields, tokens, urls]
+import ../auth/oauth/[errors, grants, jwt, metadata, metadata_fields, tokens, urls]
+import bearer_challenge  # foundation/nim-bearer-challenge
 import ./auth_shared
 
 export grants.ClientAuthMethod, jwt.JwtSigner, jwt.newJwtSigner
