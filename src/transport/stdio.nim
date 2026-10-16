@@ -5,7 +5,7 @@
 ## (`newProcessTransport`). Reads go through the async dispatcher, so timers
 ## and other transports keep running while a peer is silent.
 
-import std/[asyncdispatch, asyncfile, json, options, osproc, posix, streams, strutils]
+import std/[asyncdispatch, asyncfile, json, options, os, osproc, posix, streams, strtabs, strutils]
 import ./transport
 import ../protocol/types
 import ../protocol/diagnostic
@@ -120,13 +120,36 @@ proc forwardStderr(file: AsyncFile) {.async.} =
       break
     stderr.write(chunk)
 
+const InheritedVariables* = ["HOME", "LOGNAME", "PATH", "SHELL", "TERM", "USER"]
+  ## What `defaultServerEnvironment` passes on from this process.
+
+proc defaultServerEnvironment*(extra: openArray[(string, string)] = []): StringTableRef =
+  ## An environment for a server this process does not trust with its own:
+  ## only `InheritedVariables` from this process (not shell functions), then
+  ## `extra`, which wins. A process's environment often holds credentials
+  ## that a third-party server has no business reading.
+  result = newStringTable(modeCaseSensitive)
+  for name in InheritedVariables:
+    let value = getEnv(name)
+    if existsEnv(name) and not value.startsWith("()"):
+      result[name] = value
+  for (name, value) in extra:
+    result[name] = value
+
 proc newProcessTransport*(command: string, args: openArray[string] = [],
-                          maxLineSize = DefaultMaxLineSize): StdioTransport =
+                          maxLineSize = DefaultMaxLineSize,
+                          env: StringTableRef = nil, workingDir = ""): StdioTransport =
   ## Start `command` as an MCP server and talk to it over its stdin and
   ## stdout. What it writes to stderr appears on this process's stderr.
+  ## `env` is the server's whole environment (nil: this process's own, see
+  ## `defaultServerEnvironment`); `workingDir` is where it runs ("": here).
+  if workingDir.len > 0 and not dirExists(workingDir):
+    raise newException(McpTransportError,
+      "cannot start MCP server '" & command & "': no directory " & workingDir)
   var process: Process
   try:
-    process = startProcess(command, args = args, options = {poUsePath})
+    process = startProcess(command, workingDir = workingDir, args = args, env = env,
+                           options = {poUsePath})
   except OSError as e:
     raise newException(McpTransportError,
       "cannot start MCP server '" & command & "': " & e.msg)

@@ -3,7 +3,7 @@
 ##
 ## The test binary starts itself with a role argument to act as the child.
 
-import std/[sequtils, unittest, asyncdispatch, json, monotimes, options, os, osproc, posix, streams, strutils, times]
+import std/[sequtils, unittest, asyncdispatch, json, monotimes, options, os, osproc, posix, streams, strtabs, strutils, times]
 import transport/transport
 import transport/stdio
 import server/server
@@ -65,6 +65,11 @@ proc runChild(role: string) =
     stdout.writeLine("""{"jsonrpc":"2.0","method":"ready"}""")
     stdout.flushFile()
     sleep(60_000)
+  of "--senv":
+    # Says what it was started with: its directory and the variables the test looks at.
+    stdout.writeLine($(%*{"jsonrpc": "2.0", "method": "env", "params": {
+      "cwd": getCurrentDir(), "given": getEnv("MCP_TEST_GIVEN"), "secret": existsEnv("MCP_TEST_SECRET")}}))
+    stdout.flushFile()
   of "--silent":
     # Reads everything, answers nothing.
     let transport = newStdioTransport()
@@ -331,3 +336,42 @@ suite "stdio with a child process":
     check handles.allIt(descriptorIsOpen(it))
     waitFor client.close()
     check not handles.anyIt(descriptorIsOpen(it))
+
+suite "the environment and directory of a server process":
+
+  proc started(env: StringTableRef = nil, workingDir = ""): JsonNode =
+    let transport = newProcessTransport(getAppFilename(), ["--senv"], env = env, workingDir = workingDir)
+    result = (waitFor transport.receiveMessage())["params"]
+    waitFor transport.close()
+
+  test "Given an environment and a directory, when a server is started, then it sees only that environment and runs there":
+    putEnv("MCP_TEST_SECRET", "parent only")
+    let dir = getTempDir().expandFilename
+    let p = started(newStringTable({"MCP_TEST_GIVEN": "given"}, modeCaseSensitive), dir)
+    check p["given"].getStr == "given"
+    check not p["secret"].getBool
+    check p["cwd"].getStr == dir
+    delEnv("MCP_TEST_SECRET")
+
+  test "Given no environment, when a server is started, then it inherits this process's environment and directory":
+    putEnv("MCP_TEST_SECRET", "parent only")
+    let p = started()
+    check p["secret"].getBool
+    check p["cwd"].getStr == getCurrentDir()
+    delEnv("MCP_TEST_SECRET")
+
+  test "Given this process's environment, when the default server environment is made, then only the basic variables pass and the given ones win":
+    putEnv("MCP_TEST_SECRET", "parent only")
+    let env = defaultServerEnvironment({"MCP_TEST_GIVEN": "given", "HOME": "/elsewhere"})
+    check env["PATH"] == getEnv("PATH")
+    check env["HOME"] == "/elsewhere"
+    check env["MCP_TEST_GIVEN"] == "given"
+    check not env.hasKey("MCP_TEST_SECRET")
+    delEnv("MCP_TEST_SECRET")
+
+  test "Given a directory that does not exist, when a server is started there, then McpTransportError names it":
+    try:
+      discard newProcessTransport(getAppFilename(), ["--senv"], workingDir = "/no/such/directory")
+      check false
+    except McpTransportError as e:
+      check "/no/such/directory" in e.msg

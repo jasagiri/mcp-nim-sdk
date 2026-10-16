@@ -20,6 +20,13 @@ let client = newMcpClient(McpClientInfo(name: "my-client", version: "0.1.0"))
 await client.connect(newProcessTransport("path/to/server", ["--option"]))
 ```
 
+`newProcessTransport` takes the server's whole environment as `env` (nil, the default, passes on this process's own) and a `workingDir`. For a server you do not trust with your own environment, which often holds credentials, pass `defaultServerEnvironment(extra)`: only HOME, LOGNAME, PATH, SHELL, TERM and USER (`InheritedVariables`), plus `extra`.
+
+```nim
+await client.connect(newProcessTransport("path/to/server", ["--option"],
+  env = defaultServerEnvironment({"API_TOKEN": token}), workingDir = "/srv/mcp"))
+```
+
 Full programs: [examples/stdio_server.nim](../examples/stdio_server.nim), [examples/stdio_client.nim](../examples/stdio_client.nim). `newStdioTransport(input, output)` takes any pair of streams, which is how the tests drive a server without a process.
 
 ## Streamable HTTP

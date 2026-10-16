@@ -98,6 +98,10 @@ MCP-STDIO-10 | tests/external/test_stdio_messages_g0a.nim | Given a server that 
 MCP-STDIO-11 | tests/external/test_stdio_messages_g0a.nim | Given a 2026-07-28 server over stdio that lists a tool whose x-mcp-header is invalid, when the client lists tools and calls it, then the tool is listed and the call is sent
 MCP-STDIO-12 | tests/external/test_stdio_exit_g0d.nim | Given a server that exits while a request waits, when the output stream ends, then the request fails as a closed connection
 MCP-STDIO-12 | tests/external/test_stdio_exit_g0d.nim | Given a server that has exited, when the client sends another request, then it fails as a closed connection and close completes
+MCP-STDIO-13 | tests/external/test_stdio.nim | Given an environment and a directory, when a server is started, then it sees only that environment and runs there
+MCP-STDIO-13 | tests/external/test_stdio.nim | Given no environment, when a server is started, then it inherits this process's environment and directory
+MCP-STDIO-13 | tests/external/test_stdio.nim | Given this process's environment, when the default server environment is made, then only the basic variables pass and the given ones win
+MCP-STDIO-13 | tests/external/test_stdio.nim | Given a directory that does not exist, when a server is started there, then McpTransportError names it
 MCP-HTTP-1 | tests/external/test_streamable_http.nim | Given a path other than the endpoint, when posted to, then the answer is 404
 MCP-HTTP-1 | tests/external/test_streamable_http.nim | Given the endpoint, when it receives PUT, then the answer is 405 naming the allowed methods
 MCP-HTTP-1 | tests/external/test_streamable_http.nim | Given a body that is not JSON, when posted, then the answer is 400 with a parse error

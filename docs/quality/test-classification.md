@@ -116,7 +116,7 @@
 | `test_server_sampling_tools.nim` | 9 | 9 | 0 | 0 | E | sampling/createMessage の送信内容・拒否・応答検査を、トランスポートと公開の createMessage・clientCapabilities で見ている。 |  |  |
 | `test_silent_dead.nim` | 6 | 6 | 0 | 0 | E | 公開の processMessages と lastTransportError を、差したトランスポートで見ている。tests.map に行が無い (全件 unmapped)。 |  |  |
 | `test_spec_coverage.nim` | 8 | 0 | 8 | 0 | I | SDK の振る舞いではなく、リポジトリの specs・tests.map・tests の整合を確かめる門 (R5)。 | SDK の振る舞いではなく、リポジトリの specs と tests.map と tests の整合を確かめる門。 |  |
-| `test_stdio.nim` | 25 | 25 | 0 | 0 | E | 行区切り、子プロセスとの接続、stderr の転送、終了の段階を、ストリームと実プロセス越しに見ている。文言固定が 1 件 (wording)。 |  |  |
+| `test_stdio.nim` | 29 | 29 | 0 | 0 | E | 行区切り、子プロセスとの接続、子の環境変数と作業ディレクトリ、stderr の転送、終了の段階を、ストリームと実プロセス越しに見ている。文言固定が 1 件 (wording)。 |  |  |
 | `test_streamable_http.nim` | 55 | 55 | 0 | 0 | E | 実ソケット上の HTTP の状態・ヘッダ・本文と、公開の HTTP トランスポートの口だけを見ている。tests.map に行が無い 11 件と文言固定 2 件に印。 |  |  |
 | `test_structured_tool_output.nim` | 30 | 30 | 0 | 0 | E | tools/list・tools/call の応答、公開の McpClient.callTool、protocol/content の公開関数を見る。機能表は版の選択だけに使う 23 件 (features)。 |  |  |
 | `test_subscriptions.nim` | 56 | 55 | 1 | 0 | mixed | 公開の Transport を流れる JSON-RPC と公開 API (listen / endSubscriptions / notify* / subscriptionCount、protocol/subscriptions は client/subscriptions.nim:29 の export) を見ている。43 件は版の選択に protocol/features を使うだけなので E (印 features)、heldWaiters の 1 件は I。 | token が保持する待ち手の数は外から見えない (アクセサ自体が for tests と明記)。版の選択にも protocol/features を使う (R6、これだけなら E のまま) |  |

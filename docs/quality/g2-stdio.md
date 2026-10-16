@@ -58,3 +58,7 @@ id 4, 10, 12, 14, 15, 26, 27, 28, 30, 31, 38, 41, 42, 46, 48。どれも変異�
 - 同値 (id 25, 56, 58, 61, 63) は上表の理由のとおり。
 - 子が終了を拒むテスト (`--sstubborn`、`--sdeaf`) は、最悪の場合に 4 秒 (猶予 2 秒 × 2) かかる。
 - 他に未決のものはない。
+
+## 未測定（2026-10-17）
+
+- `newProcessTransport` の `env`・`workingDir` と `defaultServerEnvironment`（MCP-STDIO-13）は、上の測定のあとに足した。E テストは `tests/external/test_stdio.nim` の 4 件。push の前にまとめて測る。

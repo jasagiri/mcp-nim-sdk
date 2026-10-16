@@ -85,3 +85,12 @@ Feature: stdio transport
     When its output stream ends
     Then the waiting request fails as a closed connection
     And the client is shut down, a later request fails the same way and close completes
+
+  @spec:MCP-STDIO-13 @feature:ftStdio
+  Scenario: A client chooses the environment and directory of the server it starts
+    Given a client that starts a server as a child process with an environment and a working directory
+    When the server starts
+    Then it sees only that environment and runs in that directory
+    And without an environment it inherits the client's environment and directory
+    And the default server environment passes on only the basic variables (HOME, LOGNAME, PATH, SHELL, TERM, USER) and the given ones win
+    And a working directory that does not exist is refused, naming it
