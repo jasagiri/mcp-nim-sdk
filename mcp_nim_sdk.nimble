@@ -5,7 +5,7 @@ import std/[os, strutils]
 version       = "0.0.0"
 author        = "jasagiri"
 description   = "A Nim implementation of the Model Context Protocol (MCP)"
-license       = "MIT"
+license       = "Apache-2.0"
 srcDir        = "src"
 
 # Dependencies
