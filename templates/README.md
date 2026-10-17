@@ -108,7 +108,7 @@ When this SDK is a dependency, name the branch of the version you want in your `
 
 Requirements: Nim 2.2.12 or newer, the default memory management (`--mm:orc`), and the `uuids` and `nimcrypto` packages (nimcrypto computes SHA-256 and HMAC-SHA256, which the standard library does not have, for PKCE, the sealed request state and the signed webhooks). No other define is needed; there is none per feature.
 
-Three packages from the same foundation tree are not in the nimble registry and are found by path: `nim-bearer-challenge` (reads `WWW-Authenticate` challenges, for the OAuth client and the resource server), `nim-secret` (compares secrets in constant time, for the HMAC checks) and `nim-loopback` (decides whether a Host, an Origin or a bind address is loopback, for the HTTP server's checks). Check them out next to this repository (`../nim-bearer-challenge`, `../nim-secret`, `../nim-loopback`), where `nim.cfg` finds them; elsewhere pass `--path:` to each one's `src`.
+Three more packages are not in the nimble registry, so the `.nimble` file names them by URL and nimble fetches them: [nim-bearer-challenge](https://github.com/jasagiri/nim-bearer-challenge) (reads `WWW-Authenticate` challenges, for the OAuth client and the resource server), [nim-secret](https://github.com/jasagiri/nim-secret) (compares secrets in constant time, for the HMAC checks) and [nim-loopback](https://github.com/jasagiri/nim-loopback) (decides whether a Host, an Origin or a bind address is loopback, for the HTTP server's checks). In a checkout of this repository, `nimble install -d` installs them.
 
 ### 2. Features, at run time
 
@@ -318,7 +318,7 @@ nimble testAllVersions     # the same, once per released version as the default
 nim c -r -d:mcpDefaultProtocolVersion=2025-06-18 tests/external/test_legacy_handshake.nim
 ```
 
-The property tests (`tests/external/test_*_prop.nim`) use nim-propcheck, a package that is not published: `nim.cfg` reads it from `../nim-propcheck/src`, so the tests need it checked out beside this directory. A program that uses the SDK does not need it.
+The property tests (`tests/external/test_*_prop.nim`) use [nim-propcheck](https://github.com/jasagiri/nim-propcheck). `nimble test` and `nimble testAllVersions` fetch it; to build one of those tests with `nim c`, run one of them once first. A program that uses the SDK does not need it.
 
 On a branch that adds to another, `MCP_TEST_BASE=<commit> nimble testAllVersions` runs this checkout's default version in full and, for the other versions, only the tests built from a file that differs from that commit; `MCP_TEST_BASE=<commit> nimble affectedTests` lists them. It reads what the compiler recorded when it last built each test, so a file that only an older version compiles in is not seen: run without `MCP_TEST_BASE` before a release.
 

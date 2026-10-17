@@ -20,6 +20,5 @@
   ],
   "outputDir": ".nim-muter/result_shape",
   "incremental": false,
-  "network": "loopback",
-  "setup": "p=\"$(cd ../../../.. && pwd)/nim-propcheck\"; test -d \"$p\" && { test -e ../nim-propcheck || ln -s \"$p\" ../nim-propcheck || test -e ../nim-propcheck; }"
+  "network": "loopback"
 }
