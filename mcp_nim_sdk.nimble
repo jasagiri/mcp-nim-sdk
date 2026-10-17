@@ -21,6 +21,9 @@ requires "https://github.com/jasagiri/nim-loopback >= 0.1.0"  # whether a host o
 # The property tests (tests/external/test_*_prop.nim); a program that uses the SDK does not need it.
 taskRequires "test", "https://github.com/jasagiri/nim-propcheck >= 0.1.0"
 taskRequires "testAllVersions", "https://github.com/jasagiri/nim-propcheck >= 0.1.0"
+# The replay of saved fuzzing inputs (tests/internal/test_fuzz_regressions.nim); a program that uses the SDK does not need it.
+taskRequires "test", "https://github.com/jasagiri/nim-fuzz >= 0.1.0"
+taskRequires "testAllVersions", "https://github.com/jasagiri/nim-fuzz >= 0.1.0"
 
 # Tasks
 

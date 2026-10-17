@@ -12,48 +12,34 @@
 ## about malformed input is in the Scenarios of each entry. Until 2026-10-17
 ## this was the specification MCP-SEC-SWEEP-6.
 
-import std/[unittest, os, algorithm, strutils]
+import std/[unittest, os, strutils]
+import fuzz   # foundation/nim-fuzz: replay, loadCorpus
 import ../fuzz/targets
 
 const Corpus = currentSourcePath().parentDir.parentDir / "fuzz" / "corpus"
 
-proc found(name: string): seq[string] =
-  ## The inputs kept for a target, in the order of their file names.
-  var files: seq[string]
-  for file in walkFiles(Corpus / name / "*.input"):
-    files.add file
-  files.sort()
-  for file in files:
-    result.add readFile(file)
+proc kept(name: string): seq[string] =
+  ## The inputs kept for a target; none when fuzzing has kept none for it.
+  if dirExists(Corpus / name): loadCorpus(Corpus / name) else: @[]
 
-proc wrong(entrance: Entrance, input: string): string =
-  ## What a target says of an input; a defect and an error the target does
-  ## not expect are said too, where a fuzzer would have recorded them.
-  try:
-    entrance.target(input)
-  except CatchableError as e:
-    "raised " & $e.name & ": " & e.msg
-  except Defect as e:
-    "defect " & $e.name & ": " & e.msg
+proc said(name: string, findings: seq[Finding]) =
+  for finding in findings:
+    checkpoint name & ": " & $finding.kind & " " & finding.reason & " for " & finding.input.escape
 
 suite "the places that read a peer's text":
 
   test "Given the seeds of every target, when handled, then nothing is wrong":
     for entrance in Entrances:
       check entrance.seeds.len > 0
-      for seed in entrance.seeds:
-        let problem = wrong(entrance, seed)
-        if problem.len > 0:
-          checkpoint entrance.name & ": " & problem & " for " & seed.escape
-        check problem.len == 0
+      let findings = replay(FuzzTarget(entrance.target), entrance.seeds)
+      said(entrance.name, findings)
+      check findings.len == 0
 
   test "Given every input kept from fuzzing, when handled, then nothing is wrong":
     for entrance in Entrances:
-      for input in found(entrance.name):
-        let problem = wrong(entrance, input)
-        if problem.len > 0:
-          checkpoint entrance.name & ": " & problem & " for " & input.escape
-        check problem.len == 0
+      let findings = replay(FuzzTarget(entrance.target), kept(entrance.name))
+      said(entrance.name, findings)
+      check findings.len == 0
 
   test "Given the corpus directory, when listed, then every directory in it is a target":
     var names: seq[string]
