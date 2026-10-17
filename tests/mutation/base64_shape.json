@@ -19,5 +19,6 @@
     "json"
   ],
   "outputDir": ".nim-muter/base64_shape",
-  "incremental": false
+  "incremental": false,
+  "testOutput": "unittest"
 }

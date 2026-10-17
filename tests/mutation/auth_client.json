@@ -21,5 +21,6 @@
   ],
   "outputDir": ".nim-muter/auth_client",
   "incremental": false,
-  "network": "loopback"
+  "network": "loopback",
+  "testOutput": "unittest"
 }

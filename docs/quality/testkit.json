@@ -1,0 +1,37 @@
+{
+  "packages": [
+    {
+      "path": ".",
+      "language": "nim",
+      "entries": [
+        "src/mcp.nim",
+        "src/auth/client.nim",
+        "src/auth/resource_server.nim",
+        "src/transport/http_compat.nim",
+        "src/server/request_state.nim"
+      ]
+    }
+  ],
+  "specCoverage": {
+    "args": [
+      "--scenarios",
+      "specs",
+      "--tests",
+      "tests/external",
+      "--tests",
+      "tests/internal",
+      "--external",
+      "tests/external",
+      "--entry",
+      "src/mcp.nim",
+      "--entry",
+      "src/auth/client.nim",
+      "--entry",
+      "src/auth/resource_server.nim",
+      "--entry",
+      "src/transport/http_compat.nim",
+      "--entry",
+      "src/server/request_state.nim"
+    ]
+  }
+}

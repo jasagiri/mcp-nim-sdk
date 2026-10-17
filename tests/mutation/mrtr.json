@@ -23,5 +23,6 @@
   ],
   "outputDir": ".nim-muter/mrtr",
   "incremental": false,
-  "network": "loopback"
+  "network": "loopback",
+  "testOutput": "unittest"
 }

@@ -19,5 +19,6 @@
     "json"
   ],
   "outputDir": ".nim-muter/sampling_tools",
-  "incremental": false
+  "incremental": false,
+  "testOutput": "unittest"
 }

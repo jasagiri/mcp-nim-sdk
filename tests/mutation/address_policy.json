@@ -22,5 +22,6 @@
   ],
   "outputDir": ".nim-muter/address_policy",
   "incremental": false,
-  "network": "loopback"
+  "network": "loopback",
+  "testOutput": "unittest"
 }

@@ -24,5 +24,6 @@
   ],
   "outputDir": ".nim-muter/http_client",
   "incremental": false,
-  "network": "loopback"
+  "network": "loopback",
+  "testOutput": "unittest"
 }

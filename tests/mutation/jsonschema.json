@@ -21,5 +21,6 @@
   ],
   "outputDir": ".nim-muter/jsonschema",
   "incremental": false,
-  "network": "loopback"
+  "network": "loopback",
+  "testOutput": "unittest"
 }

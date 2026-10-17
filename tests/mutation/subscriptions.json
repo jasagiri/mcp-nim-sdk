@@ -21,5 +21,6 @@
     "json"
   ],
   "outputDir": ".nim-muter/subscriptions",
-  "incremental": false
+  "incremental": false,
+  "testOutput": "unittest"
 }

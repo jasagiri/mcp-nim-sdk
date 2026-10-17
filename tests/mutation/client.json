@@ -28,5 +28,6 @@
   ],
   "outputDir": ".nim-muter/client",
   "incremental": false,
-  "network": "loopback"
+  "network": "loopback",
+  "testOutput": "unittest"
 }

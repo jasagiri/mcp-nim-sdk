@@ -20,5 +20,6 @@
     "json"
   ],
   "outputDir": ".nim-muter/auth_resource_server",
-  "incremental": false
+  "incremental": false,
+  "testOutput": "unittest"
 }

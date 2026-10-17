@@ -20,5 +20,6 @@
   ],
   "outputDir": ".nim-muter/result_shape",
   "incremental": false,
-  "network": "loopback"
+  "network": "loopback",
+  "testOutput": "unittest"
 }

@@ -19,5 +19,6 @@
     "json"
   ],
   "outputDir": ".nim-muter/trace_context",
-  "incremental": false
+  "incremental": false,
+  "testOutput": "unittest"
 }

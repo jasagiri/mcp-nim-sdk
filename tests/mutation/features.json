@@ -19,5 +19,6 @@
     "json"
   ],
   "outputDir": ".nim-muter/features",
-  "incremental": false
+  "incremental": false,
+  "testOutput": "unittest"
 }
