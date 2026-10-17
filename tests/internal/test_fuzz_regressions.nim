@@ -4,6 +4,13 @@
 ## Each file under tests/fuzz/corpus/<target>/ is an input that once made the
 ## library do something wrong. They are handled now, and stay so. The fuzzing
 ## itself is not a test: see tests/fuzz/fuzz_entrances.nim.
+##
+## Not tied to a specification: replaying the corpus is a way of testing,
+## not something the SDK promises, and the targets include readers that no
+## entry of the SDK reaches one input at a time (transport/address_policy,
+## auth/oauth/{challenge,urls}, protocol/diagnostic). What the entries promise
+## about malformed input is in the Scenarios of each entry. Until 2026-10-17
+## this was the specification MCP-SEC-SWEEP-6.
 
 import std/[unittest, os, algorithm, strutils]
 import ../fuzz/targets

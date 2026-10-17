@@ -27,6 +27,10 @@ type
     maxResponseSize*: int
     connectTimeoutMs*: int
       ## How long to wait for the `endpoint` event.
+    caFile*: string
+      ## A PEM file of the certificate authorities to trust for https,
+      ## instead of the system's: a private CA, or one in front of the server.
+      ## Empty: the system's. The certificate still has to name the host.
     endpoint: string
     stream: WireResponse
     connecting: Future[void]
@@ -115,7 +119,7 @@ proc connect(t: SseLegacyTransport) {.async.} =
     headers[name] = value
   # The head of an event stream comes at once; `connectTimeoutMs` (the wait
   # for the endpoint event) bounds the wait for it too.
-  let response = await wire.request(t.sseUrl, HttpGet, headers,
+  let response = await wire.request(t.sseUrl, HttpGet, headers, caFile = t.caFile,
                                     connectTimeoutMs = t.connectTimeoutMs,
                                     headerTimeoutMs = t.connectTimeoutMs)
   if not response.code.is2xx:
@@ -151,7 +155,7 @@ proc post(t: SseLegacyTransport, body: string) {.async.} =
   let headers = newHttpHeaders({"Content-Type": "application/json"})
   for name, value in t.headers.pairs:
     headers[name] = value
-  let response = await wire.request(t.endpoint, HttpPost, headers, body)
+  let response = await wire.request(t.endpoint, HttpPost, headers, body, caFile = t.caFile)
   var text: string
   try:
     text = await response.readAll(ErrorBodyPreview)

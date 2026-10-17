@@ -331,12 +331,6 @@ Feature: Security properties
     When a schema with that pattern is validated
     Then the pattern is applied, and with one instruction or one step more the validation is a SchemaLimitError
 
-  @spec:MCP-SEC-SWEEP-6
-  Scenario: The inputs that fuzzing found stay handled
-    Given the seeds of every fuzzing target and every input kept under tests/fuzz/corpus
-    When each is handled by its target
-    Then nothing is wrong and no defect is raised
-
   @spec:MCP-SEC-WIRE-12
   Scenario: An IPv6 block set aside by an RFC is reserved to its last address and not beyond
     Given the NAT64 prefix 64:ff9b::/96 and its local-use sibling 64:ff9b:1::/48, 6to4 2002::/16, IPv4-mapped ::ffff:0:0/96, the discard prefix 100::/64, the protocol assignments 2001::/23, the documentation prefixes 2001:db8::/32 and 3fff::/20, and the link-local prefix fe80::/10
@@ -391,11 +385,10 @@ Feature: Security properties
     And a body cut short fails, and the response is finished; a connect timeout of 0 means no limit
 
   @spec:MCP-SEC-WIRE-19
-  Scenario: A response closed while a read waits ends the read without an error
-    Given a read waiting for the head or for the body of a response
-    When the response is closed by its holder
-    Then the read ends as abandoned (the head) or with the end of the body, and no operating system error is reported
-    And a read started on a response already closed ends the same way
+  Scenario: Giving up on a request ends its read without an error
+    Given a request over Streamable HTTP whose answer the server has not started, or whose event stream is open
+    When the client gives up on the request
+    Then the connection is closed, sending the request ends without an error, and no error is delivered in place of an answer
 
   @spec:MCP-SEC-WIRE-20
   Scenario: A connection that does not become a response is closed
@@ -409,6 +402,13 @@ Feature: Security properties
     When an IPv6 address outside it, such as fec0::1, ::ff:7f00:1 or 100:0:0:1::, is classified and no other class (loopback, link-local, unique local, IPv4-embedding, multicast) claims it
     Then it is reserved, and so is refused in every notation, whatever the policy allows
     And an address inside 2000::/3 that no block sets aside is public, to its first and last address
+
+  @spec:MCP-SEC-WIRE-22
+  Scenario: A client told which certificate authorities to trust uses them for every https request
+    Given a server whose certificate is signed by an authority the system does not trust
+    When the client names that authority's certificate in caFile: on a Streamable HTTP or an HTTP+SSE transport, in the options of an icon fetch, or in the fetch policy of authorization
+    Then its requests reach the server
+    And without caFile the same requests fail before any HTTP is sent
 
   @spec:MCP-SEC-HTTP-8
   Scenario: A failure inside the HTTP transport is logged and not told to the peer

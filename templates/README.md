@@ -342,6 +342,8 @@ Behind a reverse proxy that passes the public name on, list that name: `transpor
 
 A client is guarded the other way round: what it fetches because a server said so (authorization metadata, icons) is refused when the address is loopback, link-local or reserved, and when it is private unless `allowPrivateNetworks` is set; a response is limited in size (`maxResponseSize`) and a connection in time (`connectTimeoutMs`).
 
+Over https the certificate has to be valid for the host the URL names. A client whose servers use a private certificate authority names its certificates in `caFile` (on the HTTP client transports, in `IconFetchOptions` and in the authorization `FetchPolicy`), which replaces the system's authorities for those requests.
+
 ## Changes that break code written for earlier commits
 
 These came with the security review of 2026-10-06 and with the reading of the specification sentence by sentence of 2026-10-13. Each refuses something that used to be accepted.

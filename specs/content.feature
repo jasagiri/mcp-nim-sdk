@@ -325,9 +325,3 @@ Feature: Content of tools, resources and prompts
     Given a prompt handler that returns an embedded resource without a uri, without a mimeType, or with neither text nor blob
     When a client sends prompts/get
     Then the answer is an internal error and no such resource is sent
-
-  @spec:MCP-CONTENT-FIELDS-15 @feature:ftJsonSchema2020
-  Scenario: The dialects the SDK validates are named in its documentation
-    Given the SDK's documentation of JSON Schema
-    When a reader looks for the dialects it supports
-    Then 2020-12 and draft-07 are named

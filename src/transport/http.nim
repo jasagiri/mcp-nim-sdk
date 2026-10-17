@@ -63,6 +63,10 @@ type
     connectTimeoutMs*: int
       ## How long to wait for the connection (TCP and, for https, the TLS
       ## handshake) of every request.
+    caFile*: string
+      ## A PEM file of the certificate authorities to trust for https,
+      ## instead of the system's: a private CA, or one in front of the server.
+      ## Empty: the system's. The certificate still has to name the host.
     streamOpenTimeoutMs*: int
       ## How long the server may take to start answering a GET that opens its
       ## stream. Not applied to a POST: the answer to a request (a tool call)
@@ -292,7 +296,7 @@ proc openStream(t: StreamableHttpTransport, lastEventId: string): Future[Option[
   await t.authorize(headers)
   var response: WireResponse
   try:
-    response = await wire.request(t.baseUrl, HttpGet, headers,
+    response = await wire.request(t.baseUrl, HttpGet, headers, caFile = t.caFile,
       connectTimeoutMs = t.connectTimeoutMs, headerTimeoutMs = t.streamOpenTimeoutMs)
   except McpTransportError as e:
     stderr.writeLine("[mcp-http] GET " & t.baseUrl & " failed: " & peerText(e.msg))
@@ -409,7 +413,7 @@ proc postOnce(t: StreamableHttpTransport, body: string,
   var response: WireResponse
   try:
     response = await wire.request(t.baseUrl, HttpPost, headers, body, connected,
-      connectTimeoutMs = t.connectTimeoutMs)
+      caFile = t.caFile, connectTimeoutMs = t.connectTimeoutMs)
   except McpTransportError:
     if key.len > 0:
       t.inflight.del key
@@ -605,7 +609,7 @@ proc endSession(t: StreamableHttpTransport) {.async.} =
   let headers = t.requestHeaders("application/json", t.legacyHeaders())
   await t.authorize(headers)
   try:
-    let attempt = wire.request(t.baseUrl, HttpDelete, headers,
+    let attempt = wire.request(t.baseUrl, HttpDelete, headers, caFile = t.caFile,
       connectTimeoutMs = t.connectTimeoutMs, headerTimeoutMs = DeleteTimeoutMs)
     if not await withTimeout(attempt, DeleteTimeoutMs):
       stderr.writeLine("[mcp-http] DELETE " & t.baseUrl & " timed out")

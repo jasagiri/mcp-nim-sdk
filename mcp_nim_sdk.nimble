@@ -47,7 +47,7 @@ proc testFile(name: string): string =
       return dir & "/" & name & ".nim"
   raise newException(OSError, "no test called " & name & " under " & testDirs.join(" or "))
 
-const sslTests = ["test_security_wire_tls"]
+const sslTests = ["test_security_wire_tls", "test_security_trusted_ca"]
   ## Tests that need `-d:ssl` (a TLS server and the https client). Built
   ## without it they fail on purpose, so the generic loop leaves them out and
   ## `runSslTests` runs them with the flag. The other tests do not use TLS,

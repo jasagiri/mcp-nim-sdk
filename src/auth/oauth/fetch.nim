@@ -33,7 +33,7 @@ proc exchange(httpMethod: HttpMethod, url, what: string, policy: FetchPolicy, bo
     url, httpMethod, policy.destinationPolicy, policy.resolver, headers, body,
     connected = proc(connection: WireResponse) {.closure, gcsafe.} =
       open.response = connection,
-    followRedirects = false, connectTimeoutMs = policy.timeoutMs)
+    followRedirects = false, caFile = policy.caFile, connectTimeoutMs = policy.timeoutMs)
   defer: response.close()
   result.code = response.code.int
   result.headers = response.headers

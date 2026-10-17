@@ -88,6 +88,9 @@ nim-muter 0.2.5 の RVR は、戻り値がリテラルのとき `default(typeof(
 | `src/protocol/version.nim` (`requireVersionSpoken`) | `tests/external/test_version.nim` | 2026-10-15 |
 | `src/protocol/lifecycle.nim` | `tests/test_legacy_handshake.nim` | 2026-10-05 |
 | `src/server/server.nim` | `tests/test_legacy_handshake.nim`, `tests/test_era_matrix.nim` | 2026-10-05 |
+| `src/transport/http.nim`、`src/transport/sse_legacy.nim` (`caFile`) | `tests/external/test_security_trusted_ca.nim` (ジョブ http_client に足した) | 2026-10-17 |
+| `src/client/icons.nim` (`IconFetchOptions.caFile`) | `tests/external/test_security_trusted_ca.nim` (ジョブ address_policy に足した) | 2026-10-17 |
+| `src/auth/oauth/urls.nim`、`src/auth/oauth/fetch.nim` (`FetchPolicy.caFile`) | `tests/external/test_security_trusted_ca.nim` (ジョブ auth_oauth に足した) | 2026-10-17 |
 | `src/client/client.nim` | `tests/test_legacy_handshake.nim`, `tests/test_era_matrix.nim` | 2026-10-05 |
 | `src/client/{content,tools,resources,prompts,utilities}.nim` | `tests/test_client_operations.nim` | 2026-10-06 |
 | `src/client/{roots,sampling}.nim` | `tests/test_client_server_requests.nim` | 2026-10-06 |

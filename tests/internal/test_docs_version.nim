@@ -114,9 +114,13 @@ suite "generated documentation":
         checkpoint $feature & ": " & evidence
         check fileExists(Root / evidence)
 
-  # Not an external test: it reads the repository's own README. The validator
-  # says which dialects it takes by refusing the others, and the specification
-  # asks that they be documented (2025-11-25 and later, server/tools).
+  # Not tied to a specification: the MCP specification asks clients and
+  # servers, that is the applications, to document their dialects, and the
+  # SDK helps them by naming its own in the README. Whether the README is
+  # right depends on what the validator takes, so this is a check that the
+  # documentation agrees with the implementation; what the validator takes is
+  # MCP-SCHEMA-1 and MCP-SCHEMA-2. Until 2026-10-17 this was the specification
+  # MCP-CONTENT-FIELDS-15.
   test "Given the dialects the validator takes, when the README is read, then it names each of them and what happens to any other":
     let readme = readFile(Root / "README.md")
     check "JSON Schema 2020-12" in readme

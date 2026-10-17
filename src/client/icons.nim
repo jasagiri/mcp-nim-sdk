@@ -57,6 +57,10 @@ type
       ## has to be allowed here. Link-local and reserved addresses never are.
     resolver*: HostResolver
       ## How the server's name is resolved; nil: the system resolver.
+    caFile*: string
+      ## A PEM file of the certificate authorities to trust for https,
+      ## instead of the system's: a private CA, or one in front of the server.
+      ## Empty: the system's. The certificate still has to name the host.
 
 func sniffIcon*(bytes: string): Option[IconType] =
   ## The image type the first bytes say, none for anything else.
@@ -127,9 +131,10 @@ proc guardedGet(serverOrigin: string, options: IconFetchOptions): IconGet =
     allowPrivateNetworks: options.allowPrivateNetworks or hostClass == some(acPrivate))
   let timeoutMs = options.timeoutMs
   let resolver = options.resolver
+  let caFile = options.caFile
   result = proc(url: string, headers: HttpHeaders): Future[WireResponse] {.closure, gcsafe.} =
     guardedRequest(url, HttpGet, policy, resolver, headers, followRedirects = true,
-                   connectTimeoutMs = timeoutMs, headerTimeoutMs = timeoutMs)
+                   caFile = caFile, connectTimeoutMs = timeoutMs, headerTimeoutMs = timeoutMs)
 
 proc fetchIcon*(icon: McpIcon, serverOrigin: string,
                 options: IconFetchOptions = IconFetchOptions()): Future[McpFetchedIcon] {.async.} =

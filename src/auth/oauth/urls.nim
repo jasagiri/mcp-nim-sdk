@@ -27,6 +27,10 @@ type
     resolver*: HostResolver
       ## How a host name is resolved before it is connected to; nil: the
       ## system resolver (blocking). Replaced in tests.
+    caFile*: string
+      ## A PEM file of the certificate authorities to trust for https,
+      ## instead of the system's: a private CA, or one in front of the server.
+      ## Empty: the system's. The certificate still has to name the host.
 
 func destinationPolicy*(policy: FetchPolicy): DestinationPolicy {.raises: [].} =
   DestinationPolicy(allowLoopback: policy.allowLoopback,
