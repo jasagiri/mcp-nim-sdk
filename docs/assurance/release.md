@@ -1,6 +1,6 @@
 | claim | verdict | | layer | text | evidence |
 |---|---|---|---|---|---|
-| SPEC-01 | the evidence disagrees | required | specification | specs/ に宣言した仕様 ID のすべてに、それを確かめる外部仕様テストがある | 1 for, 1 against |
+| SPEC-01 | holds | required | specification | specs/ に宣言した仕様 ID のすべてに、それを確かめる外部仕様テストがある | 2 for, 0 against |
 | INP-01 | holds | required | input | 相手が選んだ文字列を読む 10 の入口 (tests/fuzz/targets.nim) は、種と、ファジングが見つけた入力で、文書にした拒否のほかに何も上げない | 1 for, 0 against |
 | INP-02 | nobody checked | required | input | ファジングの入口の一覧を、書いた者以外が見直した | 0 for, 0 against |
 | INP-03 | nobody checked | required | input | 一覧に無い入口 (HTTP の要求と応答の読み取り、JSON-RPC の振り分け、OAuth のメタデータ文書、stdio の行) もファジングした | 0 for, 0 against |
@@ -11,7 +11,7 @@
 | SEC-01 | the evidence disagrees | required | design | 2026-10-06 のセキュリティレビューの指摘 (Critical 1、High 4、Medium 6、Low 6) のそれぞれに、再現するテストと修正がある | 1 for, 1 against |
 | SEC-02 | nobody checked | required | design | セキュリティレビューを、実装した者 (このエージェントのチーム) 以外が行った | 0 for, 0 against |
 | SEC-03 | holds | required | design | https の接続は、証明書の名前を接続先のホスト名と照合する | 1 for, 0 against |
-| OPS-01 | does not hold | required | operation | 公開した HTTP サーバーは、要求を送り終えない相手に接続を占有され続けない | 0 for, 1 against |
+| OPS-01 | holds | required | operation | 公開した HTTP サーバーは、要求を送り終えない相手に接続を占有され続けない | 1 for, 0 against |
 | VER-01 | holds | required | release | 公開するコミットで、5 つの版それぞれを既定にした全テストが通る | 0 for, 0 against |
 | VER-01a | holds | required | release | 実装を最後に通しで確かめたコミットで、5 版とも失敗 0・警告 0 だった | 1 for, 0 against |
 | VER-01b | holds | required | release | そのあとの修正 (HTTP クライアントの 2 件、JSON Schema の検証器) を含む公開するコミットで、通しを取り直した | 1 for, 0 against |
@@ -31,6 +31,4 @@ Not releasable: a required claim does not hold, is contradicted, or was not chec
 
 Nobody checked: INP-02, INP-03, INP-04, SEC-02, REV-01, REV-01b, DOWN-01
 
-The evidence disagrees: SPEC-01, SEC-01
-
-Does not hold: OPS-01
+The evidence disagrees: SEC-01

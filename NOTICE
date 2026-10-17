@@ -1,2 +1,7 @@
 mcp-nim-sdk
 Copyright 2025 Gods & Golem, Inc.
+
+This product includes software from Nim (https://nim-lang.org):
+src/transport/vendor/asynchttpserver.nim is lib/pure/asynchttpserver.nim of
+Nim, Copyright (C) 2006-2026 Andreas Rumpf, under the MIT license (the license
+text is at the top of that file).

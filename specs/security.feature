@@ -102,6 +102,13 @@ Feature: Security properties
     And an address at its limit loses only its own unused sessions or is refused with 503
     And a batch over the limit is answered 400, and work over the limit 503 with Retry-After
 
+  @spec:MCP-SEC-HTTP-10
+  Scenario: A client that does not finish sending its request does not keep the connection
+    Given a transport whose requests must arrive within a time limit
+    When a client connects and sends nothing, or sends the request line and then stops
+    Then the connection is closed when the time is up, after a 408 response when the request line had arrived
+    And a request that arrives in time is answered, and the limit is 30 seconds unless the transport is given another (0: no limit)
+
   @spec:MCP-SEC-HTTP-9
   Scenario: A hook that cannot decide lets nothing through
     Given a transport with an authorization hook that fails with an error

@@ -240,7 +240,8 @@ suite "GET stream and session lifetime (mutation review, g2f-hs-b)":
   let version = min(DefaultProtocolVersion, mpv20251125)
 
 
-import std/[asynchttpserver, times]
+import std/times
+import transport/asynchttpserver_compat  # the server the transport runs on, so `Request` is the type serveStream takes
 
 type Served = tuple[port: int, ended: Future[SseEnd]]
   ## Where the server of `serveOnce` listens, and how its connection ended.

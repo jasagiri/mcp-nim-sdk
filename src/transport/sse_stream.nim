@@ -7,8 +7,9 @@
 ## It is also how a server finds out that a client went away: the loop
 ## watches the socket while it waits for the next event.
 
-import std/[asyncdispatch, asyncnet, asynchttpserver, deques, httpcore,
+import std/[asyncdispatch, asyncnet, deques, httpcore,
             options, strutils]
+import ./asynchttpserver_compat
 import ./event_stream
 import ./first_of
 

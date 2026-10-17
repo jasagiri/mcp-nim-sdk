@@ -13,11 +13,10 @@
      "note": "これが言うのは「対応表に行があり、その名前のテストが実在する」まで。そのテストが外部仕様テストかどうかは言わない"
     },
     {
-     "supports": false,
-     "kind": "review",
-     "ref": "2026-10-14、本線 bb6744101764: 6 の仕様 ID に外部仕様テストが 1 本も結ばれていない (MCP-CONTENT-FIELDS-15、MCP-SEC-SWEEP-6、MCP-SEC-WIRE-1、-7、-10、-19。結ばれているのは内部のモジュールを直接呼ぶテストか、README を読むテストだけで、外から確かめない理由は test-classification.md にある)。2026-10-13 の分類の時点 (本線 f508412bc5c1) では 48 だった",
-     "note": "分類はワーカー (Claude Sonnet) が付け、件数・仕様 ID・ファイルの過不足を機械的に突き合わせた。全件の読み直しはしていない。「公開」は README の入口から export で届くもの (2026-10-13 に利用者が決めた)",
-     "file": "../quality/test-classification.md"
+     "supports": true,
+     "kind": "measurement",
+     "ref": "2026-10-17: nimble specCoverage (nim-spec-coverage, --external tests/external): Declared 591, with an external test 591, without 0; no external test reaches past the entries. The 6 IDs without one were given external tests (MCP-SEC-WIRE-1, -7, -10, -19) or taken out of the external specification by the user's decision (MCP-SEC-SWEEP-6, MCP-CONTENT-FIELDS-15)",
+     "note": "supersedes the 2026-10-14 evidence against (6 IDs without an external test)"
     }
    ]
   },
@@ -151,11 +150,10 @@
    "text": "公開した HTTP サーバーは、要求を送り終えない相手に接続を占有され続けない",
    "evidence": [
     {
-     "supports": false,
-     "kind": "measurement",
-     "ref": "Nim 2.2.8 の asynchttpserver は要求の読み取りに時間の上限を持たない。SDK は足していない",
-     "note": "README は、信頼できない相手に公開するときはタイムアウトを持つリバースプロキシを前に置くよう求めている。readTimeout を足す Nim への PR は取り込まれていない",
-     "file": "../../README.md"
+     "supports": true,
+     "kind": "test",
+     "ref": "2026-10-17: HttpServerTransport has readTimeoutMs (30 s unless given; 0 turns it off), the readTimeout of Nim's asynchttpserver (nim-lang/Nim#26352, Nim 2.3.1); with Nim 2.2.x a copy of that module (src/transport/vendor/asynchttpserver.nim). tests/external/test_security_http_read_timeout.nim (MCP-SEC-HTTP-10): a client that sends nothing is closed without an answer, one that stops after the request line gets 408 and is closed, a request in time is answered",
+     "note": "the earlier evidence against was about Nim 2.2.8 without readTimeout; the handler's own time (an event stream) is not limited, by design"
     }
    ]
   },

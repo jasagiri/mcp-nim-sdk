@@ -3,7 +3,7 @@
     "src/transport/http_server.nim",
     "src/transport/sse_stream.nim"
   ],
-  "testCommand": "nim c -r --hints:off tests/external/test_http_streams.nim && nim c -r --hints:off tests/external/test_streamable_http.nim && nim c -r --hints:off tests/external/test_http_sse_legacy.nim && nim c -r --hints:off tests/external/test_version_floor.nim && nim c -r --hints:off tests/external/test_param_headers_http.nim && nim c -r --hints:off tests/external/test_subscriptions.nim && nim c -r --hints:off -d:mcpOldestProtocolVersion=2026-07-28 tests/external/test_version_floor.nim && nim c -r --hints:off tests/external/test_security_http.nim && nim c -r --hints:off tests/external/test_http_documents.nim && nim c -r --hints:off tests/external/test_error_message_prop.nim",
+  "testCommand": "nim c -r --hints:off tests/external/test_http_streams.nim && nim c -r --hints:off tests/external/test_streamable_http.nim && nim c -r --hints:off tests/external/test_http_sse_legacy.nim && nim c -r --hints:off tests/external/test_version_floor.nim && nim c -r --hints:off tests/external/test_param_headers_http.nim && nim c -r --hints:off tests/external/test_subscriptions.nim && nim c -r --hints:off -d:mcpOldestProtocolVersion=2026-07-28 tests/external/test_version_floor.nim && nim c -r --hints:off tests/external/test_security_http.nim && nim c -r --hints:off tests/external/test_http_documents.nim && nim c -r --hints:off tests/external/test_error_message_prop.nim && nim c -r --hints:off tests/external/test_security_http_read_timeout.nim",
   "mutators": [
     "AOR",
     "ROR",

@@ -31,12 +31,11 @@
 ## `maxSessionsPerPeer`), batch length, requests in progress, messages
 ## waiting for the server.
 ##
-## Not limited here: how long a client may take to send its request line,
-## headers and body. `asynchttpserver` reads them before it calls the
-## handler and has no timeout, and its connection loop cannot be reached from
-## outside; a client that sends a byte a minute holds a connection (and a
-## file descriptor) until it stops. Put a reverse proxy with read timeouts in
-## front of a server that faces untrusted networks.
+## A client has `readTimeoutMs` (30 s unless given) to send its request
+## line, headers and body; one that sends nothing, or stops halfway, loses
+## the connection instead of holding it and a file descriptor. On a
+## keep-alive connection the time also bounds the wait between requests. The
+## time a handler takes, an event stream included, is not limited.
 ##
 ## The HTTP+SSE transport of 2024-11-05 is served alongside, for clients that
 ## only speak it: a GET on `legacySsePath` opens an event stream whose first
@@ -48,9 +47,10 @@
 ## stream that stays open: the server's notifications for it travel on it, and
 ## closing the connection cancels it like any other request.
 
-import std/[asyncdispatch, asyncnet, asynchttpserver, httpcore, json, tables, deques,
+import std/[asyncdispatch, asyncnet, httpcore, json, tables, deques,
              options, uri, nativesockets, sysrand, strutils, sequtils, times]
 import nim_loopback   # foundation/nim-loopback — one rule for loopback
+import ./asynchttpserver_compat
 import ./transport
 import ./sse_stream
 import ./first_of
@@ -65,6 +65,8 @@ import ../protocol/features
 
 const
   DefaultMaxBodySize* = 4 * 1024 * 1024
+  DefaultReadTimeoutMs* = 30_000
+    ## How long a client has to send a whole request (see `readTimeoutMs`).
   DefaultMaxSessions* = 1024
   DefaultMaxSessionsPerPeer* = 64
     ## One address holding 64 sessions is a busy gateway or a program that
@@ -169,6 +171,10 @@ type
       ## The newest version served here; set it to the server's.
     maxBodySize*:     int
       ## Enforced by the HTTP server itself (413); fixed at construction.
+    readTimeoutMs*:   int
+      ## Milliseconds a client has to send a whole request; 0: no limit.
+      ## Enforced by the HTTP server itself (408, or closing the connection
+      ## when not even the request line came); fixed at construction.
     auth*:            HttpServerAuth
       ## Authorization (see `auth/resource_server`): answers metadata
       ## requests and rejects requests without an acceptable token. Nil: the
@@ -236,16 +242,18 @@ proc newHttpServerTransport*(host: string = "127.0.0.1",
                              port: int = 9011,
                              path: string = "/mcp",
                              protocolVersion: McpProtocolVersion = DefaultProtocolVersion,
-                             maxBodySize: int = DefaultMaxBodySize): HttpServerTransport =
+                             maxBodySize: int = DefaultMaxBodySize,
+                             readTimeoutMs: int = DefaultReadTimeoutMs): HttpServerTransport =
   requireSupported(protocolVersion)
   result = HttpServerTransport(
     kind:             mtkHttp,
-    server:           newAsyncHttpServer(maxBody = maxBodySize),
+    server:           newAsyncHttpServer(maxBody = maxBodySize, readTimeout = readTimeoutMs),
     host:             host,
     port:             port,
     path:             path,
     protocolVersion:  protocolVersion,
     maxBodySize:      maxBodySize,
+    readTimeoutMs:    readTimeoutMs,
     allowedOrigins:   @[],
     allowedHosts:     @[],
     maxSessions:      DefaultMaxSessions,

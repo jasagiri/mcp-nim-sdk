@@ -1901,6 +1901,10 @@ MCP-SEC-HTTP-3 | tests/external/test_security_http.nim | Given a batch longer th
 MCP-SEC-HTTP-3 | tests/external/test_security_http.nim | Given requests in progress up to the limit, when another arrives, then the answer is 503 with Retry-After
 MCP-SEC-HTTP-3 | tests/external/test_security_http.nim | Given messages waiting for the server up to the limit, when another arrives, then the answer is 503
 MCP-SEC-HTTP-3 | tests/external/test_security_http.nim | Given requests in progress up to the limit, when a client of HTTP+SSE posts another, then the answer is 503 with Retry-After
+MCP-SEC-HTTP-10 | tests/external/test_security_http_read_timeout.nim | Given a limit of 300 ms, when a client connects and sends nothing, then the connection is closed without an answer
+MCP-SEC-HTTP-10 | tests/external/test_security_http_read_timeout.nim | Given a limit of 300 ms, when a client sends the request line and stops, then it is answered 408 and the connection is closed
+MCP-SEC-HTTP-10 | tests/external/test_security_http_read_timeout.nim | Given a limit of 300 ms, when a whole request arrives in time, then it is answered
+MCP-SEC-HTTP-10 | tests/external/test_security_http_read_timeout.nim | Given no limit given, when the transport is made, then a request has 30 seconds; 0 means no limit
 MCP-SEC-HTTP-5 | tests/external/test_security_http.nim | Given a transport bound to loopback, when a request names another host, then the answer is 403 on every endpoint
 MCP-SEC-HTTP-5 | tests/external/test_security_http.nim | Given a transport bound to loopback, when a request names a loopback host with a port, then it is served
 MCP-SEC-HTTP-5 | tests/external/test_security_http.nim | Given allowed hosts, when a request names one of them or another, then the first is served and the second is 403
