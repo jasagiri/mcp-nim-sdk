@@ -38,7 +38,8 @@
   {
    "id": "INP-02",
    "layer": "input",
-   "required": true,
+   "required": false,
+   "deferred": "商用製品の公開に課すゲートで、mcp-nim-sdk の公開には課さない (利用者の決定、2026-10-18)",
    "text": "ファジングの入口の一覧を、書いた者以外が見直した",
    "evidence": []
   },
@@ -126,7 +127,8 @@
   {
    "id": "SEC-02",
    "layer": "design",
-   "required": true,
+   "required": false,
+   "deferred": "商用製品の公開に課すゲートで、mcp-nim-sdk の公開には課さない (利用者の決定、2026-10-18)",
    "text": "セキュリティレビューを、実装した者 (このエージェントのチーム) 以外が行った",
    "evidence": []
   },
