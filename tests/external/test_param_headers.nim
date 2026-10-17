@@ -158,6 +158,14 @@ suite "x-mcp-header: invalid declarations":
                       "$defs": {"p": {"type": "string", "x-mcp-header": "A"}}}
       check not isPublished(viaRef)
 
+  test "Given a property whose schema is the boolean true, when declarations are read, then the tool stays valid and the annotated property is still checked":
+    modernOnly:
+      let url = startServerWith(schema(%*{
+        "anything": true,
+        "region": {"type": "string", "x-mcp-header": "Region"}}))
+      check isListed(url)
+      check rejectsAsMismatch(url, %*{"region": "us-west1"}, [])
+
 
 suite "x-mcp-header: server validation":
 
@@ -173,6 +181,31 @@ suite "x-mcp-header: server validation":
       let url = startServerWith(sqlSchema)
       for body in [%*{"region": ["x"]}, %*{"region": {"x": 1}}]:
         check rejectsAsMismatch(url, body, [("Mcp-Param-Region", "x")])
+
+  test "Given a boolean argument, when checked, then the header true or false agrees with it and the other does not":
+    modernOnly:
+      let url = startServerWith(schema(%*{"flag": {"type": "boolean", "x-mcp-header": "Flag"}}))
+      check accepts(url, %*{"flag": true}, [("Mcp-Param-Flag", "true")])
+      check accepts(url, %*{"flag": false}, [("Mcp-Param-Flag", "false")])
+      check rejectsAsMismatch(url, %*{"flag": true}, [("Mcp-Param-Flag", "false")])
+
+  test "Given an integer argument, when the header is not a number, then the answer is 400 header mismatch":
+    modernOnly:
+      let url = startServerWith(schema(%*{"n": {"type": "integer", "x-mcp-header": "N"}}))
+      check rejectsAsMismatch(url, %*{"n": 42}, [("Mcp-Param-N", "forty-two")])
+
+  test "Given a string argument with a comma, when the header carries it plain, then the answer is 200":
+    modernOnly:
+      # A comma is visible ASCII, so a client sends the value as it is (not Base64).
+      let url = startServerWith(sqlSchema)
+      check accepts(url, %*{"region": "us-west1,eu-west1"}, [("Mcp-Param-Region", "us-west1,eu-west1")])
+      check accepts(url, %*{"region": "a, b"}, [("Mcp-Param-Region", "a, b")])
+
+  test "Given a header sent twice, when one of the two differs from the body, then the answer is 400 header mismatch":
+    modernOnly:
+      let url = startServerWith(sqlSchema)
+      check rejectsAsMismatch(url, %*{"region": "us-west1"},
+                              [("Mcp-Param-Region", "us-west1"), ("Mcp-Param-Region", "eu-west1")])
 
 
 suite "x-mcp-header: tool declarations seen through the public entries":

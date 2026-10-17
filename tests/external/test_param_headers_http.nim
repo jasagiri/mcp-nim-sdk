@@ -5,7 +5,7 @@
 ## The same file passes on every `mcp-<version>` branch: the scenarios exist
 ## only where the default version is 2026-07-28 or later.
 
-import std/[unittest, asyncdispatch, asynchttpserver, httpclient, json,
+import std/[unittest, algorithm, asyncdispatch, asynchttpserver, httpclient, json,
             options, strutils, nativesockets, os]
 import transport/transport
 import transport/http
@@ -473,6 +473,67 @@ if SpeaksModern:
           "name": "n", "arguments": {"n": 9_007_199_254_740_992'i64}}))
       check posts == 1
       waitFor transport.close()
+
+    proc mirroredOrRefused(properties: JsonNode, calls: seq[JsonNode]): seq[string] =
+      ## For each call of the tool "n" (listed with these `properties`), the
+      ## Mcp-Param-* headers the server received, or "refused" when the
+      ## transport refused the call before the wire.
+      var seen: seq[string] = @[]
+      let url = startScripted(proc(req: Request) {.async, gcsafe.} =
+        let message = parseJson(req.body)
+        var payload = %*{"content": []}
+        if message["method"].getStr() == "tools/list":
+          payload = %*{"tools": [{"name": "n", "inputSchema": {"type": "object",
+                                                               "properties": properties}}]}
+        else:
+          var headers: seq[string] = @[]
+          for name, value in req.headers.pairs:
+            if name.toLowerAscii().startsWith("mcp-param-"):
+              headers.add name.toLowerAscii() & "=" & value
+          {.cast(gcsafe).}:
+            seen.add sorted(headers).join(";")
+        await req.respond(Http200, $(%*{"jsonrpc": "2.0", "id": message["id"], "result": payload}),
+          newHttpHeaders({"Content-Type": "application/json"})))
+      let transport = newStreamableHttpTransport(url)
+      let meta = modernMeta()
+      waitFor transport.sendRequest(newJsonRpcRequest("0", "tools/list", %*{"_meta": meta}))
+      discard waitFor transport.receiveMessage()
+      for index, arguments in calls:
+        var params = %*{"_meta": meta, "name": "n"}
+        if not arguments.isNil:
+          params["arguments"] = arguments
+        let before = seen.len
+        try:
+          waitFor transport.sendRequest(newJsonRpcRequest($(index + 1), "tools/call", params))
+        except McpTransportError:
+          check seen.len == before
+          seen.add "refused"
+      waitFor transport.close()
+      seen
+
+    test "Given an argument whose type is not the declared one, when the call is sent, then the transport refuses it before the wire":
+      let properties = %*{
+        "s": {"type": "string", "x-mcp-header": "S"},
+        "i": {"type": "integer", "x-mcp-header": "I"},
+        "b": {"type": "boolean", "x-mcp-header": "B"}}
+      check mirroredOrRefused(properties, @[
+        %*{"s": 1}, %*{"i": "1"}, %*{"i": 1.5}, %*{"b": "true"},
+        %*{"s": "x", "i": 1, "b": true}]) ==
+        @["refused", "refused", "refused", "refused", "mcp-param-b=true;mcp-param-i=1;mcp-param-s=x"]
+
+    test "Given an integer argument at the edges of the safe range, when the call is sent, then 2^53-1 and -(2^53-1) are mirrored and one beyond either is refused":
+      let properties = %*{"n": {"type": "integer", "x-mcp-header": "N"}}
+      check mirroredOrRefused(properties, @[
+        %*{"n": 9_007_199_254_740_991'i64}, %*{"n": -9_007_199_254_740_991'i64},
+        %*{"n": -9_007_199_254_740_992'i64}]) ==
+        @["mcp-param-n=9007199254740991", "mcp-param-n=-9007199254740991", "refused"]
+
+    test "Given a declared property inside an object, when the object or the arguments are absent, then the call is sent without the header":
+      let properties = %*{"outer": {"type": "object", "properties": {
+        "inner": {"type": "string", "x-mcp-header": "Inner"}}}}
+      check mirroredOrRefused(properties, @[
+        %*{"outer": {"inner": "x"}}, %*{"outer": {}}, %*{}, %*{"outer": 5}, nil]) ==
+        @["mcp-param-inner=x", "", "", "", ""]
 
 if SpeaksModern:
   suite "2026-07-28 parameter headers: client (mutation review, g2g-hc-b)":
