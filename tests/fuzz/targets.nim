@@ -11,11 +11,18 @@
 ## seeds and the inputs fuzzing found, run with the other tests through the
 ## same fuzzer's `replay`).
 ##
-## TODO: this list was drawn up by reading the sources on 2026-10-07 and has
-## not been reviewed by a person. Places that read a peer's text and are not
-## here: the HTTP request and response of transport/http_wire and
-## transport/http_server (they read from a socket), the JSON-RPC messages a
-## server and a client dispatch, the OAuth metadata documents, stdio lines.
+## The list was drawn up by reading the sources on 2026-10-07 and widened on
+## 2026-10-18 to the places it named as missing: the HTTP response the client
+## reads (http_wire_targets.nim), the JSON-RPC requests a server dispatches,
+## the answers a client reads, the OAuth documents and stdio lines
+## (peer_targets.nim). TODO: no person other than its writers has reviewed it
+## (the release ledger's INP-02).
+##
+## Not here, because they can only be given bytes through a socket: the
+## request line, headers and body framing a server reads. Those are parsed by
+## std/asynchttpserver (or the copy in transport/vendor for Nim before 2.3.1);
+## what the SDK reads from a request after that is here (clientAnswers runs
+## validateModernRequest and checkRequestHeaders).
 
 import std/[json, options, strutils]
 import transport/[event_stream, address_policy]
@@ -25,6 +32,8 @@ import auth/oauth/[urls, errors]
 import bearer_challenge  # foundation/nim-bearer-challenge: parseChallenges
 import server/pagination
 import server/errors as server_errors
+import ./inferred
+import ./http_wire_targets, ./peer_targets
 
 type
   Target* = proc(input: string): string {.raises: [CatchableError].}
@@ -34,19 +43,6 @@ type
     seeds*: seq[string]
     words*: seq[string]   ## words of the format, for the fuzzer's dictionary
     maxLen*: int
-
-template inferred(body: untyped) =
-  ## Runs a proc whose raises list the compiler infers as `Exception` (it
-  ## recurses) under this file's `raises: [CatchableError]`. A defect and a
-  ## catchable error pass through as they are; there is nothing else.
-  try:
-    body
-  except CatchableError as e:
-    raise e
-  except Defect as e:
-    raise e
-  except Exception as e:
-    raise newException(CatchableError, "neither catchable nor a defect: " & e.msg)
 
 proc eventsOf(text: string, cut: int): seq[SseEvent] {.raises: [SseLimitError].} =
   var parser = initSseParser(maxLineBytes = 512, maxEventBytes = 1024)
@@ -187,4 +183,42 @@ const Entrances* = [
     words: @["b2Zmc2V0Oj", "=", "==", "\r", " "]),
   Entrance(name: "logText", target: logText, maxLen: 400,
     seeds: @["plain text", "line\nbreak\ttab\\", "\x1b[31mred", "\xe2\x80\xaeright to left", "\xff\xfe\x80", "\xf0\x9f\x98\x80"],
-    words: @["\xe2\x80\xae", "\xc0", "\xf0", "\x7f", "\\", "\n"])]
+    words: @["\xe2\x80\xae", "\xc0", "\xf0", "\x7f", "\\", "\n"]),
+  Entrance(name: "httpResponse", target: httpResponse, maxLen: 800,
+    seeds: @["HTTP/1.1 200 OK\c\LContent-Type: application/json\c\LContent-Length: 2\c\L\c\L{}",
+             "HTTP/1.1 200 OK\c\LTransfer-Encoding: chunked\c\L\c\L4\c\Ldata\c\L0\c\L\c\L",
+             "HTTP/1.0 302 Found\c\LLocation: /next\c\L\c\L", "HTTP/1.1 204 No Content\c\L\c\L"],
+    words: @["HTTP/1.1 ", "\c\L", "\c\L\c\L", "Content-Length: ", "Transfer-Encoding: chunked",
+             "Mcp-Session-Id: ", "Location: ", ": ", "200", "-1"]),
+  Entrance(name: "httpChunked", target: httpChunked, maxLen: 600,
+    seeds: @["\x034\c\Ldata\c\L0\c\L\c\L", "\x07a;ext=1\c\L0123456789\c\L0\c\LTrailer: x\c\L\c\L",
+             "\x01ffffffffffffffff\c\Lx\c\L0\c\L\c\L"],
+    words: @["\c\L", "0\c\L\c\L", ";", "ffffffff", "7fffffffffffffff", "\n"]),
+  Entrance(name: "serverDispatch", target: serverDispatch, maxLen: 800,
+    seeds: @["""{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"c","version":"1"}}}""",
+             """{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{"cursor":"x"}}""",
+             """{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"t","arguments":{},"_meta":{"progressToken":1}}}""",
+             """{"jsonrpc":"2.0","id":"a","method":"server/discover","params":{"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28"}}}"""],
+    words: @["\"jsonrpc\"", "\"2.0\"", "\"id\"", "\"method\"", "\"params\"", "\"_meta\"", "\"initialize\"",
+             "\"tools/list\"", "\"tools/call\"", "\"resources/read\"", "\"prompts/get\"", "\"completion/complete\"",
+             "\"logging/setLevel\"", "\"tasks/get\"", "\"server/discover\"", "null", "{", "}", "[", "]"]),
+  Entrance(name: "clientAnswers", target: clientAnswers, maxLen: 800,
+    seeds: @["""{"type":"text","text":"hi","annotations":{"audience":["user"]}}""",
+             """{"type":"resource","resource":{"uri":"file:///a","mimeType":"text/plain","text":"x"}}""",
+             """{"name":"s","version":"1","icons":[{"src":"https://x/i.png","sizes":["48x48"]}]}""",
+             """{"taskId":"t","status":"working","createdAt":"2026-01-01T00:00:00Z","ttl":1000,"params":{"task":{"ttl":5}}}""",
+             """{"action":"accept","content":{"n":1},"params":{"requestedSchema":{"type":"object","properties":{"n":{"type":"integer"}}}}}"""],
+    words: @["\"type\"", "\"text\"", "\"image\"", "\"audio\"", "\"resource\"", "\"resource_link\"", "\"uri\"",
+             "\"nextCursor\"", "\"icons\"", "\"taskId\"", "\"status\"", "\"action\"", "\"content\"",
+             "\"requestedSchema\"", "\"params\"", "\"_meta\"", "{", "}", "[", "]"]),
+  Entrance(name: "oauthDocuments", target: oauthDocuments, maxLen: 800,
+    seeds: @["""{"resource":"https://rs.example/mcp","authorization_servers":["https://as.example"]}""",
+             """{"issuer":"https://as.example","authorization_endpoint":"https://as.example/a","token_endpoint":"https://as.example/t","code_challenge_methods_supported":["S256"]}""",
+             """{"access_token":"x","token_type":"Bearer","expires_in":3600,"scope":"read","refresh_token":"r"}"""],
+    words: @["\"resource\"", "\"authorization_servers\"", "\"issuer\"", "\"authorization_endpoint\"",
+             "\"token_endpoint\"", "\"access_token\"", "\"token_type\"", "\"expires_in\"", "\"scope\"",
+             "https://", "http://127.0.0.1", "{", "}", "[", "]"]),
+  Entrance(name: "stdioLines", target: stdioLines, maxLen: 800,
+    seeds: @["{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"ping\"}\n", "\n\r\n{}\r\nnot json\n[1,2]",
+             "{\"a\":1e999999}\n", "\xef\xbb\xbf{}\n"],
+    words: @["\n", "\r\n", "{", "}", "\"", "1e", "\\u"])]
