@@ -10,11 +10,13 @@ MCP-VERSION-3 | tests/external/test_legacy_handshake.nim | Given a version above
 MCP-VERSION-4 | tests/external/test_version.nim | Given each version, when asked whether it is modern, then only 2026-07-28 onward is
 MCP-VERSION-5 | tests/external/test_legacy_handshake.nim | Given a server, when a client requests a version the server speaks, then the response carries the same version
 MCP-VERSION-5 | tests/external/test_version.nim | Given a requested legacy version that is supported, when negotiated, then the same version is chosen
+MCP-VERSION-5 | tests/external/test_version.nim | Given every requested version and every set of spoken versions, when negotiated, then the answer is the requested legacy version when spoken and otherwise the newest spoken legacy version
 MCP-VERSION-6 | tests/external/test_legacy_handshake.nim | Given a server, when a client requests an unknown version, then the response carries the server's latest legacy version
 MCP-VERSION-6 | tests/external/test_legacy_handshake.nim | Given a server limited to 2024-11-05, when a client requests a newer version, then the response carries 2024-11-05
 MCP-VERSION-6 | tests/external/test_version.nim | Given a requested version that is not supported, when negotiated, then the latest supported legacy version is chosen
 MCP-VERSION-6 | tests/external/test_version.nim | Given an unknown version string, when negotiated, then the latest supported legacy version is chosen
 MCP-VERSION-6 | tests/external/test_version.nim | Given the modern version requested through initialize, when negotiated, then a legacy version is chosen
+MCP-VERSION-6 | tests/external/test_version.nim | Given every requested version and every set of spoken versions, when negotiated, then the answer is the requested legacy version when spoken and otherwise the newest spoken legacy version
 MCP-VERSION-7 | tests/external/test_legacy_handshake.nim | Given a client limited to 2024-11-05, when the server answers with a newer version, then connect fails naming that version
 MCP-VERSION-7 | tests/external/test_legacy_handshake.nim | Given a client, when the server answers with an unknown version, then connect fails naming that version
 MCP-VERSION-8 | tests/external/test_legacy_handshake.nim | Given a client newer than the server, when it connects, then both settle on the server's version

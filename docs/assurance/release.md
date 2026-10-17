@@ -26,7 +26,9 @@
 | REV-01a | holds | required | review | 36a4c8a5 と 7d32c165 で測った本線の 27 ジョブの生き残り 1,387 件すべてに、分類と理由がある | 1 for, 0 against |
 | REV-01b | nobody checked | required | review | 測定のあとに実装が変わった 16 ジョブを測り直し、新しい生き残りを分類した | 0 for, 0 against |
 | DOWN-01 | nobody checked | optional | release | この SDK を使う下流のパッケージ (社内のもの) が、公開するコミットでコンパイルできる | 0 for, 0 against |
+| PRF-01 | nobody checked | optional | design | address_policy の IPv4 の分類で、どの値もちょうど 1 つの分類になり、127.0.0.0/8 と 169.254.0.0/16 はどの方針でも公開の宛先にならない (例のテストを超えて、すべての値について) | 0 for, 0 against |
+| PRF-02 | nobody checked | optional | design | rate_limit のバケツのトークンは、どの時点でも 0 以上・毎秒の上限以下で、断った後に待ち時間だけ待てば次の 1 回は通る (例のテストを超えて、すべての入力について) | 0 for, 0 against |
 
 Not releasable: a required claim does not hold, is contradicted, or was not checked.
 
-Nobody checked: INP-02, INP-03, INP-04, SEC-02, REV-01, REV-01b, DOWN-01
+Nobody checked: INP-02, INP-03, INP-04, SEC-02, REV-01, REV-01b, DOWN-01, PRF-01, PRF-02

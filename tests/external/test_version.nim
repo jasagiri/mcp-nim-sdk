@@ -118,3 +118,34 @@ suite "protocol version: initialize negotiation":
 
   test "Given a side that speaks no legacy version, when negotiated, then none is returned":
     check negotiateLegacyVersion("2025-11-25", [mpv20260728]).isNone
+
+  test "Given every requested version and every set of spoken versions, when negotiated, then the answer is the requested legacy version when spoken and otherwise the newest spoken legacy version":
+    # All 6 x 32 inputs, so the two Scenarios hold for every input and not
+    # only for the examples above (ADR-KURA-0019 §2, enumeration). The
+    # expectation is built from the Scenarios' words: the legacy versions are
+    # the four before 2026-07-28 (MCP-VERSION-4), in date order.
+    const legacy = ["2024-11-05", "2025-03-26", "2025-06-18", "2025-11-25"]
+    const versions = ["2024-11-05", "2025-03-26", "2025-06-18", "2025-11-25", "2026-07-28"]
+    var cases = 0
+    for mask in 0 ..< (1 shl versions.len):
+      var spoken: seq[McpProtocolVersion]
+      var spokenNames: seq[string]
+      for i, name in versions:
+        if (mask and (1 shl i)) != 0:
+          spoken.add parseProtocolVersion(name).get
+          spokenNames.add name
+      var newestLegacy = ""
+      for name in legacy:
+        if name in spokenNames: newestLegacy = name
+      for requested in @versions & @["2099-01-01"]:
+        let expected =
+          if requested in legacy and requested in spokenNames: requested
+          else: newestLegacy
+        let answer = negotiateLegacyVersion(requested, spoken)
+        let got = if answer.isSome: $answer.get else: ""
+        if got != expected:
+          checkpoint "requested " & requested & ", spoken " & spokenNames.join(",") &
+                     ": got " & got & ", expected " & expected
+        check got == expected
+        inc cases
+    check cases == 192

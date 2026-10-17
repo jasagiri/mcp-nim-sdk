@@ -39,6 +39,11 @@
       "stage": "golden",
       "ending": "done",
       "evidence": "the messages whose form the specification fixes are compared, as JSON structures, with the specification's own examples in tests/fixtures/2026-07-28 (test_modern_protocol, test_subscriptions, ...); a byte-for-byte golden file would also fix key order and spacing, which are not part of the contract"
+    },
+    {
+      "stage": "proofs",
+      "ending": "done",
+      "evidence": "MCP-VERSION-5 and -6 (the version an initialize response carries) are checked over every input, 6 requested versions x 32 sets of spoken versions, by enumeration (ADR-KURA-0019 \u00a72) in tests/external/test_version.nim; address_policy and rate_limit are not proved: ig-verify is not used, because the SDK cannot depend on interpretation-graph under its license"
     }
   ]
 }
