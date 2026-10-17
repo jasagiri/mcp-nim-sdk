@@ -33,5 +33,12 @@
       "--entry",
       "src/server/request_state.nim"
     ]
-  }
+  },
+  "stages": [
+    {
+      "stage": "golden",
+      "ending": "done",
+      "evidence": "the messages whose form the specification fixes are compared, as JSON structures, with the specification's own examples in tests/fixtures/2026-07-28 (test_modern_protocol, test_subscriptions, ...); a byte-for-byte golden file would also fix key order and spacing, which are not part of the contract"
+    }
+  ]
 }
