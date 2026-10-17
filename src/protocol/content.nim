@@ -122,8 +122,13 @@ proc parseIcons*(node: JsonNode): seq[McpIcon] =
     result.add icon
 
 proc iconsOf*(node: JsonNode): seq[McpIcon] =
-  ## The icons of an item that may have none.
-  if node.isNil or not node.hasKey("icons"):
+  ## The icons of an item that may have none. An item that is not an object
+  ## is malformed.
+  if node.isNil:
+    return
+  if node.kind != JObject:
+    raise newException(McpShapeError, "an item is not an object")
+  if not node.hasKey("icons"):
     return
   parseIcons(node["icons"])
 

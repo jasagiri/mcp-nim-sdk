@@ -439,6 +439,13 @@ Feature: Security properties
     Then its requests reach the server
     And without caFile the same requests fail before any HTTP is sent
 
+  @spec:MCP-SEC-WIRE-23
+  Scenario: What a server sends can make a read fail, never the client
+    Given a client reading a response or a listed item
+    When the status code is outside 100 to 599, a chunk size is not hexadecimal digits that fit in an integer, bytes stand between a chunk's data and its line end, or an item that should be an object is not one
+    Then the read fails with the transport's or the protocol's error
+    And no defect is raised
+
   @spec:MCP-SEC-HTTP-8
   Scenario: A failure inside the HTTP transport is logged and not told to the peer
     Given a session whose end callback raises

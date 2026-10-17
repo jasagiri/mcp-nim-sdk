@@ -391,6 +391,19 @@ suite "tasks: reading a task from the wire":
     check taskFromJson(%*[1, 2]).isNone
     check taskFromJson(nil).isNone
 
+  test "Given a time whose minute or second is out of range, when a task is read, then none is returned":
+    # Found by fuzzing (tests/fuzz: clientAnswers): std/times raised a Defect.
+    let good = %*{"taskId": "t", "status": "working", "createdAt": "2025-11-25T09:15:00Z",
+                  "lastUpdatedAt": "2025-11-25T09:15:00Z", "ttl": 1}
+    for time in ["2025-11-25T09:15:80Z", "2025-11-25T09:99:00Z", "2025-11-25T09:15:61+09:00",
+                 "2025-11-25T09:60:00.5Z"]:
+      var broken = good.copy()
+      broken["createdAt"] = %time
+      check taskFromJson(broken).isNone
+    var leap = good.copy()
+    leap["createdAt"] = %"2016-12-31T23:59:60Z"
+    check taskFromJson(leap).isSome
+
 suite "tasks: the exact values of the rules":
   test "Given a terminal status, when asked about a move from it, then no status is allowed":
     for terminal in [tsCompleted, tsFailed, tsCancelled]:

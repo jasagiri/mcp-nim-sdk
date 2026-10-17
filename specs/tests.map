@@ -2210,3 +2210,10 @@ MCP-RATE-2 | tests/external/test_request_rate_fix.nim | Given a request with a s
 MCP-RATE-2 | tests/external/test_request_rate_fix.nim | Given requests without an address, a principal or a session, as on stdio, then the connection is the one sender
 MCP-RATE-2 | tests/external/test_request_rate_fix.nim | Given a Streamable HTTP server of 2026-07-28 without authorization, when two connections from one address make three requests, then the third is refused
 MCP-RATE-3 | tests/external/test_request_rate_fix.nim | Given a limit of 2 senders, when a third sender speaks, then the sender quiet longest is forgotten and has its full allowance again
+MCP-SEC-WIRE-23 | tests/external/test_security_wire_shapes.nim | Given a status code above 599, when the answer head is read, then the request fails
+MCP-SEC-WIRE-23 | tests/external/test_security_wire_shapes.nim | Given a negative status code, when the answer head is read, then the request fails
+MCP-SEC-WIRE-23 | tests/external/test_security_wire_shapes.nim | Given a chunk size that does not fit in an integer, when the answer body is read, then the request fails
+MCP-SEC-WIRE-23 | tests/external/test_security_wire_shapes.nim | Given bytes between a chunk's data and its line end, when the answer body is read, then the request fails
+MCP-SEC-WIRE-23 | tests/external/test_security_wire_shapes.nim | Given a well-formed chunked answer, when it is read, then the notification is delivered
+MCP-SEC-WIRE-23 | tests/external/test_security_wire_shapes.nim | Given an item that is not an object, when its icons are read, then it is a shape error
+MCP-TASKS-7 | tests/external/test_tasks_store.nim | Given a time whose minute or second is out of range, when a task is read, then none is returned

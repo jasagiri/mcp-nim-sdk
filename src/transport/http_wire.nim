@@ -161,10 +161,14 @@ proc parseHead(r: WireResponse, head: string) =
   let status = lines[0].split(' ', maxsplit = 2)
   if status.len < 2 or not status[0].startsWith("HTTP/"):
     raise httpFailure("not an HTTP response: " & lines[0][0 ..< min(lines[0].len, 60)])
+  var code = 0
   try:
-    r.code = HttpCode(parseInt(status[1]))
+    code = parseInt(status[1])
   except ValueError:
     raise httpFailure("bad HTTP status line: " & lines[0][0 ..< min(lines[0].len, 60)])
+  if code < 100 or code > 599:
+    raise httpFailure("bad HTTP status line: " & lines[0][0 ..< min(lines[0].len, 60)])
+  r.code = HttpCode(code)
   r.headers = newHttpHeaders()
   for line in lines[1 .. ^1]:
     let colon = line.find(':')
@@ -352,6 +356,20 @@ proc request*(url: string, httpMethod: HttpMethod, headers: HttpHeaders = nil,
   raise httpFailure("more than " & $MaxRedirects & " redirects from " & url)
 
 
+proc chunkSize(text: string): int =
+  ## A chunk size: hexadecimal digits only (no sign, no `0x`), few enough
+  ## that the size fits in an int.
+  if text.len == 0 or text.len > 15:
+    raise httpFailure("bad chunk size: " & text[0 ..< min(text.len, 20)])
+  for c in text:
+    let digit =
+      case c
+      of '0' .. '9': ord(c) - ord('0')
+      of 'a' .. 'f': ord(c) - ord('a') + 10
+      of 'A' .. 'F': ord(c) - ord('A') + 10
+      else: raise httpFailure("bad chunk size: " & text[0 ..< min(text.len, 20)])
+    result = result * 16 + digit
+
 proc decodeChunked(r: WireResponse, input: string): string =
   var i = 0
   while i < input.len and r.chunk != csDone:
@@ -362,10 +380,7 @@ proc decodeChunked(r: WireResponse, input: string): string =
       if c == '\n':
         let sizeText = r.line.strip().split(';')[0].strip()
         r.line = ""
-        try:
-          r.remaining = parseHexInt(sizeText)
-        except ValueError:
-          raise httpFailure("bad chunk size: " & sizeText[0 ..< min(sizeText.len, 20)])
+        r.remaining = chunkSize(sizeText)
         r.chunk = if r.remaining == 0: csTrailers else: csData
       else:
         r.line.add c
@@ -379,9 +394,17 @@ proc decodeChunked(r: WireResponse, input: string): string =
       if r.remaining == 0:
         r.chunk = csDataEnd
     of csDataEnd:
-      if input[i] == '\n':
-        r.chunk = csSizeLine
+      # The data ends with CRLF (or a bare LF); anything else there means the
+      # size and the data disagree.
+      let c = input[i]
       inc i
+      if c == '\n':
+        r.chunk = csSizeLine
+        r.line = ""
+      elif c == '\c' and r.line.len == 0:
+        r.line = "\c"
+      else:
+        raise httpFailure("bytes after the data of a chunk")
     of csTrailers:
       let c = input[i]
       inc i

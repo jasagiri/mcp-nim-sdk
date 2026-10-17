@@ -171,6 +171,13 @@ proc parseIsoTimestamp*(text: string): Option[int64] =
     base = base[0 ..< dot] & base[stop .. ^1]
   if base.endsWith("Z"):
     base = base[0 ..< base.len - 1] & "+00:00"
+  # std/times raises a RangeDefect, not TimeParseError, for a minute over 59
+  # or a second over 60 (Nim 2.2.12 and devel 021c3c9), so those two fields
+  # are checked here before it reads them.
+  if base.len >= 19 and base[14 .. 15].allCharsInSet(Digits) and
+     base[17 .. 18].allCharsInSet(Digits):
+    if parseInt(base[14 .. 15]) > 59 or parseInt(base[17 .. 18]) > 60:
+      return none(int64)
   try:
     let moment = parse(base, "yyyy-MM-dd'T'HH:mm:sszzz")
     some(moment.toTime.toUnix * 1000 + millis)
