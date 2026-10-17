@@ -193,6 +193,13 @@ type
       ## a sender is the principal the transport's authorization names, else
       ## the session, else the whole connection. A request beyond it is
       ## answered with `ErrRateLimited` and no handler runs. 0: no limit.
+    maxSubscriptionsPerSession*: int
+      ## How many resources one session may be subscribed to
+      ## (`resources/subscribe`); one more is answered with an internal
+      ## error. 0: no limit.
+    maxListenStreamsPerSession*: int
+      ## How many `subscriptions/listen` streams one session may hold open;
+      ## one more is answered with an internal error. 0: no limit.
     maxProgressPerSecond*: int
       ## How many progress notifications `reportProgress` sends per second for
       ## one request; the ones in between are dropped and the last one is
@@ -268,6 +275,8 @@ type
 
 const
   DefaultMaxRequestsPerSecond* = 100
+  DefaultMaxSubscriptionsPerSession* = 1024
+  DefaultMaxListenStreamsPerSession* = 16
     ## Far above what a person or an agent loop sends, and it admits a burst
     ## of 100: a completion request per keystroke stays well under it.
   DefaultMaxProgressPerSecond* = 20
@@ -297,6 +306,8 @@ proc newMcpServer*(
     serverInfo: serverInfo,
     rateLimiter: newRateLimiter(),
     maxRequestsPerSecond: DefaultMaxRequestsPerSecond,
+    maxSubscriptionsPerSession: DefaultMaxSubscriptionsPerSession,
+    maxListenStreamsPerSession: DefaultMaxListenStreamsPerSession,
     maxProgressPerSecond: DefaultMaxProgressPerSecond,
     maxRateLimitedSenders: DefaultMaxRateLimitedSenders,
     cachePolicy: UncachedPolicy,
@@ -1191,6 +1202,9 @@ proc listen(server: McpServer, request: JsonRpcRequest,
   let (requested, problem) = parseSubscriptionFilter(notifications)
   if problem.isSome:
     return newJsonRpcErrorResponse(request.id, ErrInvalidParams, problem.get)
+  if server.maxListenStreamsPerSession > 0 and
+     server.subscriptions.openBy(request.session) >= server.maxListenStreamsPerSession:
+    return newJsonRpcErrorResponse(request.id, ErrInternal, "Too many listen streams")
   let idNode = if request.idNode.isNil: %request.id else: request.idNode
   var honored = honoredFilter(server.capabilities, requested)
   for hook in server.listenFilterHooks:
@@ -1291,6 +1305,9 @@ proc dispatchStandard(server: McpServer, request: JsonRpcRequest,
       return newJsonRpcErrorResponse(request.id, ErrInvalidRequest,
         "Subscriptions belong to an initialized client")
     if request.`method` == "resources/subscribe":
+      if server.maxSubscriptionsPerSession > 0 and uri.get notin subscriber.subscriptions and
+         subscriber.subscriptions.len >= server.maxSubscriptionsPerSession:
+        return newJsonRpcErrorResponse(request.id, ErrInternal, "Too many subscriptions")
       if not server.resourceSubscribe.isNil:
         await server.resourceSubscribe(ctx, uri.get)
       subscriber.subscriptions.incl(uri.get)

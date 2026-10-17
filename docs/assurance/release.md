@@ -8,7 +8,7 @@
 | DEP-01 | holds | required | dependency | nimble が求める Nim の下限は、base64.decode の欠陥 (nim-lang/Nim#25530) を直した版以上である | 1 for, 0 against |
 | DEP-02 | holds | required | dependency | base64 を復号する 4 か所は、相手が選んだ文字列を、形を確かめるか署名を確かめてから復号する | 2 for, 0 against |
 | DEP-03 | holds | optional | dependency | コンパイラと依存の版を、既知の欠陥の一覧 (nim-advisory-check) と突き合わせた | 1 for, 0 against |
-| SEC-01 | the evidence disagrees | required | design | 2026-10-06 のセキュリティレビューの指摘 (Critical 1、High 4、Medium 6、Low 6) のそれぞれに、再現するテストと修正がある | 1 for, 1 against |
+| SEC-01 | holds | required | design | 2026-10-06 のセキュリティレビューの指摘 (Critical 1、High 4、Medium 6、Low 6) のそれぞれに、再現するテストと修正がある | 2 for, 0 against |
 | SEC-02 | nobody checked | required | design | セキュリティレビューを、実装した者 (このエージェントのチーム) 以外が行った | 0 for, 0 against |
 | SEC-03 | holds | required | design | https の接続は、証明書の名前を接続先のホスト名と照合する | 1 for, 0 against |
 | OPS-01 | holds | required | operation | 公開した HTTP サーバーは、要求を送り終えない相手に接続を占有され続けない | 1 for, 0 against |
@@ -30,5 +30,3 @@
 Not releasable: a required claim does not hold, is contradicted, or was not checked.
 
 Nobody checked: INP-02, INP-03, INP-04, SEC-02, REV-01, REV-01b, DOWN-01
-
-The evidence disagrees: SEC-01

@@ -92,6 +92,8 @@ nim-muter 0.2.5 の RVR は、戻り値がリテラルのとき `default(typeof(
 | `src/client/icons.nim` (`IconFetchOptions.caFile`) | `tests/external/test_security_trusted_ca.nim` (ジョブ address_policy に足した) | 2026-10-17 |
 | `src/auth/oauth/urls.nim`、`src/auth/oauth/fetch.nim` (`FetchPolicy.caFile`) | `tests/external/test_security_trusted_ca.nim` (ジョブ auth_oauth に足した) | 2026-10-17 |
 | `src/transport/http_server.nim`、`src/transport/sse_stream.nim` (`readTimeoutMs`、`asynchttpserver_compat` に替えた) | `tests/external/test_security_http_read_timeout.nim` (ジョブ http_server に足した)。`src/transport/vendor/asynchttpserver.nim` は Nim の写しなので測らない | 2026-10-17 |
+| `src/server/server.nim`、`src/server/subscriptions.nim` (`maxSubscriptionsPerSession`、`maxListenStreamsPerSession`) | `tests/external/test_security_subscription_limits.nim` (ジョブ server、subscriptions に足した) | 2026-10-17 |
+| `src/client/client.nim` (`maxServerRequestsInProgress`)、`src/client/sampling.nim` (`maxTokens`) | `tests/external/test_security_sampling_limits.nim` (ジョブ client に足した) | 2026-10-17 |
 | `src/client/client.nim` | `tests/test_legacy_handshake.nim`, `tests/test_era_matrix.nim` | 2026-10-05 |
 | `src/client/{content,tools,resources,prompts,utilities}.nim` | `tests/test_client_operations.nim` | 2026-10-06 |
 | `src/client/{roots,sampling}.nim` | `tests/test_client_server_requests.nim` | 2026-10-06 |

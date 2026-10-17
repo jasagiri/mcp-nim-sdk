@@ -75,7 +75,11 @@ proc numberField(node: JsonNode, key, context: string): Option[float] =
 proc parseSamplingRequest*(params: JsonNode): McpSamplingRequest =
   if params.isNil or params.kind != JObject:
     raise newException(McpProtocolError, "sampling/createMessage: params is not an object")
-  result = McpSamplingRequest(raw: params, maxTokens: params{"maxTokens"}.getInt())
+  let maxTokens = params{"maxTokens"}
+  if maxTokens.isNil or maxTokens.kind != JInt or maxTokens.getBiggestInt() < 1:
+    raise newException(McpProtocolError,
+      "sampling/createMessage: 'maxTokens' must be a positive integer")
+  result = McpSamplingRequest(raw: params, maxTokens: maxTokens.getInt())
   for message in requiredArray(params, "messages", "sampling/createMessage"):
     let content = message{"content"}
     var blocks: seq[McpContentItem]

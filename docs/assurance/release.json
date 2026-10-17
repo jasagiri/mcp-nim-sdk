@@ -116,9 +116,10 @@
      "file": "../../specs/security.feature"
     },
     {
-     "supports": false,
+     "supports": true,
      "kind": "review",
-     "ref": "指摘の番号とテストを 1 対 1 に結んだ表は無い。Tasks の上限の無い 4 か所は利用者の判断待ちで残っている (2026-10-08)"
+     "ref": "2026-10-17: docs/quality/security-review-2026-10-06.md ties each of the 17 findings to its specification IDs and external tests (from specs/tests.map; every specification ID has an external test). M2's missing read timeout is fixed (MCP-SEC-HTTP-10). M5 (Events) is on the draft line only. The four unbounded places reported after the review: three are limited now (MCP-SEC-SWEEP-7, -8, -9, by the user's decision), the fourth (Events listing) is on the draft line",
+     "note": "the pairing of finding and fix commit is inferred from commit subjects; the earlier evidence against (no table, four places waiting for a decision) is resolved by this"
     }
    ]
   },

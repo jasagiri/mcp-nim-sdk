@@ -128,6 +128,11 @@ type
     requestTimeoutMs*: int
       ## How long a request waits for its response unless its
       ## McpRequestOptions say otherwise. 0 waits without limit.
+    maxServerRequestsInProgress*: int
+      ## How many of the server's requests (sampling, elicitation, roots) the
+      ## client's handlers run at once. One more is answered with an internal
+      ## error and its handler is not called. 0: no limit.
+    serverRequestsInProgress: int
     pingIntervalMs*: int
       ## How often an idle connection is checked with a ping (versions that
       ## have ping). 0 turns the checks off.
@@ -174,6 +179,7 @@ type
 
 const
   DefaultRequestTimeoutMs* = 60_000
+  DefaultMaxServerRequestsInProgress* = 64
   DefaultMaxInputRounds* = 10
   DefaultPingIntervalMs* = 30_000
   MaxChosenRequestIds* = 4096
@@ -197,6 +203,7 @@ proc newMcpClient*(
     serverInfo: none(McpServerInfo),
     probeTimeoutMs: 5000,
     requestTimeoutMs: DefaultRequestTimeoutMs,
+    maxServerRequestsInProgress: DefaultMaxServerRequestsInProgress,
     pingIntervalMs: DefaultPingIntervalMs,
     pingTimeoutMs: DefaultRequestTimeoutMs,
     maxInputRounds: DefaultMaxInputRounds,
@@ -268,7 +275,11 @@ proc processRequest(client: McpClient, request: JsonRpcRequest): Future[void] {.
        not client.requestAllowed(request.`method`):
     response = newJsonRpcErrorResponse(
       request.id, -32601, "Method not found: " & request.`method`)
+  elif client.maxServerRequestsInProgress > 0 and
+       client.serverRequestsInProgress >= client.maxServerRequestsInProgress:
+    response = newJsonRpcErrorResponse(request.id, -32603, "Too many requests in progress")
   else:
+    inc client.serverRequestsInProgress
     try:
       response = await client.requestHandlers[request.`method`](request)
     except McpRequestError as e:
@@ -276,6 +287,8 @@ proc processRequest(client: McpClient, request: JsonRpcRequest): Future[void] {.
     except CatchableError as e:
       logHandlerFailure("handler for " & peerText(request.`method`))
       response = newJsonRpcErrorResponse(request.id, -32603, e.plainMessage)
+    finally:
+      dec client.serverRequestsInProgress
   response.idNode = request.idNode
   await client.transport.sendResponse(response)
 

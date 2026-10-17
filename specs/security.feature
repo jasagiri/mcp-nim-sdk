@@ -296,6 +296,28 @@ Feature: Security properties
     When the client reads all pages
     Then it stops with a protocol error after the page limit, which a list of that many pages still fits
 
+  @spec:MCP-SEC-SWEEP-7
+  Scenario: One session cannot hold any number of subscriptions or listen streams
+    Given a server that limits the resource subscriptions and the open subscriptions/listen streams of one session
+    When a session subscribes to one more resource, or opens one more listen stream, than its limit
+    Then the request is answered with an internal error saying there are too many, and the subscriptions and streams it holds go on
+    And a subscription it holds already may be asked for again, one it gives up makes room, and another session has its own limit
+    And the limits are 1024 subscriptions and 16 listen streams unless the server is given others (0: no limit)
+
+  @spec:MCP-SEC-SWEEP-8
+  Scenario: A server cannot keep any number of the client's handlers busy
+    Given a client that runs a limited number of the server's requests at once
+    When the server sends another request while that many are still being handled
+    Then the client answers it with an internal error saying it has too many requests in progress, without calling the handler
+    And once one of them is answered the next request is handled, and the limit is 64 unless the client is given another (0: no limit)
+
+  @spec:MCP-SEC-SWEEP-9
+  Scenario: A sampling request names a number of tokens a model can be asked for
+    Given a server's sampling/createMessage request
+    When maxTokens is missing, not an integer, zero or negative
+    Then the client answers invalid params and the sampling handler is not called
+    And a positive integer reaches the handler as it was sent
+
   @spec:MCP-SEC-WIRE-9
   Scenario: Text of a peer is decoded as base64 only when it has the shape of base64
     Given text a peer chose where base64 is expected: a cursor, the data of a data URI

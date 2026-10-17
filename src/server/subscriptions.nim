@@ -38,6 +38,12 @@ proc remove*(registry: var SubscriptionRegistry, subscription: Subscription) =
 func count*(registry: SubscriptionRegistry): int =
   registry.entries.len
 
+func openBy*(registry: SubscriptionRegistry, session: string): int =
+  ## How many streams `session` holds open.
+  for subscription in registry.entries.values:
+    if subscription.session == session:
+      inc result
+
 func all*(registry: SubscriptionRegistry): seq[Subscription] =
   for subscription in registry.entries.values:
     result.add subscription
