@@ -48,14 +48,28 @@
    "layer": "input",
    "required": true,
    "text": "一覧に無い入口 (HTTP の要求と応答の読み取り、JSON-RPC の振り分け、OAuth のメタデータ文書、stdio の行) もファジングした",
-   "evidence": []
+   "evidence": [
+    {
+     "supports": true,
+     "kind": "measurement",
+     "ref": "2026-10-18/19: tests/fuzz/http_wire_targets.nim (httpResponse, httpChunked) と peer_targets.nim (serverDispatch, clientAnswers, oauthDocuments, stdioLines) を nim-fuzz で 20 万入力ずつ、libFuzzer + AddressSanitizer で 1200〜3600 秒ずつ流した。見つかった Defect 6 件はすべて直し、入力を tests/fuzz/corpus に残した。docs/quality/fuzz-2026-10-18.md",
+     "note": "HTTP の要求の行・ヘッダ・本文の区切りは std/asynchttpserver (または transport/vendor の写し) が読み、ソケット越しにしか渡せないので入っていない (tests/fuzz/targets.nim の冒頭)。SDK がその後に要求から読むもの (validateModernRequest, checkRequestHeaders) は clientAnswers に入っている"
+    }
+   ]
   },
   {
    "id": "INP-04",
    "layer": "input",
    "required": true,
    "text": "公開の前に、入口を libFuzzer で長く掘った",
-   "evidence": []
+   "evidence": [
+    {
+     "supports": true,
+     "kind": "measurement",
+     "ref": "2026-10-18: 16 の入口を libFuzzer + AddressSanitizer で計 8.7 時間 (5 つを 3600 秒、11 を 1200 秒)。clientAnswers で 1 件 (符号付きの年で秒の範囲の確かめを抜けた RangeDefect) を見つけ、parseIsoTimestamp が RFC 3339 の形全体を先に確かめるよう直した。2026-10-19 に修正後の clientAnswers を 1200 秒 (2240 万入力) 流して 0 件。docs/quality/fuzz-2026-10-18.md",
+     "note": "macOS arm64 と ORC だけ。Linux、ほかのサニタイザ、refc では流していない"
+    }
+   ]
   },
   {
    "id": "DEP-01",
