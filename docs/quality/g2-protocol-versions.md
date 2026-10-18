@@ -93,6 +93,9 @@ nim-muter 0.2.5 の RVR は、戻り値がリテラルのとき `default(typeof(
 | `src/auth/oauth/urls.nim`、`src/auth/oauth/fetch.nim` (`FetchPolicy.caFile`) | `tests/external/test_security_trusted_ca.nim` (ジョブ auth_oauth に足した) | 2026-10-17 |
 | `src/transport/http_server.nim`、`src/transport/sse_stream.nim` (`readTimeoutMs`、`asynchttpserver_compat` に替えた) | `tests/external/test_security_http_read_timeout.nim` (ジョブ http_server に足した)。`src/transport/vendor/asynchttpserver.nim` は Nim の写しなので測らない | 2026-10-17 |
 | `src/server/server.nim`、`src/server/subscriptions.nim` (`maxSubscriptionsPerSession`、`maxListenStreamsPerSession`) | `tests/external/test_security_subscription_limits.nim` (ジョブ server、subscriptions に足した) | 2026-10-17 |
+| `src/transport/http_wire.nim` (状態コードの範囲、チャンクの大きさ、チャンクの後ろの余分なバイト) | `tests/external/test_security_wire_shapes.nim` (ジョブ http_client) | 2026-10-18 |
+| `src/protocol/content.nim` (`iconsOf` がオブジェクトでない項目を断る) | `tests/external/test_security_wire_shapes.nim` (ジョブ content) | 2026-10-18 |
+| `src/protocol/tasks.nim` (`parseIsoTimestamp` が RFC 3339 の形を先に確かめる)、`src/protocol/rfc3339.nim` (新規。elicitation から移した `isDate`・`isDateTime`)、`src/protocol/elicitation.nim` | `tests/external/test_tasks_store.nim` (ジョブ tasks)、`tests/external/test_elicitation_payload.nim` (ジョブ elicitation)。`rfc3339.nim` はまだどのジョブの `sources` にも入っていない: 測る前に tasks か elicitation のジョブに足す | 2026-10-19 |
 | `src/client/client.nim` (`maxServerRequestsInProgress`)、`src/client/sampling.nim` (`maxTokens`) | `tests/external/test_security_sampling_limits.nim` (ジョブ client に足した) | 2026-10-17 |
 | `src/client/client.nim` | `tests/test_legacy_handshake.nim`, `tests/test_era_matrix.nim` | 2026-10-05 |
 | `src/client/{content,tools,resources,prompts,utilities}.nim` | `tests/test_client_operations.nim` | 2026-10-06 |
