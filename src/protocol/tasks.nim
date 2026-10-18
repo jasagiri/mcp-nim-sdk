@@ -9,6 +9,7 @@
 
 import std/[asyncdispatch, json, math, options, strutils, sysrand, tables, times]
 import ./types
+import ./rfc3339
 
 const
   RelatedTaskKey* = "io.modelcontextprotocol/related-task"
@@ -157,6 +158,11 @@ proc isoTimestamp*(ms: int64): string {.raises: [].} =
 proc parseIsoTimestamp*(text: string): Option[int64] =
   ## The instant of an ISO 8601 / RFC 3339 time, with or without fractional
   ## seconds, in UTC (`Z`) or with an offset; none for anything else.
+  # std/times reads more than RFC 3339 allows, a signed year among it, and
+  # raises a RangeDefect instead of TimeParseError for some of it (a second
+  # over 60), so the shape and the ranges are checked first.
+  if not isDateTime(text):
+    return none(int64)
   var base = text
   var millis = 0'i64
   let dot = base.find('.')
@@ -171,13 +177,6 @@ proc parseIsoTimestamp*(text: string): Option[int64] =
     base = base[0 ..< dot] & base[stop .. ^1]
   if base.endsWith("Z"):
     base = base[0 ..< base.len - 1] & "+00:00"
-  # std/times raises a RangeDefect, not TimeParseError, for a minute over 59
-  # or a second over 60 (Nim 2.2.12 and devel 021c3c9), so those two fields
-  # are checked here before it reads them.
-  if base.len >= 19 and base[14 .. 15].allCharsInSet(Digits) and
-     base[17 .. 18].allCharsInSet(Digits):
-    if parseInt(base[14 .. 15]) > 59 or parseInt(base[17 .. 18]) > 60:
-      return none(int64)
   try:
     let moment = parse(base, "yyyy-MM-dd'T'HH:mm:sszzz")
     some(moment.toTime.toUnix * 1000 + millis)

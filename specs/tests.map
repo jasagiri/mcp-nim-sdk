@@ -2217,3 +2217,4 @@ MCP-SEC-WIRE-23 | tests/external/test_security_wire_shapes.nim | Given bytes bet
 MCP-SEC-WIRE-23 | tests/external/test_security_wire_shapes.nim | Given a well-formed chunked answer, when it is read, then the notification is delivered
 MCP-SEC-WIRE-23 | tests/external/test_security_wire_shapes.nim | Given an item that is not an object, when its icons are read, then it is a shape error
 MCP-TASKS-7 | tests/external/test_tasks_store.nim | Given a time whose minute or second is out of range, when a task is read, then none is returned
+MCP-TASKS-7 | tests/external/test_tasks_store.nim | Given a time that is not RFC 3339, such as a signed year, when a task is read, then none is returned

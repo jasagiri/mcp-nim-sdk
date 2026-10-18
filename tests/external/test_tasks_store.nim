@@ -404,6 +404,18 @@ suite "tasks: reading a task from the wire":
     leap["createdAt"] = %"2016-12-31T23:59:60Z"
     check taskFromJson(leap).isSome
 
+  test "Given a time that is not RFC 3339, such as a signed year, when a task is read, then none is returned":
+    # Found by fuzzing (tests/fuzz: clientAnswers, libFuzzer): a sign before
+    # the year moved the second out of the place the range check looked at,
+    # and std/times raised a Defect for it.
+    let good = %*{"taskId": "t", "status": "working", "createdAt": "2025-11-25T09:15:00Z",
+                  "lastUpdatedAt": "2025-11-25T09:15:00Z", "ttl": 1}
+    for time in ["+4052-01-01T00:00:80Z", "+2025-11-25T09:15:00Z", "-2025-11-25T09:15:00Z",
+                 "02025-11-25T09:15:00Z", "2025-11-25T25:15:00Z", "2025-11-25T09:15:00+24:00"]:
+      var broken = good.copy()
+      broken["createdAt"] = %time
+      check taskFromJson(broken).isNone
+
 suite "tasks: the exact values of the rules":
   test "Given a terminal status, when asked about a move from it, then no status is allowed":
     for terminal in [tsCompleted, tsFailed, tsCancelled]:
