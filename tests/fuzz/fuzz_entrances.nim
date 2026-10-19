@@ -1,8 +1,8 @@
 ## A fuzzing run over the places that read a peer's text. Not part of the
-## tests: it runs for minutes, and it needs the fuzzer of ../nim-fuzz, which
+## tests: it runs for minutes, and it needs the fuzzer of ../nim-fuzz-inprocess, which
 ## is beside this repository and not a dependency of it. From the root:
 ##
-##   nim c -r --cc:clang -d:fuzzCoverage --panics:off --path:../nim-fuzz/src \
+##   nim c -r --cc:clang -d:fuzzCoverage --panics:off --path:../nim-fuzz-inprocess/src \
 ##     --nimcache:build/nimcache/fuzz -o:build/fuzz_entrances \
 ##     tests/fuzz/fuzz_entrances.nim [runs per target] [target ...]
 ##
@@ -11,7 +11,7 @@
 ## anything was found.
 
 import std/[os, strutils]
-import fuzz
+import nim_fuzz_inprocess
 import ./targets
 
 let runs = if paramCount() >= 1: parseInt(paramStr(1)) else: 200_000

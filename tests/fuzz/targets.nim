@@ -7,7 +7,7 @@
 ## any defect (an index out of range, an overflow), is a finding.
 ##
 ## Used by `fuzz_entrances.nim` (a fuzzing run, started by hand, with the
-## fuzzer of ../nim-fuzz) and by `../internal/test_fuzz_regressions.nim` (the
+## fuzzer of ../nim-fuzz-inprocess) and by `../internal/test_fuzz_regressions.nim` (the
 ## seeds and the inputs fuzzing found, run with the other tests through the
 ## same fuzzer's `replay`).
 ##

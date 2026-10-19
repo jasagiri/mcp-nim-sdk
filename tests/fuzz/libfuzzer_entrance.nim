@@ -4,7 +4,7 @@
 ## the in-process runs: a reason, an exception or a Defect is a finding.
 
 import std/os
-import fuzz/libfuzzer   # foundation/nim-fuzz
+import nim_fuzz_inprocess/libfuzzer   # foundation/nim-fuzz-inprocess
 import ./targets
 
 let chosen = block:

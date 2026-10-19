@@ -13,7 +13,7 @@
 ## this was the specification MCP-SEC-SWEEP-6.
 
 import std/[unittest, os, strutils]
-import fuzz   # foundation/nim-fuzz: replay, loadCorpus
+import nim_fuzz_inprocess   # foundation/nim-fuzz-inprocess: replay, loadCorpus
 import ../fuzz/targets
 
 const Corpus = currentSourcePath().parentDir.parentDir / "fuzz" / "corpus"

@@ -4,7 +4,7 @@
 ## <dir>/<name>/max_len.
 
 import std/[os, strutils]
-import fuzz   # foundation/nim-fuzz: loadCorpus
+import nim_fuzz_inprocess   # foundation/nim-fuzz-inprocess: loadCorpus
 import ./targets
 
 let dir = paramStr(1)

@@ -4,14 +4,14 @@
 #
 #   sh tests/fuzz/libfuzzer_run.sh SECONDS NAME... [-- SECONDS NAME...]
 #
-# Needs nim-fuzz with fuzz/libfuzzer ($NIM_FUZZ, else ../nim-fuzz) and a clang with the libFuzzer
+# Needs nim-fuzz-inprocess with fuzz/libfuzzer ($NIM_FUZZ, else ../nim-fuzz-inprocess) and a clang with the libFuzzer
 # runtime: $LLVM_CLANG, else Homebrew's LLVM. Each entrance's log, the inputs
 # libFuzzer kept and any crashing input are under build/libfuzzer/<name>/.
 # A finding found here is saved under tests/fuzz/corpus/<name>/ by hand, after
 # it is understood, so that test_fuzz_regressions replays it from then on.
 set -eu
 clang=${LLVM_CLANG:-/opt/homebrew/opt/llvm/bin/clang}
-nimfuzz=${NIM_FUZZ:-../nim-fuzz}
+nimfuzz=${NIM_FUZZ:-../nim-fuzz-inprocess}
 out=build/libfuzzer
 mkdir -p "$out"
 nim c --hints:off --path:"$nimfuzz/src" --nimcache:build/nimcache/export \
