@@ -321,86 +321,6 @@
       "reason": "isToken の唯一の呼び出し元 (declaredParamHeaders) が空の名前を先に must be a non-empty string で退けるので、空文字列はこの行に届かない。RFC 9110 の token の定義として残す (2026-10-12 の判断)"
     },
     {
-      "fingerprint": "src/protocol/param_headers.nim:LOR:76f9c12c67487c2b:0",
-      "file": "src/protocol/param_headers.nim",
-      "line": 92,
-      "mutator": "LOR",
-      "original": "node.isNil or node.kind != JObject",
-      "replacement": "<or -> and>",
-      "class": "test_owed",
-      "reason": "MCP-HTTP-13: 性質の値が真偽値のスキーマ (true) だと、変異では非オブジェクトに pairs を当てて AssertionDefect。E テスト「Given a property whose schema is the boolean true ...」を test_param_headers.nim に書き、変異を当てて落ちるのを見た (未コミット)"
-    },
-    {
-      "fingerprint": "src/protocol/param_headers.nim:LOR:78faef5a90ab8d57:0",
-      "file": "src/protocol/param_headers.nim",
-      "line": 92,
-      "mutator": "LOR",
-      "original": "node.isNil or node.kind != JObject or reason.isSome",
-      "replacement": "<or -> and>",
-      "class": "test_owed",
-      "reason": "MCP-HTTP-13: 性質の値が真偽値のスキーマ (true) だと、変異では非オブジェクトに pairs を当てて AssertionDefect。E テスト「Given a property whose schema is the boolean true ...」を test_param_headers.nim に書き、変異を当てて落ちるのを見た (未コミット)"
-    },
-    {
-      "fingerprint": "src/protocol/param_headers.nim:LOR:56cf17b8448bbde3:0",
-      "file": "src/protocol/param_headers.nim",
-      "line": 143,
-      "mutator": "LOR",
-      "original": "current.isNil or current.kind != JObject",
-      "replacement": "<or -> and>",
-      "class": "test_owed",
-      "reason": "MCP-HTTP-12: 入れ子の性質の親オブジェクトや arguments が無いとき、変異では nil を読んで SIGSEGV。E テスト「Given a declared property inside an object ...」(test_param_headers_http.nim) が変異で落ちるのを見た (未コミット)"
-    },
-    {
-      "fingerprint": "src/protocol/param_headers.nim:RVR:f999f3cafb8a9b27:0",
-      "file": "src/protocol/param_headers.nim",
-      "line": 163,
-      "mutator": "RVR",
-      "original": "return some(\"argument \\'\" & binding.path.join(\".\") & \"\\' must be a string\")",
-      "replacement": "<return default>",
-      "class": "test_owed",
-      "reason": "MCP-HTTP-12: 宣言と型の違う引数を、変異では断らずにヘッダ無しで送る。E テスト「Given an argument whose type is not the declared one ...」(test_param_headers_http.nim) が変異で落ちるのを見た (未コミット)"
-    },
-    {
-      "fingerprint": "src/protocol/param_headers.nim:RVR:3fa6109929d606e1:0",
-      "file": "src/protocol/param_headers.nim",
-      "line": 167,
-      "mutator": "RVR",
-      "original": "return some(\"argument \\'\" & binding.path.join(\".\") & \"\\' must be an integer\")",
-      "replacement": "<return default>",
-      "class": "test_owed",
-      "reason": "MCP-HTTP-12: 宣言と型の違う引数を、変異では断らずにヘッダ無しで送る。E テスト「Given an argument whose type is not the declared one ...」(test_param_headers_http.nim) が変異で落ちるのを見た (未コミット)"
-    },
-    {
-      "fingerprint": "src/protocol/param_headers.nim:ROR:1e04228f5ac3b74c:0",
-      "file": "src/protocol/param_headers.nim",
-      "line": 168,
-      "mutator": "ROR",
-      "original": "value.getBiggestInt() > MaxSafeInteger",
-      "replacement": "<> -> >=>",
-      "class": "test_owed",
-      "reason": "MCP-HTTP-25: 2^53-1 と -(2^53-1) はヘッダにする。E テスト「Given an integer argument at the edges of the safe range ...」(test_param_headers_http.nim) が変異で落ちるのを見た (未コミット)"
-    },
-    {
-      "fingerprint": "src/protocol/param_headers.nim:ROR:ab5bfc2d0e8e92da:0",
-      "file": "src/protocol/param_headers.nim",
-      "line": 168,
-      "mutator": "ROR",
-      "original": "value.getBiggestInt() < -MaxSafeInteger",
-      "replacement": "<< -> <=>",
-      "class": "test_owed",
-      "reason": "MCP-HTTP-25: 2^53-1 と -(2^53-1) はヘッダにする。E テスト「Given an integer argument at the edges of the safe range ...」(test_param_headers_http.nim) が変異で落ちるのを見た (未コミット)"
-    },
-    {
-      "fingerprint": "src/protocol/param_headers.nim:RVR:7750e0d1bce67921:0",
-      "file": "src/protocol/param_headers.nim",
-      "line": 174,
-      "mutator": "RVR",
-      "original": "return some(\"argument \\'\" & binding.path.join(\".\") & \"\\' must be a boolean\")",
-      "replacement": "<return default>",
-      "class": "test_owed",
-      "reason": "MCP-HTTP-12: 宣言と型の違う引数を、変異では断らずにヘッダ無しで送る。E テスト「Given an argument whose type is not the declared one ...」(test_param_headers_http.nim) が変異で落ちるのを見た (未コミット)"
-    },
-    {
       "fingerprint": "src/protocol/param_headers.nim:SDL:2413a04126052c00:0",
       "file": "src/protocol/param_headers.nim",
       "line": 178,
@@ -419,36 +339,6 @@
       "replacement": "<> -> >=>",
       "class": "accepted",
       "reason": "ちょうど MaxQuotedValue 文字の値で、診断の引用に ... が付くかだけが変わる。64 は SDK が決めた診断の長さで仕様は何も言わない。境界のテストは定数を書き写すだけになる (2026-10-07 の判断)"
-    },
-    {
-      "fingerprint": "src/protocol/param_headers.nim:BLR:8fe6df6a01b18b37:3",
-      "file": "src/protocol/param_headers.nim",
-      "line": 196,
-      "mutator": "BLR",
-      "original": "false",
-      "replacement": "true",
-      "class": "test_owed",
-      "reason": "MCP-HTTP-10: 数でないヘッダが整数の本文と一致してしまう。E テスト「Given an integer argument, when the header is not a number ...」を書き、変異で落ちるのを見た (未コミット)"
-    },
-    {
-      "fingerprint": "src/protocol/param_headers.nim:RVR:343696dd8ab9acaf:0",
-      "file": "src/protocol/param_headers.nim",
-      "line": 220,
-      "mutator": "RVR",
-      "original": "return mismatch(binding.headerName & \" header is sent more than once\")",
-      "replacement": "<return default>",
-      "class": "test_owed",
-      "reason": "MCP-HTTP-10: 同じヘッダの行が 2 回来て片方が本文と違えば 400。asynchttpserver が値をカンマで分け、繰り返しの行を上書きしていたため届かなかった。サーバーが行をそのまま読むようにし (src/compat、Nim 本家へも提案)、E テスト「Given a header sent twice ...」が変異で落ちるのを見た (未コミット)"
-    },
-    {
-      "fingerprint": "src/protocol/param_headers.nim:ROR:04f419fe64e54640:0",
-      "file": "src/protocol/param_headers.nim",
-      "line": 229,
-      "mutator": "ROR",
-      "original": "text ==; (; if body.getBool():; \"true\"; else:; \"false\"; )",
-      "replacement": "<== -> !=>",
-      "class": "test_owed",
-      "reason": "MCP-HTTP-10: 真偽値のヘッダの照合が逆になる。E テスト「Given a boolean argument ...」を書き、変異で落ちるのを見た (未コミット)"
     },
     {
       "fingerprint": "src/protocol/param_headers.nim:SDL:ac1cdc5394dff63c:0",

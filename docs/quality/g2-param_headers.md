@@ -1,5 +1,17 @@
 # G2 変異検出: `src/protocol/param_headers.nim`
 
+## 測り直し (拡張ブランチの 2b8a56aa、2026-10-25)
+
+測定: `nim-muter` 0.2.11、ジョブ `tests/mutation/param_headers.json` (テストは `tests/external/` に移した後の 2 本)。
+
+| 全体 | killed | timeout | survived | runError | compileError |
+|---|---|---|---|---|---|
+| 84 | 75 | 0 | 5 | 0 | 4 |
+
+`survivors.json` に同期した結果: test_owed だった 11 件 (2026-10-12 以後の測定で残り、E テストを足したもの) はすべて検出され、台帳から消えた。残った 5 件は前と同じ変異で、分類と理由もそのまま (unreached 2、equivalent 2、accepted 1)。新しい生き残りは 0 件。
+
+## 初回の測定 (mainline の 36a4c8a5、2026-10-07)
+
 測定: `nim-muter`、ジョブ `tests/mutation/param_headers.json`、mainline の 36a4c8a5 (2026-10-07)。
 
 | 全体 | killed | timeout | survived | runError | compileError |
