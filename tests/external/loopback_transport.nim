@@ -28,7 +28,16 @@ proc deliver(t: LoopbackTransport, wire: string) =
   else:
     t.inbox.addLast(message)
 
+proc closedError(t: LoopbackTransport): ref McpTransportError =
+  if t.endOfStream:
+    newException(McpTransportClosedError, "loopback transport reached its end")
+  else:
+    newException(McpTransportError, "loopback transport closed")
+
 proc put(t: LoopbackTransport, wire: string) =
+  # A closed transport sends nothing, as a closed stream or connection.
+  if t.closed:
+    raise t.closedError()
   t.sent.add parseJson(wire)
   t.peer.deliver(wire)
 
@@ -51,12 +60,6 @@ method cancelRequest*(t: LoopbackTransport, requestId: string) =
 
 method sendResponse*(t: LoopbackTransport, response: JsonRpcResponse): Future[void] {.async.} =
   t.put(encodeMessage(response))
-
-proc closedError(t: LoopbackTransport): ref McpTransportError =
-  if t.endOfStream:
-    newException(McpTransportClosedError, "loopback transport reached its end")
-  else:
-    newException(McpTransportError, "loopback transport closed")
 
 method receiveMessage*(t: LoopbackTransport): Future[JsonNode] {.async.} =
   if t.closed:

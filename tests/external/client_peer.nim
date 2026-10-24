@@ -51,6 +51,12 @@ proc serve(peer: Peer) {.async.} =
         peer.handler(peer, message)
   except McpTransportError:
     discard  # the test is over
+  except CatchableError as e:
+    # A handler that fails answers nothing more. Closing the client's side
+    # fails its requests now, where they would wait for the request timeout;
+    # the error still reaches the test through asyncCheck.
+    await peer.pair.client.close()
+    raise e
 
 proc startPeer*(handler: proc(peer: Peer, message: JsonNode), modern = false,
                 capabilities: JsonNode = %*{"tools": {}},
