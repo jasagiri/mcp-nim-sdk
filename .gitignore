@@ -6,3 +6,6 @@ build/
 
 # Python bytecode of the interop peers
 __pycache__/
+
+# Local mutation-testing state of nim-muter
+.nim-muter/
