@@ -98,62 +98,22 @@
       "original": "false",
       "replacement": "true",
       "class": "equivalent",
-      "reason": "stripComment に渡る文字列は先頭の空白を取った Line.text (行 391) か、呼び出し元がすぐ strip() するもの (行 298、353) で、先頭に空白が無い。先頭も削っても値は変わらない"
-    },
-    {
-      "fingerprint": "src/ext/skills/frontmatter.nim:LOR:d28b9f0825e2df2c:0",
-      "file": "src/ext/skills/frontmatter.nim",
-      "line": 129,
-      "mutator": "LOR",
-      "original": "text.find({'.', 'e', 'E'}) >= 0 and text[0] in {'0' .. '9', '-', '+', '.'}",
-      "replacement": "<and -> or>",
-      "class": "test_owed",
-      "reason": "MCP-EXT-SKILLS-1: 変異では -inf / +inf / -nan を浮動小数として読む (YAML 1.2 の core schema では .inf だけが無限で、-inf は文字列)。E テスト「Given numbers and words that look like numbers ...」(test_ext_skills_frontmatter.nim) の語に -inf、+inf、-nan を足し、変異を当てて落ちるのを見た (未コミット)"
-    },
-    {
-      "fingerprint": "src/ext/skills/frontmatter.nim:AOR:738f0a6053eb4dc5:0",
-      "file": "src/ext/skills/frontmatter.nim",
-      "line": 193,
-      "mutator": "AOR",
-      "original": "j + 1",
-      "replacement": "<+ -> ->",
-      "class": "test_owed",
-      "reason": "MCP-EXT-SKILLS-1: 単引用符の鍵だけの行 ('a') で、変異は行末の次の文字を読んで IndexDefect になる (元は a quoted key must be followed by ':' で断る)。E テスト「Given lines that are not a key and a value ...」(test_ext_skills_frontmatter.nim) の入力に 'a' を足し、変異を当てて落ちるのを見た (未コミット)"
-    },
-    {
-      "fingerprint": "src/ext/skills/frontmatter.nim:LOR:45fab8639cc664bb:0",
-      "file": "src/ext/skills/frontmatter.nim",
-      "line": 193,
-      "mutator": "LOR",
-      "original": "quote == '\\'' and j + 1 < text.len",
-      "replacement": "<and -> or>",
-      "class": "test_owed",
-      "reason": "同上 (MCP-EXT-SKILLS-1): 'a' だけの行で、変異は quote == '\\'' が真なので行末の次を読んで IndexDefect。同じ E テストが変異で落ちるのを見た (未コミット)"
-    },
-    {
-      "fingerprint": "src/ext/skills/frontmatter.nim:ROR:1fc0c9c2da4ade29:0",
-      "file": "src/ext/skills/frontmatter.nim",
-      "line": 193,
-      "mutator": "ROR",
-      "original": "j + 1 < text.len",
-      "replacement": "<< -> <=>",
-      "class": "test_owed",
-      "reason": "同上 (MCP-EXT-SKILLS-1): 'a' だけの行で、j + 1 == text.len でも text[j + 1] を読んで IndexDefect。同じ E テストが変異で落ちるのを見た (未コミット)"
+      "reason": "stripComment に渡る文字列は先頭の空白を取った Line.text (行 395) か、呼び出し元がすぐ strip() するもの (行 301、356) で、先頭に空白が無い。先頭も削っても値は変わらない"
     },
     {
       "fingerprint": "src/ext/skills/frontmatter.nim:ROR:25866cc9b2ffa3e5:0",
       "file": "src/ext/skills/frontmatter.nim",
-      "line": 264,
+      "line": 267,
       "mutator": "ROR",
       "original": "blockIndent < 0",
       "replacement": "<< -> <=>",
       "class": "equivalent",
-      "reason": "blockIndent が 0 になるには最初の内容の行の字下げが 0 でなければならないが、blockScalar の唯一の呼び出し元 (行 311) は鍵の字下げ (0 以上) を parentIndent に渡し、内容の行は line.indent <= parentIndent で打ち切られるので 1 以上。blockIndent は -1 か 1 以上で、< と <= は同じ"
+      "reason": "blockIndent が 0 になるには最初の内容の行の字下げが 0 でなければならないが、blockScalar の唯一の呼び出し元 (行 314) は鍵の字下げ (0 以上) を parentIndent に渡し、内容の行は line.indent <= parentIndent で打ち切られるので 1 以上。blockIndent は -1 か 1 以上で、< と <= は同じ"
     },
     {
       "fingerprint": "src/ext/skills/frontmatter.nim:ROR:f8f8e788e5c2e9b9:0",
       "file": "src/ext/skills/frontmatter.nim",
-      "line": 379,
+      "line": 382,
       "mutator": "ROR",
       "original": "closing < 0",
       "replacement": "<< -> <=>",
@@ -163,12 +123,12 @@
     {
       "fingerprint": "src/ext/skills/frontmatter.nim:BLR:2aedd7b0ccdbf34d:0",
       "file": "src/ext/skills/frontmatter.nim",
-      "line": 388,
+      "line": 391,
       "mutator": "BLR",
       "original": "false",
       "replacement": "true",
       "class": "equivalent",
-      "reason": "text は直前の行 387 で末尾の空白を取ってあるので、末尾も削っても値は変わらない"
+      "reason": "text は直前の行 390 で末尾の空白を取ってあるので、末尾も削っても値は変わらない"
     },
     {
       "fingerprint": "src/ext/skills/model.nim:ROR:36127d3b72a6169d:0",
