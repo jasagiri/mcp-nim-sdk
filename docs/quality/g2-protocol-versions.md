@@ -54,7 +54,7 @@ nim-muter 0.2.5 の RVR は、戻り値がリテラルのとき `default(typeof(
 
 生き残りの分類と理由は各ジョブの `g2-<ジョブ>.md` にある。理由の無い生き残りと未判定の行は残っていない。利用者の判断を待っている行 (到達しないコード、仕様が決めていない挙動) は、各文書の「残っているもの」にある。
 
-拡張 (`mcp-2026-07-28-ext` になる系列) と下書き (`mcp-draft` になる系列) のジョブは、それぞれの系列の `g2-ext_*.md` と `g2-draft_*.md` に記録がある。どちらも初回の測定のあとに欠陥を 1 件ずつ直しているので、`ext_skills` (`frontmatter.nim`) と `draft_events` (`client.nim`) は測り直しが要る。
+拡張 (`mcp-2026-07-28-ext` になる系列) と下書き (`mcp-draft` になる系列) のジョブは、それぞれの系列の `g2-ext_*.md` と `g2-draft_*.md` に記録がある。どちらも初回の測定のあとに欠陥を 1 件ずつ直しているので、`ext_skills` (`frontmatter.nim`) と `draft_events` (`client.nim`) は測り直しが要る。`ext_skills` は 60cbfdb5 で測り直した (2026-10-19、`test_ext_targets.nim` を含む。Skills の登録の版の確かめもここで測った)。
 
 ## 2026-10-14 の状態
 
@@ -255,9 +255,9 @@ ID-JAG の再利用の無効化、リフレッシュトークンの保持)、`te
 
 ## 未測定 (公式拡張の対象の版)
 
-2026-10-15: 公式拡張 (Tasks、Skills、OAuth client credentials、enterprise-managed authorization) ごとに対象の版を `src/ext/official_common.nim` の表 (`OfficialExtension`、`targetVersion`) に書き、登録はどれも `requireTargetSpoken` (本線の `requireVersionSpoken` を使う) を通るようにした。認可の 2 つはビルドの既定の版ではなく側 (server / client) の上限の版で確かめるようになり、`auth_shared.requireExtensionsCapability` は消えた。Skills の client の `declareSkills` にも版の確かめが入った。どのジョブでも測っていない。
+2026-10-15: 公式拡張 (Tasks、Skills、OAuth client credentials、enterprise-managed authorization) ごとに対象の版を `src/ext/official_common.nim` の表 (`OfficialExtension`、`targetVersion`) に書き、登録はどれも `requireTargetSpoken` (本線の `requireVersionSpoken` を使う) を通るようにした。認可の 2 つはビルドの既定の版ではなく側 (server / client) の上限の版で確かめるようになり、`auth_shared.requireExtensionsCapability` は消えた。Skills の client の `declareSkills` にも版の確かめが入った。どのジョブでも測っていない (Skills の `catalog.nim` `consumer.nim` は後に `ext_skills` の 2 回目の測定で測った。`g2-ext_skills.md`)。
 
 | モジュール | 対応する外部仕様テスト | 追加・変更した日 |
 |---|---|---|
 | `src/ext/official_common.nim` (表と `requireTargetSpoken`) | `tests/external/test_ext_targets.nim` | 2026-10-15 |
-| `src/ext/tasks/{server,client}.nim`、`src/ext/skills/{catalog,consumer}.nim`、`src/ext/auth_client_credentials.nim`、`src/ext/auth_enterprise_managed.nim`、`src/ext/auth_shared.nim` (登録の版の確かめ) | `tests/external/test_ext_targets.nim` | 2026-10-15 |
+| `src/ext/tasks/{server,client}.nim`、`src/ext/auth_client_credentials.nim`、`src/ext/auth_enterprise_managed.nim`、`src/ext/auth_shared.nim` (登録の版の確かめ) | `tests/external/test_ext_targets.nim` | 2026-10-15 |

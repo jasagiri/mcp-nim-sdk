@@ -77,7 +77,7 @@ suite "frontmatter: plain scalars":
     check valueOf(".5") == %0.5
     check valueOf("-2.5e3") == %(-2500.0)
     check valueOf("1e3") == %1000.0
-    for word in ["inf", "nan", "Infinity", "1.2.3", "v1.2", "e5", "example.com", "12abc"]:
+    for word in ["inf", "nan", "-inf", "+inf", "-nan", "Infinity", "1.2.3", "v1.2", "e5", "example.com", "12abc"]:
       checkpoint word
       check valueOf(word) == %word
 
@@ -142,7 +142,7 @@ suite "frontmatter: keys":
       %*{"my key": "v", "a:b": "c", "url": "http://x.y/z"}
 
   test "Given lines that are not a key and a value, when read, then FrontmatterError is raised":
-    for bad in ["bare", "\"abc: x", "'abc: x", "\"a\"", "\"a\" b: c", "'a'x: y", ": v", "\"\": v"]:
+    for bad in ["bare", "\"abc: x", "'abc: x", "\"a\"", "'a'", "\"a\" b: c", "'a'x: y", ": v", "\"\": v"]:
       checkpoint bad
       expect FrontmatterError:
         discard fieldsOf("name: x", bad)

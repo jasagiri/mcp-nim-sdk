@@ -1,6 +1,326 @@
 {
   "survivors": [
     {
+      "fingerprint": "src/ext/skills/catalog.nim:AOR:0a5dc4f793c7bd6f:0",
+      "file": "src/ext/skills/catalog.nim",
+      "line": 208,
+      "mutator": "AOR",
+      "original": "files.len + 1",
+      "replacement": "<+ -> ->",
+      "class": "accepted",
+      "reason": "事前の上限検査 checkLimits の数え方が 2 つずれても、拒否される入力の集合は変わらない。後ろの addSkill の checkLimits が同じ文言で退け、違うのは文言に入る数 (513 か全ファイル数か) だけで、この数は仕様でも docstring の約束でもない。失敗の文面は契約ではない (代表の決定 2026-10-23)。g2-ext_skills.md の id 132 の判断 (2026-10-12) を引き継ぐ"
+    },
+    {
+      "fingerprint": "src/ext/skills/catalog.nim:RVR:889329807e98c6bf:0",
+      "file": "src/ext/skills/catalog.nim",
+      "line": 249,
+      "mutator": "RVR",
+      "original": "return none(Found)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "Option の既定値は none で、元の戻り値 none(Found) と同じ値を返す"
+    },
+    {
+      "fingerprint": "src/ext/skills/catalog.nim:RVR:889329807e98c6bf:1",
+      "file": "src/ext/skills/catalog.nim",
+      "line": 259,
+      "mutator": "RVR",
+      "original": "return none(Found)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "Option の既定値は none で、元の戻り値 none(Found) と同じ値を返す"
+    },
+    {
+      "fingerprint": "src/ext/skills/catalog.nim:SDL:1dd49b7e6c82055c:0",
+      "file": "src/ext/skills/catalog.nim",
+      "line": 260,
+      "mutator": "SDL",
+      "original": "none(Found)",
+      "replacement": "discard",
+      "class": "equivalent",
+      "reason": "関数の最後の式 none(Found) を消すと result の既定値が返り、Option の既定値は none なので同じ値になる"
+    },
+    {
+      "fingerprint": "src/ext/skills/catalog.nim:ROR:048f9da66bbc8bda:0",
+      "file": "src/ext/skills/catalog.nim",
+      "line": 287,
+      "mutator": "ROR",
+      "original": "slash < 0",
+      "replacement": "<< -> <=>",
+      "class": "equivalent",
+      "reason": "slash == 0 は directory の下の残りが / で始まる、つまり保存した道に空の区切りがあるときだけ起きる。保存する道は checkSkillPath (splitResourceUri) と safeFilePath、生成の道は generatedFiles の安全検査を通っており、空の区切りを持たないので届かない"
+    },
+    {
+      "fingerprint": "src/ext/skills/catalog.nim:RVR:9bd38dfae0fced9f:0",
+      "file": "src/ext/skills/catalog.nim",
+      "line": 387,
+      "mutator": "RVR",
+      "original": "return none(JsonRpcResponse)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "Option の既定値は none で、元の戻り値 none(JsonRpcResponse) と同じ値を返す"
+    },
+    {
+      "fingerprint": "src/ext/skills/catalog.nim:RVR:9bd38dfae0fced9f:1",
+      "file": "src/ext/skills/catalog.nim",
+      "line": 390,
+      "mutator": "RVR",
+      "original": "return none(JsonRpcResponse)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "Option の既定値は none で、元の戻り値 none(JsonRpcResponse) と同じ値を返す"
+    },
+    {
+      "fingerprint": "src/ext/skills/catalog.nim:RVR:9bd38dfae0fced9f:2",
+      "file": "src/ext/skills/catalog.nim",
+      "line": 393,
+      "mutator": "RVR",
+      "original": "return none(JsonRpcResponse)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "Option の既定値は none で、元の戻り値 none(JsonRpcResponse) と同じ値を返す"
+    },
+    {
+      "fingerprint": "src/ext/skills/consumer.nim:LOR:18be7a5bd8707cad:0",
+      "file": "src/ext/skills/consumer.nim",
+      "line": 220,
+      "mutator": "LOR",
+      "original": "entry.dynamic or current.dynamic",
+      "replacement": "<or -> and>",
+      "class": "equivalent",
+      "reason": "片方だけが dynamic のとき、変異では contentBinding の比較に進むが、dynamic の側は \"\" (model.nim:208) で静的な側は digestOf の空でない値なので必ず異なり、changed は元と同じく true になる。両方 dynamic・両方静的では or と and は同じ値"
+    },
+    {
+      "fingerprint": "src/ext/skills/frontmatter.nim:BLR:95537262defaebd1:0",
+      "file": "src/ext/skills/frontmatter.nim",
+      "line": 55,
+      "mutator": "BLR",
+      "original": "false",
+      "replacement": "true",
+      "class": "equivalent",
+      "reason": "stripComment に渡る文字列は先頭の空白を取った Line.text (行 391) か、呼び出し元がすぐ strip() するもの (行 298、353) で、先頭に空白が無い。先頭も削っても値は変わらない"
+    },
+    {
+      "fingerprint": "src/ext/skills/frontmatter.nim:LOR:d28b9f0825e2df2c:0",
+      "file": "src/ext/skills/frontmatter.nim",
+      "line": 129,
+      "mutator": "LOR",
+      "original": "text.find({'.', 'e', 'E'}) >= 0 and text[0] in {'0' .. '9', '-', '+', '.'}",
+      "replacement": "<and -> or>",
+      "class": "test_owed",
+      "reason": "MCP-EXT-SKILLS-1: 変異では -inf / +inf / -nan を浮動小数として読む (YAML 1.2 の core schema では .inf だけが無限で、-inf は文字列)。E テスト「Given numbers and words that look like numbers ...」(test_ext_skills_frontmatter.nim) の語に -inf、+inf、-nan を足し、変異を当てて落ちるのを見た (未コミット)"
+    },
+    {
+      "fingerprint": "src/ext/skills/frontmatter.nim:AOR:738f0a6053eb4dc5:0",
+      "file": "src/ext/skills/frontmatter.nim",
+      "line": 193,
+      "mutator": "AOR",
+      "original": "j + 1",
+      "replacement": "<+ -> ->",
+      "class": "test_owed",
+      "reason": "MCP-EXT-SKILLS-1: 単引用符の鍵だけの行 ('a') で、変異は行末の次の文字を読んで IndexDefect になる (元は a quoted key must be followed by ':' で断る)。E テスト「Given lines that are not a key and a value ...」(test_ext_skills_frontmatter.nim) の入力に 'a' を足し、変異を当てて落ちるのを見た (未コミット)"
+    },
+    {
+      "fingerprint": "src/ext/skills/frontmatter.nim:LOR:45fab8639cc664bb:0",
+      "file": "src/ext/skills/frontmatter.nim",
+      "line": 193,
+      "mutator": "LOR",
+      "original": "quote == '\\'' and j + 1 < text.len",
+      "replacement": "<and -> or>",
+      "class": "test_owed",
+      "reason": "同上 (MCP-EXT-SKILLS-1): 'a' だけの行で、変異は quote == '\\'' が真なので行末の次を読んで IndexDefect。同じ E テストが変異で落ちるのを見た (未コミット)"
+    },
+    {
+      "fingerprint": "src/ext/skills/frontmatter.nim:ROR:1fc0c9c2da4ade29:0",
+      "file": "src/ext/skills/frontmatter.nim",
+      "line": 193,
+      "mutator": "ROR",
+      "original": "j + 1 < text.len",
+      "replacement": "<< -> <=>",
+      "class": "test_owed",
+      "reason": "同上 (MCP-EXT-SKILLS-1): 'a' だけの行で、j + 1 == text.len でも text[j + 1] を読んで IndexDefect。同じ E テストが変異で落ちるのを見た (未コミット)"
+    },
+    {
+      "fingerprint": "src/ext/skills/frontmatter.nim:ROR:25866cc9b2ffa3e5:0",
+      "file": "src/ext/skills/frontmatter.nim",
+      "line": 264,
+      "mutator": "ROR",
+      "original": "blockIndent < 0",
+      "replacement": "<< -> <=>",
+      "class": "equivalent",
+      "reason": "blockIndent が 0 になるには最初の内容の行の字下げが 0 でなければならないが、blockScalar の唯一の呼び出し元 (行 311) は鍵の字下げ (0 以上) を parentIndent に渡し、内容の行は line.indent <= parentIndent で打ち切られるので 1 以上。blockIndent は -1 か 1 以上で、< と <= は同じ"
+    },
+    {
+      "fingerprint": "src/ext/skills/frontmatter.nim:ROR:f8f8e788e5c2e9b9:0",
+      "file": "src/ext/skills/frontmatter.nim",
+      "line": 379,
+      "mutator": "ROR",
+      "original": "closing < 0",
+      "replacement": "<< -> <=>",
+      "class": "equivalent",
+      "reason": "closing は -1 か、1 から始まる for の添字なので 0 にならない。< 0 と <= 0 は同じ"
+    },
+    {
+      "fingerprint": "src/ext/skills/frontmatter.nim:BLR:2aedd7b0ccdbf34d:0",
+      "file": "src/ext/skills/frontmatter.nim",
+      "line": 388,
+      "mutator": "BLR",
+      "original": "false",
+      "replacement": "true",
+      "class": "equivalent",
+      "reason": "text は直前の行 387 で末尾の空白を取ってあるので、末尾も削っても値は変わらない"
+    },
+    {
+      "fingerprint": "src/ext/skills/model.nim:ROR:36127d3b72a6169d:0",
+      "file": "src/ext/skills/model.nim",
+      "line": 85,
+      "mutator": "ROR",
+      "original": "rune.int < 128",
+      "replacement": "<< -> <=>",
+      "class": "equivalent",
+      "reason": "rune 128 (U+0080) は、変異では ASCII の枝で集合に無いので断り、元では not isAlpha (制御文字) で断る。文言も同じ"
+    },
+    {
+      "fingerprint": "src/ext/skills/model.nim:SDL:2413a04126052c00:0",
+      "file": "src/ext/skills/model.nim",
+      "line": 90,
+      "mutator": "SDL",
+      "original": "none(string)",
+      "replacement": "discard",
+      "class": "equivalent",
+      "reason": "関数の最後の式 none(string) を消すと result の既定値が返り、Option の既定値は none なので同じ値になる"
+    },
+    {
+      "fingerprint": "src/ext/skills/model.nim:ROR:5b80b5021c47a501:0",
+      "file": "src/ext/skills/model.nim",
+      "line": 105,
+      "mutator": "ROR",
+      "original": "scheme.len > 0",
+      "replacement": "<> -> >=>",
+      "class": "equivalent",
+      "reason": "isSchemeName の唯一の呼び出し元 splitResourceUri は marker <= 0 を先に退けるので、scheme は空にならない。scheme.len >= 0 にしても届く入力では同じ"
+    },
+    {
+      "fingerprint": "src/ext/skills/model.nim:BLR:664919dcf2b35c69:0",
+      "file": "src/ext/skills/model.nim",
+      "line": 117,
+      "mutator": "BLR",
+      "original": "false",
+      "replacement": "true",
+      "class": "equivalent",
+      "reason": "decodePlus は + を空白に変えるかどうかだけで、空白は直後の検査 (.、..、/、\\\\、\\\\0) のどれにも当たらない。+ を残しても空白にしても結果は同じ"
+    },
+    {
+      "fingerprint": "src/ext/skills/model.nim:ROR:d74e013774ed732d:0",
+      "file": "src/ext/skills/model.nim",
+      "line": 128,
+      "mutator": "ROR",
+      "original": "marker <= 0",
+      "replacement": "<<= -> <>",
+      "class": "equivalent",
+      "reason": "marker == 0 (:// で始まる) では scheme が空になり、行 132 の isSchemeName(\"\") が偽で同じく none を返す"
+    },
+    {
+      "fingerprint": "src/ext/skills/model.nim:RVR:7ec40c9b26cc0f3f:0",
+      "file": "src/ext/skills/model.nim",
+      "line": 129,
+      "mutator": "RVR",
+      "original": "return none(tuple[scheme, path: string])",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "Option の既定値は none で、元の戻り値 none(tuple[scheme, path: string]) と同じ値を返す"
+    },
+    {
+      "fingerprint": "src/ext/skills/model.nim:RVR:7ec40c9b26cc0f3f:1",
+      "file": "src/ext/skills/model.nim",
+      "line": 133,
+      "mutator": "RVR",
+      "original": "return none(tuple[scheme, path: string])",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "Option の既定値は none で、元の戻り値 none(tuple[scheme, path: string]) と同じ値を返す"
+    },
+    {
+      "fingerprint": "src/ext/skills/model.nim:RVR:7ec40c9b26cc0f3f:2",
+      "file": "src/ext/skills/model.nim",
+      "line": 136,
+      "mutator": "RVR",
+      "original": "return none(tuple[scheme, path: string])",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "Option の既定値は none で、元の戻り値 none(tuple[scheme, path: string]) と同じ値を返す"
+    },
+    {
+      "fingerprint": "src/ext/skills/model.nim:RVR:0c511227513989c7:0",
+      "file": "src/ext/skills/model.nim",
+      "line": 144,
+      "mutator": "RVR",
+      "original": "return none(string)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "Option の既定値は none で、元の戻り値 none(string) と同じ値を返す"
+    },
+    {
+      "fingerprint": "src/ext/skills/model.nim:RVR:0c511227513989c7:1",
+      "file": "src/ext/skills/model.nim",
+      "line": 147,
+      "mutator": "RVR",
+      "original": "return none(string)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "Option の既定値は none で、元の戻り値 none(string) と同じ値を返す"
+    },
+    {
+      "fingerprint": "src/ext/skills/model.nim:RVR:0c511227513989c7:2",
+      "file": "src/ext/skills/model.nim",
+      "line": 155,
+      "mutator": "RVR",
+      "original": "return none(string)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "Option の既定値は none で、元の戻り値 none(string) と同じ値を返す"
+    },
+    {
+      "fingerprint": "src/ext/skills/model.nim:RVR:0c511227513989c7:3",
+      "file": "src/ext/skills/model.nim",
+      "line": 159,
+      "mutator": "RVR",
+      "original": "return none(string)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "Option の既定値は none で、元の戻り値 none(string) と同じ値を返す"
+    },
+    {
+      "fingerprint": "src/ext/skills/model.nim:BLR:a852bb0479b409bd:0",
+      "file": "src/ext/skills/model.nim",
+      "line": 179,
+      "mutator": "BLR",
+      "original": "false",
+      "replacement": "true",
+      "class": "equivalent",
+      "reason": "usePlus は空白を + にするかどうかだけで、scheme は isSchemeName により英字・数字・+ - . だけを持ち空白を含まない。+ 自体はどちらでも %2B になる"
+    },
+    {
+      "fingerprint": "src/ext/skills/model.nim:RVR:87aa8baa528c4cef:0",
+      "file": "src/ext/skills/model.nim",
+      "line": 208,
+      "mutator": "RVR",
+      "original": "return \"\"",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "string の既定値は \"\" で、元の戻り値と同じ"
+    },
+    {
+      "fingerprint": "src/ext/skills/model.nim:SDL:67e3f16b1512af12:0",
+      "file": "src/ext/skills/model.nim",
+      "line": 299,
+      "mutator": "SDL",
+      "original": "none(SkillResource)",
+      "replacement": "discard",
+      "class": "equivalent",
+      "reason": "関数の最後の式 none(SkillResource) を消すと result の既定値が返り、Option の既定値は none なので同じ値になる"
+    },
+    {
       "fingerprint": "src/protocol/lifecycle.nim:RVR:a94ce88da5074921:0",
       "file": "src/protocol/lifecycle.nim",
       "line": 36,

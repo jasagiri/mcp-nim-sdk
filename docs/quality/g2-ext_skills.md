@@ -1,5 +1,30 @@
 # G2 変異検出: ext_skills ジョブ
 
+## 2 回目の測定 (60cbfdb5、2026-10-19)
+
+測定: `nim-muter` 0.2.11、ジョブ `tests/mutation/ext_skills.json`、拡張ブランチの 60cbfdb5 (初回の後の修正と追加したテストをすべて含む)。
+
+| 全変異 | killed | timeout | survived | runError | compileError |
+|---:|---:|---:|---:|---:|---:|
+| 515 | 444 | 21 | 32 | 0 | 18 |
+
+生き残り 32 件は `survivors.json` に同期し、1 件ずつ分類と理由を書いた (2026-10-24)。
+
+| 分類 | 件数 |
+|---|---:|
+| equivalent | 27 |
+| accepted | 1 |
+| test_owed (テストを追加、変異を当てて落ちるのを確認) | 4 |
+
+- equivalent の大半 (16 件) は、`Option` や `string` を返す `return` を `return default` にするもの、関数の最後の `none(...)` を消すもの。既定値が元の値と同じ。残りは、届く入力の範囲では条件の境界が動いても結果が変わらないもの (理由は台帳の各行)。
+- accepted の 1 件は初回の id 132 (`catalog.nim:208`) と同じ変異で、判断を引き継いだ。
+- test_owed の 4 件はどれも `frontmatter.nim`。`-inf` `+inf` `-nan` を浮動小数として読む変異 (行 129) と、単引用符の鍵だけの行 (`'a'`) で行末の次を読む変異 3 件 (行 193)。既存の E テスト 2 つに入力を足した。
+- timeout 21 件はすべて `frontmatter.nim` で、ループの添字を進めない変異 (`inc` の削除など) と、ループの終わりの条件を変える変異。止まらないことで検出されている。
+
+測定の後に、YAML 1.2 の core schema と違う読み方を 1 つ見つけた: `1_0` を整数 10 と読む (`parseBiggestInt` が `_` を数字の区切りとして受け付けるため。core schema では文字列)。変異の分類とは別の欠陥として扱う。
+
+## 初回の測定 (c9b5c264、2026-10-11)
+
 測定: `nim-muter`、ジョブ `tests/mutation/ext_skills.json`、拡張ブランチの c9b5c264 (2026-10-11、初回)。
 2026-10-15 に登録の版の確かめを `official_common.requireTargetSpoken` (公式拡張ごとの対象の版) に替えたので、それ以後の行番号はずれている (`g2-protocol-versions.md` の「未測定 (公式拡張の対象の版)」)。
 
