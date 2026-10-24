@@ -119,18 +119,21 @@ proc scalarOf(raw: string, number: int): JsonNode =
   of "true", "True", "TRUE": return %true
   of "false", "False", "FALSE": return %false
   else: discard
-  # A number that does not fit stays text: YAML would read it as a float or
-  # string, and a skill's `name` or `description` is never one.
-  try:
-    var asInt: int64
-    if parseBiggestInt(text, asInt) == text.len:
-      return %asInt
-    var asFloat: float
-    if text.find({'.', 'e', 'E'}) >= 0 and text[0] in {'0' .. '9', '-', '+', '.'} and
-       parseFloat(text, asFloat) == text.len:
-      return %asFloat
-  except ValueError:
-    discard
+  # A number of the YAML 1.2 core schema holds only digits, a sign, a point and
+  # an exponent. The character set is checked first because parseBiggestInt
+  # and parseFloat also take `_` (`1_0`), `inf` and `nan`, which the schema
+  # reads as text. A number that does not fit stays text: YAML would read it
+  # as a float or string, and a skill's `name` or `description` is never one.
+  if text.allCharsInSet(Digits + {'+', '-', '.', 'e', 'E'}):
+    try:
+      var asInt: int64
+      if parseBiggestInt(text, asInt) == text.len:
+        return %asInt
+      var asFloat: float
+      if parseFloat(text, asFloat) == text.len:
+        return %asFloat
+    except ValueError:
+      discard
   %text
 
 proc flowSequence(raw: string, number: int): JsonNode =

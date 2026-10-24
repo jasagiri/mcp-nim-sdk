@@ -77,7 +77,7 @@ suite "frontmatter: plain scalars":
     check valueOf(".5") == %0.5
     check valueOf("-2.5e3") == %(-2500.0)
     check valueOf("1e3") == %1000.0
-    for word in ["inf", "nan", "-inf", "+inf", "-nan", "Infinity", "1.2.3", "v1.2", "e5", "example.com", "12abc"]:
+    for word in ["inf", "nan", "-inf", "+inf", "-nan", "Infinity", "1.2.3", "v1.2", "e5", "example.com", "12abc", "1_0", "1_000", "-1_0", "1_0.5", "1e1_0"]:
       checkpoint word
       check valueOf(word) == %word
 
