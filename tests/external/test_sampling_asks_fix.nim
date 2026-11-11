@@ -127,6 +127,55 @@ suite "a tool_result conforms to the outputSchema of its tool":
         discard server.createMessage("s", params)
         untilTrue("the request", proc(): bool = t.messagesOf("sampling/createMessage").len == 1)
 
+  proc conversationWith(toolList: JsonNode, extra: JsonNode): JsonNode =
+    ## The conversation above with one more user message of the one block `extra`.
+    result = conversation(%*{"temp": 21}, toolList)
+    result["messages"].add %*{"role": "user", "content": [extra]}
+
+  proc requestIsSent(params: JsonNode, v: McpProtocolVersion): bool =
+    let server = newServer(McpServerCapabilities())
+    let t = server.attach()
+    discard server.connect(t, v, session = "s", clientCapabilities = ToolsCapability)
+    let pending = server.createMessage("s", params)
+    settle()
+    result = not pending.failed and t.messagesOf("sampling/createMessage").len == 1
+
+  test "Given a block that is not a tool_use but carries the id of a tool_use and another name, when the server asks with a tool_result that breaks the schema of the tool_use's tool, then it is refused":
+    let twoTools = %*[{"name": "weather", "inputSchema": {"type": "object"},
+                       "outputSchema": {"type": "object",
+                                        "properties": {"temp": {"type": "number"}},
+                                        "required": ["temp"]}},
+                      {"name": "plain", "inputSchema": {"type": "object"}}]
+    for v in versionsWith(ftSamplingTools):
+      if not v.has(ftServerInitiatedRequests):
+        continue
+      var params = conversation(%*{"temp": "hot"}, twoTools)
+      params["messages"].add %*{"role": "user", "content": [
+        {"type": "text", "text": "x", "id": "u1", "name": "plain"}]}
+      check not requestIsSent(params, v)
+
+  test "Given a block that is not a tool_result but carries a structuredContent breaking a schema, when the server asks with a tool_result that conforms, then the request is sent":
+    for v in versionsWith(ftSamplingTools):
+      if not v.has(ftServerInitiatedRequests):
+        continue
+      let params = conversationWith(tools, %*{"type": "text", "text": "x", "toolUseId": "u1",
+                                              "structuredContent": {"temp": "hot"}})
+      check requestIsSent(params, v)
+
+  test "Given two tools with different outputSchemas, when the server asks with a tool_result that conforms to its own tool only, then the request is sent":
+    let twoSchemas = %*[{"name": "clock", "inputSchema": {"type": "object"},
+                         "outputSchema": {"type": "object",
+                                          "properties": {"time": {"type": "string"}},
+                                          "required": ["time"]}},
+                        {"name": "weather", "inputSchema": {"type": "object"},
+                         "outputSchema": {"type": "object",
+                                          "properties": {"temp": {"type": "number"}},
+                                          "required": ["temp"]}}]
+    for v in versionsWith(ftSamplingTools):
+      if not v.has(ftServerInitiatedRequests):
+        continue
+      check requestIsSent(conversation(%*{"temp": 21}, twoSchemas), v)
+
   test "Given a 2026-07-28 handler that asks with a tool_result that breaks the schema, when the request is served, then the answer is an error and not input_required":
     for v in versionsWith(ftMultiRoundTripRequests):
       let reply = asksForSample(conversation(%*{"temp": "hot"}), ToolsCapability, v)

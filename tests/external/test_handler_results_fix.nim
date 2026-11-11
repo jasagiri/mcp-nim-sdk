@@ -58,6 +58,18 @@ suite "the embedded resource of a prompt":
       check gotPrompt(%*{"type": "resource", "resource": {"uri": "file:///a", "mimeType": "", "text": "x"}}, v).isError(-32603)
       check gotPrompt(%*{"type": "resource"}, v).isError(-32603)
 
+  test "Given an embedded resource that is not an object, when the prompt is got, then the answer is an internal error":
+    for v in SupportedProtocolVersions:
+      for resource in [%*"x", %*7, %*[1, 2], %*true]:
+        check gotPrompt(%*{"type": "resource", "resource": resource}, v).isError(-32603)
+
+  test "Given message content that is an array holding a bad image or an embedded resource without uri, when the prompt is got, then the answer is an internal error":
+    for v in SupportedProtocolVersions:
+      for blocks in [%*[{"type": "image", "data": "not base64!!", "mimeType": "image/png"}],
+                     %*[{"type": "text", "text": "ok"}, {"type": "image", "data": Png}],
+                     %*[{"type": "resource", "resource": {"mimeType": "text/plain", "text": "x"}}]]:
+        check gotPrompt(blocks, v).isError(-32603)
+
   test "Given an embedded resource with a uri, a mimeType and its text, or its base64 blob, when the prompt is got, then it is sent as it is":
     for v in SupportedProtocolVersions:
       for resource in [%*{"uri": "file:///a", "mimeType": "text/plain", "text": "x"},
