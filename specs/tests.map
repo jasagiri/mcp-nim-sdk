@@ -1325,6 +1325,8 @@ MCP-MRTR-8 | tests/external/test_mrtr.nim | Given a version without multi round-
 MCP-MRTR-9 | tests/external/test_mrtr.nim | Given a request with trace context, when the server asks for input, then each input request carries it
 MCP-MRTR-10 | tests/external/test_mrtr.nim | Given a sealed state, when opened for the same request, then the payload comes back
 MCP-MRTR-10 | tests/external/test_mrtr.nim | Given a state, when it is tampered with, signed by another key, expired or presented elsewhere, then each is rejected with its reason
+MCP-MRTR-10 | tests/external/test_mrtr.nim | Given parameters that differ only in the items or the nesting of an array or an object, when a state sealed for one is verified for the other, then it is issued for other parameters
+MCP-MRTR-10 | tests/external/test_mrtr.nim | Given a state signed by the key whose body is not an envelope the server seals, when verified, then it is never accepted
 MCP-MRTR-10 | tests/external/test_mrtr.nim | Given a state that is not acceptable, when a handler opens it, then the peer gets invalid params without the reason
 MCP-MRTR-10 | tests/external/test_mrtr.nim | Given a key shorter than the minimum, when sealing, then it raises ValueError
 MCP-MRTR-10 | tests/external/test_mrtr.nim | Given a state that is not acceptable, when a handler opens it, then the method and the reason go to stderr
@@ -1405,6 +1407,7 @@ MCP-SUBSCRIBE-17 | tests/external/test_subscriptions_g0e.nim | Given an open sub
 MCP-MRTR-16 | tests/external/test_mrtr.nim | Given a handler whose input request breaks the rules of its method, when it is called, then it is an internal error and nothing is asked
 MCP-MRTR-16 | tests/external/test_mrtr.nim | Given input requests whose params break the rules of their method, when checked, then each problem names its request
 MCP-MRTR-17 | tests/external/test_mrtr.nim | Given a URL elicitation or sampling with tools, when compared with a client's capabilities, then the mode and the tools must be declared too
+MCP-SAMPLING-TOOLS-15 | tests/external/test_mrtr.nim | Given a sampling input request without params, when compared with a client that declared sampling, then nothing is missing
 MCP-MRTR-17 | tests/external/test_mrtr.nim | Given a client that declared elicitation without the url mode, when the tool asks for a page, then the missing-capability error names the mode
 MCP-MRTR-17 | tests/external/test_mrtr.nim | Given a client that declared sampling without tools, when the tool asks the model with tools, then the missing-capability error names the tools
 MCP-MRTR-17 | tests/external/test_mrtr.nim | Given a URL elicitation, when the client declared only the form mode, then it raises without calling the handler or retrying

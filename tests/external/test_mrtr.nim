@@ -6,9 +6,10 @@
 ## (tests/fixtures/2026-07-28). The elicitation and sampling payloads obey
 ## the rules of their own methods (protocol/elicitation, protocol/sampling_tools).
 
-import std/[unittest, asyncdispatch, json, options, os, sequtils, strutils, tables]
+import std/[unittest, asyncdispatch, base64, json, options, os, sequtils, strutils, tables]
 import ./server_harness
 import ./client_peer
+from ./ext_auth_fixtures import hmacSha256
 import client/client
 import client/client as clientMod
 import server/errors as serverErrors
@@ -158,6 +159,9 @@ suite "input required: the types of the specification":
     check missingCapabilities(model, %*{"sampling": {"tools": {}}}).len == 0
     check missingCapabilities(%*{"q": {"method": "sampling/createMessage", "params": askModel()}},
                               %*{"sampling": {}}).len == 0
+
+  test "Given a sampling input request without params, when compared with a client that declared sampling, then nothing is missing":
+    check missingCapabilities(%*{"q": {"method": "sampling/createMessage"}}, %*{"sampling": {}}).len == 0
 
   test "Given input requests whose params break the rules of their method, when checked, then each problem names its request":
     for v in versionsWith(ftMultiRoundTripRequests):
@@ -370,6 +374,23 @@ suite "sealed request state":
     check "principal" in verifyRequestState(Key, state, "tools/call", salient, "mallory",
       now = 1010.0).problem.get
     check verifyRequestState(Key, "garbage", "tools/call", salient, "alice").problem.isSome
+
+  test "Given parameters that differ only in the items or the nesting of an array or an object, when a state sealed for one is verified for the other, then it is issued for other parameters":
+    let pairs = [
+      (%*{"a": [1, 2]}, %*{"a": [12]}),
+      (%*{"a": [1, 2]}, %*{"a": [3, 4]}),
+      (%*{"a": [[1], 2]}, %*{"a": [[1, 2]]}),
+      (%*{"a": {"b": 1}, "c": 2}, %*{"a": {"b": 1, "c": 2}})]
+    for (sealed, presented) in pairs:
+      let state = sealRequestState(Key, %*{"step": 1}, "tools/call", sealed, now = 1000.0)
+      check verifyRequestState(Key, state, "tools/call", sealed, now = 1000.0).problem.isNone
+      check verifyRequestState(Key, state, "tools/call", presented, now = 1000.0).problem.isSome
+
+  test "Given a state signed by the key whose body is not an envelope the server seals, when verified, then it is never accepted":
+    for body in [base64.encode("@@@@", safe = true), base64.encode("not json", safe = true),
+                 base64.encode("[1]", safe = true)]:
+      let state = body & "." & base64.encode(hmacSha256(Key, body), safe = true)
+      check verifyRequestState(Key, state, "tools/call", now = 1000.0).problem.isSome
 
   test "Given a state that is not acceptable, when a handler opens it, then the peer gets invalid params without the reason":
     expect serverErrors.McpRequestError:
