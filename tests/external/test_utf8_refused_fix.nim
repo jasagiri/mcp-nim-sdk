@@ -57,6 +57,18 @@ suite "strings that are not UTF-8, on stdio":
       check written["error"]["code"].getInt() == -32603
       check not written.hasKey("result")
 
+  test "Given a response whose id is a string that is not UTF-8, when it is sent, then the peer gets an internal error with a null id and what is written is UTF-8":
+    for text in NotUtf8:
+      checkpoint text.escape
+      let output = newStringStream()
+      let transport = newStdioTransport(newStringStream(""), output)
+      check refusal(transport.sendResponse(newJsonRpcResponse(text, %*{"ok": true}))) == ""
+      check validateUtf8(output.data) == -1
+      let written = parseJson(output.data.strip())
+      check written["id"].kind == JNull
+      check written["error"]["code"].getInt() == -32603
+      check not written.hasKey("result")
+
 suite "strings that are not UTF-8, over HTTP":
 
   test "Given a string that is not UTF-8, when a client posts a request that holds it, then the request is refused and nothing is posted":

@@ -1,5 +1,22 @@
 # G2 変異検出: `src/transport/event_stream.nim`
 
+## 測り直し (拡張ブランチの b04fcb9c、2026-11-11)
+
+測定: `nim-muter` 0.2.15、ジョブ `tests/mutation/event_stream.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。状態: 測定済み。
+
+| 全体 | killed | timeout | survived | runError | compileError |
+|---|---|---|---|---|---|
+| 35 | 30 | 0 | 2 | 0 | 3 |
+
+### 生き残りの仕分け
+
+| 指紋 | file:line | 変異 | class | 理由 | 仕様 ID / 足すテストの案 |
+|---|---|---|---|---|---|
+| `src/transport/event_stream.nim:ROR:40a8f14bb3a39089:0` | event_stream.nim:68 | `colon < 0` → `colon <= 0` (欄の名前を切り出す側) | equivalent | 差が出るのは `colon == 0`、つまり行が `:` で始まるときだけ。その行は同じ `takeLine` の 64 行目 (`if line[0] == ':': return`) でコメントとして捨てられ、67 行目の `find` に届かない (バイトオーダーマークを取るのは 53 行目で、64 行目より前)。`feed` にどんな入力を入れても `colon` は負か 1 以上。 | なし (前の測定の id 10 と同じ判断) |
+| `src/transport/event_stream.nim:ROR:fa3c38a119e9cd73:0` | event_stream.nim:69 | `colon < 0` → `colon <= 0` (欄の値を切り出す側) | equivalent | 上の行と同じ。`colon == 0` の行は 64 行目で先に return するので、69 行目で `colon` が 0 になることは無い。 | なし (前の測定の id 11 と同じ判断) |
+
+時間切れは無い。
+
 測定: `nim-muter`、ジョブ `tests/mutation/event_stream.json`、mainline の 36a4c8a5 (2026-10-07)。
 
 | 全体 | killed | timeout | survived | runError | compileError |

@@ -779,6 +779,176 @@
       "replacement": "discard",
       "class": "equivalent",
       "reason": "Option[JsonRpcError] の既定値は none で、最後の式 none(JsonRpcError) を消しても返る値が同じ"
+    },
+    {
+      "fingerprint": "src/transport/transport.nim:BLR:6ec2d660335697fb:0",
+      "file": "src/transport/transport.nim",
+      "line": 153,
+      "mutator": "BLR",
+      "original": "false",
+      "replacement": "true",
+      "class": "undecided",
+      "reason": ""
+    },
+    {
+      "fingerprint": "src/transport/transport.nim:RVR:f09e9e232af8b35b:0",
+      "file": "src/transport/transport.nim",
+      "line": 153,
+      "mutator": "RVR",
+      "original": "return false",
+      "replacement": "<return default>",
+      "class": "undecided",
+      "reason": ""
+    },
+    {
+      "fingerprint": "src/transport/transport.nim:AOR:7a64b52a5aa837a4:0",
+      "file": "src/transport/transport.nim",
+      "line": 155,
+      "mutator": "AOR",
+      "original": "i + 1",
+      "replacement": "<+ -> ->",
+      "class": "undecided",
+      "reason": ""
+    },
+    {
+      "fingerprint": "src/transport/transport.nim:ROR:238bd2eca17c095f:0",
+      "file": "src/transport/transport.nim",
+      "line": 155,
+      "mutator": "ROR",
+      "original": "text[i + 1] >= '\\xA0'",
+      "replacement": "<>= -> >>",
+      "class": "undecided",
+      "reason": ""
+    },
+    {
+      "fingerprint": "src/transport/transport.nim:BLR:6ec2d660335697fb:1",
+      "file": "src/transport/transport.nim",
+      "line": 156,
+      "mutator": "BLR",
+      "original": "false",
+      "replacement": "true",
+      "class": "undecided",
+      "reason": ""
+    },
+    {
+      "fingerprint": "src/transport/transport.nim:RVR:f09e9e232af8b35b:1",
+      "file": "src/transport/transport.nim",
+      "line": 156,
+      "mutator": "RVR",
+      "original": "return false",
+      "replacement": "<return default>",
+      "class": "undecided",
+      "reason": ""
+    },
+    {
+      "fingerprint": "src/transport/transport.nim:RVR:87aa8baa528c4cef:0",
+      "file": "src/transport/transport.nim",
+      "line": 163,
+      "mutator": "RVR",
+      "original": "return \"\"",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "文字列のリテラルの RVR は `\"\"` で、`string` の既定値も `\"\"`。変異の前後で返る値が同じ / —"
+    },
+    {
+      "fingerprint": "src/transport/transport.nim:RVR:a2dd9206bd48cfc4:0",
+      "file": "src/transport/transport.nim",
+      "line": 166,
+      "mutator": "RVR",
+      "original": "return at",
+      "replacement": "<return default>",
+      "class": "test_owed",
+      "reason": "UTF-8 でない文字列の値が「問題なし」になり、要求・通知がそのまま書かれ、応答は内部エラーに差し替わらない / MCP-STDIO-9、MCP-HTTP-43。既存の `tests/external/test_utf8_refused_fix.nim` の `Given a string that is not UTF-8, when a request or a notification holds it as a value or as a member name, then it is not sent and nothing is written` が検出するはず (`{\"text\": text}` の通知が断られなくなる)。testCommand に足す"
+    },
+    {
+      "fingerprint": "src/transport/transport.nim:ROR:02b067559cb29e3c:0",
+      "file": "src/transport/transport.nim",
+      "line": 171,
+      "mutator": "ROR",
+      "original": "found.len > 0",
+      "replacement": "<> -> >=>",
+      "class": "test_owed",
+      "reason": "配列の最初の要素だけを見て返る。最初の要素が正しければ、後ろの要素の UTF-8 でない文字列が見逃される / MCP-STDIO-9。同じテストが検出するはず (`{\"list\": [1, {\"deep\": text}]}` の要求は、最初の要素 `1` で `\"\"` が返り、断られなくなる)。testCommand に足す"
+    },
+    {
+      "fingerprint": "src/transport/transport.nim:RVR:ceab9c9546dcaee1:0",
+      "file": "src/transport/transport.nim",
+      "line": 171,
+      "mutator": "RVR",
+      "original": "return found",
+      "replacement": "<return default>",
+      "class": "test_owed",
+      "reason": "配列の中の UTF-8 でない文字列が、どの位置でも見逃される / MCP-STDIO-9。同じテストが検出するはず (`{\"list\": [1, {\"deep\": text}]}` の要求が断られなくなる)。testCommand に足す"
+    },
+    {
+      "fingerprint": "src/transport/transport.nim:RVR:8db25eed5f4242b0:0",
+      "file": "src/transport/transport.nim",
+      "line": 174,
+      "mutator": "RVR",
+      "original": "return at & \": a member name\"",
+      "replacement": "<return default>",
+      "class": "test_owed",
+      "reason": "UTF-8 でないメンバー名が「問題なし」になり、メッセージがそのまま書かれる / MCP-STDIO-9。同じテストが検出するはず (`named[text] = %1` を params にした通知が断られなくなる)。testCommand に足す"
+    },
+    {
+      "fingerprint": "src/transport/transport.nim:ROR:02b067559cb29e3c:1",
+      "file": "src/transport/transport.nim",
+      "line": 176,
+      "mutator": "ROR",
+      "original": "found.len > 0",
+      "replacement": "<> -> >=>",
+      "class": "test_owed",
+      "reason": "オブジェクトの最初のメンバーだけを見て返る。メッセージの最初のメンバーは `jsonrpc` なので、params の中は一切見られなくなる / MCP-STDIO-9、MCP-HTTP-43。同じテストが検出するはず (3 つの送信がどれも断られなくなる)。testCommand に足す"
+    },
+    {
+      "fingerprint": "src/transport/transport.nim:RVR:ceab9c9546dcaee1:1",
+      "file": "src/transport/transport.nim",
+      "line": 176,
+      "mutator": "RVR",
+      "original": "return found",
+      "replacement": "<return default>",
+      "class": "test_owed",
+      "reason": "オブジェクトのメンバーの値にある UTF-8 でない文字列が見逃される (メッセージ自体がオブジェクトなので、値の検査がすべて効かなくなる) / MCP-STDIO-9、MCP-HTTP-43。同じテストが検出するはず (`{\"text\": text}` の通知が断られなくなる)。testCommand に足す"
+    },
+    {
+      "fingerprint": "src/transport/transport.nim:SDL:5dfcc871d9e1c8fc:0",
+      "file": "src/transport/transport.nim",
+      "line": 199,
+      "mutator": "SDL",
+      "original": "requireUtf8(result, \"request \" & request.`method`)",
+      "replacement": "discard",
+      "class": "test_owed",
+      "reason": "要求が UTF-8 かを確かめずに書かれる / MCP-STDIO-9、MCP-HTTP-43。同じテストの `sendRequest` の行と、`Given a string that is not UTF-8, when a client posts a request that holds it, then the request is refused and nothing is posted` が検出するはず。testCommand に足す"
+    },
+    {
+      "fingerprint": "src/transport/transport.nim:SDL:d89e230832afd22c:0",
+      "file": "src/transport/transport.nim",
+      "line": 208,
+      "mutator": "SDL",
+      "original": "requireUtf8(result, \"notification \" & notification.`method`)",
+      "replacement": "discard",
+      "class": "test_owed",
+      "reason": "通知が UTF-8 かを確かめずに書かれる / MCP-STDIO-9。同じテストの `sendNotification` の行が検出するはず (断られず、`output.data == \"\"` も崩れる)。testCommand に足す"
+    },
+    {
+      "fingerprint": "src/transport/transport.nim:SDL:23e974a338100fa4:0",
+      "file": "src/transport/transport.nim",
+      "line": 234,
+      "mutator": "SDL",
+      "original": "stderr.writeLine(\"[mcp-transport] response \" & peerText(response.id) &; \" holds a string that is not UTF-8 (\" &; peerText(where) &; \"); sent as an internal error\")",
+      "replacement": "discard",
+      "class": "spec_question",
+      "reason": "応答が内部エラーに差し替わることは保たれ、stderr の 1 行が出なくなる。文面が変わるのではなく行そのものが消えるので「失敗の文面」の決定には当てなかった。この行を定める仕様 ID は無い (MCP-STDIO-9 は書かれるバイトだけを定める) / 問い: UTF-8 でない応答を内部エラーに差し替えたとき stderr に 1 行書くことを仕様にするか (結果も error も無い応答のほうは MCP-TRANSPORT-3 が「1 行を記録する」と定めている)、それともこの行を消すか"
+    },
+    {
+      "fingerprint": "src/transport/transport.nim:ROR:70f734de428b7829:0",
+      "file": "src/transport/transport.nim",
+      "line": 239,
+      "mutator": "ROR",
+      "original": "notUtf8(id, \"\").len > 0",
+      "replacement": "<> -> >=>",
+      "class": "test_owed",
+      "reason": "常に真になり、差し替えた内部エラーの id が、元の id が正しくても null になる / MCP-STDIO-9。既存の `tests/external/test_utf8_refused_fix.nim` の `Given a result that holds a string that is not UTF-8, when the response is sent, then the peer gets an internal error under the same id and what is written is UTF-8` が検出するはず (`written[\"id\"].getStr() == \"r7\"` が落ちる)。testCommand に足す"
     }
   ]
 }

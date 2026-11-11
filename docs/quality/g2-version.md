@@ -1,5 +1,22 @@
 # G2 変異検出: version ジョブ
 
+## 測り直し (拡張ブランチの b04fcb9c、2026-11-11)
+
+測定: `nim-muter` 0.2.15、ジョブ `tests/mutation/version.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。状態: 測定済み。
+
+| 全体 | killed | timeout | survived | runError | compileError |
+|---|---|---|---|---|---|
+| 24 | 16 | 0 | 2 | 0 | 6 |
+
+### 生き残りの仕分け
+
+| 指紋 | file:line | 変異 | class | 理由 | 仕様 ID / 足すテストの案 |
+|---|---|---|---|---|---|
+| `src/protocol/version.nim:SDL:a17ede9411b3cb84:0` | version.nim:34 | `parseProtocolVersion` の末尾の `none(McpProtocolVersion)` → `discard` | equivalent | 一致する版が無いとき、変異後は暗黙の `result` がそのまま返る。`result` は `Option[McpProtocolVersion]` の既定値で、`isSome` が false、つまり `none(McpProtocolVersion)` と同じ値。一致したときは 33 行目の `return some(v)` で先に返るので 34 行目に来ない。コンパイル時の評価 (`DefaultProtocolVersion`・`OldestProtocolVersion`) でも同じ。 | なし (前の測定の id 16 と同じ判断) |
+| `src/protocol/version.nim:ROR:345195c580206491:0` | version.nim:96 | `latestLegacyVersion` の `v > result.get` → `v >= result.get` | equivalent | 差が出るのは `v == result.get` のときだけで、そのとき行うのは `result = some(v)`、つまり今と同じ値の代入。`supported` に同じ版が重なっていても返る値は変わらない。`result.isNone` のときは `or` の左で決まり、右は評価されない。 | なし (前の測定の id 9 と同じ判断。行は 83 から 96 に動いた) |
+
+時間切れは無い。
+
 測定: `nim-muter`、ジョブ `tests/mutation/version.json`、本線の 36a4c8a5 (2026-10-07)。対象は `src/protocol/version.nim`。
 
 | 全変異 | killed | timeout | survived | runError | compileError |

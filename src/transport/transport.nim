@@ -227,7 +227,7 @@ proc toJson*(response: JsonRpcResponse): JsonNode =
                      "); sent as an internal error")
     let id = result["id"]
     result = %*{"jsonrpc": response.jsonrpc,
-                "id": (if notUtf8(id, "").len > 0: newJNull() else: id),
+                "id": (if notUtf8(id, "id").len > 0: newJNull() else: id),
                 "error": {"code": ErrInternal, "message": "Internal error"}}
 
 proc encodeMessage*(request: JsonRpcRequest): string = $request.toJson()

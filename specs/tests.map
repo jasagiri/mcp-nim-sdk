@@ -96,6 +96,7 @@ MCP-STDIO-9 | tests/external/test_stdio_messages_g0a.nim | Given a line of UTF-8
 MCP-STDIO-9 | tests/external/test_utf8_refused_fix.nim | Given a string that is not UTF-8, when a request or a notification holds it as a value or as a member name, then it is not sent and nothing is written
 MCP-STDIO-9 | tests/external/test_utf8_refused_fix.nim | Given strings that are UTF-8, when a message holds them, then it is sent as it is
 MCP-STDIO-9 | tests/external/test_utf8_refused_fix.nim | Given a result that holds a string that is not UTF-8, when the response is sent, then the peer gets an internal error under the same id and what is written is UTF-8
+MCP-STDIO-9 | tests/external/test_utf8_refused_fix.nim | Given a response whose id is a string that is not UTF-8, when it is sent, then the peer gets an internal error with a null id and what is written is UTF-8
 MCP-STDIO-10 | tests/external/test_stdio_messages_g0a.nim | Given a server that exits while a call is waiting, when the client waits, then the call fails as a closed connection and closing the client succeeds
 MCP-STDIO-11 | tests/external/test_stdio_messages_g0a.nim | Given a 2026-07-28 server over stdio that lists a tool whose x-mcp-header is invalid, when the client lists tools and calls it, then the tool is listed and the call is sent
 MCP-STDIO-12 | tests/external/test_stdio_exit_g0d.nim | Given a server that exits while a request waits, when the output stream ends, then the request fails as a closed connection
