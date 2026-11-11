@@ -54,9 +54,10 @@ else:
       ## The client closed its end after the answer was sent.
 
   proc startTlsServer(cert, key: string, answerFor: proc(head: string): string,
-                      delayMs = 0): TlsServer =
+                      delayMs = 0, handshakeDelayMs = 0): TlsServer =
     ## Answers each request with `answerFor(head)` after `delayMs`, then waits
-    ## for the client to close the connection.
+    ## for the client to close the connection. The TLS handshake starts
+    ## `handshakeDelayMs` after the connection is accepted.
     let server = TlsServer()
     let context = newContext(verifyMode = CVerifyNone, certFile = cert, keyFile = key)
     # A buffered TLS socket held back the answer: curl never received it.
@@ -86,14 +87,16 @@ else:
     proc acceptLoop() {.async.} =
       while true:
         let client = await socket.accept()
+        await sleepAsync(handshakeDelayMs)
         context.wrapConnectedSocket(client, handshakeAsServer)
         asyncCheck serve(client)
     asyncCheck acceptLoop()
     server
 
-  proc startTlsServer(cert, key: string, answer: string, delayMs = 0): TlsServer =
+  proc startTlsServer(cert, key: string, answer: string, delayMs = 0,
+                      handshakeDelayMs = 0): TlsServer =
     ## Answers every request with `answer`.
-    startTlsServer(cert, key, proc(head: string): string = answer, delayMs)
+    startTlsServer(cert, key, proc(head: string): string = answer, delayMs, handshakeDelayMs)
 
   proc waitUntil(condition: proc(): bool, limitMs = 3000) =
     var waited = 0
@@ -166,6 +169,19 @@ else:
       check server.requests == 1
       check server.peerClosed
 
+    test "Given an answer that comes after the fetch gave up but before the header limit of the connection, when the fetch has failed, then the client closes that connection":
+      # The fetch gives up 300 ms after it began. The handshake takes 200 ms,
+      # so the connection allows its answer until about 500 ms; the answer
+      # comes at about 400 ms, when only the fetch itself can close it.
+      let server = startTlsServer(local.cert, local.key,
+        "HTTP/1.1 200 OK\c\LContent-Type: image/png\c\LContent-Length: " & $Png.len & "\c\L\c\L" & Png,
+        delayMs = 200, handshakeDelayMs = 200)
+      let origin = "https://127.0.0.1:" & $server.port
+      check "no answer within" in iconFailure(origin, IconFetchOptions(timeoutMs: 300, caFile: caFile))
+      waitUntil(proc(): bool = server.peerClosed)
+      check server.requests == 1
+      check server.peerClosed
+
     test "Given an answer that is not 200, when the fetch is refused, then the client closes the connection without reading the body":
       # The body is announced but never sent: a client that read it would
       # wait for it instead of closing.
@@ -224,6 +240,26 @@ else:
     test "Given caFile in the icon options, when an icon is fetched, then it arrives":
       let server = startTlsServer(local.cert, local.key,
         "HTTP/1.1 200 OK\c\LContent-Type: image/png\c\LContent-Length: " & $Png.len & "\c\L\c\L" & Png)
+      let origin = "https://127.0.0.1:" & $server.port
+      let icon = waitFor fetchIcon(McpIcon(src: origin & "/icon.png"), origin,
+                                   IconFetchOptions(caFile: caFile))
+      check icon.bytes == Png
+
+    test "Given a redirect inside the origin, when an icon is fetched, then the redirect is followed and the icon arrives":
+      let server = startTlsServer(local.cert, local.key, proc(head: string): string =
+        if head.startsWith("GET /hop "):
+          "HTTP/1.1 302 Found\c\LLocation: /icon.png\c\LContent-Length: 0\c\L\c\L"
+        else:
+          "HTTP/1.1 200 OK\c\LContent-Type: image/png\c\LContent-Length: " & $Png.len & "\c\L\c\L" & Png)
+      let origin = "https://127.0.0.1:" & $server.port
+      let icon = waitFor fetchIcon(McpIcon(src: origin & "/hop"), origin,
+                                   IconFetchOptions(caFile: caFile))
+      check icon.bytes == Png
+      check server.requests == 2
+
+    test "Given a generic Content-Type and an icon without a mimeType, when an icon is fetched, then the type found in the bytes decides and it arrives":
+      let server = startTlsServer(local.cert, local.key,
+        "HTTP/1.1 200 OK\c\LContent-Type: application/octet-stream\c\LContent-Length: " & $Png.len & "\c\L\c\L" & Png)
       let origin = "https://127.0.0.1:" & $server.port
       let icon = waitFor fetchIcon(McpIcon(src: origin & "/icon.png"), origin,
                                    IconFetchOptions(caFile: caFile))

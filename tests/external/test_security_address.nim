@@ -249,6 +249,17 @@ when HasChallengeVersion:
       check seenHost("0XAC.0x1F.1") == "private"
       check seenHost("0xC0000201") == "reserved"
 
+    test "Given hex digits in lower case, when a URL names the host, then they have their value":
+      # a to f all read: 0x7f.0xbc.0xd.1 is 127.188.13.1 (loopback), and
+      # 0xa9fea9fe is 169.254.169.254 (link-local).
+      check seenHost("0x7f.1") == "loopback"
+      check seenHost("0xa9fea9fe") == "link-local"
+      check seenHost("0x7f.0xbc.0xd.1") == "loopback"
+
+    test "Given a part that is not the last, when it is 255 or 256, then 255 is an address and 256 makes the text a name":
+      check seenHost("10.255.0.1") == "private"
+      check seenHost("10.256.0.1") == "name"
+
     test "Given a digit that its base does not have, when a URL names the host, then the text is a name":
       for host in ["08.1.1.1", "1a.1.1.1", "0x1g.1.1.1"]:
         checkpoint host

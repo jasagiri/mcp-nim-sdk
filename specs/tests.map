@@ -1717,6 +1717,8 @@ MCP-ICONS-6 | tests/external/test_icon_fetch.nim | Given a fetch without the ser
 MCP-ICONS-6 | tests/external/test_icon_fetch.nim | Given a data URI whose base64 ends in two pad characters, one, or none, when fetched, then the icon is read
 MCP-SEC-WIRE-9 | tests/external/test_icon_fetch.nim | Given a data URI whose base64 ends in two pad characters, one, or none, when fetched, then the icon is read
 MCP-ICONS-6 | tests/external/test_icon_fetch.nim | Given a data URI whose data has three pad characters, when fetched, then it is refused
+MCP-ICONS-6 | tests/external/test_security_trusted_ca.nim | Given a redirect inside the origin, when an icon is fetched, then the redirect is followed and the icon arrives
+MCP-ICONS-6 | tests/external/test_security_trusted_ca.nim | Given a generic Content-Type and an icon without a mimeType, when an icon is fetched, then the type found in the bytes decides and it arrives
 MCP-SEC-WIRE-9 | tests/external/test_icon_fetch.nim | Given a data URI whose data has three pad characters, when fetched, then it is refused
 MCP-ICONS-7 | tests/external/test_icon_fetch.nim | Given nothing but the signature of an image type, when sniffed, then the type is the one the signature says
 MCP-ICONS-7 | tests/external/test_icon_fetch.nim | Given a signature cut short, when sniffed, then there is no type
@@ -2002,6 +2004,7 @@ MCP-SEC-WIRE-6 | tests/external/test_security_ext_auth.nim | Given a remote serv
 MCP-SEC-WIRE-6 | tests/external/test_security_ext_auth.nim | Given a remote server that names a loopback metadata URL, when the enterprise-managed client answers its 401, then OAuthSecurityError is raised and the assertion is not read
 MCP-SEC-WIRE-7 | tests/internal/test_security_icons_internal.nim | Given an answer that comes after the timeout, when the fetch has failed, then the connection is closed
 MCP-SEC-WIRE-7 | tests/external/test_security_trusted_ca.nim | Given an answer that comes after the timeout, when the fetch has failed, then the client closes that connection
+MCP-SEC-WIRE-7 | tests/external/test_security_trusted_ca.nim | Given an answer that comes after the fetch gave up but before the header limit of the connection, when the fetch has failed, then the client closes that connection
 MCP-SEC-WIRE-10 | tests/internal/test_security_icons_internal.nim | Given an answer that is not 200, when the fetch is refused, then the connection is closed
 MCP-SEC-WIRE-10 | tests/external/test_security_trusted_ca.nim | Given an answer that is not 200, when the fetch is refused, then the client closes the connection without reading the body
 MCP-SEC-WIRE-11 | tests/internal/test_security_address_internal.nim | Given a name that resolves to a private address, when plain http is asked for, then it is refused before any connection
@@ -2043,6 +2046,8 @@ MCP-SEC-WIRE-13 | tests/internal/test_security_address_internal.nim | Given a la
 MCP-SEC-WIRE-13 | tests/internal/test_security_address_internal.nim | Given brackets that do not enclose the whole host, when it is read, then it is no address
 MCP-SEC-WIRE-13 | tests/external/test_security_address.nim | Given a literal at the top of the 32-bit range, when a URL names it, then it is read as an address, and one above it is a name
 MCP-SEC-WIRE-13 | tests/external/test_security_address.nim | Given hex digits in capitals, when a URL names the host, then they have their value
+MCP-SEC-WIRE-13 | tests/external/test_security_address.nim | Given hex digits in lower case, when a URL names the host, then they have their value
+MCP-SEC-WIRE-13 | tests/external/test_security_address.nim | Given a part that is not the last, when it is 255 or 256, then 255 is an address and 256 makes the text a name
 MCP-SEC-WIRE-13 | tests/external/test_security_address.nim | Given a digit that its base does not have, when a URL names the host, then the text is a name
 MCP-SEC-WIRE-13 | tests/external/test_security_address.nim | Given an empty part, when a URL names the host, then the text is a name
 MCP-SEC-WIRE-13 | tests/external/test_security_address.nim | Given the last part of a host in a URL, when it is one more than the bytes left for it hold, then the text is a name
