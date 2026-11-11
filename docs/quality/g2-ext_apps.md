@@ -1,5 +1,49 @@
 # G2 変異検出: ext_apps ジョブ
 
+## 測り直し (拡張ブランチの b04fcb9c、2026-11-11)
+
+状態: 測定済み。測定: `nim-muter` 0.2.15、ジョブ `tests/mutation/ext_apps.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。仕分けはソースの読解だけで行い、変異を当てて流してはいない。
+
+| 全体 | killed | timeout | survived | runError | compileError |
+|---|---|---|---|---|---|
+| 315 | 282 | 5 | 15 | 0 | 13 |
+
+### 生き残りの仕分け
+
+15 件とも、初回の測定 (下の「分類 1 (同値) の理由」) で同値とした 16 件のうちの 15 件と同じ変異である (残る 1 件 `model.nim:144` は今回 timeout に入った)。前の理由を写さず、今のソースで値の流れを追い直した。
+
+| 指紋 | file:line | 変異 | class | 理由 | 仕様 ID / 足すテストの案 |
+|---|---|---|---|---|---|
+| `src/ext/apps/host.nim:RVR:0c511227513989c7:0` | host.nim:132 | `appCallProblem` の `return none(string)` → `return default(...)` | equivalent | 戻す式はリテラルではなく `none(string)` なので、変異は `default(Option[string])` になる。これは `none(string)` と同じ値で、呼び手が見る `isNone` は変わらない | なし |
+| `src/ext/apps/messages.nim:LOR:3801248160b6c47d:0` | messages.nim:153 | `isDisplayMode` の `node.isNil or node.kind != JString` → `and` | equivalent | `isDisplayMode` は非公開で、呼び手は `hostContextProblem` の 2 か所だけ。nil でない節では `and` の左が偽になり早い `return false` を飛ばすが、文字列でない節の `getStr()` は `""` で、どの `UiDisplayMode` とも一致せず末尾の `false` に着く (同じ結果)。nil の節が来るのは `availableDisplayModes` の配列に nil を手で入れたときだけで (`displayMode` の側は `not mode.isNil` の後)、そのとき元のコードも次の `$item` で nil を読んで落ちる。どちらも実行時の異常終了で、違いは見えない | なし |
+| `src/ext/apps/messages.nim:SDL:2413a04126052c00:0` | messages.nim:234 | `hostContextProblem` 末尾の `none(string)` → `discard` | equivalent | 末尾の式を消すと暗黙の `result` が返る。途中の経路はすべて `return some(...)` で `result` に書かないので、`result` は `Option[string]` の既定値 (none) のまま | なし |
+| `src/ext/apps/model.nim:SDL:2413a04126052c00:0` | model.nim:90 | `uiUriProblem` 末尾の `none(string)` → `discard` | equivalent | 同上。問題のある経路はすべて `return some(...)` で、`result` に書く文は無い。既定値の none が返る | なし |
+| `src/ext/apps/model.nim:ROR:20e1234ee50835ee:0` | model.nim:99 | `isCspSource` の `schemeEnd < 0` → `<= 0` | equivalent | 差が出るのは `schemeEnd == 0` (`://` で始まる入力) だけ。元のコードでも `or` の右の `source[0 ..< 0]` が `""` で、`["http", "https", "ws", "wss"]` に無いので同じ `return false` に着く | なし |
+| `src/ext/apps/model.nim:ROR:51521139e55e428d:0` | model.nim:104 | `isCspSource` の `colon >= 0` → `> 0` | equivalent | 差が出るのは `colon == 0` (スキームの後ろが `:` 1 つだけを先頭に持つ) だけ。元は `rest` が空になり、ポートが不正ならそこで、正しくても末尾の `rest.len > 0` で `false`。変異はポートを切らず `rest` が `:` で始まるまま残り、`*.` でも始まらないので `rest[0] in Letters + Digits` で `false`。どちらも `false` | なし |
+| `src/ext/apps/model.nim:SDL:2413a04126052c00:1` | model.nim:124 | `cspProblem` 末尾の `none(string)` → `discard` | equivalent | 問題のある経路は `return some(...)` だけで、`result` に書かない。暗黙の `result` は none | なし |
+| `src/ext/apps/model.nim:SDL:2413a04126052c00:2` | model.nim:132 | `domainProblem` 末尾の `none(string)` → `discard` | equivalent | 同上 (2 つの `return some(...)` 以外は `result` に触れない) | なし |
+| `src/ext/apps/model.nim:RVR:505610fcbcef47cd:0` | model.nim:223 | `parseUiResourceMeta` の `return UiResourceMeta()` → `return default(...)` | equivalent | 引数の無い構築子で、欄 (`Option`・`set`) はどれも既定値。`default(UiResourceMeta)` と同じ値 | なし |
+| `src/ext/apps/model.nim:RVR:c39a9e522ef161c9:0` | model.nim:249 | `parseUiToolMeta` の `return none(UiToolMeta)` → `return default(...)` | equivalent | `default(Option[UiToolMeta])` は none。`_meta` が無い・object でない道具は、どちらでも UI 参照なしになる | なし |
+| `src/ext/apps/model.nim:RVR:c39a9e522ef161c9:1` | model.nim:284 | `parseUiToolMeta` の `return none(UiToolMeta)` (`not any`) → `return default(...)` | equivalent | 同上。`return` は `result` ではなく既定値そのものを返すので、手前で組み立てた `found` は漏れない | なし |
+| `src/ext/apps/model.nim:RVR:442b77d133e38a73:0` | model.nim:295 | `parseUiClientCapability` の `return none(UiClientCapability)` → `return default(...)` | equivalent | `default(Option[UiClientCapability])` は none | なし |
+| `src/ext/apps/model.nim:RVR:442b77d133e38a73:1` | model.nim:298 | 同じ関数の `mimeTypes` が無い・配列でないときの `return none(...)` → `return default(...)` | equivalent | 同上 | なし |
+| `src/ext/apps/model.nim:RVR:442b77d133e38a73:2` | model.nim:302 | 同じ関数の、要素が文字列でないときの `return none(...)` → `return default(...)` | equivalent | 同上。途中まで足した `capability` は局所変数で、返る値は既定値の none | なし |
+| `src/ext/apps/provider.nim:RVR:442b77d133e38a73:0` | provider.nim:143 | `hostUiCapability` の `return none(UiClientCapability)` → `return default(...)` | equivalent | `default(Option[UiClientCapability])` は none。`hostSupportsApps` は `isSome` を見るので、宣言の無い相手はどちらでも偽 | なし |
+
+公開されていて仕様 ID の無い関数にかかる生き残りは、この 15 件の中に振る舞いの変わるものが無いので、`spec_question` は立てていない。
+
+### timeout の 5 件
+
+読解だけの見立てで、変異を当てて流してはいない。無限ループになる経路は 5 件とも見つからなかった。
+
+| 指紋 | file:line | 変異 | 無限ループか | 見立て |
+|---|---|---|---|---|
+| `src/ext/apps/host.nim:SDL:aa328c7644b7be35:0` | host.nim:101 | `listAppTools` の `requireServerCapability(... tools ...)` を削除 | 遅いだけ (終われば落ちる) | `tests/external/test_ext_apps_host.nim` の `Given a server without the tools capability, ...` は `startPeer(nil, ...)` の答えない相手に `tools/list` を送ることになり、クライアントの既定の 60 秒 (`DefaultRequestTimeoutMs`) を版ごとに 1 回ずつ待つ。待ちは有限で、終われば `expect McpUnsupportedError` と `requestsFor("tools/list").len == 0` が落ちる。測り直しても同じ長さだけ待つ |
+| `src/ext/apps/host.nim:SDL:290ac38d69476902:0` | host.nim:229 | `fetchUiResource` の `requireServerCapability(... resources ...)` を削除 | 遅いだけ (終われば落ちる) | 同じ形。`Given a server without the resources capability, ...` が `resources/read` の答えを版ごとに 60 秒待ち、終われば落ちる |
+| `src/ext/apps/model.nim:SDL:2413a04126052c00:3` | model.nim:144 | `metaProblem` 末尾の `none(string)` → `discard` | 遅いだけ (同値のはず) | 途中の経路は `return some(...)` と `return problem` だけで `result` に書かないので、暗黙の `result` は none。振る舞いは変わらず、繰り返しも待ちも増えない。初回の測定では同値の生き残り (id 66) だった。測り直せば survived になり、`equivalent` と見る |
+| `src/ext/apps/provider.nim:RVR:15e83655371f19db:0` | provider.nim:114 | `readHandler` の `return await fallback(ctx, uri)` → `return default(...)` | 遅いだけと見る (未確認) | 変異は空の `contents` を返す。`tests/external/test_ext_apps_server.nim` の `Given a fallback read handler, ...` は `["contents"][0]` で落ちるはずで、待ちは `untilTrue` の上限つき。待ち続ける経路は読んだ範囲に無い。変異後の式に `await` が残る形 (`default(typeof(await ...))`) だと async の展開がどうなるかは、読むだけでは決められない |
+| `src/ext/apps/provider.nim:BLR:18e3c696a8b17b86:0` | provider.nim:121 | `appToolInfo` の既定値 `legacyKey = false` → `true` | 遅いだけと見る | 既定で `_meta["ui/resourceUri"]` が付くだけで、繰り返しも待ちも無い。`Given legacyKey, ...` の `check not ... hasKey(LegacyResourceUriKey)` と `Given a registered resource, ...` の `_meta ==` が落ちるはず |
+
 測定: `nim-muter`、ジョブ `tests/mutation/ext_apps.json`、拡張ブランチの c9b5c264 (初回の測定。比べる記録は無い)。対象は `src/ext/apps/{host,messages,model,provider}.nim` と `src/ext/apps.nim`。
 
 | 全変異 | killed | timeout | survived | runError | compileError |
