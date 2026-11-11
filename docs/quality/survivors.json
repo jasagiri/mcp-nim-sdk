@@ -951,6 +951,86 @@
       "reason": "2026-07-28 が最新の版なので `modern` が常に偽になり、`specPage(ftStdio, mpv20260728)` が `basic/transports/stdio` ではなく `basic/transports` を返すなど、2026-07-28 のページが旧版のページになる。公開の入口から違いは見えるが、`src/` の中に呼び手は無く、使うのは `tools/gen_docs.nim` と `tests/internal/test_features.nim` だけ。仕様 ID は無い。 / 代表への問い: `specPage` (仕様書のページの対応) を公開 API の仕様にして仕様 ID と E テストを足しますか、それとも `featuresOf` と一緒に文書を作る道具の側へ移してジョブの対象から外しますか。"
     },
     {
+      "fingerprint": "src/protocol/hmac.nim:RVR:79d7670ba0e6d1dd:0",
+      "file": "src/protocol/hmac.nim",
+      "line": 18,
+      "mutator": "RVR",
+      "original": "return \"null\"",
+      "replacement": "<return default>",
+      "class": "spec_question",
+      "reason": "nil どうしの封印と検証は変異の前後とも通る。変わるのは、salient を省いて (nil) 封印した状態を JSON の null (`newJNull()`) の salient で検証したときで、元は受け入れ、変異は「issued for other parameters」で断る。この扱いを定める仕様 ID は無い。 / 問い: salient を省いた (nil) 封印と、JSON の null を salient にした検証を同じ要求とみなすことを仕様にしますか。しないなら nil の分岐は `$node` と区別のつかない実装の都合として同値に移します。"
+    },
+    {
+      "fingerprint": "src/protocol/hmac.nim:ROR:20951720b0e24994:0",
+      "file": "src/protocol/hmac.nim",
+      "line": 27,
+      "mutator": "ROR",
+      "original": "i > 0",
+      "replacement": "<> -> >=>",
+      "class": "equivalent",
+      "reason": "空でないオブジェクトの文面が `{,` で始まるだけで、違う値は違う文面のまま (単射)、キーの順にも依らないまま。ダイジェストは同じビルドの封印と検証の間でしか比べないので、受け入れ・拒否は変わらない。 / —"
+    },
+    {
+      "fingerprint": "src/protocol/hmac.nim:SDL:a49fa4a3b3e69741:0",
+      "file": "src/protocol/hmac.nim",
+      "line": 27,
+      "mutator": "SDL",
+      "original": "result.add ','",
+      "replacement": "discard",
+      "class": "equivalent",
+      "reason": "メンバーの間のカンマが消えても、次のメンバーは必ず引用符つきのキーで始まり、値 (文字列・数・リテラル・括弧つきの入れ子) の終わりは一意に決まるので、違うオブジェクトは違う文面のまま。受け入れ・拒否は変わらない (配列の側の同じ変異は数が繋がるので別の行で穴とした)。 / —"
+    },
+    {
+      "fingerprint": "src/protocol/hmac.nim:SDL:ae5a8451540aa71c:0",
+      "file": "src/protocol/hmac.nim",
+      "line": 29,
+      "mutator": "SDL",
+      "original": "result.add '}'",
+      "replacement": "discard",
+      "class": "test_owed",
+      "reason": "閉じ括弧が無いと入れ子の深さが文面から消え、`{\"a\":{\"b\":1},\"c\":2}` と `{\"a\":{\"b\":1,\"c\":2}}` がどちらも `{\"a\":{\"b\":1,\"c\":2` になる。前者で封印した状態が後者の要求で受け入れられる。 / MCP-MRTR-10。`tests/external/test_mrtr.nim` の「sealed request state」に足す (下の案 A)。salient `{\"a\":{\"b\":1},\"c\":2}` で封印し `{\"a\":{\"b\":1,\"c\":2}}` で `verifyRequestState` → `problem` が some。変異だと none。"
+    },
+    {
+      "fingerprint": "src/protocol/hmac.nim:ROR:20951720b0e24994:1",
+      "file": "src/protocol/hmac.nim",
+      "line": 33,
+      "mutator": "ROR",
+      "original": "i > 0",
+      "replacement": "<> -> >=>",
+      "class": "equivalent",
+      "reason": "空でない配列の文面が `[,` で始まるだけで、単射のまま。オブジェクトの側の同じ変異と同じ理由。 / —"
+    },
+    {
+      "fingerprint": "src/protocol/hmac.nim:SDL:a49fa4a3b3e69741:1",
+      "file": "src/protocol/hmac.nim",
+      "line": 33,
+      "mutator": "SDL",
+      "original": "result.add ','",
+      "replacement": "discard",
+      "class": "test_owed",
+      "reason": "要素の間のカンマが消えると数が繋がり、`[1,2]` と `[12]` がどちらも `[12]` になる。`{\"arguments\":[1,2]}` で封印した状態が `{\"arguments\":[12]}` の要求で受け入れられる。 / MCP-MRTR-10。案 A。salient `{\"a\":[1,2]}` で封印し `{\"a\":[12]}` で検証 → `problem` が some。変異だと none。"
+    },
+    {
+      "fingerprint": "src/protocol/hmac.nim:SDL:7ae20fde9ed62b34:0",
+      "file": "src/protocol/hmac.nim",
+      "line": 34,
+      "mutator": "SDL",
+      "original": "result.add canonicalJson(item)",
+      "replacement": "discard",
+      "class": "test_owed",
+      "reason": "配列の要素が文面に入らず、同じ長さの配列がすべて同じダイジェストになる (`[1,2]` も `[3,4]` も `[,]`)。配列の引数だけが違う要求に状態を使い回せる。既存のテストの salient は配列を含まない。 / MCP-MRTR-10。案 A。salient `{\"a\":[1,2]}` で封印し `{\"a\":[3,4]}` で検証 → `problem` が some。変異だと none。"
+    },
+    {
+      "fingerprint": "src/protocol/hmac.nim:SDL:a162f0b4e9cd425c:0",
+      "file": "src/protocol/hmac.nim",
+      "line": 35,
+      "mutator": "SDL",
+      "original": "result.add ']'",
+      "replacement": "discard",
+      "class": "test_owed",
+      "reason": "配列の閉じ括弧が無いと入れ子の深さが消え、`[[1],2]` と `[[1,2]]` がどちらも `[[1,2` になる。 / MCP-MRTR-10。案 A。salient `{\"a\":[[1],2]}` で封印し `{\"a\":[[1,2]]}` で検証 → `problem` が some。変異だと none。"
+    },
+    {
       "fingerprint": "src/protocol/lifecycle.nim:RVR:a94ce88da5074921:0",
       "file": "src/protocol/lifecycle.nim",
       "line": 36,
@@ -1029,6 +1109,86 @@
       "replacement": "discard",
       "class": "equivalent",
       "reason": "食い違いの経路はすべて手前の `return headerMismatch(...)` で抜ける。末尾の式を消すと暗黙の `result` (`Option[JsonRpcError]` の既定値 = none) が返り、同じ値になる。 / 無し"
+    },
+    {
+      "fingerprint": "src/protocol/mrtr.nim:SDL:2413a04126052c00:0",
+      "file": "src/protocol/mrtr.nim",
+      "line": 73,
+      "mutator": "SDL",
+      "original": "none(string)",
+      "replacement": "discard",
+      "class": "equivalent",
+      "reason": "`validateInputRequests` の `result` は `Option[string]` で、代入しなければ既定値の none。末尾の式を捨てても返る値は none のまま。 / —"
+    },
+    {
+      "fingerprint": "src/protocol/mrtr.nim:SDL:2413a04126052c00:1",
+      "file": "src/protocol/mrtr.nim",
+      "line": 92,
+      "mutator": "SDL",
+      "original": "none(string)",
+      "replacement": "discard",
+      "class": "equivalent",
+      "reason": "`invalidInputRequired` で上と同じ。`result` の既定値が none。 / —"
+    },
+    {
+      "fingerprint": "src/protocol/mrtr.nim:RVR:f37e8c77bd986dbd:0",
+      "file": "src/protocol/mrtr.nim",
+      "line": 138,
+      "mutator": "RVR",
+      "original": "return none(JsonNode)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "構築子を返す return は `default(Option[JsonNode])` になり、それは none。 / —"
+    },
+    {
+      "fingerprint": "src/protocol/mrtr.nim:LOR:126924bca3024ea2:0",
+      "file": "src/protocol/mrtr.nim",
+      "line": 147,
+      "mutator": "LOR",
+      "original": "not params.isNil and params.kind == JObject",
+      "replacement": "<and -> or>",
+      "class": "test_owed",
+      "reason": "params が nil でないときは、非オブジェクトでも `params{\"includeContext\"}` が nil を返して既定の `\"none\"` になるので結果は同じ。params が nil のときだけ、変異は `params.kind` で nil を読んで落ちる (元は「足りないものは無い」)。`missingCapabilities` は公開で、`params` の無い sampling の入力要求は `client/client.nim` の `missingCapabilities(%*{key: entry}, declared)` にもサーバーの結果から届く。既存のテストの sampling の要求はどれも params を持つ。 / MCP-MRTR-17 (該当する文面は MCP-SAMPLING-TOOLS-15 の「includeContext が無ければ sampling を宣言したどのクライアントにも送れる」)。案 C。`missingCapabilities(%*{\"q\": {\"method\": \"sampling/createMessage\"}}, %*{\"sampling\": {}}).len == 0`。変異だと nil の参照で落ちる。"
+    },
+    {
+      "fingerprint": "src/protocol/mrtr.nim:SDL:f85418f42f56ae88:0",
+      "file": "src/protocol/mrtr.nim",
+      "line": 155,
+      "mutator": "SDL",
+      "original": "none(JsonNode)",
+      "replacement": "discard",
+      "class": "equivalent",
+      "reason": "`undeclaredPart` の `result` の既定値が none。 / —"
+    },
+    {
+      "fingerprint": "src/protocol/mrtr.nim:RVR:0c511227513989c7:0",
+      "file": "src/protocol/mrtr.nim",
+      "line": 192,
+      "mutator": "RVR",
+      "original": "return none(string)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "`default(Option[string])` は none。 / —"
+    },
+    {
+      "fingerprint": "src/protocol/mrtr.nim:RVR:55560fa5ef49175d:0",
+      "file": "src/protocol/mrtr.nim",
+      "line": 201,
+      "mutator": "RVR",
+      "original": "return none(JsonRpcError)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "`default(Option[JsonRpcError])` は none。 / —"
+    },
+    {
+      "fingerprint": "src/protocol/mrtr.nim:SDL:ac1cdc5394dff63c:0",
+      "file": "src/protocol/mrtr.nim",
+      "line": 215,
+      "mutator": "SDL",
+      "original": "none(JsonRpcError)",
+      "replacement": "discard",
+      "class": "equivalent",
+      "reason": "`rejectInvalidInputParams` の `result` の既定値が none。 / —"
     },
     {
       "fingerprint": "src/protocol/param_headers.nim:BLR:6ec2d660335697fb:0",
@@ -1691,6 +1851,16 @@
       "reason": "差が出るのは `v == result.get` のときだけで、そのとき行うのは `result = some(v)`、つまり今と同じ値の代入。`supported` に同じ版が重なっていても返る値は変わらない。`result.isNone` のときは `or` の左で決まり、右は評価されない。 / なし (前の測定の id 9 と同じ判断。行は 83 から 96 に動いた)"
     },
     {
+      "fingerprint": "src/server/mrtr.nim:RVR:3ac2bd94b4efe6f7:0",
+      "file": "src/server/mrtr.nim",
+      "line": 53,
+      "mutator": "RVR",
+      "original": "return none(JsonNode)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "`default(Option[JsonNode])` は none。 / —"
+    },
+    {
       "fingerprint": "src/server/rate_limit.nim:ROR:0ca230dd385f2a04:0",
       "file": "src/server/rate_limit.nim",
       "line": 48,
@@ -1809,6 +1979,36 @@
       "replacement": "</ -> *>",
       "class": "test_owed",
       "reason": "`retryAfterMs` が「不足分 ÷ 毎秒の数」ではなく「不足分 × 毎秒の数」になる。毎秒 1 では同じ値で、今のテスト (`Given a refused request, then the error says how long to wait`) は毎秒 1 でしか見ていないので通る。毎秒 2 以上では待ち時間が毎秒の数の 2 乗倍になる (毎秒 4 で最大 251 ms のはずが最大 4001 ms)。 / MCP-RATE-1 (`data.retryAfterMs`)。案: 毎秒 4 で 5 回続けて送り、断られた 5 回目の `retryAfterMs` が 1 以上 251 以下 (1 回分が戻る時間 1000 ÷ 4 に切り上げの 1) であること。変異だと 1000 を超えて落ちる"
+    },
+    {
+      "fingerprint": "src/server/request_state.nim:ROR:d470e6c5a86b4fd8:0",
+      "file": "src/server/request_state.nim",
+      "line": 60,
+      "mutator": "ROR",
+      "original": "dot <= 0",
+      "replacement": "<<= -> <>",
+      "class": "accepted",
+      "reason": "失敗の文面は契約ではない (代表の決定 2026-10-23)。`.abc` のように本体が空の状態は、変異でも断られる: 署名が合わなければ「signature does not verify」、鍵の持ち主が空の本体に署名していても `parseJson(\"\")` が失敗して「malformed」。変わるのは理由の文面だけで、その文面は `openRequestState` が stderr に書くだけで動作を分けない。 / — (前の記録の id 80 は文面を比べるテストで検出していた。そのテストは内部側に移っている)"
+    },
+    {
+      "fingerprint": "src/server/request_state.nim:RVR:2d1e0d0ec0050a35:1",
+      "file": "src/server/request_state.nim",
+      "line": 69,
+      "mutator": "RVR",
+      "original": "return failure(\"malformed\")",
+      "replacement": "<return default>",
+      "class": "test_owed",
+      "reason": "既定値は `(nil, none)` で、断らずに「受け入れ、payload は nil」になる。文面ではなく受け入れ・拒否が変わる。署名は正しいが本体が base64 や JSON でない状態で起きる (鍵の持ち主だけが作れる)。検出していたテストは `tests/internal/test_mrtr_internal.nim` に移っている。 / MCP-MRTR-10。案 B。鍵で署名した本体 `@@@@` と base64url の `not json` を `verifyRequestState` に渡す → `problem` が some。変異だと none。"
+    },
+    {
+      "fingerprint": "src/server/request_state.nim:RVR:2d1e0d0ec0050a35:2",
+      "file": "src/server/request_state.nim",
+      "line": 71,
+      "mutator": "RVR",
+      "original": "return failure(\"malformed\")",
+      "replacement": "<return default>",
+      "class": "test_owed",
+      "reason": "既定値の return で関数を抜け、`(nil, none)` の受け入れになる (期限・メソッド・パラメーター・主体の検査にも進まない)。署名は正しいが本体が `[1]` の状態で起きる。検出していたテストは内部側に移っている。 / MCP-MRTR-10。案 B。鍵で署名した base64url の `[1]` を `verifyRequestState` に渡す → `problem` が some。変異だと none。"
     },
     {
       "fingerprint": "src/server/tools.nim:ROR:8fbebf3b833c6500:0",
