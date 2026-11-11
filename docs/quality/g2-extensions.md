@@ -1,5 +1,33 @@
 # G2 変異検出: extensions ジョブ
 
+## 測り直し (拡張ブランチの b04fcb9c、2026-11-11)
+
+測定: `nim-muter` 0.2.15、ジョブ `tests/mutation/extensions.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。
+
+| 全体 | killed | timeout | survived | runError | compileError |
+|---|---|---|---|---|---|
+| 86 | 67 | 1 | 5 | 0 | 13 |
+
+仕分けはコードとテストを読んで行った。変異を手で当てて流してはいない。
+
+### 生き残りの仕分け
+
+| 指紋 | file:line | 変異 | class | 理由 | 仕様 ID / 足すテストの案 |
+|---|---|---|---|---|---|
+| `src/client/extensions.nim:RVR:3ac2bd94b4efe6f7:0` | client/extensions.nim:55 | `return none(JsonNode)` → `return default` | equivalent | 戻り値の型は `Option[JsonNode]` で、`default(Option[JsonNode])` は `none(JsonNode)` と同じ値。`serverExtension` は変異の前後で同じ値を返す。前の仕分け (id 24) と同じ判断 | なし |
+| `src/client/extensions.nim:RVR:3ac2bd94b4efe6f7:1` | client/extensions.nim:66 | `return none(JsonNode)` → `return default` | equivalent | 同上 (`serverCapability`。前の仕分けの id 25) | なし |
+| `src/protocol/extensions.nim:ROR:048f9da66bbc8bda:0` | protocol/extensions.nim:56 | `slash < 0` → `<=` | accepted | 違いが出るのは `/` で始まる識別子 (`/tasks`、slash = 0) だけ。元でも接頭辞が空のラベルとして次の検査が断り、変異後も断る。変わるのは返す理由の文 (「接頭辞が要る」と「ラベルは文字で始まる」) だけで、呼び手 (`declareExtension`、`registerExtension`) はその文を `ValueError` に載せるだけで読んで分岐しない。失敗の文面は契約ではない (代表の決定 2026-10-23) | なし |
+| `src/protocol/extensions.nim:SDL:2413a04126052c00:0` | protocol/extensions.nim:67 | 末尾の式 `none(string)` → `discard` | equivalent | `validateExtensionId` の `result` は `Option[string]` で、代入しなければ既定値の `none(string)`。正しい識別子に対して返す値は変わらない。前の仕分け (id 55) と同じ判断 | なし |
+| `src/protocol/extensions.nim:RVR:3ac2bd94b4efe6f7:0` | protocol/extensions.nim:82 | `return none(JsonNode)` → `return default` | equivalent | `settingsOf` の戻り値の型は `Option[JsonNode]` で、既定値は `none(JsonNode)` (前の仕分けの id 64) | なし |
+
+### 時間切れの見立て
+
+| 指紋 | file:line | 変異 | 見立て | 止まる理由 |
+|---|---|---|---|---|
+| `src/client/extensions.nim:BLR:bfc665f021bc6cc8:0` | client/extensions.nim:73 | 既定値 `clientDeclares = true` → `false` | テストが止まることで検出 | 「Given a client that did not declare the extension, when it calls an extension method, then it raises McpUnsupportedError」(MCP-EXT-8) で、宣言していないクライアントの要求が送られ、答えないピア (`startPeer(nil, ...)`) の応答を既定の 60 秒待つ (版ごと)。明けても `McpTimeoutError` で期待と違う。負荷による偽の時間切れは疑わない。前の測定 (36a4c8a5 の id 13) でも同じ変異が時間切れだった |
+
+時間切れに頼らずに落とすなら、そのテストに `check peer.requestsFor("widgets/make").len == 0` と短い `timeoutMs` を足すことになるが、検出はできているので、ここでは求めない。
+
 測定: `nim-muter`、ジョブ `tests/mutation/extensions.json`、本線の 36a4c8a5 (2026-10-07)。対象は `src/protocol/extensions.nim`、`src/server/extensions.nim`、`src/client/extensions.nim`。
 
 | 全変異 | killed | timeout | survived | runError | compileError |

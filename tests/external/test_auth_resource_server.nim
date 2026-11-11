@@ -165,6 +165,22 @@ suite "Resource server, every version of the build":
       check bearerOf(reply.wwwAuthenticate).get.error == some("invalid_token")
       check env.seen.calls == @[("bogus", env.url)]
 
+    test "Given a request without a token and version " & $v & ", when posted, then the challenge carries no error code":
+      let env = startServer(v, validVerdicts())
+      let reply = send(env.url, HttpPost, initializeBody)
+      check reply.code == Http401
+      check bearerOf(reply.wwwAuthenticate).get.error.isNone
+
+    test "Given a token the verifier rejects and version " & $v & ", when posted, then the challenge carries a description":
+      let env = startServer(v, validVerdicts())
+      let reply = send(env.url, HttpPost, initializeBody, {"Authorization": "Bearer bogus"})
+      check reply.code == Http401
+      var described = 0
+      for line in reply.wwwAuthenticate:
+        let description = bearerParam(line, "error_description")
+        if description.isSome and description.get.len > 0: inc described
+      check described == 1
+
     test "Given the verifier is told the resource and version " & $v & ", when a token arrives, then it gets the canonical URI of this server to check the audience against":
       let env = startServer(v, validVerdicts())
       discard send(env.url, HttpPost, initializeBody, {"Authorization": "Bearer good"})

@@ -1,5 +1,28 @@
 # G2 変異検出: auth_resource_server ジョブ
 
+## 測り直し (拡張ブランチの b04fcb9c、2026-11-11)
+
+測定: `nim-muter` 0.2.15、ジョブ `tests/mutation/auth_resource_server.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。
+
+| 全体 | killed | timeout | survived | runError | compileError |
+|---|---|---|---|---|---|
+| 42 | 34 | 0 | 6 | 0 | 2 |
+
+仕分けはコードとテストを読んで行った。変異を手で当てて流してはいない。時間切れは無い。
+
+test_owed の 2 件は、前の測定で足したテスト (「the challenge names no error」「the challenge explains the refusal」) が検出していた変異。その 2 本は SDK の内側の読み手 (`bearerChallenge`) を使うので 2026-10-13 に `tests/internal/test_auth_resource_server_internal.nim` へ移り、外部側には同じことを確かめるテストが残っていない (`tests/external/` を `error_description`・`"error" notin` で探して、資源サーバーのチャレンジを見るものは「no empty description」の 1 本だけ)。testCommand に足せる既存のファイルは無い。
+
+### 生き残りの仕分け
+
+| 指紋 | file:line | 変異 | class | 理由 | 仕様 ID / 足すテストの案 |
+|---|---|---|---|---|---|
+| `src/auth/resource_server.nim:ROR:dedcfbcc643201d9:0` | resource_server.nim:100 | `error.len > 0` → `>=` | test_owed | トークンの無い要求への 401 は、変異後 `error=""` を持つ。ヘッダーの文字列は HTTP の応答として外から見える。外部のテストは `resource_metadata` と `scope` しか見ていない | MCP-AUTH-32 (「a request without a token gets a challenge with no error code」)。`tests/external/test_auth_resource_server.nim` に足す: 認可のある各版で、トークン無しで POST し、`reply.wwwAuthenticate[0]` に `error` が含まれないこと (同じファイルの `bearerOf(...).get.error.isNone` でもよい。SDK の読み手は使わない)。変異だと `error=""` が載り、落ちる |
+| `src/auth/resource_server.nim:SDL:304537b826ebd5d2:0` | resource_server.nim:103 | `params.add ("error_description", description)` → `discard` | test_owed | 検証器が拒んだトークンへの 401 `invalid_token` から `error_description` が消える。外部のテストは `error` の値だけを見ている | MCP-AUTH-32 (「a rejected token gets invalid_token with a description」)。同じファイルに足す: 各版で `Authorization: Bearer bogus` を POST し、同じファイルの `bearerParam(reply.wwwAuthenticate[0], "error_description")` が some で空でないこと (文面そのものは比べない)。変異だと none になり、落ちる |
+| `src/auth/resource_server.nim:RVR:0c511227513989c7:0` | resource_server.nim:114 | `return none(string)` → `return default` | equivalent | `bearerToken` の戻り値の型は `Option[string]` で、`default(Option[string])` は `none(string)` と同じ値。前の仕分け (id 32) と同じ判断 | なし |
+| `src/auth/resource_server.nim:ROR:51b30ed4788841bf:0` | resource_server.nim:116 | `value.len <= 7` → `<` | equivalent | 違いが出るのは長さがちょうど 7 の値だけ。変異後は同じ行の残りの検査に進み、`bearer` + 空白でなければそこで none、`"Bearer "` なら `value[7 .. ^1]` が空文字列になり 119 行の `token.len == 0` で none。どちらも元と同じ none で、添字も範囲の内 (`value[6]` は長さ 7 で読める)。前の仕分け (id 5) と同じ判断 | なし |
+| `src/auth/resource_server.nim:RVR:0c511227513989c7:1` | resource_server.nim:117 | `return none(string)` → `return default` | equivalent | 114 行と同じ (前の仕分けの id 33) | なし |
+| `src/auth/resource_server.nim:RVR:0c511227513989c7:2` | resource_server.nim:120 | `return none(string)` → `return default` | equivalent | 114 行と同じ (前の仕分けの id 34) | なし |
+
 測定: `nim-muter`、ジョブ `tests/mutation/auth_resource_server.json` (`src/auth/resource_server.nim`、`src/transport/auth_hook.nim`)、本線の 36a4c8a5 (2026-10-07)。
 行番号は 36a4c8a5 のもの (`resource_server.nim` はその後変わっていない)。
 

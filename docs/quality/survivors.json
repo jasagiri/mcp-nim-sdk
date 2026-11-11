@@ -1,6 +1,96 @@
 {
   "survivors": [
     {
+      "fingerprint": "src/auth/resource_server.nim:ROR:dedcfbcc643201d9:0",
+      "file": "src/auth/resource_server.nim",
+      "line": 100,
+      "mutator": "ROR",
+      "original": "error.len > 0",
+      "replacement": "<> -> >=>",
+      "class": "test_owed",
+      "reason": "トークンの無い要求への 401 は、変異後 `error=\"\"` を持つ。ヘッダーの文字列は HTTP の応答として外から見える。外部のテストは `resource_metadata` と `scope` しか見ていない / MCP-AUTH-32 (「a request without a token gets a challenge with no error code」)。`tests/external/test_auth_resource_server.nim` に足す: 認可のある各版で、トークン無しで POST し、`reply.wwwAuthenticate[0]` に `error` が含まれないこと (同じファイルの `bearerOf(...).get.error.isNone` でもよい。SDK の読み手は使わない)。変異だと `error=\"\"` が載り、落ちる"
+    },
+    {
+      "fingerprint": "src/auth/resource_server.nim:SDL:304537b826ebd5d2:0",
+      "file": "src/auth/resource_server.nim",
+      "line": 103,
+      "mutator": "SDL",
+      "original": "params.add (\"error_description\", description)",
+      "replacement": "discard",
+      "class": "test_owed",
+      "reason": "検証器が拒んだトークンへの 401 `invalid_token` から `error_description` が消える。外部のテストは `error` の値だけを見ている / MCP-AUTH-32 (「a rejected token gets invalid_token with a description」)。同じファイルに足す: 各版で `Authorization: Bearer bogus` を POST し、同じファイルの `bearerParam(reply.wwwAuthenticate[0], \"error_description\")` が some で空でないこと (文面そのものは比べない)。変異だと none になり、落ちる"
+    },
+    {
+      "fingerprint": "src/auth/resource_server.nim:RVR:0c511227513989c7:0",
+      "file": "src/auth/resource_server.nim",
+      "line": 114,
+      "mutator": "RVR",
+      "original": "return none(string)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "`bearerToken` の戻り値の型は `Option[string]` で、`default(Option[string])` は `none(string)` と同じ値。前の仕分け (id 32) と同じ判断 / なし"
+    },
+    {
+      "fingerprint": "src/auth/resource_server.nim:ROR:51b30ed4788841bf:0",
+      "file": "src/auth/resource_server.nim",
+      "line": 116,
+      "mutator": "ROR",
+      "original": "value.len <= 7",
+      "replacement": "<<= -> <>",
+      "class": "equivalent",
+      "reason": "違いが出るのは長さがちょうど 7 の値だけ。変異後は同じ行の残りの検査に進み、`bearer` + 空白でなければそこで none、`\"Bearer \"` なら `value[7 .. ^1]` が空文字列になり 119 行の `token.len == 0` で none。どちらも元と同じ none で、添字も範囲の内 (`value[6]` は長さ 7 で読める)。前の仕分け (id 5) と同じ判断 / なし"
+    },
+    {
+      "fingerprint": "src/auth/resource_server.nim:RVR:0c511227513989c7:1",
+      "file": "src/auth/resource_server.nim",
+      "line": 117,
+      "mutator": "RVR",
+      "original": "return none(string)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "114 行と同じ (前の仕分けの id 33) / なし"
+    },
+    {
+      "fingerprint": "src/auth/resource_server.nim:RVR:0c511227513989c7:2",
+      "file": "src/auth/resource_server.nim",
+      "line": 120,
+      "mutator": "RVR",
+      "original": "return none(string)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "114 行と同じ (前の仕分けの id 34) / なし"
+    },
+    {
+      "fingerprint": "src/client/extensions.nim:RVR:3ac2bd94b4efe6f7:0",
+      "file": "src/client/extensions.nim",
+      "line": 55,
+      "mutator": "RVR",
+      "original": "return none(JsonNode)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "戻り値の型は `Option[JsonNode]` で、`default(Option[JsonNode])` は `none(JsonNode)` と同じ値。`serverExtension` は変異の前後で同じ値を返す。前の仕分け (id 24) と同じ判断 / なし"
+    },
+    {
+      "fingerprint": "src/client/extensions.nim:RVR:3ac2bd94b4efe6f7:1",
+      "file": "src/client/extensions.nim",
+      "line": 66,
+      "mutator": "RVR",
+      "original": "return none(JsonNode)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "同上 (`serverCapability`。前の仕分けの id 25) / なし"
+    },
+    {
+      "fingerprint": "src/client/subscriptions.nim:SDL:7b6c11cca30461fe:0",
+      "file": "src/client/subscriptions.nim",
+      "line": 112,
+      "mutator": "SDL",
+      "original": "options.cancel.unwatchCancellation(cancelled)",
+      "replacement": "discard",
+      "class": "spec_question",
+      "reason": "変異後は、承認まで進んだ `listen` の待ち手が 1 本ずつトークンの `waiters` に残る。公開の入口から呼べる操作の結果は変わらない (後で `cancel` すると残った待ち手が完了するが、`firstOf` の呼び鈴は待つ人がいなければ何もしない。`src/transport/first_of.nim` の `watch`)。変わるのは、長く使うトークンが `listen` の回数だけメモリを持ち続けることだけで、それを読める `heldWaiters` は doc が「for tests」と言う非公開のもの。これを確かめるテスト (「token holds nothing of them」) は 2026-10-13 に内部側 (`tests/internal/test_subscriptions_internal.nim`) へ移り、`specs/tests.map` では MCP-SUBSCRIBE-11 に結ばれているが、その Scenario の文面 (断る・購読を持たない) は待ち手のことを言っていない / 問い: 「共有の取り消しトークンが、終わった `listen` の待ち手を持ち続けない」ことを仕様 (Scenario) にして公開の入口から測れる形 (公開の数え口) を作りますか、それとも外から見えない実装の性質として内部テストに任せ、この変異を同値として扱いますか。`client` ジョブの `sendRequest` 側 (`src/client/client.nim` の同じ呼び出し、MCP-CANCEL-4 に結ばれた内部テスト) も同じ問いになる"
+    },
+    {
       "fingerprint": "src/ext/skills/catalog.nim:AOR:0a5dc4f793c7bd6f:0",
       "file": "src/ext/skills/catalog.nim",
       "line": 208,
@@ -629,6 +719,36 @@
       "replacement": "discard",
       "class": "test_owed",
       "reason": "正しい ASCII でない文字がすべて消える。 / MCP-SEC-HTTP-7。T-B。"
+    },
+    {
+      "fingerprint": "src/protocol/extensions.nim:ROR:048f9da66bbc8bda:0",
+      "file": "src/protocol/extensions.nim",
+      "line": 56,
+      "mutator": "ROR",
+      "original": "slash < 0",
+      "replacement": "<< -> <=>",
+      "class": "accepted",
+      "reason": "違いが出るのは `/` で始まる識別子 (`/tasks`、slash = 0) だけ。元でも接頭辞が空のラベルとして次の検査が断り、変異後も断る。変わるのは返す理由の文 (「接頭辞が要る」と「ラベルは文字で始まる」) だけで、呼び手 (`declareExtension`、`registerExtension`) はその文を `ValueError` に載せるだけで読んで分岐しない。失敗の文面は契約ではない (代表の決定 2026-10-23) / なし"
+    },
+    {
+      "fingerprint": "src/protocol/extensions.nim:SDL:2413a04126052c00:0",
+      "file": "src/protocol/extensions.nim",
+      "line": 67,
+      "mutator": "SDL",
+      "original": "none(string)",
+      "replacement": "discard",
+      "class": "equivalent",
+      "reason": "`validateExtensionId` の `result` は `Option[string]` で、代入しなければ既定値の `none(string)`。正しい識別子に対して返す値は変わらない。前の仕分け (id 55) と同じ判断 / なし"
+    },
+    {
+      "fingerprint": "src/protocol/extensions.nim:RVR:3ac2bd94b4efe6f7:0",
+      "file": "src/protocol/extensions.nim",
+      "line": 82,
+      "mutator": "RVR",
+      "original": "return none(JsonNode)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "`settingsOf` の戻り値の型は `Option[JsonNode]` で、既定値は `none(JsonNode)` (前の仕分けの id 64) / なし"
     },
     {
       "fingerprint": "src/protocol/features.nim:BLR:fd541d232acef4ff:0",
@@ -1299,6 +1419,26 @@
       "replacement": "discard",
       "class": "equivalent",
       "reason": "末尾の式が消えると関数は `result` の初期値を返す。`Option[string]` の初期値は none で、元の値と同じ。そこに届く前の 2 つの分岐は `return some(...)` で抜けるので、`result` はほかで書き換えられない。 / 無し"
+    },
+    {
+      "fingerprint": "src/protocol/subscriptions.nim:RVR:0c511227513989c7:0",
+      "file": "src/protocol/subscriptions.nim",
+      "line": 83,
+      "mutator": "RVR",
+      "original": "return none(string)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "戻り値の型は `Option[string]` で、`default(Option[string])` は `none(string)` と同じ値 (has = false)。変異の前後で `subscriptionIdOf` は同じ値を返す。前の仕分け (id 81) と同じ判断 / なし"
+    },
+    {
+      "fingerprint": "src/protocol/subscriptions.nim:RVR:0c511227513989c7:1",
+      "file": "src/protocol/subscriptions.nim",
+      "line": 86,
+      "mutator": "RVR",
+      "original": "return none(string)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "同上 (前の仕分けの id 82) / なし"
     },
     {
       "fingerprint": "src/protocol/trace_context.nim:ROR:dd50541f3b456bb7:0",

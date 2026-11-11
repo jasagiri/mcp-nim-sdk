@@ -1,5 +1,41 @@
 # G2 変異検査: subscriptions ジョブ (g2f-subs)
 
+## 測り直し (拡張ブランチの b04fcb9c、2026-11-11)
+
+測定: `nim-muter` 0.2.15、ジョブ `tests/mutation/subscriptions.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。
+
+| 全体 | killed | timeout | survived | runError | compileError |
+|---|---|---|---|---|---|
+| 86 | 64 | 9 | 3 | 0 | 10 |
+
+仕分けはコードとテストを読んで行った。変異を手で当てて流してはいない。
+
+### 生き残りの仕分け
+
+| 指紋 | file:line | 変異 | class | 理由 | 仕様 ID / 足すテストの案 |
+|---|---|---|---|---|---|
+| `src/client/subscriptions.nim:SDL:7b6c11cca30461fe:0` | client/subscriptions.nim:112 | `options.cancel.unwatchCancellation(cancelled)` → `discard` | spec_question | 変異後は、承認まで進んだ `listen` の待ち手が 1 本ずつトークンの `waiters` に残る。公開の入口から呼べる操作の結果は変わらない (後で `cancel` すると残った待ち手が完了するが、`firstOf` の呼び鈴は待つ人がいなければ何もしない。`src/transport/first_of.nim` の `watch`)。変わるのは、長く使うトークンが `listen` の回数だけメモリを持ち続けることだけで、それを読める `heldWaiters` は doc が「for tests」と言う非公開のもの。これを確かめるテスト (「token holds nothing of them」) は 2026-10-13 に内部側 (`tests/internal/test_subscriptions_internal.nim`) へ移り、`specs/tests.map` では MCP-SUBSCRIBE-11 に結ばれているが、その Scenario の文面 (断る・購読を持たない) は待ち手のことを言っていない | 問い: 「共有の取り消しトークンが、終わった `listen` の待ち手を持ち続けない」ことを仕様 (Scenario) にして公開の入口から測れる形 (公開の数え口) を作りますか、それとも外から見えない実装の性質として内部テストに任せ、この変異を同値として扱いますか。`client` ジョブの `sendRequest` 側 (`src/client/client.nim` の同じ呼び出し、MCP-CANCEL-4 に結ばれた内部テスト) も同じ問いになる |
+| `src/protocol/subscriptions.nim:RVR:0c511227513989c7:0` | protocol/subscriptions.nim:83 | `return none(string)` → `return default` | equivalent | 戻り値の型は `Option[string]` で、`default(Option[string])` は `none(string)` と同じ値 (has = false)。変異の前後で `subscriptionIdOf` は同じ値を返す。前の仕分け (id 81) と同じ判断 | なし |
+| `src/protocol/subscriptions.nim:RVR:0c511227513989c7:1` | protocol/subscriptions.nim:86 | `return none(string)` → `return default` | equivalent | 同上 (前の仕分けの id 82) | なし |
+
+### 時間切れの見立て
+
+9 件とも、テストが待ち続けることで検出している変異と読んだ。負荷による偽の時間切れを疑うものは無い (どれも、変異後は完了しない future か、既定の 60 秒 (`DefaultRequestTimeoutMs`) の待ちに入る経路が、コードから決まる)。時間切れの件数は前の 2 回の測定 (36a4c8a5 は 12、76a08c6a は 9) とも続いている。
+
+| 指紋 | file:line | 変異 | 見立て | 止まる理由 |
+|---|---|---|---|---|
+| `src/client/subscriptions.nim:SDL:5974eb006904ee2c:0` | client/subscriptions.nim:66 | `client.requireFeature(ftSubscriptionsListen, ListenMethod)` → `discard` | テストが止まることで検出 | 「Given a version without subscriptions/listen, when the client listens ...」で、旧版の接続でも要求が送られ、答えないピアの承認を既定の 60 秒待つ (版ごとに繰り返す)。待ちが明けても `McpTimeoutError` で、期待の `McpUnsupportedError` ではないので落ちる |
+| `src/client/subscriptions.nim:SDL:10ace171c90013f8:0` | client/subscriptions.nim:89 | 応答の `addCallback(...)` → `discard` | テストが止まることで検出 | 応答が来ても接続が切れても購読が終わらない。`waitFor sub.ended` (「the stream ended gracefully」「it ended lost」、端から端の 2 本) が完了しない。断られた `listen` も 60 秒待つ |
+| `src/client/subscriptions.nim:SDL:8260da5362b1157c:0` | client/subscriptions.nim:94 | `client.endSubscription(id, sbLost)` → `discard` | テストが止まることで検出 | 「Given the transport fails while listening ...」の `waitFor sub.ended` が完了しない |
+| `src/client/subscriptions.nim:SDL:29c009532715a1f4:0` | client/subscriptions.nim:99 | `client.endSubscription(id, sbFailed)` → `discard` | テストが止まることで検出 | 「Given a server that rejects the listen request ...」で `ended` が完了せず、`listen` が既定の 60 秒を待つ (版ごと)。明けても `McpTimeoutError` で、期待の `McpRequestError` ではない |
+| `src/client/subscriptions.nim:SDL:cd57665d81f5171c:0` | client/subscriptions.nim:101 | `client.endSubscription(id, sbGraceful)` → `discard` | テストが止まることで検出 | 「Given the server answers the listen request ...」と HTTP の端から端のテストの `waitFor sub.ended` が完了しない |
+| `src/protocol/subscriptions.nim:ROR:1caec0ad73df46ba:0` | protocol/subscriptions.nim:82 | `params.kind != JObject` → `==` | テストが止まることで検出 | オブジェクトの params から購読 id が読めなくなり、承認の通知がどの購読にも届かない (`src/client/client.nim` の `routeToSubscription`)。クライアント側のほぼすべての `listen` が承認を 60 秒待つ。その前に「Given notification params, when the subscription id is read ...」の `check` も落ちるが、実行は続いて待ちに入る |
+| `src/protocol/subscriptions.nim:ROR:b531d79e05a86afc:0` | protocol/subscriptions.nim:85 | `meta.kind != JObject` → `==` | テストが止まることで検出 | 同上 (オブジェクトの `_meta` で none を返す) |
+| `src/protocol/subscriptions.nim:ROR:07e150ac7451e45e:0` | protocol/subscriptions.nim:89 | `id.kind == JString` → `!=` | テストが止まることで検出 | 文字列の購読 id (クライアントの id は UUID の文字列) が none になり、同上 |
+| `src/server/subscriptions.nim:SDL:845d73a07055de02:0` | server/subscriptions.nim:49 | `result.add subscription` → `discard` | テストが止まることで検出 | `all` が空になり、`endSubscriptions` (`src/server/server.nim`) が何も閉じない。端から端のテストの `waitFor server.endSubscriptions()` の後の `waitFor sub.ended` が完了しない |
+
+時間切れに頼らずに落とすなら、待ちに上限のある形 (`listen` に `timeoutMs` を渡す、`sub.ended` を `untilTrue` で待つ) にテストを直すことになるが、検出はできているので、ここでは求めない。
+
 対象は `src/protocol/subscriptions.nim`、`src/server/subscriptions.nim`、`src/client/subscriptions.nim` (`tests/mutation/subscriptions.json`)。
 測定は 36a4c8a5 (change `owwryuxn`) で行った。ジョブ全体の数字は 85 件中 killed 34 / timeout 12 / survived 30 / compileError 9 / runError 0。
 

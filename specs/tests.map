@@ -641,6 +641,8 @@ MCP-AUTH-2 | tests/external/test_auth_resource_server.nim | Given a token in the
 MCP-AUTH-2 | tests/external/test_auth_resource_server.nim | Given a verifier that fails and version <version>, when posted, then the answer is 500 and the request does not go through
 MCP-AUTH-32 | tests/internal/test_auth_resource_server_internal.nim | Given a request without a token and version <version>, when posted, then the challenge names no error: there was no credential to fault
 MCP-AUTH-32 | tests/internal/test_auth_resource_server_internal.nim | Given a token the verifier rejects and version <version>, when posted, then the challenge explains the refusal
+MCP-AUTH-32 | tests/external/test_auth_resource_server.nim | Given a request without a token and version <version>, when posted, then the challenge carries no error code
+MCP-AUTH-32 | tests/external/test_auth_resource_server.nim | Given a token the verifier rejects and version <version>, when posted, then the challenge carries a description
 MCP-AUTH-32 | tests/external/test_auth_resource_server.nim | Given a token that lacks scope and version <version>, when posted, then the challenge carries no empty description
 MCP-AUTH-32 | tests/external/test_auth_resource_server.nim | Given a configuration that lists no scopes, when the metadata document is made, then it has no scopes_supported
 MCP-AUTH-33 | tests/external/test_auth_resource_server.nim | Given a token of 8192 characters and one of 8193 and version <version>, when each arrives, then only the longer is refused before the verifier
