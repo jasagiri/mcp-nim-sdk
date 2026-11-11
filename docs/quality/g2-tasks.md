@@ -10,6 +10,10 @@
 
 仕分けは式と呼び出し元を読んで行った (変異を当てて流してはいない)。件数: equivalent 21、spec_question 4、test_owed 1、accepted 1、undecided 1。
 
+### x86-64 での確かめ (2026-11-12)
+
+`src/protocol/tasks.nim:ROR:394635f51fa4c60e:0` (ttl の境界の `>=` → `>`) は、測定機 (arm64) では同値で、表では undecided とした。Linux x86_64・Nim 2.2.12 で b04fcb9c の `tests/external/test_tasks_store.nim` を流すと、変異なしは通り、変異ありは「Given a ttl of 2^63 milliseconds, ...」が落ちた。台帳では、機種による差として accepted にした (代表の決定 2026-11-12)。
+
 ### 生き残りの仕分け
 
 | 指紋 | file:line | 変異 | class | 理由 | 仕様 ID / 足すテストの案 |

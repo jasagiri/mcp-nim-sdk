@@ -2298,7 +2298,7 @@
       "original": "value >= 9.223372036854776e+18",
       "replacement": "<>= -> >>",
       "class": "accepted",
-      "reason": "違いはちょうど 2^63 ミリ秒の ttl だけ。arm64 では範囲の外の float から int64 への変換が飽和して元と同じ値になり同値。x86-64 では既存の E テスト (test_tasks_store の「Given a ttl of 2^63 milliseconds, ...」) が検出するはず (未測定)。機種による差として受け入れる (代表の決定 2026-11-12)"
+      "reason": "違いはちょうど 2^63 ミリ秒の ttl だけ。arm64 (測定機) では範囲の外の float から int64 への変換が飽和して元と同じ値になり同値。x86-64 では既存の E テストが検出する: 2026-11-12 に Linux x86_64・Nim 2.2.12 で b04fcb9c の tests/external/test_tasks_store.nim を流し、変異なしは終了コード 0、変異ありは「Given a ttl of 2^63 milliseconds, when the params are parsed, then it is read as the largest」が FAILED で終了コード 1 [測った]。機種による差として受け入れる (代表の決定 2026-11-12)"
     },
     {
       "fingerprint": "src/protocol/tasks.nim:ROR:68c9d096fcb44c25:0",
