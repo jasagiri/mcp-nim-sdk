@@ -1907,8 +1907,8 @@
       "mutator": "ROR",
       "original": "value >= 9.223372036854776e+18",
       "replacement": "<>= -> >>",
-      "class": "undecided",
-      "reason": ""
+      "class": "accepted",
+      "reason": "違いはちょうど 2^63 ミリ秒の ttl だけ。arm64 では範囲の外の float から int64 への変換が飽和して元と同じ値になり同値。x86-64 では既存の E テスト (test_tasks_store の「Given a ttl of 2^63 milliseconds, ...」) が検出するはず (未測定)。機種による差として受け入れる (代表の決定 2026-11-12)"
     },
     {
       "fingerprint": "src/protocol/tasks.nim:ROR:68c9d096fcb44c25:0",
