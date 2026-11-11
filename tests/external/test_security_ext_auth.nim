@@ -12,6 +12,7 @@ when DefaultProtocolVersion.has(ftProtectedResourceMetadata):
   import ext/auth_client_credentials
   import ext/auth_enterprise_managed
   import auth/oauth/errors
+  import auth/client  # MaxTokenLifetimeSeconds
   import ext_auth_fixtures
 
   const
@@ -162,3 +163,7 @@ when DefaultProtocolVersion.has(ftProtectedResourceMetadata):
       checkIdentityAssertionGrant(jag(claims), "https://idp.example", "https://as.example",
                                   none(string), "c", now)
 
+    test "Given an ID-JAG that expires in exactly the longest lifetime a grant can have and one that expires a second later, when checked, then the first is accepted and the second refused":
+      discard grantChecked(claimsWith(%(1_800_000_000 + MaxTokenLifetimeSeconds)))
+      expect OAuthError:
+        discard grantChecked(claimsWith(%(1_800_000_000 + MaxTokenLifetimeSeconds + 1)))

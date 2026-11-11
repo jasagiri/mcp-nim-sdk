@@ -159,6 +159,45 @@ when DefaultProtocolVersion.has(ftProtectedResourceMetadata):
       for l in env.authServer.log:
         check not l.bearerOf.startsWith("Bearer ")
 
+    test "Given a signing key and an assertion lifetime of zero, when a request is sent, then the assertion lives one minute":
+      let env = startEnv()
+      defer: env.stop()
+      var config = env.withKey()
+      config.assertionLifetime = DurationZero
+      let t = transportFor(newClientCredentialsAuth(config), env.rs.url)
+      check t.ping(){"result", "served"}.getBool()
+      let claims = decodeJwtUnverified(env.requests[][0].field("client_assertion").get).claims
+      check claims{"exp"}.getBiggestInt() - claims{"iat"}.getBiggestInt() == 60
+
+    test "Given an authorization server that accepts only its issuer or only its token endpoint as audience, when the config names that audience, then the assertion is accepted":
+      for audience in [aaIssuer, aaTokenEndpoint]:
+        let env = startEnv()
+        defer: env.stop()
+        env.registry.audiences =
+          @[if audience == aaIssuer: env.authServer.issuer
+            else: env.authServer.metadata["token_endpoint"].getStr()]
+        var config = env.withKey()
+        config.assertionAudience = audience
+        let t = transportFor(newClientCredentialsAuth(config), env.rs.url)
+        check t.ping(){"result", "served"}.getBool()
+
+    test "Given a signer made without a signing function, when a request is sent, then the request fails and nothing is sent to the authorization server":
+      let env = startEnv()
+      defer: env.stop()
+      var config = env.configFor("jwt-client")
+      config.signer = some(JwtSigner(alg: "HS256"))
+      let t = transportFor(newClientCredentialsAuth(config), env.rs.url)
+      expect McpTransportError:
+        discard t.ping()
+      check env.requests[].len == 0
+
+    test "Given no scope in the config, the challenge or the metadata, when a token is requested, then no scope parameter is sent":
+      let env = startEnv()
+      defer: env.stop()
+      let t = transportFor(newClientCredentialsAuth(env.withSecret()), env.rs.url)
+      check t.ping(){"result", "served"}.getBool()
+      check env.requests[][0].field("scope").isNone
+
   suite "client credentials: scopes":
 
     test "Given a challenge with a scope, when the token is requested, then it asks for that scope":

@@ -10,7 +10,7 @@ import protocol/version
 import protocol/features
 
 when DefaultProtocolVersion.has(ftProtectedResourceMetadata):
-  import std/[unittest, asyncdispatch, httpcore, json, options, strutils, times, tables, sets]
+  import std/[unittest, asyncdispatch, base64, httpcore, json, options, strutils, times, tables, sets]
   import transport/transport
   import transport/http
   import protocol/types
@@ -18,6 +18,7 @@ when DefaultProtocolVersion.has(ftProtectedResourceMetadata):
   import server/server
   import ext/auth_enterprise_managed
   import auth/oauth/errors
+  import auth/client
   import ./server_harness
   import ./client_peer
   import ext_auth_fixtures
@@ -39,6 +40,8 @@ when DefaultProtocolVersion.has(ftProtectedResourceMetadata):
       resource: Option[JsonNode]
       dropResource: bool
       drop: seq[string]
+      dropBody: seq[string]
+        ## Fields of the exchange response that the IdP leaves out.
       lifetime: int
       issuedTokenType: string
       tokenType: string
@@ -133,6 +136,8 @@ when DefaultProtocolVersion.has(ftProtectedResourceMetadata):
                     "token_type": behavior.tokenType, "expires_in": max(behavior.lifetime, 0)}
       if granted.len > 0:
         body["scope"] = %granted
+      for name in behavior.dropBody:
+        body.delete(name)
       GrantAnswer(code: Http200, body: body))
 
     serveGrants(ras, proc(req: GrantRequest): GrantAnswer {.closure, gcsafe.} =
@@ -276,6 +281,13 @@ when DefaultProtocolVersion.has(ftProtectedResourceMetadata):
       check env.connect(config).ping(){"result", "served"}.getBool()
       check env.idpRequests[][0].field("resource").isNone
 
+    test "Given no scope in the config, the challenge or the metadata, when the exchange is made, then neither the IdP nor the authorization server is sent a scope":
+      let env = startEnv()
+      defer: env.stop()
+      check env.connect(env.config()).ping(){"result", "served"}.getBool()
+      check env.idpRequests[][0].field("scope").isNone
+      check env.rasRequests[][0].field("scope").isNone
+
   suite "enterprise-managed authorization: scopes":
 
     test "Given scopes in the config, when the exchange is made, then they replace the challenge's":
@@ -341,6 +353,11 @@ when DefaultProtocolVersion.has(ftProtectedResourceMetadata):
       defer: env.stop()
       check GrantProfileIdJag in env.refusedBeforeAnyExchange(env.config())
 
+
+    test "Given an authorization server that lists the profile but not the jwt-bearer grant, when a request is sent, then no identity assertion is used":
+      let env = startEnv(rasGrantTypes = @["authorization_code"])
+      defer: env.stop()
+      discard env.refusedBeforeAnyExchange(env.config())
 
     test "Given an IdP that lists identity chaining token types without id-jag, when a request is sent, then the identity assertion is not sent to it":
       let env = startEnv(idpTokenTypes = @["urn:ietf:params:oauth:token-type:access_token"])
@@ -446,6 +463,50 @@ when DefaultProtocolVersion.has(ftProtectedResourceMetadata):
       env.rs.challengeScope = "chat.read chat.history"
       env.behavior.grantScope = some("chat.read")
       check env.connect(env.config()).ping(){"result", "served"}.getBool()
+
+    test "Given an exchange response that leaves out access_token, issued_token_type or token_type, when it arrives, then the request fails and nothing is sent to the authorization server":
+      for missing in ["access_token", "issued_token_type", "token_type"]:
+        let env = startEnv()
+        defer: env.stop()
+        env.behavior.dropBody = @[missing]
+        discard env.connect(env.config()).failureOf()
+        check env.idpRequests[].len == 1
+        check env.rasRequests[].len == 0
+
+  suite "enterprise-managed authorization: the stored token":
+
+    proc recording(saved: ref seq[TokenSet]): TokenStore =
+      ## A token store that works as the memory store does and remembers every
+      ## token saved to it.
+      let inner = newMemoryStore[TokenSet]()
+      proc save(key: string, value: TokenSet) {.closure, gcsafe, raises: [].} =
+        saved[].add value
+        inner.save(key, value)
+      TokenStore(load: inner.load, save: save, remove: inner.remove)
+
+    test "Given an authorization server that grants a narrower scope than was asked, when the access token is stored, then its scopes are the granted ones":
+      let env = startEnv()
+      defer: env.stop()
+      env.rs.challengeScope = "chat.read chat.history"
+      env.behavior.grantScope = some("chat.read")
+      var config = env.config()
+      let saved = new(seq[TokenSet])
+      config.tokenStore = recording(saved)
+      check env.connect(config).ping(){"result", "served"}.getBool()
+      check saved[].len == 1
+      check saved[][0].scopes == @["chat.read"]
+
+    test "Given an authorization server that names no scope in its answer, when the access token is stored, then its scopes are the ones asked for":
+      let env = startEnv()
+      defer: env.stop()
+      env.rs.challengeScope = "chat.read"
+      env.behavior.grantScope = some("")
+      var config = env.config()
+      let saved = new(seq[TokenSet])
+      config.tokenStore = recording(saved)
+      check env.connect(config).ping(){"result", "served"}.getBool()
+      check saved[].len == 1
+      check saved[][0].scopes == (if ScopeChallenges: @["chat.read"] else: @[])
 
   suite "enterprise-managed authorization: refusals and secrets":
 
@@ -571,6 +632,75 @@ when DefaultProtocolVersion.has(ftProtectedResourceMetadata):
     let good = %*{"jti": "j", "iss": "https://idp.example", "sub": "u", "aud": "https://as.example",
                   "client_id": "c", "exp": 1_800_000_100, "iat": 1_799_999_900,
                   "resource": "https://mcp.example/mcp"}
+
+    proc checked(token: string): DecodedJwt =
+      checkIdentityAssertionGrant(token, "https://idp.example", "https://as.example",
+                                  none(string), "c", now)
+
+    proc base64Url(text: string): string =
+      base64.encode(text, safe = true).strip(leading = false, chars = {'='})
+
+    proc handmade(header, claims: JsonNode, signature = "c2ln"): string =
+      base64Url($header) & "." & base64Url($claims) & "." & signature
+
+    test "Given an ID-JAG whose signature part is empty or not base64url, when it is checked, then it is refused":
+      let signed = jag(good)
+      let signingInput = signed[0 ..< signed.rfind('.')]
+      expect OAuthError: discard checked(signingInput & ".")
+      expect OAuthError: discard checked(signingInput & ".ab+/")
+      expect OAuthError: discard checked(signingInput & ".ab=")
+      discard checked(signed)
+
+    test "Given an ID-JAG of exactly the largest length a JWT may have and one a byte longer, when checked, then the first is read and the second refused":
+      # 16 KiB. The header and the payload are each base64url without padding,
+      # so a padded claim alone cannot reach every length; a key id in the
+      # header makes up the difference. The signature part is as long for every
+      # token, so the padding that fills the rest is found without signing each try.
+      proc jagOfLength(total: int): string =
+        for keyIdSize in 1 .. 4:
+          let signer = hs256Signer("k", keyId = some("k".repeat(keyIdSize)))
+          let sample = signer.signJwt(good, typ = some(IdJagJwtType)).split('.')
+          let fixed = sample[0].len + sample[2].len + 2
+          for size in 0 .. total:
+            let claims = good.copy()
+            claims["pad"] = %"x".repeat(size)
+            if fixed + base64Url($claims).len == total:
+              return signer.signJwt(claims, typ = some(IdJagJwtType))
+        doAssert false, "no padding gives exactly " & $total & " bytes"
+      let exact = jagOfLength(16 * 1024)
+      doAssert exact.len == 16 * 1024
+      discard checked(exact)
+      let longer = jagOfLength(16 * 1024 + 1)
+      doAssert longer.len == 16 * 1024 + 1
+      expect OAuthError: discard checked(longer)
+
+    test "Given a header without alg or with an empty alg, when the ID-JAG is checked, then it is refused":
+      expect OAuthError: discard checked(handmade(%*{"typ": IdJagJwtType}, good))
+      expect OAuthError: discard checked(handmade(%*{"typ": IdJagJwtType, "alg": ""}, good))
+      discard checked(handmade(%*{"typ": IdJagJwtType, "alg": "HS256"}, good))
+
+    test "Given an ID-JAG without typ, iss or client_id, when it is checked, then it is refused":
+      expect OAuthSecurityError:
+        discard checked(handmade(%*{"alg": "HS256"}, good))
+      for missing in ["iss", "client_id"]:
+        let claims = good.copy()
+        claims.delete(missing)
+        expect OAuthSecurityError:
+          discard checked(jag(claims))
+
+    test "Given an ID-JAG whose sub or jti is an empty string, when it is checked, then it is refused":
+      for emptied in ["sub", "jti"]:
+        let claims = good.copy()
+        claims[emptied] = %""
+        expect OAuthError:
+          discard checked(jag(claims))
+
+    test "Given an ID-JAG that expires exactly now or one second later, when it is checked, then the first has expired and the second is accepted":
+      let claims = good.copy()
+      claims["exp"] = %1_800_000_000
+      expect OAuthError: discard checked(jag(claims))
+      claims["exp"] = %1_800_000_001
+      discard checked(jag(claims))
 
 
   suite "enterprise-managed authorization: how a challenge is answered":
