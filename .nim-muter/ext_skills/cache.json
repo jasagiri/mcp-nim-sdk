@@ -10,1899 +10,1899 @@
   "entries": {
     "src/ext/skills/model.nim:84ddc5072092b53b:LOR:105:43:101:scheme.len > 0 and scheme[0] in Letters and; scheme.allCharsInSet(Letters + Digits + {'+', '-', '.'}):<and -> or>": {
       "status": "killed",
-      "durationMs": 62823
+      "durationMs": 79293
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:293:20:20:line.indent > indent:<> -> >=>": {
       "status": "killed",
-      "durationMs": 12057
+      "durationMs": 15993
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:LOR:118:42:51:decoded == \".\" or decoded == \"..\" or '/' in decoded:<or -> and>": {
       "status": "killed",
-      "durationMs": 79796
+      "durationMs": 80705
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:RVR:252:5:76:return some(Found(uri: uri, content: file.content, mimeType: file.mimeType)):<return default>": {
       "status": "killed",
-      "durationMs": 35629
+      "durationMs": 35848
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:RVR:129:5:40:return none(tuple[scheme, path: string]):<return default>": {
       "status": "survived",
-      "durationMs": 98153
+      "durationMs": 25454
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:BLR:375:45:5:false:true": {
       "status": "killed",
-      "durationMs": 45644
+      "durationMs": 43430
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:SDL:172:11:34:result.add scalarOf(entry, number):discard": {
       "status": "killed",
-      "durationMs": 43745
+      "durationMs": 48042
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:54:26:6:i == 0:<== -> !=>": {
       "status": "killed",
-      "durationMs": 42770
+      "durationMs": 41059
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:LOR:107:26:48:fields{key}.isNil or fields{key}.kind != JString:<or -> and>": {
       "status": "killed",
-      "durationMs": 53528
+      "durationMs": 59918
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:SDL:384:31:488:server.addRequestInterceptor(proc (ctx: McpRequestContext;; request: JsonRpcRequest): Future[; Option[JsonRpcResponse]] {.async.} =; if request.`method` != \"resources/read\":; return none(JsonRpcResponse); let uri = request.params{\"uri\"}; if uri.isNil or uri.kind != JString:; return none(JsonRpcResponse); let found = await catalog.locate(uri.getStr()); if found.isNone:; return none(JsonRpcResponse); return some(newJsonRpcResponse(request.id,; %*{\"contents\": [contentsOf(found.get)]}))):discard": {
       "status": "killed",
-      "durationMs": 32818
+      "durationMs": 34440
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:BLR:114:14:5:false:true": {
       "status": "killed",
-      "durationMs": 57322
+      "durationMs": 75965
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:LOR:263:33:85:mimeType.startsWith(\"text/\") or; mimeType in [\"application/json\", \"application/yaml\"]:<or -> and>": {
       "status": "killed",
-      "durationMs": 72870
+      "durationMs": 68256
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:AOR:246:50:23:root.get.rfind('/') + 1:<+ -> ->": {
       "status": "killed",
-      "durationMs": 25938
+      "durationMs": 21545
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:206:10:13:i >= text.len:<>= -> >>": {
       "status": "killed",
-      "durationMs": 44647
+      "durationMs": 46836
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:RVR:155:5:19:return none(string):<return default>": {
       "status": "survived",
-      "durationMs": 23373
+      "durationMs": 24923
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:BLR:178:56:5:false:true": {
       "status": "killed",
-      "durationMs": 61296
+      "durationMs": 75640
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:108:14:15:text[0] == '\\\"':<== -> !=>": {
       "status": "killed",
-      "durationMs": 23085
+      "durationMs": 14072
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:LOR:105:18:39:scheme.len > 0 and scheme[0] in Letters:<and -> or>": {
       "status": "killed",
-      "durationMs": 63347
+      "durationMs": 76827
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:LOR:118:60:70:decoded == \".\" or decoded == \"..\" or '/' in decoded or '\\\\' in decoded:<or -> and>": {
       "status": "killed",
-      "durationMs": 79722
+      "durationMs": 79363
     },
     "src/ext/skills/consumer.nim:7de99cf5109b7bfb:ROR:94:28:20:item.kind == JObject:<== -> !=>": {
       "status": "killed",
-      "durationMs": 17641
+      "durationMs": 20178
     },
     "src/ext/skills/consumer.nim:7de99cf5109b7bfb:RVR:191:3:12:return bytes:<return default>": {
       "status": "killed",
-      "durationMs": 17888
+      "durationMs": 17166
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:ROR:128:13:11:marker <= 0:<<= -> <>": {
       "status": "survived",
-      "durationMs": 99104
+      "durationMs": 25354
     },
     "src/ext/skills/consumer.nim:7de99cf5109b7bfb:AOR:168:24:33:skill.retrieved + listed.get.size:<+ -> ->": {
       "status": "killed",
-      "durationMs": 20900
+      "durationMs": 18555
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:167:23:20:item.strip().len > 0:<> -> >=>": {
       "status": "killed",
-      "durationMs": 44760
+      "durationMs": 50399
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:AOR:86:48:34:Letters + Digits + {'+', '-', '.'}:<+ -> ->": {
       "status": "killed",
-      "durationMs": 53064
+      "durationMs": 61153
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:SDL:150:11:10:item.add c:discard": {
       "status": "killed",
-      "durationMs": 43923
+      "durationMs": 49701
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:LOR:196:47:59:quote == '\\'' and j + 1 < text.len and text[j + 1] == quote:<and -> or>": {
       "status": "killed",
-      "durationMs": 47996
+      "durationMs": 50988
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:ROR:164:12:12:path.len > 0:<> -> >=>": {
       "status": "killed",
-      "durationMs": 80671
+      "durationMs": 79172
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:AOR:86:39:16:Letters + Digits:<+ -> ->": {
       "status": "killed",
-      "durationMs": 56856
+      "durationMs": 60599
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:344:22:18:line.text.len == 0:<== -> !=>": {
       "status": "killed",
-      "durationMs": 49404
+      "durationMs": 36831
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:SDL:199:16:31:resources.add resource.toJson():discard": {
       "status": "killed",
-      "durationMs": 41596
+      "durationMs": 53275
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:SDL:314:12:34:entries.add catalog.entryOf(skill):discard": {
       "status": "killed",
-      "durationMs": 35758
+      "durationMs": 33299
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:AOR:395:86:5:i + 1:<+ -> ->": {
       "status": "killed",
-      "durationMs": 46923
+      "durationMs": 41111
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:399:22:17:line.text.len > 0:<> -> >=>": {
       "status": "killed",
-      "durationMs": 45788
+      "durationMs": 41078
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:ROR:85:17:14:rune.int < 128:<< -> <=>": {
       "status": "survived",
-      "durationMs": 103901
+      "durationMs": 120806
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:302:18:14:value.len == 0:<== -> !=>": {
       "status": "killed",
-      "durationMs": 13673
+      "durationMs": 18135
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:ROR:329:28:19:uri.kind != JString:<!= -> ==>": {
       "status": "killed",
-      "durationMs": 33160
+      "durationMs": 32936
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:RVR:87:9:66:return some(\"a skill name holds letters, digits and hyphens only\"):<return default>": {
       "status": "killed",
-      "durationMs": 64865
+      "durationMs": 78228
     },
     "src/ext/skills/consumer.nim:7de99cf5109b7bfb:LOR:260:26:34:child.isDirectory or entry.dynamic:<or -> and>": {
       "status": "killed",
-      "durationMs": 17611
+      "durationMs": 17865
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:BLR:199:50:5:false:true": {
       "status": "killed",
-      "durationMs": 58405
+      "durationMs": 64185
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:LOR:357:46:51:item.find(\": \") >= 0 and item[0] notin {'\\\"', '\\''}:<and -> or>": {
       "status": "killed",
-      "durationMs": 48808
+      "durationMs": 37666
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:LOR:110:23:34:segment.len == 0 or segment == \".\":<or -> and>": {
       "status": "killed",
-      "durationMs": 59833
+      "durationMs": 77804
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:SDL:211:10:47:pairs.add resource.uri & \"\\n\" & resource.digest:discard": {
       "status": "killed",
-      "durationMs": 29270
+      "durationMs": 34176
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:LOR:118:23:33:decoded == \".\" or decoded == \"..\":<or -> and>": {
       "status": "killed",
-      "durationMs": 68513
+      "durationMs": 75831
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:109:17:12:text.len < 2:<< -> <=>": {
       "status": "killed",
-      "durationMs": 51337
+      "durationMs": 40446
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:231:17:13:line.len == 0:<== -> !=>": {
       "status": "killed",
-      "durationMs": 34616
+      "durationMs": 40391
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:LOR:272:41:48:uri.isNil or uri.kind != JString or digest.isNil:<or -> and>": {
       "status": "killed",
-      "durationMs": 71348
+      "durationMs": 71669
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:209:86:18:text[i + 1] == ' ':<== -> !=>": {
       "status": "killed",
-      "durationMs": 12891
+      "durationMs": 12672
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:288:22:18:line.text.len == 0:<== -> !=>": {
       "status": "killed",
-      "durationMs": 13519
+      "durationMs": 13896
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:SDL:168:17:76:catalog.skills.add CatalogSkill(path: skillPath, frontmatter: parsed.fields):discard": {
       "status": "killed",
-      "durationMs": 28403
+      "durationMs": 28665
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:133:36:37:parseFloat(text, asFloat) == text.len:<== -> !=>": {
       "status": "killed",
-      "durationMs": 43056
+      "durationMs": 48330
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:AOR:52:27:5:i - 1:<- -> +>": {
       "status": "killed",
-      "durationMs": 39798
+      "durationMs": 40444
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:SDL:160:7:14:some(relative):discard": {
       "status": "killed",
-      "durationMs": 23519
+      "durationMs": 28075
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:SDL:70:19:15:result.add '\\n':discard": {
       "status": "killed",
-      "durationMs": 42353
+      "durationMs": 41161
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:AOR:54:41:5:i - 1:<- -> +>": {
       "status": "killed",
-      "durationMs": 44066
+      "durationMs": 41418
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:ROR:132:43:13:path.len == 0:<== -> !=>": {
       "status": "killed",
-      "durationMs": 15711
+      "durationMs": 18702
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:LOR:95:24:39:text[i] == '\\'' and text[i + 1] == '\\'':<and -> or>": {
       "status": "killed",
-      "durationMs": 46344
+      "durationMs": 41185
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:RVR:111:5:12:return false:<return default>": {
       "status": "killed",
-      "durationMs": 24613
+      "durationMs": 29008
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:SDL:299:7:19:none(SkillResource):discard": {
       "status": "survived",
-      "durationMs": 35717
+      "durationMs": 47609
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:SDL:395:19:84:reader.lines.add Line(indent: text.len - trimmed.len, text: trimmed,; number: i + 1):discard": {
       "status": "killed",
-      "durationMs": 25696
+      "durationMs": 12408
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:SDL:179:19:46:checkFrontmatter(skillPath, frontmatter, name):discard": {
       "status": "killed",
-      "durationMs": 57498
+      "durationMs": 61454
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:LOR:223:34:58:path.startsWith(prefix) and path != prefix & SkillFileName:<and -> or>": {
       "status": "killed",
-      "durationMs": 29546
+      "durationMs": 34033
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:209:41:14:text[i] == ':':<== -> !=>": {
       "status": "killed",
-      "durationMs": 16953
+      "durationMs": 17902
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:275:23:12:style == '|':<== -> !=>": {
       "status": "killed",
-      "durationMs": 38698
+      "durationMs": 48288
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:LOR:286:33:25:listsSkillMd or isSkillMd:<or -> and>": {
       "status": "killed",
-      "durationMs": 17193
+      "durationMs": 18568
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:ROR:177:44:27:frontmatter.kind != JObject:<!= -> ==>": {
       "status": "killed",
-      "durationMs": 57370
+      "durationMs": 60793
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:LOR:363:34:48:first.text.startsWith(\"- \") or first.text == \"-\":<or -> and>": {
       "status": "killed",
-      "durationMs": 50638
+      "durationMs": 38344
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:236:22:18:previous[0] == ' ':<== -> !=>": {
       "status": "killed",
-      "durationMs": 34775
+      "durationMs": 42057
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:LOR:236:31:58:frontmatter{key}.isNil or frontmatter{key}.kind != JString:<or -> and>": {
       "status": "killed",
-      "durationMs": 82766
+      "durationMs": 75375
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:ROR:78:33:15:name[^1] == '-':<== -> !=>": {
       "status": "killed",
-      "durationMs": 11125
+      "durationMs": 12499
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:LOR:67:37:67:text.len == DigestPrefix.len + 64 and text.startsWith(DigestPrefix):<and -> or>": {
       "status": "killed",
-      "durationMs": 39842
+      "durationMs": 54213
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:209:59:17:i + 1 == text.len:<== -> !=>": {
       "status": "killed",
-      "durationMs": 35125
+      "durationMs": 41560
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:SDL:96:13:15:result.add '\\'':discard": {
       "status": "killed",
-      "durationMs": 42545
+      "durationMs": 43854
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:76:55:14:text[i] == 'u':<== -> !=>": {
       "status": "killed",
-      "durationMs": 39834
+      "durationMs": 38541
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:BLR:342:80:5:false:true": {
       "status": "killed",
-      "durationMs": 70117
+      "durationMs": 70377
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:SDL:373:33:205:server.registerExtensionMethod(SkillsExtensionId, SkillsGetMethod, proc (; ctx: McpRequestContext; params: JsonNode): Future[JsonNode] {.async.} =; return catalog.skillsGet(params), clientDeclares = false):discard": {
       "status": "killed",
-      "durationMs": 35888
+      "durationMs": 32997
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:ROR:272:72:22:digest.kind != JString:<!= -> ==>": {
       "status": "killed",
-      "durationMs": 20500
+      "durationMs": 24524
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:SDL:157:12:14:items.add item:discard": {
       "status": "killed",
-      "durationMs": 44968
+      "durationMs": 48726
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:156:12:8:c == ',':<== -> !=>": {
       "status": "killed",
-      "durationMs": 44760
+      "durationMs": 47936
     },
     "src/ext/skills/consumer.nim:7de99cf5109b7bfb:BLR:173:18:5:false:true": {
       "status": "killed",
-      "durationMs": 18695
+      "durationMs": 17850
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:LOR:322:76:60:r.lines[r.at].text.len == 0 or r.lines[r.at].indent > indent:<or -> and>": {
       "status": "killed",
-      "durationMs": 33815
+      "durationMs": 39672
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:234:21:17:previous.len == 0:<== -> !=>": {
       "status": "killed",
-      "durationMs": 34400
+      "durationMs": 43678
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:333:33:20:next.comment.len > 0:<> -> >=>": {
       "status": "killed",
-      "durationMs": 44705
+      "durationMs": 38387
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:LOR:319:16:32:uri.isNil or uri.kind != JString:<or -> and>": {
       "status": "killed",
-      "durationMs": 69514
+      "durationMs": 65922
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:84:15:8:code < 0:<< -> <=>": {
       "status": "killed",
-      "durationMs": 48175
+      "durationMs": 38064
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:ROR:297:21:19:resource.uri == uri:<== -> !=>": {
       "status": "killed",
-      "durationMs": 16798
+      "durationMs": 20079
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:SDL:66:5:5:inc i:discard": {
       "status": "killed",
-      "durationMs": 42081
+      "durationMs": 37618
     },
     "src/ext/skills/consumer.nim:7de99cf5109b7bfb:BLR:117:59:5:false:true": {
       "status": "killed",
-      "durationMs": 17034
+      "durationMs": 16336
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:ROR:233:44:27:frontmatter.kind != JObject:<!= -> ==>": {
       "status": "killed",
-      "durationMs": 28194
+      "durationMs": 21300
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:AOR:209:81:5:i + 1:<+ -> ->": {
       "status": "killed",
-      "durationMs": 12891
+      "durationMs": 15996
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:ROR:124:12:21:bytes > MaxSkillBytes:<> -> >=>": {
       "status": "killed",
-      "durationMs": 55450
+      "durationMs": 60171
     },
     "src/ext/skills/consumer.nim:7de99cf5109b7bfb:LOR:220:31:32:entry.dynamic or current.dynamic:<or -> and>": {
       "status": "survived",
-      "durationMs": 78356
+      "durationMs": 77121
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:AOR:131:25:10:marker + 3:<+ -> ->": {
       "status": "killed",
-      "durationMs": 16572
+      "durationMs": 20649
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:109:33:16:text[^1] != '\\\"':<!= -> ==>": {
       "status": "killed",
-      "durationMs": 48458
+      "durationMs": 40634
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:LOR:307:64:106:r.lines[next].indent > indent or; (r.lines[next].indent == indent and r.lines[next].text.startsWith(\"- \")):<or -> and>": {
       "status": "killed",
-      "durationMs": 34150
+      "durationMs": 38046
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:ROR:93:22:20:description.len == 0:<== -> !=>": {
       "status": "killed",
-      "durationMs": 28798
+      "durationMs": 22376
     },
     "src/ext/skills/consumer.nim:7de99cf5109b7bfb:ROR:207:20:40:parsed.fields != skill.entry.frontmatter:<!= -> ==>": {
       "status": "killed",
-      "durationMs": 17792
+      "durationMs": 18393
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:RVR:119:30:12:return %true:<return default>": {
       "status": "killed",
-      "durationMs": 43927
+      "durationMs": 40942
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:LOR:308:42:70:r.lines[next].indent == indent and r.lines[next].text.startsWith(\"- \"):<and -> or>": {
       "status": "killed",
-      "durationMs": 33515
+      "durationMs": 38428
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:LOR:389:20:32:uri.isNil or uri.kind != JString:<or -> and>": {
       "status": "killed",
-      "durationMs": 69462
+      "durationMs": 71058
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:RVR:83:5:40:return some(\"a skill name is lowercase\"):<return default>": {
       "status": "killed",
-      "durationMs": 63096
+      "durationMs": 72075
     },
     "src/ext/skills/consumer.nim:7de99cf5109b7bfb:RVR:142:7:35:return base64.decode(item.blob.get):<return default>": {
       "status": "killed",
-      "durationMs": 19964
+      "durationMs": 17669
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:ROR:299:39:22:cursor.kind != JString:<!= -> ==>": {
       "status": "killed",
-      "durationMs": 67726
+      "durationMs": 68683
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:LOR:164:35:76:path.len > 0 and path[0] != '/' and path.split('/').allIt(isSafeSegment(it)):<and -> or>": {
       "status": "killed",
-      "durationMs": 77139
+      "durationMs": 79384
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:RVR:144:5:19:return none(string):<return default>": {
       "status": "survived",
-      "durationMs": 106767
+      "durationMs": 25047
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:141:15:12:text.len < 2:<< -> <=>": {
       "status": "killed",
-      "durationMs": 43642
+      "durationMs": 49784
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:SDL:213:11:26:digestOf(pairs.join(\"\\n\")):discard": {
       "status": "killed",
-      "durationMs": 27035
+      "durationMs": 28282
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:ROR:222:30:20:node.kind != JObject:<!= -> ==>": {
       "status": "killed",
-      "durationMs": 23230
+      "durationMs": 22699
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:ROR:280:34:26:uri.getStr() == result.uri:<== -> !=>": {
       "status": "killed",
-      "durationMs": 26929
+      "durationMs": 19080
     },
     "src/ext/skills/consumer.nim:7de99cf5109b7bfb:ROR:175:17:15:item.uri == uri:<== -> !=>": {
       "status": "killed",
-      "durationMs": 16896
+      "durationMs": 15913
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:AOR:127:32:34:Digits + {'+', '-', '.', 'e', 'E'}:<+ -> ->": {
       "status": "killed",
-      "durationMs": 42126
+      "durationMs": 44601
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:258:36:17:line.text.len > 0:<> -> >=>": {
       "status": "killed",
-      "durationMs": 43992
+      "durationMs": 51791
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:ROR:253:21:25:resources.kind == JString:<== -> !=>": {
       "status": "killed",
-      "durationMs": 23192
+      "durationMs": 17090
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:SDL:365:27:116:server.registerExtension(SkillsExtensionId, (; if directoryRead:; %*{\"directoryRead\": true}; else:; newJObject(); )):discard": {
       "status": "killed",
-      "durationMs": 36282
+      "durationMs": 34103
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:RVR:111:5:35:return %unquoteDouble(text, number):<return default>": {
       "status": "killed",
-      "durationMs": 48760
+      "durationMs": 39919
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:RVR:77:5:72:return some(\"a skill name is at most \" & $MaxNameLength & \" characters\"):<return default>": {
       "status": "killed",
-      "durationMs": 44999
+      "durationMs": 47374
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:130:39:40:parseBiggestInt(text, asInt) == text.len:<== -> !=>": {
       "status": "killed",
-      "durationMs": 43566
+      "durationMs": 46800
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:RVR:115:5:27:return %unquoteSingle(text):<return default>": {
       "status": "killed",
-      "durationMs": 39247
+      "durationMs": 39015
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:SDL:71:19:15:result.add '\\t':discard": {
       "status": "killed",
-      "durationMs": 39849
+      "durationMs": 41532
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:206:33:14:text[i] != ':':<!= -> ==>": {
       "status": "killed",
-      "durationMs": 41315
+      "durationMs": 46251
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:ROR:82:21:22:name.toLower() != name:<!= -> ==>": {
       "status": "killed",
-      "durationMs": 11895
+      "durationMs": 14971
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:RVR:249:5:18:return none(Found):<return default>": {
       "status": "survived",
-      "durationMs": 86586
+      "durationMs": 85867
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:214:14:12:key.len == 0:<== -> !=>": {
       "status": "killed",
-      "durationMs": 15531
+      "durationMs": 13638
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:LOR:172:27:42:serverLabel.len == 0 or serverLabel == \".\":<or -> and>": {
       "status": "killed",
-      "durationMs": 62623
+      "durationMs": 73620
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:AOR:196:32:5:j + 1:<+ -> ->": {
       "status": "killed",
-      "durationMs": 46739
+      "durationMs": 50540
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:LOR:84:19:29:code < 0 or code > 0x0010FFFF:<or -> and>": {
       "status": "killed",
-      "durationMs": 50074
+      "durationMs": 39807
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:RVR:340:3:92:return pageOfResult(params, children.get, catalog.pageSize, \"resources\",; none(CachePolicy)):<return default>": {
       "status": "killed",
-      "durationMs": 32810
+      "durationMs": 34536
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:LOR:307:29:132:next < r.lines.len and; (r.lines[next].indent > indent or; (r.lines[next].indent == indent and r.lines[next].text.startsWith(\"- \"))):<and -> or>": {
       "status": "killed",
-      "durationMs": 34584
+      "durationMs": 44389
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:BLR:179:43:5:false:true": {
       "status": "survived",
-      "durationMs": 23156
+      "durationMs": 24848
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:AOR:60:22:12:text.len - 1:<- -> +>": {
       "status": "killed",
-      "durationMs": 43105
+      "durationMs": 41698
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:SDL:260:12:12:owned.add \"\":discard": {
       "status": "killed",
-      "durationMs": 43782
+      "durationMs": 50346
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:SDL:219:20:164:entry.resources.add SkillResource(uri: entry.uri, digest: catalog.stored[; prefix & SkillFileName].digest, size: catalog.stored[prefix & SkillFileName].content.len):discard": {
       "status": "killed",
-      "durationMs": 26769
+      "durationMs": 33288
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:AOR:67:32:21:DigestPrefix.len + 64:<+ -> ->": {
       "status": "killed",
-      "durationMs": 14714
+      "durationMs": 18104
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:LOR:222:17:34:node.isNil or node.kind != JObject:<or -> and>": {
       "status": "killed",
-      "durationMs": 83345
+      "durationMs": 76004
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:255:14:18:r.at < r.lines.len:<< -> <=>": {
       "status": "killed",
-      "durationMs": 42196
+      "durationMs": 52552
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:RVR:134:9:15:return %asFloat:<return default>": {
       "status": "killed",
-      "durationMs": 43827
+      "durationMs": 48742
     },
     "src/ext/skills/consumer.nim:7de99cf5109b7bfb:ROR:221:39:48:contentBinding(entry) != contentBinding(current):<!= -> ==>": {
       "status": "killed",
-      "durationMs": 17668
+      "durationMs": 17901
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:SDL:315:15:78:pageOfResult(params, entries, catalog.pageSize, \"skills\", some(catalog.cache)):discard": {
       "status": "killed",
-      "durationMs": 34882
+      "durationMs": 32911
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:204:20:13:quote == '\\\"':<== -> !=>": {
       "status": "killed",
-      "durationMs": 49619
+      "durationMs": 49406
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:ROR:183:19:23:skill.path == skillPath:<== -> !=>": {
       "status": "killed",
-      "durationMs": 57821
+      "durationMs": 62043
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:RVR:120:33:13:return %false:<return default>": {
       "status": "killed",
-      "durationMs": 42859
+      "durationMs": 43158
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:308:32:30:r.lines[next].indent == indent:<== -> !=>": {
       "status": "killed",
-      "durationMs": 32757
+      "durationMs": 38904
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:112:14:15:text[0] == '\\'':<== -> !=>": {
       "status": "killed",
-      "durationMs": 14376
+      "durationMs": 12842
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:AOR:209:47:12:root.len + 1:<+ -> ->": {
       "status": "killed",
-      "durationMs": 59903
+      "durationMs": 64577
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:LOR:327:37:50:\": \" in continuation or continuation.endsWith(\":\"):<or -> and>": {
       "status": "killed",
-      "durationMs": 49426
+      "durationMs": 48710
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:342:14:18:r.at < r.lines.len:<< -> <=>": {
       "status": "killed",
-      "durationMs": 49538
+      "durationMs": 36737
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:RVR:133:5:40:return none(tuple[scheme, path: string]):<return default>": {
       "status": "survived",
-      "durationMs": 97058
+      "durationMs": 25505
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:LOR:132:31:41:not isSchemeName(scheme) or path.len == 0:<or -> and>": {
       "status": "killed",
-      "durationMs": 57041
+      "durationMs": 79877
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:LOR:281:22:63:not isSkillMd and relativePathIn(root.get, uri.getStr()).isNone:<and -> or>": {
       "status": "killed",
-      "durationMs": 30833
+      "durationMs": 23168
     },
     "src/ext/skills/consumer.nim:7de99cf5109b7bfb:ROR:168:42:49:skill.retrieved + listed.get.size > MaxSkillBytes:<> -> >=>": {
       "status": "killed",
-      "durationMs": 17698
+      "durationMs": 14312
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:375:52:38:all[0].strip(leading = false) != Fence:<!= -> ==>": {
       "status": "killed",
-      "durationMs": 18646
+      "durationMs": 12400
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:AOR:106:34:16:Letters + Digits:<+ -> ->": {
       "status": "killed",
-      "durationMs": 63867
+      "durationMs": 80385
     },
     "src/ext/skills/consumer.nim:7de99cf5109b7bfb:ROR:188:24:36:digestOf(bytes) != listed.get.digest:<!= -> ==>": {
       "status": "killed",
-      "durationMs": 18520
+      "durationMs": 18132
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:67:10:17:i >= text.len - 1:<>= -> >>": {
       "status": "killed",
-      "durationMs": 42126
+      "durationMs": 41354
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:BLR:121:3:4:true:false": {
       "status": "killed",
-      "durationMs": 27845
+      "durationMs": 22017
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:SDL:336:13:10:inc blanks:discard": {
       "status": "killed",
-      "durationMs": 44132
+      "durationMs": 37641
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:SDL:63:13:12:result.add c:discard": {
       "status": "killed",
-      "durationMs": 44650
+      "durationMs": 41627
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:AOR:81:35:5:i + 1:<+ -> ->": {
       "status": "killed",
-      "durationMs": 44391
+      "durationMs": 38675
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:ROR:223:43:30:path != prefix & SkillFileName:<!= -> ==>": {
       "status": "killed",
-      "durationMs": 31004
+      "durationMs": 33147
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:BLR:256:22:4:true:false": {
       "status": "killed",
-      "durationMs": 29844
+      "durationMs": 25541
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:LOR:356:44:103:server.capabilities.extensions.isSome and; server.capabilities.extensions.get.hasKey(SkillsExtensionId):<and -> or>": {
       "status": "killed",
-      "durationMs": 35434
+      "durationMs": 35668
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:AOR:395:46:22:text.len - trimmed.len:<- -> +>": {
       "status": "killed",
-      "durationMs": 19709
+      "durationMs": 14468
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:ROR:95:28:42:description.runeLen > MaxDescriptionLength:<> -> >=>": {
       "status": "killed",
-      "durationMs": 73195
+      "durationMs": 77151
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:AOR:196:58:5:j + 1:<+ -> ->": {
       "status": "killed",
-      "durationMs": 49427
+      "durationMs": 50851
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:196:63:20:text[j + 1] == quote:<== -> !=>": {
       "status": "killed",
-      "durationMs": 48425
+      "durationMs": 49210
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:95:40:19:text[i + 1] == '\\'':<== -> !=>": {
       "status": "killed",
-      "durationMs": 40994
+      "durationMs": 43235
     },
     "src/ext/skills/consumer.nim:7de99cf5109b7bfb:RVR:222:3:41:return (entry: current, changed: changed):<return default>": {
       "status": "killed",
-      "durationMs": 17168
+      "durationMs": 17311
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:AOR:269:38:25:line.indent - blockIndent:<- -> +>": {
       "status": "killed",
-      "durationMs": 50535
+      "durationMs": 51339
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:LOR:248:19:50:parts.isNone or parts.get.scheme != catalog.scheme:<or -> and>": {
       "status": "killed",
-      "durationMs": 67542
+      "durationMs": 71976
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:AOR:77:12:10:i + digits:<+ -> ->": {
       "status": "killed",
-      "durationMs": 40468
+      "durationMs": 39097
     },
     "src/ext/skills/consumer.nim:7de99cf5109b7bfb:ROR:252:29:25:mime == DirectoryMimeType:<== -> !=>": {
       "status": "killed",
-      "durationMs": 17781
+      "durationMs": 17590
     },
     "src/ext/skills/consumer.nim:7de99cf5109b7bfb:SDL:91:29:66:result.listing.entries.add parseSkillEntry(item, SkillsListMethod):discard": {
       "status": "killed",
-      "durationMs": 20190
+      "durationMs": 19180
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:347:20:20:line.indent < indent:<< -> <=>": {
       "status": "killed",
-      "durationMs": 50663
+      "durationMs": 35970
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:ROR:113:41:7:c < ' ':<< -> <=>": {
       "status": "killed",
-      "durationMs": 57567
+      "durationMs": 72930
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:RVR:55:7:43:return text[0 ..< i].strip(leading = false):<return default>": {
       "status": "killed",
-      "durationMs": 43571
+      "durationMs": 42057
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:AOR:389:20:5:i + 1:<+ -> ->": {
       "status": "killed",
-      "durationMs": 45416
+      "durationMs": 43450
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:ROR:118:16:14:decoded == \".\":<== -> !=>": {
       "status": "killed",
-      "durationMs": 60564
+      "durationMs": 77473
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:ROR:260:20:36:resources.len > MaxResourcesPerSkill:<> -> >=>": {
       "status": "killed",
-      "durationMs": 71917
+      "durationMs": 76423
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:ROR:78:14:14:name[0] == '-':<== -> !=>": {
       "status": "killed",
-      "durationMs": 12414
+      "durationMs": 14602
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:392:39:17:trimmed[0] == '#':<== -> !=>": {
       "status": "killed",
-      "durationMs": 29125
+      "durationMs": 16428
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:382:14:11:closing < 0:<< -> <=>": {
       "status": "survived",
-      "durationMs": 22635
+      "durationMs": 83645
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:SDL:224:24:105:entry.resources.add SkillResource(uri: catalog.uriOf(path), digest: file.digest,; size: file.content.len):discard": {
       "status": "killed",
-      "durationMs": 32334
+      "durationMs": 32794
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:ROR:107:46:27:fields{key}.kind != JString:<!= -> ==>": {
       "status": "killed",
-      "durationMs": 27539
+      "durationMs": 29197
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:LOR:84:38:65:code < 0 or code > 0x0010FFFF or code in 0x0000D800 .. 0x0000DFFF:<or -> and>": {
       "status": "killed",
-      "durationMs": 51915
+      "durationMs": 41570
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:RVR:136:7:40:return none(tuple[scheme, path: string]):<return default>": {
       "status": "survived",
-      "durationMs": 93939
+      "durationMs": 25501
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:116:14:14:text[0] == '{':<== -> !=>": {
       "status": "killed",
-      "durationMs": 15709
+      "durationMs": 14758
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:LOR:329:16:32:uri.isNil or uri.kind != JString:<or -> and>": {
       "status": "killed",
-      "durationMs": 64948
+      "durationMs": 67826
     },
     "src/ext/skills/consumer.nim:7de99cf5109b7bfb:BLR:88:59:5:false:true": {
       "status": "killed",
-      "durationMs": 18713
+      "durationMs": 18390
     },
     "src/ext/skills/consumer.nim:7de99cf5109b7bfb:AOR:181:22:27:skill.retrieved + bytes.len:<+ -> ->": {
       "status": "killed",
-      "durationMs": 19722
+      "durationMs": 16309
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:LOR:209:71:39:i + 1 == text.len or text[i + 1] == ' ':<or -> and>": {
       "status": "killed",
-      "durationMs": 13324
+      "durationMs": 16114
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:SDL:291:12:27:names.add rest[0 ..< slash]:discard": {
       "status": "killed",
-      "durationMs": 69691
+      "durationMs": 68409
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:349:58:16:line.text == \"-\":<== -> !=>": {
       "status": "killed",
-      "durationMs": 47624
+      "durationMs": 39866
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:RVR:120:7:12:return false:<return default>": {
       "status": "killed",
-      "durationMs": 79756
+      "durationMs": 76482
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:SDL:143:9:19:seen.incl file.path:discard": {
       "status": "killed",
-      "durationMs": 55554
+      "durationMs": 56897
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:BLR:391:41:5:false:true": {
       "status": "survived",
-      "durationMs": 25075
+      "durationMs": 81315
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:84:27:17:code > 0x0010FFFF:<> -> >=>": {
       "status": "killed",
-      "durationMs": 52601
+      "durationMs": 39818
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:SDL:209:10:102:files.add SkillFile(path: normal[root.len + 1 .. ^1].replace(DirSep, '/'),; content: readFile(normal)):discard": {
       "status": "killed",
-      "durationMs": 61113
+      "durationMs": 64926
     },
     "src/ext/skills/consumer.nim:7de99cf5109b7bfb:ROR:181:34:43:skill.retrieved + bytes.len > MaxSkillBytes:<> -> >=>": {
       "status": "killed",
-      "durationMs": 19394
+      "durationMs": 17122
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:BLR:381:24:5:false:true": {
       "status": "killed",
-      "durationMs": 70304
+      "durationMs": 70533
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:191:35:15:text[j] == '\\\\':<== -> !=>": {
       "status": "killed",
-      "durationMs": 44621
+      "durationMs": 50917
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:305:59:27:r.lines[next].text.len == 0:<== -> !=>": {
       "status": "killed",
-      "durationMs": 33185
+      "durationMs": 47250
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:LOR:104:35:46:text.len == 0 or text == \"~\" or text == \"null\":<or -> and>": {
       "status": "killed",
-      "durationMs": 52821
+      "durationMs": 42015
     },
     "src/ext/skills/consumer.nim:7de99cf5109b7bfb:ROR:125:17:17:result.uri != uri:<!= -> ==>": {
       "status": "killed",
-      "durationMs": 17074
+      "durationMs": 16041
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:LOR:54:31:36:i == 0 or text[i - 1] in {' ', '\\t'}:<or -> and>": {
       "status": "killed",
-      "durationMs": 42902
+      "durationMs": 40924
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:AOR:106:43:34:Letters + Digits + {'+', '-', '.'}:<+ -> ->": {
       "status": "killed",
-      "durationMs": 64579
+      "durationMs": 80485
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:BLR:265:22:5:false:true": {
       "status": "killed",
-      "durationMs": 73183
+      "durationMs": 76674
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:ROR:163:29:26:file.path == SkillFileName:<== -> !=>": {
       "status": "killed",
-      "durationMs": 59443
+      "durationMs": 62107
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:ROR:202:18:19:info.kind != pcFile:<!= -> ==>": {
       "status": "killed",
-      "durationMs": 58667
+      "durationMs": 65625
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:52:12:6:i == 0:<== -> !=>": {
       "status": "killed",
-      "durationMs": 38436
+      "durationMs": 38482
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:ROR:118:34:15:decoded == \"..\":<== -> !=>": {
       "status": "killed",
-      "durationMs": 77422
+      "durationMs": 80883
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:SDL:74:30:18:result.add text[i]:discard": {
       "status": "killed",
-      "durationMs": 40178
+      "durationMs": 38216
     },
     "src/ext/skills/consumer.nim:7de99cf5109b7bfb:LOR:80:19:59:settings.isSome and settings.get{\"directoryRead\"}.getBool():<and -> or>": {
       "status": "killed",
-      "durationMs": 77092
+      "durationMs": 74905
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:SDL:137:7:34:some((scheme: scheme, path: path)):discard": {
       "status": "killed",
-      "durationMs": 17304
+      "durationMs": 23319
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:BLR:198:61:5:false:true": {
       "status": "killed",
-      "durationMs": 55422
+      "durationMs": 63753
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:AOR:67:22:12:text.len - 1:<- -> +>": {
       "status": "killed",
-      "durationMs": 42352
+      "durationMs": 40098
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:272:19:13:owned.len > 0:<> -> >=>": {
       "status": "killed",
-      "durationMs": 50597
+      "durationMs": 51045
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:49:12:10:c == quote:<== -> !=>": {
       "status": "killed",
-      "durationMs": 38877
+      "durationMs": 40679
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:SDL:90:5:5:inc i:discard": {
       "status": "killed",
-      "durationMs": 56998
+      "durationMs": 41022
     },
     "src/ext/skills/consumer.nim:7de99cf5109b7bfb:LOR:161:31:80:uri != skill.entry.uri and (root.isNone or relativePathIn(root.get, uri).isNone):<and -> or>": {
       "status": "killed",
-      "durationMs": 17538
+      "durationMs": 16119
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:196:36:16:j + 1 < text.len:<< -> <=>": {
       "status": "killed",
-      "durationMs": 48675
+      "durationMs": 50566
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:LOR:305:32:50:next < r.lines.len and r.lines[next].text.len == 0:<and -> or>": {
       "status": "killed",
-      "durationMs": 37457
+      "durationMs": 47179
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:ROR:172:64:19:serverLabel == \"..\":<== -> !=>": {
       "status": "killed",
-      "durationMs": 60405
+      "durationMs": 77536
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:211:10:13:i >= text.len:<>= -> >>": {
       "status": "killed",
-      "durationMs": 36450
+      "durationMs": 41816
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:LOR:154:37:59:not fileUri.startsWith(prefix) or fileUri.len == prefix.len:<or -> and>": {
       "status": "killed",
-      "durationMs": 22484
+      "durationMs": 27898
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:RVR:393:9:28:return none(JsonRpcResponse):<return default>": {
       "status": "survived",
-      "durationMs": 82494
+      "durationMs": 79849
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:170:26:22:entry.strip().len == 0:<== -> !=>": {
       "status": "killed",
-      "durationMs": 45641
+      "durationMs": 47972
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:104:79:14:text == \"NULL\":<== -> !=>": {
       "status": "killed",
-      "durationMs": 16769
+      "durationMs": 14473
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:353:20:20:line.indent > indent:<> -> >=>": {
       "status": "killed",
-      "durationMs": 51015
+      "durationMs": 41543
     },
     "src/ext/skills/consumer.nim:7de99cf5109b7bfb:BLR:242:63:5:false:true": {
       "status": "killed",
-      "durationMs": 17892
+      "durationMs": 16985
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:ROR:113:52:11:c == '\\x7F':<== -> !=>": {
       "status": "killed",
-      "durationMs": 15940
+      "durationMs": 23232
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:LOR:164:16:31:path.len > 0 and path[0] != '/':<and -> or>": {
       "status": "killed",
-      "durationMs": 78205
+      "durationMs": 79077
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:ROR:236:56:32:frontmatter{key}.kind != JString:<!= -> ==>": {
       "status": "killed",
-      "durationMs": 27239
+      "durationMs": 23184
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:RVR:75:5:36:return some(\"a skill name is empty\"):<return default>": {
       "status": "killed",
-      "durationMs": 42370
+      "durationMs": 51753
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:BLR:284:13:4:true:false": {
       "status": "killed",
-      "durationMs": 34964
+      "durationMs": 33546
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:ROR:110:52:15:segment == \"..\":<== -> !=>": {
       "status": "killed",
-      "durationMs": 17097
+      "durationMs": 20163
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:LOR:104:53:64:text.len == 0 or text == \"~\" or text == \"null\" or text == \"Null\":<or -> and>": {
       "status": "killed",
-      "durationMs": 54089
+      "durationMs": 42882
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:LOR:363:46:77:methodName in server.extensionMethods or methodName in server.requestHandlers:<or -> and>": {
       "status": "killed",
-      "durationMs": 69124
+      "durationMs": 69245
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:265:51:25:line.indent < blockIndent:<< -> <=>": {
       "status": "killed",
-      "durationMs": 43970
+      "durationMs": 53635
     },
     "src/ext/skills/consumer.nim:7de99cf5109b7bfb:SDL:261:13:16:result.add child:discard": {
       "status": "killed",
-      "durationMs": 18338
+      "durationMs": 17944
     },
     "src/ext/skills/consumer.nim:7de99cf5109b7bfb:SDL:106:15:34:rejected.add page.listing.rejected:discard": {
       "status": "killed",
-      "durationMs": 19049
+      "durationMs": 18594
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:BLR:120:14:5:false:true": {
       "status": "killed",
-      "durationMs": 72859
+      "durationMs": 75758
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:RVR:159:7:19:return none(string):<return default>": {
       "status": "survived",
-      "durationMs": 23290
+      "durationMs": 24999
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:ROR:264:27:27:validateUtf8(content) == -1:<== -> !=>": {
       "status": "killed",
-      "durationMs": 73041
+      "durationMs": 68517
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:ROR:332:39:34:parts.get.scheme != catalog.scheme:<!= -> ==>": {
       "status": "killed",
-      "durationMs": 32430
+      "durationMs": 31553
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:375:14:12:all.len == 0:<== -> !=>": {
       "status": "killed",
-      "durationMs": 21005
+      "durationMs": 15588
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:ROR:76:19:28:name.runeLen > MaxNameLength:<> -> >=>": {
       "status": "killed",
-      "durationMs": 42195
+      "durationMs": 48713
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:48:14:15:quote != '\\x00':<!= -> ==>": {
       "status": "killed",
-      "durationMs": 41116
+      "durationMs": 40982
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:357:41:20:item.find(\": \") >= 0:<>= -> >>": {
       "status": "killed",
-      "durationMs": 49370
+      "durationMs": 38936
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:201:10:13:j >= text.len:<>= -> >>": {
       "status": "killed",
-      "durationMs": 51106
+      "durationMs": 50724
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:SDL:330:19:80:scalar.add (; if blanks > 0:; '\\n'.repeat(blanks); else:; \" \"; ) &; continuation:discard": {
       "status": "killed",
-      "durationMs": 40993
+      "durationMs": 38621
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:RVR:105:5:17:return newJNull():<return default>": {
       "status": "killed",
-      "durationMs": 53536
+      "durationMs": 38472
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:LOR:118:79:92:decoded == \".\" or decoded == \"..\" or '/' in decoded or '\\\\' in decoded or; '\\x00' in decoded:<or -> and>": {
       "status": "killed",
-      "durationMs": 81945
+      "durationMs": 77065
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:307:55:29:r.lines[next].indent > indent:<> -> >=>": {
       "status": "killed",
-      "durationMs": 34286
+      "durationMs": 39240
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:SDL:393:19:81:reader.lines.add Line(indent: text.len - trimmed.len, text: \"\", comment: trimmed):discard": {
       "status": "killed",
-      "durationMs": 69730
+      "durationMs": 41523
     },
     "src/ext/skills/consumer.nim:7de99cf5109b7bfb:RVR:107:7:59:return (items: page.listing.entries, next: page.nextCursor):<return default>": {
       "status": "killed",
-      "durationMs": 16898
+      "durationMs": 18648
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:325:28:17:next.text.len > 0:<> -> >=>": {
       "status": "killed",
-      "durationMs": 37671
+      "durationMs": 36053
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:RVR:371:7:33:return catalog.skillsList(params):<return default>": {
       "status": "killed",
-      "durationMs": 33485
+      "durationMs": 32648
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:SDL:208:16:44:checkLimits(skillPath, files.len + 1, total):discard": {
       "status": "killed",
-      "durationMs": 59669
+      "durationMs": 68347
     },
     "src/ext/skills/consumer.nim:7de99cf5109b7bfb:SDL:71:26:42:client.declareExtension(SkillsExtensionId):discard": {
       "status": "killed",
-      "durationMs": 18825
+      "durationMs": 16199
     },
     "src/ext/skills/consumer.nim:7de99cf5109b7bfb:LOR:220:50:85:entry.dynamic or current.dynamic or; contentBinding(entry) != contentBinding(current):<or -> and>": {
       "status": "killed",
-      "durationMs": 17406
+      "durationMs": 18203
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:LOR:209:48:60:text[i] == ':' and (i + 1 == text.len or text[i + 1] == ' '):<and -> or>": {
       "status": "killed",
-      "durationMs": 34099
+      "durationMs": 40670
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:238:17:11:blanks == 0:<== -> !=>": {
       "status": "killed",
-      "durationMs": 36878
+      "durationMs": 44700
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:LOR:141:19:31:text.len < 2 or text[^1] != ']':<or -> and>": {
       "status": "killed",
-      "durationMs": 42697
+      "durationMs": 48792
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:321:26:21:value == rest.strip():<== -> !=>": {
       "status": "killed",
-      "durationMs": 32981
+      "durationMs": 39634
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:379:38:38:all[i].strip(leading = false) == Fence:<== -> !=>": {
       "status": "killed",
-      "durationMs": 18359
+      "durationMs": 13442
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:RVR:208:5:9:return \"\":<return default>": {
       "status": "survived",
-      "durationMs": 23563
+      "durationMs": 24808
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:SDL:216:15:51:newException(SkillsError, context & \": \" & message):discard": {
       "status": "killed",
-      "durationMs": 16825
+      "durationMs": 16936
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:ROR:322:32:39:catalog.skillUri(skill) == uri.getStr():<== -> !=>": {
       "status": "killed",
-      "durationMs": 33751
+      "durationMs": 34287
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:AOR:81:44:10:i + digits:<+ -> ->": {
       "status": "killed",
-      "durationMs": 48195
+      "durationMs": 38152
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:SDL:232:7:10:inc blanks:discard": {
       "status": "killed",
-      "durationMs": 34423
+      "durationMs": 40151
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:ROR:145:18:26:file.path == SkillFileName:<== -> !=>": {
       "status": "killed",
-      "durationMs": 27350
+      "durationMs": 25473
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:SDL:288:15:111:children.add %*{\"uri\": catalog.uriOf(path), \"name\": rest,; \"mimeType\": file.mimeType, \"size\": file.content.len}:discard": {
       "status": "killed",
-      "durationMs": 37831
+      "durationMs": 33038
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:ROR:273:32:17:size.kind != JInt:<!= -> ==>": {
       "status": "killed",
-      "durationMs": 21272
+      "durationMs": 26245
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:RVR:298:7:21:return some(resource):<return default>": {
       "status": "killed",
-      "durationMs": 14656
+      "durationMs": 18133
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:ROR:154:52:25:fileUri.len == prefix.len:<== -> !=>": {
       "status": "killed",
-      "durationMs": 20818
+      "durationMs": 25283
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:291:20:20:line.indent < indent:<< -> <=>": {
       "status": "killed",
-      "durationMs": 14219
+      "durationMs": 14756
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:SDL:148:7:10:some(root):discard": {
       "status": "killed",
-      "durationMs": 14679
+      "durationMs": 23249
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:191:16:13:quote == '\\\"':<== -> !=>": {
       "status": "killed",
-      "durationMs": 43437
+      "durationMs": 49855
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:ROR:110:18:16:segment.len == 0:<== -> !=>": {
       "status": "killed",
-      "durationMs": 16027
+      "durationMs": 27744
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:SDL:97:16:47:catalog.uriOf(skill.path & \"/\" & SkillFileName):discard": {
       "status": "killed",
-      "durationMs": 24824
+      "durationMs": 29975
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:54:12:8:c == '#':<== -> !=>": {
       "status": "killed",
-      "durationMs": 12870
+      "durationMs": 13398
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:RVR:258:9:76:return some(Found(uri: uri, content: file.content, mimeType: file.mimeType)):<return default>": {
       "status": "killed",
-      "durationMs": 72656
+      "durationMs": 69613
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:SDL:237:13:34:result.add '\\n'.repeat(blanks + 1):discard": {
       "status": "killed",
-      "durationMs": 36668
+      "durationMs": 44840
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:AOR:393:46:22:text.len - trimmed.len:<- -> +>": {
       "status": "killed",
-      "durationMs": 71729
+      "durationMs": 44243
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:ROR:172:42:18:serverLabel == \".\":<== -> !=>": {
       "status": "killed",
-      "durationMs": 55337
+      "durationMs": 71569
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:SDL:162:11:10:item.add c:discard": {
       "status": "killed",
-      "durationMs": 44953
+      "durationMs": 47787
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:RVR:387:9:28:return none(JsonRpcResponse):<return default>": {
       "status": "survived",
-      "durationMs": 79612
+      "durationMs": 84468
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:BLR:181:52:5:false:true": {
       "status": "killed",
-      "durationMs": 64665
+      "durationMs": 77924
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:SDL:42:15:78:newException(FrontmatterError, \"frontmatter line \" & $number & \": \" & message):discard": {
       "status": "killed",
-      "durationMs": 12185
+      "durationMs": 11267
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:SDL:241:13:30:result.add '\\n'.repeat(blanks):discard": {
       "status": "killed",
-      "durationMs": 40073
+      "durationMs": 47324
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:LOR:85:49:107:scheme.len == 0 or scheme[0] notin Letters or; not scheme.allCharsInSet(Letters + Digits + {'+', '-', '.'}):<or -> and>": {
       "status": "killed",
-      "durationMs": 56688
+      "durationMs": 60670
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:LOR:392:25:37:trimmed.len == 0 or trimmed[0] == '#':<or -> and>": {
       "status": "killed",
-      "durationMs": 70358
+      "durationMs": 40184
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:RVR:394:7:85:return some(newJsonRpcResponse(request.id,; %*{\"contents\": [contentsOf(found.get)]})):<return default>": {
       "status": "killed",
-      "durationMs": 37710
+      "durationMs": 34259
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:278:45:13:owned.len > 0:<> -> >=>": {
       "status": "killed",
-      "durationMs": 41836
+      "durationMs": 45224
     },
     "src/ext/skills/consumer.nim:7de99cf5109b7bfb:LOR:260:43:66:child.isDirectory or entry.dynamic or entry.find(child.uri).isSome:<or -> and>": {
       "status": "killed",
-      "durationMs": 18518
+      "durationMs": 18803
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:LOR:196:26:34:quote == '\\'' and j + 1 < text.len:<and -> or>": {
       "status": "killed",
-      "durationMs": 46730
+      "durationMs": 49970
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:SDL:260:7:11:none(Found):discard": {
       "status": "survived",
-      "durationMs": 91631
+      "durationMs": 85290
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:ROR:278:29:24:size.getBiggestInt() < 0:<< -> <=>": {
       "status": "killed",
-      "durationMs": 55678
+      "durationMs": 53822
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:LOR:299:23:43:not cursor.isNil and cursor.kind != JString:<and -> or>": {
       "status": "killed",
-      "durationMs": 29904
+      "durationMs": 33303
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:357:17:13:item.len == 0:<== -> !=>": {
       "status": "killed",
-      "durationMs": 49689
+      "durationMs": 41848
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:RVR:259:7:18:return none(Found):<return default>": {
       "status": "survived",
-      "durationMs": 85638
+      "durationMs": 79604
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:ROR:85:17:15:scheme.len == 0:<== -> !=>": {
       "status": "killed",
-      "durationMs": 29051
+      "durationMs": 29936
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:ROR:258:21:24:resources.kind != JArray:<!= -> ==>": {
       "status": "killed",
-      "durationMs": 29722
+      "durationMs": 23477
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:ROR:272:30:19:uri.kind != JString:<!= -> ==>": {
       "status": "killed",
-      "durationMs": 20300
+      "durationMs": 23923
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:LOR:113:21:32:text.len < 2 or text[^1] != '\\'':<or -> and>": {
       "status": "killed",
-      "durationMs": 40766
+      "durationMs": 44072
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:323:36:29:r.lines[r.at].indent > indent:<> -> >=>": {
       "status": "killed",
-      "durationMs": 10938
+      "durationMs": 14005
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:SDL:226:15:14:entry.toJson():discard": {
       "status": "killed",
-      "durationMs": 30587
+      "durationMs": 31666
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:ROR:113:30:31:fields[\"name\"].getStr() != name:<!= -> ==>": {
       "status": "killed",
-      "durationMs": 26171
+      "durationMs": 29233
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:AOR:95:35:5:i + 1:<+ -> ->": {
       "status": "killed",
-      "durationMs": 42275
+      "durationMs": 41421
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:AOR:209:55:5:i + 1:<+ -> ->": {
       "status": "killed",
-      "durationMs": 33542
+      "durationMs": 41801
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:322:71:27:r.lines[r.at].text.len == 0:<== -> !=>": {
       "status": "killed",
-      "durationMs": 9665
+      "durationMs": 15296
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:351:20:21:line.indent == indent:<== -> !=>": {
       "status": "killed",
-      "durationMs": 50665
+      "durationMs": 40016
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:104:28:11:text == \"~\":<== -> !=>": {
       "status": "killed",
-      "durationMs": 16947
+      "durationMs": 15075
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:60:11:16:i < text.len - 1:<< -> <=>": {
       "status": "killed",
-      "durationMs": 42612
+      "durationMs": 41424
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:76:32:14:text[i] == 'x':<== -> !=>": {
       "status": "killed",
-      "durationMs": 39796
+      "durationMs": 38510
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:236:40:14:line[0] == ' ':<== -> !=>": {
       "status": "killed",
-      "durationMs": 36693
+      "durationMs": 45112
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:332:33:25:continuation == next.text:<== -> !=>": {
       "status": "killed",
-      "durationMs": 44131
+      "durationMs": 39696
     },
     "src/ext/skills/consumer.nim:7de99cf5109b7bfb:RVR:253:7:75:return (items: children, next: parseNextCursor(reply, DirectoryReadMethod)):<return default>": {
       "status": "killed",
-      "durationMs": 17268
+      "durationMs": 18331
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:LOR:52:17:45:i == 0 or text[i - 1] in {' ', '[', ',', ':'}:<or -> and>": {
       "status": "killed",
-      "durationMs": 40066
+      "durationMs": 41157
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:95:16:15:text[i] == '\\'':<== -> !=>": {
       "status": "killed",
-      "durationMs": 44195
+      "durationMs": 39471
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:LOR:272:83:89:uri.isNil or uri.kind != JString or digest.isNil or digest.kind != JString or; size.isNil:<or -> and>": {
       "status": "killed",
-      "durationMs": 69133
+      "durationMs": 66679
     },
     "src/ext/skills/consumer.nim:7de99cf5109b7bfb:BLR:177:18:4:true:false": {
       "status": "killed",
-      "durationMs": 17554
+      "durationMs": 16752
     },
     "src/ext/skills/consumer.nim:7de99cf5109b7bfb:RVR:139:5:20:return item.text.get:<return default>": {
       "status": "killed",
-      "durationMs": 19514
+      "durationMs": 17088
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:RVR:323:7:113:return %*{\"skill\": catalog.entryOf(skill), \"ttlMs\": catalog.cache.ttlMs.int,; \"cacheScope\": $catalog.cache.scope}:<return default>": {
       "status": "killed",
-      "durationMs": 33963
+      "durationMs": 30730
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:SDL:355:22:59:requireTargetSpoken(server.protocolVersion, officialSkills):discard": {
       "status": "killed",
-      "durationMs": 69377
+      "durationMs": 72675
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:BLR:387:50:5:false:true": {
       "status": "killed",
-      "durationMs": 45098
+      "durationMs": 42490
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:ROR:164:39:21:file.mimeType.len > 0:<> -> >=>": {
       "status": "killed",
-      "durationMs": 55882
+      "durationMs": 60133
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:LOR:54:19:51:c == '#' and (i == 0 or text[i - 1] in {' ', '\\t'}):<and -> or>": {
       "status": "killed",
-      "durationMs": 12556
+      "durationMs": 13740
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:SDL:211:19:34:catalog.addSkill(skillPath, files):discard": {
       "status": "killed",
-      "durationMs": 63081
+      "durationMs": 67136
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:SDL:73:19:17:result.add '\\x00':discard": {
       "status": "killed",
-      "durationMs": 40216
+      "durationMs": 40664
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:104:15:13:text.len == 0:<== -> !=>": {
       "status": "killed",
-      "durationMs": 13974
+      "durationMs": 16139
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:SDL:239:13:14:result.add ' ':discard": {
       "status": "killed",
-      "durationMs": 37686
+      "durationMs": 46608
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:LOR:104:20:28:text.len == 0 or text == \"~\":<or -> and>": {
       "status": "killed",
-      "durationMs": 46251
+      "durationMs": 43906
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:194:18:16:text[j] == quote:<== -> !=>": {
       "status": "killed",
-      "durationMs": 44729
+      "durationMs": 50278
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:SDL:212:13:12:pairs.sort():discard": {
       "status": "killed",
-      "durationMs": 82452
+      "durationMs": 83853
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:BLR:390:36:5:false:true": {
       "status": "killed",
-      "durationMs": 69845
+      "durationMs": 42251
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:BLR:120:41:5:false:true": {
       "status": "killed",
-      "durationMs": 43282
+      "durationMs": 43119
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:251:29:15:chomp == '\\x00':<== -> !=>": {
       "status": "killed",
-      "durationMs": 41786
+      "durationMs": 51878
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:BLR:280:15:5:false:true": {
       "status": "killed",
-      "durationMs": 70730
+      "durationMs": 68882
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:LOR:349:45:46:line.text.startsWith(\"- \") or line.text == \"-\":<or -> and>": {
       "status": "killed",
-      "durationMs": 52002
+      "durationMs": 35915
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:LOR:351:30:36:line.indent == indent and not isItem:<and -> or>": {
       "status": "killed",
-      "durationMs": 50237
+      "durationMs": 41806
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:ROR:105:14:14:scheme.len > 0:<> -> >=>": {
       "status": "survived",
-      "durationMs": 100649
+      "durationMs": 25394
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:RVR:81:5:54:return some(\"a skill name has no consecutive hyphens\"):<return default>": {
       "status": "killed",
-      "durationMs": 60760
+      "durationMs": 70846
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:62:10:9:c != '\\\\':<!= -> ==>": {
       "status": "killed",
-      "durationMs": 44366
+      "durationMs": 41582
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:LOR:67:71:141:text.len == DigestPrefix.len + 64 and text.startsWith(DigestPrefix) and; text[DigestPrefix.len .. ^1].allCharsInSet({'0' .. '9', 'a' .. 'f'}):<and -> or>": {
       "status": "killed",
-      "durationMs": 42612
+      "durationMs": 53577
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:ROR:67:12:33:text.len == DigestPrefix.len + 64:<== -> !=>": {
       "status": "killed",
-      "durationMs": 15136
+      "durationMs": 17472
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:77:21:22:i + digits >= text.len:<>= -> >>": {
       "status": "killed",
-      "durationMs": 43405
+      "durationMs": 39506
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:LOR:272:23:36:owned.len > 0 and owned[^1].len == 0:<and -> or>": {
       "status": "killed",
-      "durationMs": 50677
+      "durationMs": 50960
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:SDL:359:11:37:result.add valueOf(item, line.number):discard": {
       "status": "killed",
-      "durationMs": 49460
+      "durationMs": 37210
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:ROR:157:19:23:skill.path == skillPath:<== -> !=>": {
       "status": "killed",
-      "durationMs": 59115
+      "durationMs": 61912
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:LOR:357:22:68:item.len == 0 or item.find(\": \") >= 0 and item[0] notin {'\\\"', '\\''}:<or -> and>": {
       "status": "killed",
-      "durationMs": 49092
+      "durationMs": 38879
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:AOR:144:35:12:text.len - 1:<- -> +>": {
       "status": "killed",
-      "durationMs": 43840
+      "durationMs": 50090
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:272:41:18:owned[^1].len == 0:<== -> !=>": {
       "status": "killed",
-      "durationMs": 49962
+      "durationMs": 50313
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:LOR:375:19:54:all.len == 0 or all[0].strip(leading = false) != Fence:<or -> and>": {
       "status": "killed",
-      "durationMs": 46692
+      "durationMs": 44150
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:BLR:400:20:4:true:false": {
       "status": "killed",
-      "durationMs": 15717
+      "durationMs": 14890
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:LOR:263:90:120:(mimeType.startsWith(\"text/\") or; mimeType in [\"application/json\", \"application/yaml\"]) and; validateUtf8(content) == -1:<and -> or>": {
       "status": "killed",
-      "durationMs": 75090
+      "durationMs": 67544
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:209:13:12:i < text.len:<< -> <=>": {
       "status": "killed",
-      "durationMs": 41219
+      "durationMs": 46023
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:LOR:85:22:42:scheme.len == 0 or scheme[0] notin Letters:<or -> and>": {
       "status": "killed",
-      "durationMs": 53976
+      "durationMs": 61037
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:SDL:274:5:12:inc trailing:discard": {
       "status": "killed",
-      "durationMs": 37722
+      "durationMs": 47245
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:SDL:361:12:31:methods.add DirectoryReadMethod:discard": {
       "status": "killed",
-      "durationMs": 66161
+      "durationMs": 69380
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:LOR:332:19:50:parts.isNone or parts.get.scheme != catalog.scheme:<or -> and>": {
       "status": "killed",
-      "durationMs": 67704
+      "durationMs": 69300
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:ROR:247:18:19:lastSegment != name:<!= -> ==>": {
       "status": "killed",
-      "durationMs": 26544
+      "durationMs": 18555
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:163:12:15:quote != '\\x00':<!= -> ==>": {
       "status": "killed",
-      "durationMs": 45018
+      "durationMs": 49517
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:SDL:281:11:13:text.add '\\n':discard": {
       "status": "killed",
-      "durationMs": 40518
+      "durationMs": 44891
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:SDL:60:35:34:entry.frontmatter{\"name\"}.getStr():discard": {
       "status": "killed",
-      "durationMs": 18678
+      "durationMs": 20610
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:259:20:16:content.len == 0:<== -> !=>": {
       "status": "killed",
-      "durationMs": 43706
+      "durationMs": 51592
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:307:15:18:next < r.lines.len:<< -> <=>": {
       "status": "killed",
-      "durationMs": 35515
+      "durationMs": 44917
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:SDL:300:5:8:inc r.at:discard": {
       "status": "killed",
-      "durationMs": 13996
+      "durationMs": 16407
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:ROR:254:27:31:resources.getStr() != \"dynamic\":<!= -> ==>": {
       "status": "killed",
-      "durationMs": 29607
+      "durationMs": 26239
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:RVR:147:5:19:return none(string):<return default>": {
       "status": "survived",
-      "durationMs": 109003
+      "durationMs": 24870
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:LOR:177:24:48:frontmatter.isNil or frontmatter.kind != JObject:<or -> and>": {
       "status": "killed",
-      "durationMs": 54219
+      "durationMs": 58468
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:BLR:111:12:5:false:true": {
       "status": "killed",
-      "durationMs": 22176
+      "durationMs": 30171
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:ROR:74:15:13:name.len == 0:<== -> !=>": {
       "status": "killed",
-      "durationMs": 11457
+      "durationMs": 17607
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:ROR:172:22:20:serverLabel.len == 0:<== -> !=>": {
       "status": "killed",
-      "durationMs": 71814
+      "durationMs": 80574
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:RVR:131:9:13:return %asInt:<return default>": {
       "status": "killed",
-      "durationMs": 43033
+      "durationMs": 46763
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:SDL:269:10:57:owned.add ' '.repeat(line.indent - blockIndent) & content:discard": {
       "status": "killed",
-      "durationMs": 46443
+      "durationMs": 51560
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:SDL:290:21:107:result.resources.add SkillResource(uri: uri.getStr(), digest: digest.getStr(),; size: size.getBiggestInt()):discard": {
       "status": "killed",
-      "durationMs": 18141
+      "durationMs": 18204
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:ROR:244:40:21:file.mimeType.len > 0:<> -> >=>": {
       "status": "killed",
-      "durationMs": 69339
+      "durationMs": 68148
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:SDL:168:10:14:items.add item:discard": {
       "status": "killed",
-      "durationMs": 45282
+      "durationMs": 50188
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:AOR:145:42:25:skillUri.len - suffix.len:<- -> +>": {
       "status": "killed",
-      "durationMs": 18325
+      "durationMs": 24727
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:LOR:113:36:40:c in {'\\\\', '\\x00', '?', '#'} or c < ' ':<or -> and>": {
       "status": "killed",
-      "durationMs": 57038
+      "durationMs": 72752
     },
     "src/ext/skills/consumer.nim:7de99cf5109b7bfb:SDL:250:17:156:children.add DirectoryChild(uri: childUri, name: requiredString(item, \"name\",; DirectoryReadMethod), mimeType: mime, isDirectory: mime == DirectoryMimeType):discard": {
       "status": "killed",
-      "durationMs": 17802
+      "durationMs": 17604
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:LOR:172:49:65:serverLabel.len == 0 or serverLabel == \".\" or serverLabel == \"..\":<or -> and>": {
       "status": "killed",
-      "durationMs": 53988
+      "durationMs": 71982
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:ROR:386:27:36:request.`method` != \"resources/read\":<!= -> ==>": {
       "status": "killed",
-      "durationMs": 34889
+      "durationMs": 34026
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:LOR:233:24:48:frontmatter.isNil or frontmatter.kind != JObject:<or -> and>": {
       "status": "killed",
-      "durationMs": 24396
+      "durationMs": 19757
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:LOR:273:19:111:uri.isNil or uri.kind != JString or digest.isNil or digest.kind != JString or; size.isNil or; size.kind != JInt:<or -> and>": {
       "status": "killed",
-      "durationMs": 68629
+      "durationMs": 66420
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:SDL:378:35:219:server.registerExtensionMethod(SkillsExtensionId, DirectoryReadMethod, proc (; ctx: McpRequestContext; params: JsonNode): Future[JsonNode] {.async.} =; return await catalog.directoryRead(params), clientDeclares = false):discard": {
       "status": "killed",
-      "durationMs": 33604
+      "durationMs": 33070
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:196:18:13:quote == '\\'':<== -> !=>": {
       "status": "killed",
-      "durationMs": 43751
+      "durationMs": 50096
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:RVR:390:9:28:return none(JsonRpcResponse):<return default>": {
       "status": "survived",
-      "durationMs": 78096
+      "durationMs": 78286
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:ROR:164:28:14:path[0] != '/':<!= -> ==>": {
       "status": "killed",
-      "durationMs": 55860
+      "durationMs": 51695
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:265:20:27:line.indent <= parentIndent:<<= -> <>": {
       "status": "killed",
-      "durationMs": 45771
+      "durationMs": 50496
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:SDL:99:13:18:result.add text[i]:discard": {
       "status": "killed",
-      "durationMs": 41697
+      "durationMs": 44819
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:RVR:79:5:63:return some(\"a skill name does not start or end with a hyphen\"):<return default>": {
       "status": "killed",
-      "durationMs": 44583
+      "durationMs": 63124
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:113:33:16:text[^1] != '\\'':<!= -> ==>": {
       "status": "killed",
-      "durationMs": 45504
+      "durationMs": 43934
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:SDL:235:13:30:result.add '\\n'.repeat(blanks):discard": {
       "status": "killed",
-      "durationMs": 36052
+      "durationMs": 41397
     },
     "src/ext/skills/consumer.nim:7de99cf5109b7bfb:BLR:129:70:5:false:true": {
       "status": "killed",
-      "durationMs": 17666
+      "durationMs": 16427
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:RVR:380:9:42:return await catalog.directoryRead(params):<return default>": {
       "status": "killed",
-      "durationMs": 34998
+      "durationMs": 35661
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:BLR:55:44:5:false:true": {
       "status": "survived",
-      "durationMs": 87302
+      "durationMs": 82667
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:SDL:278:15:70:text.add '\\n'.repeat(if owned.len > 0:; 1 + trailing; else:; trailing):discard": {
       "status": "killed",
-      "durationMs": 41172
+      "durationMs": 45555
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:ROR:389:32:19:uri.kind != JString:<!= -> ==>": {
       "status": "killed",
-      "durationMs": 33102
+      "durationMs": 33485
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:ROR:267:18:20:item.kind != JObject:<!= -> ==>": {
       "status": "killed",
-      "durationMs": 29795
+      "durationMs": 24149
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:151:12:10:c == quote:<== -> !=>": {
       "status": "killed",
-      "durationMs": 44146
+      "durationMs": 49820
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:LOR:265:36:56:line.indent <= parentIndent or line.indent < blockIndent:<or -> and>": {
       "status": "killed",
-      "durationMs": 44484
+      "durationMs": 51190
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:LOR:110:41:53:segment.len == 0 or segment == \".\" or segment == \"..\":<or -> and>": {
       "status": "killed",
-      "durationMs": 23491
+      "durationMs": 27237
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:ROR:225:36:23:uriNode.kind != JString:<!= -> ==>": {
       "status": "killed",
-      "durationMs": 25193
+      "durationMs": 23826
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:LOR:236:29:36:previous[0] == ' ' or line[0] == ' ':<or -> and>": {
       "status": "killed",
-      "durationMs": 34986
+      "durationMs": 41991
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:BLR:397:20:5:false:true": {
       "status": "killed",
-      "durationMs": 46657
+      "durationMs": 41453
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:LOR:225:20:40:uriNode.isNil or uriNode.kind != JString:<or -> and>": {
       "status": "killed",
-      "durationMs": 87590
+      "durationMs": 76116
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:LOR:78:21:33:name[0] == '-' or name[^1] == '-':<or -> and>": {
       "status": "killed",
-      "durationMs": 45730
+      "durationMs": 64220
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:LOR:206:22:31:i >= text.len or text[i] != ':':<or -> and>": {
       "status": "killed",
-      "durationMs": 44003
+      "durationMs": 45957
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:LOR:104:71:83:text.len == 0 or text == \"~\" or text == \"null\" or text == \"Null\" or; text == \"NULL\":<or -> and>": {
       "status": "killed",
-      "durationMs": 53076
+      "durationMs": 41144
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:LOR:322:43:95:open and r.at < r.lines.len and; (r.lines[r.at].text.len == 0 or r.lines[r.at].indent > indent):<and -> or>": {
       "status": "killed",
-      "durationMs": 12689
+      "durationMs": 16071
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:267:20:15:blockIndent < 0:<< -> <=>": {
       "status": "survived",
-      "durationMs": 96378
+      "durationMs": 103996
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:SDL:155:19:48:checkFrontmatter(skillPath, parsed.fields, name):discard": {
       "status": "killed",
-      "durationMs": 56532
+      "durationMs": 60026
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:AOR:412:29:11:closing + 1:<+ -> ->": {
       "status": "killed",
-      "durationMs": 37438
+      "durationMs": 40518
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:SDL:149:14:40:checkLimits(skillPath, files.len, total):discard": {
       "status": "killed",
-      "durationMs": 53264
+      "durationMs": 60574
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:LOR:272:18:32:uri.isNil or uri.kind != JString:<or -> and>": {
       "status": "killed",
-      "durationMs": 71695
+      "durationMs": 72674
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:AOR:278:52:12:1 + trailing:<+ -> ->": {
       "status": "killed",
-      "durationMs": 41478
+      "durationMs": 45912
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:BLR:117:51:5:false:true": {
       "status": "survived",
-      "durationMs": 107316
+      "durationMs": 122265
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:SDL:155:11:10:item.add c:discard": {
       "status": "killed",
-      "durationMs": 44555
+      "durationMs": 49168
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:250:29:14:header.len > 1:<> -> >=>": {
       "status": "killed",
-      "durationMs": 41711
+      "durationMs": 51096
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:305:18:18:next < r.lines.len:<< -> <=>": {
       "status": "killed",
-      "durationMs": 37078
+      "durationMs": 45567
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:ROR:319:28:19:uri.kind != JString:<!= -> ==>": {
       "status": "killed",
-      "durationMs": 35336
+      "durationMs": 34549
     },
     "src/ext/skills/consumer.nim:7de99cf5109b7bfb:LOR:161:48:51:root.isNone or relativePathIn(root.get, uri).isNone:<or -> and>": {
       "status": "killed",
-      "durationMs": 20248
+      "durationMs": 18616
     },
     "src/ext/skills/consumer.nim:7de99cf5109b7bfb:ROR:185:24:34:bytes.len.int64 != listed.get.size:<!= -> ==>": {
       "status": "killed",
-      "durationMs": 18679
+      "durationMs": 17332
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:SDL:292:15:124:children.add %*{\"uri\": catalog.uriOf(prefix & rest[0 ..< slash]),; \"name\": rest[0 ..< slash], \"mimeType\": DirectoryMimeType}:discard": {
       "status": "killed",
-      "durationMs": 71796
+      "durationMs": 69922
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:BLR:376:22:5:false:true": {
       "status": "killed",
-      "durationMs": 70959
+      "durationMs": 71835
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:104:43:14:text == \"null\":<== -> !=>": {
       "status": "killed",
-      "durationMs": 16318
+      "durationMs": 17776
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:AOR:216:16:5:i + 1:<+ -> ->": {
       "status": "killed",
-      "durationMs": 11654
+      "durationMs": 14435
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:280:18:13:owned.len > 0:<> -> >=>": {
       "status": "killed",
-      "durationMs": 40306
+      "durationMs": 44396
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:113:17:12:text.len < 2:<< -> <=>": {
       "status": "killed",
-      "durationMs": 40480
+      "durationMs": 38904
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:330:35:10:blanks > 0:<> -> >=>": {
       "status": "killed",
-      "durationMs": 41396
+      "durationMs": 36648
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:BLR:119:38:4:true:false": {
       "status": "killed",
-      "durationMs": 43856
+      "durationMs": 40270
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:188:13:12:j < text.len:<< -> <=>": {
       "status": "killed",
-      "durationMs": 43961
+      "durationMs": 51072
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:ROR:287:14:9:slash < 0:<< -> <=>": {
       "status": "survived",
-      "durationMs": 88900
+      "durationMs": 85941
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:LOR:272:57:74:uri.isNil or uri.kind != JString or digest.isNil or digest.kind != JString:<or -> and>": {
       "status": "killed",
-      "durationMs": 71301
+      "durationMs": 72576
     },
     "src/ext/skills/consumer.nim:7de99cf5109b7bfb:ROR:161:12:22:uri != skill.entry.uri:<!= -> ==>": {
       "status": "killed",
-      "durationMs": 19063
+      "durationMs": 19036
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:AOR:237:37:10:blanks + 1:<+ -> ->": {
       "status": "killed",
-      "durationMs": 36623
+      "durationMs": 44288
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:RVR:114:7:12:return false:<return default>": {
       "status": "killed",
-      "durationMs": 52644
+      "durationMs": 76746
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:SDL:86:13:28:result.add Rune(code).toUTF8:discard": {
       "status": "killed",
-      "durationMs": 52964
+      "durationMs": 40562
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:SDL:242:11:15:result.add line:discard": {
       "status": "killed",
-      "durationMs": 39611
+      "durationMs": 48778
     },
     "src/ext/skills/consumer.nim:7de99cf5109b7bfb:SDL:70:22:59:requireTargetSpoken(client.protocolVersion, officialSkills):discard": {
       "status": "killed",
-      "durationMs": 80836
+      "durationMs": 76937
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:AOR:205:11:5:j + 1:<+ -> ->": {
       "status": "killed",
-      "durationMs": 46671
+      "durationMs": 45359
     },
     "src/ext/skills/consumer.nim:7de99cf5109b7bfb:SDL:93:30:126:result.listing.rejected.add RejectedSkill(uri: (; if item.kind == JObject:; item{\"uri\"}.getStr(); else:; \"\"; ), reason: e.msg):discard": {
       "status": "killed",
-      "durationMs": 17775
+      "durationMs": 18379
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:LOR:250:33:42:header.len > 1 and header[1] in {'-', '+'}:<and -> or>": {
       "status": "killed",
-      "durationMs": 41867
+      "durationMs": 49643
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:LOR:191:23:33:quote == '\\\"' and text[j] == '\\\\':<and -> or>": {
       "status": "killed",
-      "durationMs": 45619
+      "durationMs": 49477
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:SDL:72:19:15:result.add '\\r':discard": {
       "status": "killed",
-      "durationMs": 37484
+      "durationMs": 38814
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:141:31:15:text[^1] != ']':<!= -> ==>": {
       "status": "killed",
-      "durationMs": 44848
+      "durationMs": 49313
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:LOR:113:47:55:c in {'\\\\', '\\x00', '?', '#'} or c < ' ' or c == '\\x7F':<or -> and>": {
       "status": "killed",
-      "durationMs": 57594
+      "durationMs": 75233
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:AOR:208:38:13:files.len + 1:<+ -> ->": {
       "status": "survived",
-      "durationMs": 75898
+      "durationMs": 86546
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:407:20:22:fields.kind != JObject:<!= -> ==>": {
       "status": "killed",
-      "durationMs": 16099
+      "durationMs": 16205
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:SDL:285:9:21:seen.add uri.getStr():discard": {
       "status": "killed",
-      "durationMs": 42111
+      "durationMs": 48000
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:AOR:94:22:12:text.len - 1:<- -> +>": {
       "status": "killed",
-      "durationMs": 44850
+      "durationMs": 41726
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:LOR:254:30:69:not skill.files.isNil and parts.get.path.startsWith(skill.path & \"/\"):<and -> or>": {
       "status": "killed",
-      "durationMs": 73462
+      "durationMs": 69957
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:BLR:379:31:5:false:true": {
       "status": "killed",
-      "durationMs": 47908
+      "durationMs": 41030
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:392:20:16:trimmed.len == 0:<== -> !=>": {
       "status": "killed",
-      "durationMs": 17735
+      "durationMs": 14905
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:149:14:15:quote != '\\x00':<!= -> ==>": {
       "status": "killed",
-      "durationMs": 44579
+      "durationMs": 49631
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:94:11:16:i < text.len - 1:<< -> <=>": {
       "status": "killed",
-      "durationMs": 50079
+      "durationMs": 40724
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:ROR:121:12:28:count > MaxResourcesPerSkill:<> -> >=>": {
       "status": "killed",
-      "durationMs": 54914
+      "durationMs": 58151
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:LOR:109:21:32:text.len < 2 or text[^1] != '\\\"':<or -> and>": {
       "status": "killed",
-      "durationMs": 52625
+      "durationMs": 41538
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:SDL:90:7:12:none(string):discard": {
       "status": "survived",
-      "durationMs": 106204
+      "durationMs": 25338
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:RVR:89:7:66:return some(\"a skill name holds letters, digits and hyphens only\"):<return default>": {
       "status": "killed",
-      "durationMs": 67460
+      "durationMs": 78283
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:ROR:248:39:34:parts.get.scheme != catalog.scheme:<!= -> ==>": {
       "status": "killed",
-      "durationMs": 32760
+      "durationMs": 31651
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:ROR:110:34:14:segment == \".\":<== -> !=>": {
       "status": "killed",
-      "durationMs": 17659
+      "durationMs": 22252
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:RVR:375:7:32:return catalog.skillsGet(params):<return default>": {
       "status": "killed",
-      "durationMs": 37319
+      "durationMs": 32491
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:BLR:366:44:4:true:false": {
       "status": "killed",
-      "durationMs": 31987
+      "durationMs": 32764
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:BLR:372:22:5:false:true": {
       "status": "killed",
-      "durationMs": 31207
+      "durationMs": 32424
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:251:17:52:header.len >; (; if chomp == '\\x00':; 1; else:; 2; ):<> -> >=>": {
       "status": "killed",
-      "durationMs": 41846
+      "durationMs": 51633
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:SDL:185:17:89:catalog.skills.add CatalogSkill(path: skillPath, frontmatter: frontmatter,; files: files):discard": {
       "status": "killed",
-      "durationMs": 58723
+      "durationMs": 61610
     },
     "src/ext/skills/model.nim:84ddc5072092b53b:ROR:288:14:21:total > MaxSkillBytes:<> -> >=>": {
       "status": "killed",
-      "durationMs": 17802
+      "durationMs": 19958
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:363:48:17:first.text == \"-\":<== -> !=>": {
       "status": "killed",
-      "durationMs": 19249
+      "durationMs": 11886
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:SDL:369:33:207:server.registerExtensionMethod(SkillsExtensionId, SkillsListMethod, proc (; ctx: McpRequestContext; params: JsonNode): Future[JsonNode] {.async.} =; return catalog.skillsList(params), clientDeclares = false):discard": {
       "status": "killed",
-      "durationMs": 30895
+      "durationMs": 31455
     },
     "src/ext/skills/frontmatter.nim:474ffa2473007056:ROR:104:61:14:text == \"Null\":<== -> !=>": {
       "status": "killed",
-      "durationMs": 14395
+      "durationMs": 16946
     },
     "src/ext/skills/catalog.nim:152f14b4ba5f1a31:AOR:103:34:24:skillPath.rfind('/') + 1:<+ -> ->": {
       "status": "killed",
-      "durationMs": 23178
+      "durationMs": 30090
     }
   }
 }

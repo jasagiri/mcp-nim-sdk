@@ -6,83 +6,75 @@
   "entries": {
     "src/protocol/version.nim:28c5343c30130cd8:LOR:96:43:31:result.isNone or v > result.get:<or -> and>": {
       "status": "killed",
-      "durationMs": 3600
+      "durationMs": 3530
     },
     "src/protocol/version.nim:28c5343c30130cd8:ROR:55:5:26:v >= OldestProtocolVersion:<>= -> >>": {
       "status": "killed",
-      "durationMs": 3454
+      "durationMs": 4109
     },
     "src/protocol/version.nim:28c5343c30130cd8:LOR:96:24:53:not isModern(v) and (result.isNone or v > result.get):<and -> or>": {
       "status": "killed",
-      "durationMs": 2316
+      "durationMs": 3302
     },
     "src/protocol/version.nim:28c5343c30130cd8:SDL:62:13:12:result.add v:discard": {
       "status": "killed",
-      "durationMs": 6908
+      "durationMs": 9554
     },
     "src/protocol/version.nim:28c5343c30130cd8:ROR:87:5:31:v >= FirstModernProtocolVersion:<>= -> >>": {
       "status": "killed",
-      "durationMs": 3656
+      "durationMs": 4020
     },
     "src/protocol/version.nim:28c5343c30130cd8:LOR:105:20:42:parsed.isSome and not isModern(parsed.get):<and -> or>": {
       "status": "killed",
-      "durationMs": 6233
+      "durationMs": 6591
     },
     "src/protocol/version.nim:28c5343c30130cd8:SDL:92:13:12:result.add v:discard": {
       "status": "killed",
-      "durationMs": 2718
+      "durationMs": 4051
     },
     "src/protocol/version.nim:28c5343c30130cd8:LOR:55:30:58:v >= OldestProtocolVersion and v <= DefaultProtocolVersion:<and -> or>": {
       "status": "killed",
-      "durationMs": 17099
+      "durationMs": 21984
     },
     "src/protocol/version.nim:28c5343c30130cd8:ROR:96:48:14:v > result.get:<> -> >=>": {
       "status": "survived",
-      "durationMs": 101167
+      "durationMs": 129830
     },
     "src/protocol/version.nim:28c5343c30130cd8:SDL:34:7:24:none(McpProtocolVersion):discard": {
       "status": "survived",
-      "durationMs": 113604
-    },
-    "src/protocol/version.nim:28c5343c30130cd8:SDL:46:5:110:doAssert parsed.isSome, \"mcpOldestProtocolVersion is not a released MCP version: \" &; mcpOldestProtocolVersion:discard": {
-      "status": "killed",
-      "durationMs": 112755
+      "durationMs": 147939
     },
     "src/protocol/version.nim:28c5343c30130cd8:ROR:61:41:12:v <= ceiling:<<= -> <>": {
       "status": "killed",
-      "durationMs": 6769
+      "durationMs": 8380
     },
     "src/protocol/version.nim:28c5343c30130cd8:LOR:61:35:43:v >= OldestProtocolVersion and v <= ceiling:<and -> or>": {
       "status": "killed",
-      "durationMs": 2731
+      "durationMs": 2974
     },
     "src/protocol/version.nim:28c5343c30130cd8:ROR:61:10:26:v >= OldestProtocolVersion:<>= -> >>": {
       "status": "killed",
-      "durationMs": 2019
+      "durationMs": 3108
     },
     "src/protocol/version.nim:28c5343c30130cd8:ROR:91:10:12:v <= ceiling:<<= -> <>": {
       "status": "killed",
-      "durationMs": 3470
+      "durationMs": 4481
     },
     "src/protocol/version.nim:28c5343c30130cd8:SDL:49:5:178:doAssert parsed.get <= DefaultProtocolVersion, \"mcpOldestProtocolVersion \" &; mcpOldestProtocolVersion &; \" is newer than mcpDefaultProtocolVersion \" &; mcpDefaultProtocolVersion:discard": {
       "status": "killed",
-      "durationMs": 110239
+      "durationMs": 144063
     },
     "src/protocol/version.nim:28c5343c30130cd8:ROR:55:36:27:v <= DefaultProtocolVersion:<<= -> <>": {
       "status": "killed",
-      "durationMs": 3125
+      "durationMs": 4198
     },
     "src/protocol/version.nim:28c5343c30130cd8:ROR:81:10:11:v >= target:<>= -> >>": {
       "status": "killed",
-      "durationMs": 4316
+      "durationMs": 4966
     },
     "src/protocol/version.nim:28c5343c30130cd8:LOR:105:49:70:parsed.isSome and not isModern(parsed.get) and parsed.get in supported:<and -> or>": {
       "status": "killed",
-      "durationMs": 6091
-    },
-    "src/protocol/version.nim:28c5343c30130cd8:SDL:39:5:112:doAssert parsed.isSome, \"mcpDefaultProtocolVersion is not a released MCP version: \" &; mcpDefaultProtocolVersion:discard": {
-      "status": "killed",
-      "durationMs": 112049
+      "durationMs": 7840
     }
   }
 }
