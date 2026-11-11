@@ -1,5 +1,32 @@
 # G2 変異検出: elicitation ジョブ
 
+## 測り直し (拡張ブランチの b04fcb9c、2026-11-11)
+
+測定: `nim-muter` 0.2.15、ジョブ `tests/mutation/elicitation.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。
+状態: 測定済み (仕分けは 2026-11-12、コードを読んだ結論。変異を手では当てていない)。
+
+| 全体 | killed | timeout | survived | runError | compileError |
+|---|---|---|---|---|---|
+| 266 | 256 | 0 | 9 | 0 | 1 |
+
+公開の入口は `mcp` (`server/elicit`・`client/elicitation` と、その 2 つが丸ごと export する `protocol/elicitation`)。`requestedSchemaProblems`・`contentProblems`・`elicitationResultProblems`・`parseElicitationResult` は入口から直接呼べる。
+
+### 生き残りの仕分け
+
+| 指紋 | file:line | 変異 | class | 理由 | 仕様 ID / 足すテストの案 |
+|---|---|---|---|---|---|
+| `src/client/elicitation.nim:SDL:cf63b65dd3d0f435:0` | client/elicitation.nim:73 | `stderr.writeLine("[mcp-client] the elicitation handler's answer was not sent: " …)` → `discard` | accepted | 失敗の文面は契約ではない (代表の決定 2026-10-23)。ハンドラの答えが要求に合わないとき、-32603 で断ることは変異でも保たれ (次の行の `return newJsonRpcErrorResponse`、既存のテストが確かめている)、消えるのは stderr の診断の 1 行だけ。プログラムがこの行を読んで動作を変える箇所は無い。前の記録 (id 13) も許容 | |
+| `src/client/elicitation.nim:RVR:7363684acd3b7ee7:0` | client/elicitation.nim:96 | `return none(seq[McpElicitRequest])` → `<return default>` | equivalent | リテラルではない return なので `default(Option[seq[McpElicitRequest]])` になる。`Option` の既定値は none で、`none(...)` と同じ値 (前の記録の id 24 と同じ判断) | |
+| `src/protocol/elicitation.nim:BLR:559268148d6adf9d:0` | protocol/elicitation.nim:49 | `isInteger` の `else: false` → `true` | unreached | `isInteger` は非公開で、呼び手は `valueProblems` の 1 か所だけ (335 行)。その直前の `if not value.isNumber: return` が JInt・JFloat 以外を先に返すので、`else` の枝に届く値を入口から作れない (前の記録の id 187 と同じ判断) | |
+| `src/protocol/elicitation.nim:BLR:559268148d6adf9d:1` | protocol/elicitation.nim:84 | `formatProblem` の `else: false` → `true` | spec_question | 前の記録 (id 201) は「検査を通った schema の format は 4 つのどれかなので届かない」としたが、届く。`propertyProblems` は `enum` を持つ string の property では `format` を見ない (`plainEnumProblems` だけ) ので、`{"type": "string", "enum": ["a"], "format": "bogus"}` は検査を通り、答え `"a"` で `valueProblems` が `formatProblem("bogus", "a")` を呼ぶ。元は問題なし、変異は「is not a valid bogus」で、サーバーは正しい答えを McpPayloadError で捨て、クライアントは -32603 を返す。どの仕様 ID も enum の property に付いた format を述べていない (MCP-ELICIT-3 は format を持つ string だけ)。問い: enum を持つ string の property に付いた `format` (MCP の EnumSchema に無いキーワード) を、答えの検査で見るか | 推奨: 見ない。モジュールの冒頭の約束「schema が定めないキーワードは確かめない」に合わせ、`valueProblems` は enum の property では format を飛ばす。そうすれば `formatProblem` の `else` は届かなくなり (unreached)、今の「enum と既知の format (`email`) が両方あると enum の値が format で落ちる」振る舞いも消える。見ると決めるなら、未知の format の扱いを MCP-ELICIT-ENUM-2 に足して E テストを書く |
+| `src/protocol/elicitation.nim:SDL:1cfc19a0e7261886:0` | protocol/elicitation.nim:143 | `allowedValues` の末尾の `none(seq[JsonNode])` → `discard` | equivalent | 関数の末尾の式が消えると `result` の既定値がそのまま返る。`Option` の既定値は none で同じ値。手前の枝はどれも `return some(...)` で抜けるので、`result` に別の値が入ったままここへ来ることも無い (前の記録の id 210 と同じ判断) | |
+| `src/protocol/elicitation.nim:RVR:03da7914661f1d4b:0` | protocol/elicitation.nim:226 | `return emForm` → `<return default>` | equivalent | 列挙値の return は `default(ElicitMode)` になる。`ElicitMode` の最初の値 (序数 0) が `emForm` なので同じ値 (前の記録の id 283) | |
+| `src/protocol/elicitation.nim:RVR:03da7914661f1d4b:1` | protocol/elicitation.nim:228 | `return emForm` → `<return default>` | equivalent | 同上 (前の記録の id 284) | |
+| `src/protocol/elicitation.nim:LOR:b47c5833fd3e23b2:1` | protocol/elicitation.nim:372 | `contentProblems` の `properties.isNil or properties.kind != JObject` → `and` | spec_question | SDK の中の流れ (サーバーは `formElicitationParams`、クライアントは `elicitationParamsProblems` を先に通す) では `properties` は必ずオブジェクトで、差は出ない。ただし `contentProblems`・`elicitationResultProblems`・`parseElicitationResult` は入口から直接呼べ、検査していない params (`requestedSchema` の無い form、`properties` がオブジェクトでない schema) を渡すと、元は required だけを見て返り、変異は nil の `kind` を読むか `hasKey` の表明で落ちる。`contentProblems` の文書コメントは「検査を通った schema」を前提にするが、`elicitationResultProblems` は前提を書かず、未知の mode の params は落ちずに報告する (MCP-ELICIT-7)。前の記録 (id 182) の「残す」は司会の判断 (2026-10-07) で、代表の決定ではない。問い: 検査を通っていない params への答えを確かめたとき、落ちずに返ることを仕様にするか、前提違反として防御を消すか | 推奨: 仕様にする (MCP-ELICIT-7 の When に「requestedSchema が無い・properties がオブジェクトでない params への答え」を足す)。相手から来た params を先に検査せずにこの関数へ渡す使い方は入口から書けるので、落ちるより報告が安全。E テストは `test_elicitation_payload` に 1 本: `elicitationResultProblems(%*{"action": "accept", "content": {"a": 1}}, %*{"message": "m"})` と `properties` が配列の schema で、どちらも例外なしに返る。変異では落ちる。使い手: src は `protocol/elicitation.nim` の中の 1 か所 (`elicitationResultProblems`)、tests/external は `test_elicitation_payload.nim`、tests/internal は無し。公開から外す案は、`contentProblems` だけなら取れる (入口から呼ぶのはテストだけ) が、`elicitationResultProblems` を通って同じ行に届くので、この生き残りは消えない |
+| `src/server/elicit.nim:LOR:a8742f6ee65f2793:0` | server/elicit.nim:20 | `known.state != mlsOperational or known.negotiatedVersion.isNone` → `and` | spec_question | 差が出るのは、`initialize` には答えたが `notifications/initialized` をまだ送っていないクライアント (`mlsInitializing` で版は決まっている) だけ。`elicit`・`elicitUrl` は、変異でも後段の `server.request` が同じ McpCapabilityError で送信の前に断る (文面だけの差。schema が規則を破るときだけ McpPayloadError が先に出る)。前の記録 (id 309) はここまでを見て「冗長」とした。しかし `notifyElicitationComplete` の後段は `server.sendNotification` で、状態を確かめない。変異では、握手の済んでいないクライアントに `notifications/elicitation/complete` が送られる (元は McpCapabilityError で何も送らない)。どの仕様 ID の Given にも「initialized を送っていないクライアント」は無い (MCP-ELICIT-4・MCP-ELICIT-URL-2 は宣言と版、MCP-SERVERREQ-4 は sampling と roots の要求)。問い: initialized を送っていないクライアントには elicitation の完了の通知も送らず、capability のエラーで断ることを仕様にするか | 推奨: 仕様にする (MCP-ELICIT-URL-2 の Given に「initialized を送っていないクライアント」を足す。MCP の lifecycle は、initialized の前にサーバーが送ってよいものを ping と logging に限る)。E テストは `test_server_elicitation` に 1 本: `initialize` (2025-11-25、url モードを宣言) だけを注入したセッションに `server.notifyElicitationComplete` → `expect McpCapabilityError`、`t.messagesOf("notifications/elicitation/complete").len == 0`。変異では通知が 1 件出る |
+
+timeout は無い。
+
 測定: `nim-muter`、ジョブ `tests/mutation/elicitation.json`、本線の 36a4c8a5 (2026-10-07)。
 
 | 全変異 | killed | timeout | survived | runError | compileError |

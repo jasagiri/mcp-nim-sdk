@@ -111,6 +111,96 @@
       "reason": "`handleChallenge` で更新が断られたあと、認可が成功すれば 346 行の `save` が上書きするので違いは出ない。認可が失敗する (利用者が拒む) と、取り消されたトークンが保存に残り、次の要求でまた出される。前に検出していた `Given a refresh token the server rejects and a user who then refuses …` は内部に移った。 / MCP-AUTH-29。「when a stored token cannot be refreshed」の suite に足す。認可を済ませ、`env.authServer.refreshTokens.clear()`、`authorize` を `denyingAuthorizer()` に替えた設定 (保存は共有) の client で `handleChallenge(401, env.resourceChallenge)` が例外。そのあと `newOAuthClient(env.config).authorizationHeader()` が none (変異だと、残った古いトークンの `Bearer …` が返る)。補助 `denyingAuthorizer`・`resourceChallenge` は外部のファイルに既にある。"
     },
     {
+      "fingerprint": "src/auth/oauth/authcode.nim:SDL:601869ee54bd0b5e:0",
+      "file": "src/auth/oauth/authcode.nim",
+      "line": 54,
+      "mutator": "SDL",
+      "original": "checkRedirectUri(redirectUri)",
+      "replacement": "discard",
+      "class": "unreached",
+      "reason": "src の唯一の呼び手 `client.handleChallenge` は `c.config.redirectUri` を渡す。この値は `newOAuthClient` が同じ `checkRedirectUri` で先に断っており (client.nim:120)、`OAuthClient.config` は非公開で後から書き換えられない。`newAuthorizationRequest` は入口から export されていないので、検査を通っていない redirect URI をここへ運ぶ入力を作れない"
+    },
+    {
+      "fingerprint": "src/auth/oauth/authcode.nim:LOR:784a5bea41348592:0",
+      "file": "src/auth/oauth/authcode.nim",
+      "line": 149,
+      "mutator": "LOR",
+      "original": "access.isNone or access.get.len == 0",
+      "replacement": "<or -> and>",
+      "class": "test_owed",
+      "reason": "トークンの応答に `access_token` が無いとき、元は OAuthError で断り、変異は none の `get` で UnpackDefect になる。空文字列の `access_token` は、変異では受け入れて保存する。前のテストは内部側に移った / MCP-AUTH-41。T に 1 本: `expiryAfter` の形で、token endpoint が `{\"token_type\":\"Bearer\"}` と `{\"access_token\":\"\",\"token_type\":\"Bearer\"}` を返す → どちらも `expect OAuthError`。変異では前者が Defect、後者は受け入れて返る"
+    },
+    {
+      "fingerprint": "src/auth/oauth/discovery.nim:AOR:ee00ff16360a1b81:0",
+      "file": "src/auth/oauth/discovery.nim",
+      "line": 26,
+      "mutator": "AOR",
+      "original": "path.len - 1",
+      "replacement": "<- -> +>",
+      "class": "test_owed",
+      "reason": "同じ入力で、変異は `/` を落とす代わりに NUL を足し、3 つ目の候補が `…/tenant1/\\0/.well-known/openid-configuration` になる / MCP-AUTH-35。上と同じ 1 本 (3 つ目の URL の文面が合わない)"
+    },
+    {
+      "fingerprint": "src/auth/oauth/discovery.nim:SDL:2f25dd78a30f397e:0",
+      "file": "src/auth/oauth/discovery.nim",
+      "line": 26,
+      "mutator": "SDL",
+      "original": "path.setLen(path.len - 1)",
+      "replacement": "discard",
+      "class": "test_owed",
+      "reason": "`/` で終わるパスを持つ issuer を OpenID Connect も試す版 (2025-11-25 以降) で探すと、変異は末尾の `/` を減らせずループが終わらない。このジョブの外部テストの issuer はどれも `/` で終わらない (前のテストは内部側) / MCP-AUTH-35 (「the candidate URLs of an issuer path that ends in a slash have the slash dropped」)。B の suite「Authorization server discovery over a scripted server」に 1 本: resource metadata が issuer `origin & \"/tenant1/\"` を名指し、ほかは 404 → 失敗の文面に `origin & \"/.well-known/oauth-authorization-server/tenant1: HTTP 404\"`・`…/.well-known/openid-configuration/tenant1: HTTP 404`・`origin & \"/tenant1/.well-known/openid-configuration: HTTP 404\"` がある。変異では終わらない (timeout)。下の 1 件と `urls.nim:122` の 2 件も同じ 1 本"
+    },
+    {
+      "fingerprint": "src/auth/oauth/discovery.nim:ROR:9d9b07680550bfcd:0",
+      "file": "src/auth/oauth/discovery.nim",
+      "line": 27,
+      "mutator": "ROR",
+      "original": "path.len > 0",
+      "replacement": "<> -> >=>",
+      "class": "test_owed",
+      "reason": "パスの無い issuer で、変異は 3 つ目の候補 `origin & \"/.well-known/openid-configuration\"` を足す。2 つ目と同じ URL なので、見つからないとき同じ URL を 2 回取りに行く / MCP-AUTH-14 (「an issuer without a path has two candidates」)。B の同じ suite に 1 本: resource metadata が issuer `origin` (パス無し) を名指し、ほかは 404 → `server.requestLines` のうち `openid-configuration` を含むものが 1 件、`oauth-authorization-server` が 1 件。変異では前者が 2 件"
+    },
+    {
+      "fingerprint": "src/auth/oauth/discovery.nim:SDL:f969742c2a719768:0",
+      "file": "src/auth/oauth/discovery.nim",
+      "line": 87,
+      "mutator": "SDL",
+      "original": "checkFetchUrl(issuer, policy, \"authorization server issuer\")",
+      "replacement": "discard",
+      "class": "unreached",
+      "reason": "src の呼び手は 3 か所で、どれも同じ issuer を同じか狭い policy で先に断っている: `client.discover` と `ext/auth_shared` は resource metadata の `authorization_servers` から選び、その全件を `parseProtectedResourceMetadata` (metadata.nim:92) が確かめる。`ext/auth_enterprise_managed` は `config.idpIssuer` を作るときに確かめる (同 168 行)。`discoverAuthorizationServer` は入口から export されていないので、確かめていない issuer をここへ運べない。MCP-AUTH-35 の「fragment のある issuer は要求の前に断る」は、入口からは metadata.nim:92 が担う (下の行)"
+    },
+    {
+      "fingerprint": "src/auth/oauth/fetch.nim:SDL:e5514a7ef98b6a22:0",
+      "file": "src/auth/oauth/fetch.nim",
+      "line": 37,
+      "mutator": "SDL",
+      "original": "response.close()",
+      "replacement": "discard",
+      "class": "test_owed",
+      "reason": "本文のある答えは配線が読み終えたときに閉じるので、本文の無い keep-alive の答え (204) でだけ、変異は接続を開いたままにする。前のテストは内部側に移った / MCP-AUTH-36 (「a body-less keep-alive answer … the connection is closed afterwards」)。B の suite「Requests of the OAuth client over a scripted server」に 1 本: `startHolding(\"HTTP/1.1 204 No Content\\c\\LConnection: keep-alive\\c\\L\\c\\L\")` を resource metadata の URL として `challengedWith` → `outcome.kind == \"oauth\"`、`server.closedWithin(2000)`。変異では閉じない (`startHolding` は B に既にある)"
+    },
+    {
+      "fingerprint": "src/auth/oauth/fetch.nim:SDL:b33038c87cdbb7b6:0",
+      "file": "src/auth/oauth/fetch.nim",
+      "line": 61,
+      "mutator": "SDL",
+      "original": "pending.addCallback(proc () {.gcsafe.} =; if pending.failed:; stderr.writeLine(\"[oauth] abandoned request to \" & peerText(url) &; \" ended: \" &; peerText(pending.readError().msg)))",
+      "replacement": "discard",
+      "class": "accepted",
+      "reason": "失敗の文面は契約ではない (代表の決定 2026-10-23)。時間切れを OAuthError で知らせること (次の `raise`) と接続を閉じること (58 行) は変異の外で保たれる。消えるのは、見捨てた要求がどう終わったかを stderr に書く診断だけで、プログラムが読む箇所は無い"
+    },
+    {
+      "fingerprint": "src/auth/oauth/fetch.nim:SDL:cb782010fa1010a6:0",
+      "file": "src/auth/oauth/fetch.nim",
+      "line": 63,
+      "mutator": "SDL",
+      "original": "stderr.writeLine(\"[oauth] abandoned request to \" & peerText(url) & \" ended: \" &; peerText(pending.readError().msg))",
+      "replacement": "discard",
+      "class": "accepted",
+      "reason": "失敗の文面は契約ではない (代表の決定 2026-10-23)。上と同じ stderr の診断の 1 行で、時間切れの報告と接続を閉じることは保たれる"
+    },
+    {
       "fingerprint": "src/auth/oauth/grants.nim:ROR:0d63f1f293da3ba0:0",
       "file": "src/auth/oauth/grants.nim",
       "line": 103,
@@ -201,6 +291,26 @@
       "reason": "scope が 1 つも無いとき、変異は IdP への交換の要求に空の `scope=` を載せる。fake は `.get(\"\")` で読むので今は見えない / MCP-EXT-AUTH-7。E の scope を持たない流れのテストに `check env.idpRequests[][0].field(\"scope\").isNone` を足す (130 行のものと同じテストに並べられる)。変異では `some(\"\")`"
     },
     {
+      "fingerprint": "src/auth/oauth/jsonfield.nim:RVR:0c511227513989c7:0",
+      "file": "src/auth/oauth/jsonfield.nim",
+      "line": 9,
+      "mutator": "RVR",
+      "original": "return none(string)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "リテラルではない return なので `default(Option[string])` になる。`Option` の既定値は none で同じ値"
+    },
+    {
+      "fingerprint": "src/auth/oauth/jsonfield.nim:RVR:0c511227513989c7:1",
+      "file": "src/auth/oauth/jsonfield.nim",
+      "line": 12,
+      "mutator": "RVR",
+      "original": "return none(string)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "同上"
+    },
+    {
       "fingerprint": "src/auth/oauth/jwt.nim:LOR:5bb02e615676ccd7:0",
       "file": "src/auth/oauth/jwt.nim",
       "line": 57,
@@ -271,6 +381,406 @@
       "reason": "src の唯一の呼び手 `grants.authenticate` が空の `clientId` を先に OAuthError で断る。`audience` は、client credentials では `found.issuer` か必須の `token_endpoint` (`metadata.nim` の `requiredString`)、enterprise では `withAudience` が空を `idpIssuer` (`checkFetchUrl` 済み)・`found.issuer` で埋めるので、空にならない。`clientAssertion` は入口から export されていない"
     },
     {
+      "fingerprint": "src/auth/oauth/metadata.nim:RVR:0c511227513989c7:0",
+      "file": "src/auth/oauth/metadata.nim",
+      "line": 34,
+      "mutator": "RVR",
+      "original": "return none(string)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "同上 (`default(Option[string])` は none)"
+    },
+    {
+      "fingerprint": "src/auth/oauth/metadata.nim:RVR:e7269eed558d99df:0",
+      "file": "src/auth/oauth/metadata.nim",
+      "line": 48,
+      "mutator": "RVR",
+      "original": "return none(seq[string])",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "`default(Option[seq[string]])` は none で同じ値"
+    },
+    {
+      "fingerprint": "src/auth/oauth/metadata.nim:SDL:76dd24052a2caacc:0",
+      "file": "src/auth/oauth/metadata.nim",
+      "line": 92,
+      "mutator": "SDL",
+      "original": "checkFetchUrl(server, policy, \"authorization server\")",
+      "replacement": "discard",
+      "class": "test_owed",
+      "reason": "選ばれた認可サーバーは、変異でも `discoverAuthorizationServer` の検査 (discovery.nim:87) が同じ OAuthSecurityError で断る。差が出るのは、選ばれないほうに安全でない URL がある文書: 元は文書ごと断り、変異は受け入れて先頭の認可サーバーへ進む / MCP-AUTH-12 (「…or with an insecure one」)。B の suite「Protected resource metadata over a scripted server」に 1 本: `authorization_servers` が `[origin & \"/tenant1\", \"http://auth.example.com\"]` の文書を `challengedWith` → `outcome.kind == \"security\"`、文面に `authorization server must be https`、認可サーバーの well-known への要求が 0 件。変異では `oauth` (認可サーバーの metadata が 404) になり、要求が出る"
+    },
+    {
+      "fingerprint": "src/auth/oauth/metadata.nim:SDL:cef5f9937b0e64a2:0",
+      "file": "src/auth/oauth/metadata.nim",
+      "line": 112,
+      "mutator": "SDL",
+      "original": "checkFetchUrl(result.tokenEndpoint, policy, \"token endpoint\")",
+      "replacement": "discard",
+      "class": "test_owed",
+      "reason": "遠隔ホストへの平文 http の `token_endpoint` を持つ metadata を、元は読んだ時点で断る。変異は受け入れ、登録をし、利用者を認可の画面へ送ってから、トークンの要求の `httpExchange` で初めて断る / MCP-AUTH-14 (「a plain http token endpoint on a remote host are refused」)。B の既存の「Given metadata with a plain http authorization or registration endpoint on a remote host, …」の `key` の並びに `\"token_endpoint\"` を足す (`idleAuthorizer` は利用者が呼ばれると表明で落ちる)。加えて `authServer.registered.len == 0` を見る。変異では登録が 1 件出て、表明で落ちる"
+    },
+    {
+      "fingerprint": "src/auth/oauth/metadata.nim:SDL:38782c08a525ac9c:0",
+      "file": "src/auth/oauth/metadata.nim",
+      "line": 115,
+      "mutator": "SDL",
+      "original": "checkFetchUrl(result.registrationEndpoint.get, policy, \"registration endpoint\")",
+      "replacement": "discard",
+      "class": "test_owed",
+      "reason": "既存の B のテストは動的登録をする client で確かめるので、変異でも `registerClient` の `httpExchange` が同じ OAuthSecurityError で断り、見分けられない。登録を使わない client (事前登録・Client ID Metadata Document) では、元は文書を断り、変異は受け入れて利用者を認可の画面へ送る / MCP-AUTH-38 (「registration_endpoint is plain http to a remote host … the document is rejected」)。B に 1 本 (上の行のテストの隣): `config.preRegistered = some(PreRegisteredClient(clientId: \"c\", issuer: some(authServer.issuer)))` の client で、`registration_endpoint` が `http://auth.example.com/endpoint` → `expect OAuthSecurityError`。変異では `idleAuthorizer` の表明で落ちる"
+    },
+    {
+      "fingerprint": "src/auth/oauth/pkce.nim:LOR:7d5d03782a94b768:0",
+      "file": "src/auth/oauth/pkce.nim",
+      "line": 24,
+      "mutator": "LOR",
+      "original": "verifier.len < 43 or verifier.len > 128",
+      "replacement": "<or -> and>",
+      "class": "spec_question",
+      "reason": "同上 (`isValidCodeVerifier` の中。src に使い手が無い) / 上と同じ問い・同じ推奨"
+    },
+    {
+      "fingerprint": "src/auth/oauth/pkce.nim:ROR:2473df8ad5ad9ee1:0",
+      "file": "src/auth/oauth/pkce.nim",
+      "line": 24,
+      "mutator": "ROR",
+      "original": "verifier.len < 43",
+      "replacement": "<< -> <=>",
+      "class": "spec_question",
+      "reason": "`isValidCodeVerifier` は src に使い手が無い (0 か所)。入口から export もされず、公開の入口からは届かない。使い手は tests/internal の `test_auth_oauth_basics_internal.nim` の 2 本 (7 か所) だけで、tests/external と tests/fuzz には無い。`specs/tests.map` はその 2 本を MCP-AUTH-18 (「a verifier is 43 unreserved characters」) に結ぶが、SDK が作る verifier は `newCodeVerifier` で、この関数を通らない。問い: src に使い手の無い `isValidCodeVerifier` を src から消すか、RFC 7636 4.1 の verifier の検査として入口から届くようにするか / 推奨: 消す。受け取った verifier を確かめるのは認可サーバーの仕事で、クライアントの SDK に使い手は生まれない。内部テストが要るなら、同じ検査をテストの補助として持つ。MCP-AUTH-18 の「43 unreserved characters」は、`tests/external/test_auth_client_flow.nim` の「…when the token request is sent, then it carries the verifier of this request」に `code_verifier` の長さと文字種の check を足せば入口から確かめられる。「公開から外して役割のモジュールに分ける」は要らない (どの入口も export していない)"
+    },
+    {
+      "fingerprint": "src/auth/oauth/pkce.nim:ROR:7c02551d0baca4f6:0",
+      "file": "src/auth/oauth/pkce.nim",
+      "line": 24,
+      "mutator": "ROR",
+      "original": "verifier.len > 128",
+      "replacement": "<> -> >=>",
+      "class": "spec_question",
+      "reason": "同上 / 上と同じ問い・同じ推奨"
+    },
+    {
+      "fingerprint": "src/auth/oauth/pkce.nim:BLR:6ec2d660335697fb:0",
+      "file": "src/auth/oauth/pkce.nim",
+      "line": 25,
+      "mutator": "BLR",
+      "original": "false",
+      "replacement": "true",
+      "class": "spec_question",
+      "reason": "同上 / 上と同じ問い・同じ推奨"
+    },
+    {
+      "fingerprint": "src/auth/oauth/pkce.nim:RVR:f09e9e232af8b35b:0",
+      "file": "src/auth/oauth/pkce.nim",
+      "line": 25,
+      "mutator": "RVR",
+      "original": "return false",
+      "replacement": "<return default>",
+      "class": "spec_question",
+      "reason": "同上 / 上と同じ問い・同じ推奨"
+    },
+    {
+      "fingerprint": "src/auth/oauth/pkce.nim:BLR:6ec2d660335697fb:1",
+      "file": "src/auth/oauth/pkce.nim",
+      "line": 28,
+      "mutator": "BLR",
+      "original": "false",
+      "replacement": "true",
+      "class": "spec_question",
+      "reason": "同上 / 上と同じ問い・同じ推奨"
+    },
+    {
+      "fingerprint": "src/auth/oauth/pkce.nim:RVR:f09e9e232af8b35b:1",
+      "file": "src/auth/oauth/pkce.nim",
+      "line": 28,
+      "mutator": "RVR",
+      "original": "return false",
+      "replacement": "<return default>",
+      "class": "spec_question",
+      "reason": "同上 / 上と同じ問い・同じ推奨"
+    },
+    {
+      "fingerprint": "src/auth/oauth/pkce.nim:BLR:b8309a95375a2001:0",
+      "file": "src/auth/oauth/pkce.nim",
+      "line": 29,
+      "mutator": "BLR",
+      "original": "true",
+      "replacement": "false",
+      "class": "spec_question",
+      "reason": "同上 / 上と同じ問い・同じ推奨"
+    },
+    {
+      "fingerprint": "src/auth/oauth/sha256.nim:SDL:5a90bc8d750f0eec:0",
+      "file": "src/auth/oauth/sha256.nim",
+      "line": 19,
+      "mutator": "SDL",
+      "original": "result.add digits[b shr 4]",
+      "replacement": "discard",
+      "class": "test_owed",
+      "reason": "`toHex` は認可の流れでは使われず (PKCE は `base64UrlNoPad`)、使い手は `ext/skills/model.nim` の `digestOf` と `server/request_state.nim` の 2 か所。このジョブの testCommand のテストはどれも `toHex` を走らせない。変異は 16 進の上位の桁を落とし、ダイジェストが 32 文字になる / MCP-EXT-SKILLS-5。新しいテストは要らない: 既存の `tests/external/test_ext_skills_model.nim` の「Given the files of the specification's example, when digested, then the digests match the published ones」が検出するはず (公表された 64 文字の 16 進と比べる)。testCommand に足す。申し送り: `sha256.nim` をこのジョブの `sources` から外し、使い手のテストを持つジョブ (`ext_skills`) へ移すほうが測定と置き場が合う"
+    },
+    {
+      "fingerprint": "src/auth/oauth/sha256.nim:LOR:8ac18ff5938e8f6e:0",
+      "file": "src/auth/oauth/sha256.nim",
+      "line": 20,
+      "mutator": "LOR",
+      "original": "b and 0x0000000F",
+      "replacement": "<and -> or>",
+      "class": "test_owed",
+      "reason": "同上。変異は 16 以上のバイトで `digits` の範囲の外を引き IndexDefect になる (生き残ったのは、このジョブのテストが `toHex` を一度も走らせないため) / MCP-EXT-SKILLS-5。上と同じ既存のテストが検出するはず。testCommand に足す"
+    },
+    {
+      "fingerprint": "src/auth/oauth/sha256.nim:SDL:24fbfd09d8f0ef89:0",
+      "file": "src/auth/oauth/sha256.nim",
+      "line": 20,
+      "mutator": "SDL",
+      "original": "result.add digits[b and 0x0000000F]",
+      "replacement": "discard",
+      "class": "test_owed",
+      "reason": "同上。変異は下位の桁を落とす / MCP-EXT-SKILLS-5。上と同じ既存のテストが検出するはず。testCommand に足す"
+    },
+    {
+      "fingerprint": "src/auth/oauth/tokens.nim:RVR:ee6041eafe65551f:0",
+      "file": "src/auth/oauth/tokens.nim",
+      "line": 76,
+      "mutator": "RVR",
+      "original": "return none(Time)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "`default(Option[Time])` は none で、`none(Time)` と同じ値"
+    },
+    {
+      "fingerprint": "src/auth/oauth/tokens.nim:RVR:ee6041eafe65551f:1",
+      "file": "src/auth/oauth/tokens.nim",
+      "line": 79,
+      "mutator": "RVR",
+      "original": "return none(Time)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "同上"
+    },
+    {
+      "fingerprint": "src/auth/oauth/tokens.nim:ROR:fdd08ff0ed2d8133:0",
+      "file": "src/auth/oauth/tokens.nim",
+      "line": 83,
+      "mutator": "ROR",
+      "original": "value.getBiggestInt() < 0",
+      "replacement": "<< -> <=>",
+      "class": "test_owed",
+      "reason": "`expires_in` が整数の 0 (すぐ切れる) の応答を、元は「今切れる」と読み、変異は「負」として断る。前のテストは内部側に移った / MCP-AUTH-41 (「an expires_in of zero」)。T の suite「token responses: lifetimes」に 1 本 (境界の寿命): `expiryOf(\"0\", now) == some(now)`。変異では OAuthError。下の 90・92・107 行と同じ 1 本"
+    },
+    {
+      "fingerprint": "src/auth/oauth/tokens.nim:ROR:745c54c47eab48a2:0",
+      "file": "src/auth/oauth/tokens.nim",
+      "line": 90,
+      "mutator": "ROR",
+      "original": "f < 0.0",
+      "replacement": "<< -> <=>",
+      "class": "test_owed",
+      "reason": "小数の `0.0` について同上 / MCP-AUTH-41。上と同じ 1 本に `expiryOf(\"0.0\", now) == some(now)`"
+    },
+    {
+      "fingerprint": "src/auth/oauth/tokens.nim:ROR:5dbe1f28efd2daf1:0",
+      "file": "src/auth/oauth/tokens.nim",
+      "line": 92,
+      "mutator": "ROR",
+      "original": "f > float(MaxTokenLifetimeSeconds)",
+      "replacement": "<> -> >=>",
+      "class": "test_owed",
+      "reason": "上限ちょうどの小数 (`315360000.0`) を、元は上限の寿命として読み、変異は「期限不明」にする。既存の T の「at the largest lifetime」は整数だけ / MCP-AUTH-41 (「at the bound」)。上と同じ 1 本に `expiryOf($MaxTokenLifetimeSeconds & \".0\", now) == some(now + initDuration(seconds = MaxTokenLifetimeSeconds))`。変異では none"
+    },
+    {
+      "fingerprint": "src/auth/oauth/tokens.nim:RVR:ee6041eafe65551f:2",
+      "file": "src/auth/oauth/tokens.nim",
+      "line": 93,
+      "mutator": "RVR",
+      "original": "return none(Time)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "`default(Option[Time])` は none で同じ値"
+    },
+    {
+      "fingerprint": "src/auth/oauth/tokens.nim:ROR:9d229f0b5619e6f9:0",
+      "file": "src/auth/oauth/tokens.nim",
+      "line": 103,
+      "mutator": "ROR",
+      "original": "text.len > 1",
+      "replacement": "<> -> >=>",
+      "class": "accepted",
+      "reason": "失敗の文面は契約ではない (代表の決定 2026-10-23)。差が出るのは文字列 `\"-\"` だけで、元は「is not a number of seconds」、変異は「is negative」で、どちらも同じ OAuthError で応答を断る。プログラムがこの 2 つの文面を見分ける箇所は無い (前の記録の id 122 は文面で見分けるテストを足していたが、決定の後は契約ではない)"
+    },
+    {
+      "fingerprint": "src/auth/oauth/tokens.nim:LOR:fcc11c90151f0b4e:0",
+      "file": "src/auth/oauth/tokens.nim",
+      "line": 105,
+      "mutator": "LOR",
+      "original": "text.len == 0 or not text.allCharsInSet(Digits)",
+      "replacement": "<or -> and>",
+      "class": "test_owed",
+      "reason": "変異では検査が常に偽になり、`parseBiggestInt` が読める数字以外の綴り (`\"+3600\"`、`\"1_000\"`) を寿命として受け入れる。既存の T の断られる値 (`\"soon\"`・`\"\"`・`\"1e3\"`) は `parseBiggestInt` も ValueError で断るので見分けられない / MCP-AUTH-41 (「not made of digits」)。T の既存の「Given a negative or non-numeric expires_in, …」の並びに `\"\\\"+3600\\\"\"` と `\"\\\"1_000\\\"\"` を足す。変異では受け入れて返り、`expect OAuthError` が落ちる"
+    },
+    {
+      "fingerprint": "src/auth/oauth/tokens.nim:ROR:9d692cd88d1a1c5d:0",
+      "file": "src/auth/oauth/tokens.nim",
+      "line": 107,
+      "mutator": "ROR",
+      "original": "text.len > 18",
+      "replacement": "<> -> >=>",
+      "class": "test_owed",
+      "reason": "18 文字の数字列 (`\"000000000000003600\"`) を、元は値 (3600 秒) で読み、変異は「期限不明」にする / MCP-AUTH-41 (「as digits with leading zeros」)。83 行と同じ 1 本に `expiryOf(\"\\\"000000000000003600\\\"\", now) == some(now + initDuration(seconds = 3600))`。変異では none"
+    },
+    {
+      "fingerprint": "src/auth/oauth/tokens.nim:RVR:ee6041eafe65551f:3",
+      "file": "src/auth/oauth/tokens.nim",
+      "line": 108,
+      "mutator": "RVR",
+      "original": "return none(Time)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "`default(Option[Time])` は none で同じ値"
+    },
+    {
+      "fingerprint": "src/auth/oauth/tokens.nim:RVR:ee6041eafe65551f:4",
+      "file": "src/auth/oauth/tokens.nim",
+      "line": 116,
+      "mutator": "RVR",
+      "original": "return none(Time)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "同上"
+    },
+    {
+      "fingerprint": "src/auth/oauth/urls.nim:BLR:f59fa086407fb368:0",
+      "file": "src/auth/oauth/urls.nim",
+      "line": 40,
+      "mutator": "BLR",
+      "original": "false",
+      "replacement": "true",
+      "class": "test_owed",
+      "reason": "既定の policy が私設網の番地を通すようになる。このジョブの私設網のテスト (`test_security_address.nim` の `publicOnly`) は `allowPrivateNetworks = false` を自分で入れ直すので、既定値は見ていない / MCP-AUTH-30 (「private ranges are refused unless allowed」)。B の suite「Fetch policy」に 1 本: 既定の policy (`timeoutMs` だけ短くする) の client に `challengedWith(\"https://10.0.0.1/x\")` → `expect OAuthSecurityError`。変異では検査を通って接続を試み、時間切れの OAuthError になる"
+    },
+    {
+      "fingerprint": "src/auth/oauth/urls.nim:ROR:82a2571577ffe944:0",
+      "file": "src/auth/oauth/urls.nim",
+      "line": 61,
+      "mutator": "ROR",
+      "original": "host.len > 0",
+      "replacement": "<> -> >=>",
+      "class": "equivalent",
+      "reason": "`host` が空のとき、右の `isLoopbackHost(\"\")` が偽になる: `classifyHost(\"\")` は `localhost` でなく、`parseHostLiteral(\"\")` は空を none で返し、`:` も無いので none。`and` の結果は元と同じ偽 (前の記録の id 215 と同じ判断)"
+    },
+    {
+      "fingerprint": "src/auth/oauth/urls.nim:RVR:87aa8baa528c4cef:0",
+      "file": "src/auth/oauth/urls.nim",
+      "line": 112,
+      "mutator": "RVR",
+      "original": "return \"\"",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "文字列のリテラルの return は `\"\"` に替わる。元と同じ値"
+    },
+    {
+      "fingerprint": "src/auth/oauth/urls.nim:ROR:38263dfd8c488dd6:0",
+      "file": "src/auth/oauth/urls.nim",
+      "line": 116,
+      "mutator": "ROR",
+      "original": "uri.port.len > 0",
+      "replacement": "<> -> >=>",
+      "class": "test_owed",
+      "reason": "ポートを書かない URL の origin が `https://host:` になり、正規の resource が `https://mcp.example.com:/mcp` になる。このジョブのテストの URL はどれもポートつき (`127.0.0.1:<port>`) で、ポートの無い正しい resource を通すものが無い / MCP-AUTH-21 (「the valid examples of the specification」)。B の suite「Canonical resource」に 1 本: `newResourceServerAuth(serverConfig(r))` が `https://mcp.example.com/mcp`・`https://mcp.example.com`・`https://mcp.example.com:8443`・`https://mcp.example.com/mcp?tenant=a` で例外なしに返り、`https://mcp.example.com/` と `HTTPS://MCP.example.com/mcp` は `expect ValueError` (正規の形でない)。変異では 1 つ目が ValueError。下の 142・144・145 行も同じ 1 本"
+    },
+    {
+      "fingerprint": "src/auth/oauth/urls.nim:AOR:e1fc70d51262bafd:0",
+      "file": "src/auth/oauth/urls.nim",
+      "line": 122,
+      "mutator": "AOR",
+      "original": "result.len - 1",
+      "replacement": "<- -> +>",
+      "class": "test_owed",
+      "reason": "同じ入力で、変異は `/` を落とす代わりに NUL を足し、well-known の URL が `…/oauth-authorization-server/tenant1/\\0` になる / MCP-AUTH-35 / MCP-AUTH-14。`discovery.nim:26` と同じ 1 本 (1 つ目と 2 つ目の URL の文面が合わない)"
+    },
+    {
+      "fingerprint": "src/auth/oauth/urls.nim:SDL:0c937999c23513de:0",
+      "file": "src/auth/oauth/urls.nim",
+      "line": 122,
+      "mutator": "SDL",
+      "original": "result.setLen(result.len - 1)",
+      "replacement": "discard",
+      "class": "test_owed",
+      "reason": "`/` で終わるパスの issuer か resource で、変異は well-known の URL を作るループが終わらない / MCP-AUTH-35 / MCP-AUTH-14 (「a trailing slash is removed first」)。`discovery.nim:26` と同じ 1 本 (issuer `origin & \"/tenant1/\"`)。変異では終わらない (timeout)"
+    },
+    {
+      "fingerprint": "src/auth/oauth/urls.nim:LOR:76f8556f3ba71a6a:0",
+      "file": "src/auth/oauth/urls.nim",
+      "line": 142,
+      "mutator": "LOR",
+      "original": "uri.path.len > 0 and uri.path != \"/\"",
+      "replacement": "<and -> or>",
+      "class": "test_owed",
+      "reason": "パスが `/` だけの resource で、元は `/` を落とし、変異は残す。resource metadata の `resource` が client の URL と `/` だけ違うとき、変異は別の resource として断る。resource server は `https://mcp.example.com/` を正規の形として受け入れてしまう / MCP-AUTH-21 (「no bare trailing slash」)。`urls.nim:116` と同じ 1 本 (`https://mcp.example.com/` が `expect ValueError`)。変異では受け入れて返る。client の側 (MCP-AUTH-12「a resource that differs only by … a bare slash is accepted」) も内部側にしか無いので、B の「Protected resource metadata over a scripted server」に、server の URL が `origin`、文書の `resource` が `origin & \"/\"` で受け入れられる 1 本を足すとよい"
+    },
+    {
+      "fingerprint": "src/auth/oauth/urls.nim:ROR:821a66dd2db19a47:0",
+      "file": "src/auth/oauth/urls.nim",
+      "line": 142,
+      "mutator": "ROR",
+      "original": "uri.path.len > 0",
+      "replacement": "<> -> >=>",
+      "class": "equivalent",
+      "reason": "パスが空のとき、右の `uri.path != \"/\"` は真で、足されるのは空文字列。結果は変わらない (前の記録の id 229 と同じ判断)"
+    },
+    {
+      "fingerprint": "src/auth/oauth/urls.nim:ROR:212865059112dc58:0",
+      "file": "src/auth/oauth/urls.nim",
+      "line": 144,
+      "mutator": "ROR",
+      "original": "uri.query.len > 0",
+      "replacement": "<> -> >=>",
+      "class": "test_owed",
+      "reason": "問い合わせの無い resource の正規の形に `?` が付く。resource server はどの正しい `resource` も「正規の形でない」と断るようになる / MCP-AUTH-21。`urls.nim:116` と同じ 1 本 (正しい例が ValueError になる)。なお `tests/external/test_auth_resource_server.nim` のどのテストも検出するはず (正しい config で `newResourceServerAuth` を呼ぶ) だが、このジョブの testCommand には無い"
+    },
+    {
+      "fingerprint": "src/auth/oauth/urls.nim:SDL:a178fbf446f0500c:0",
+      "file": "src/auth/oauth/urls.nim",
+      "line": 145,
+      "mutator": "SDL",
+      "original": "result.add \"?\" & uri.query",
+      "replacement": "discard",
+      "class": "test_owed",
+      "reason": "問い合わせを持つ resource の正規の形から問い合わせが落ちる。前のテストは内部側に移った / MCP-AUTH-37 (「a canonical resource keeps its query」)。`urls.nim:116` と同じ 1 本 (`https://mcp.example.com/mcp?tenant=a` が例外なしに返る)。変異では ValueError"
+    },
+    {
+      "fingerprint": "src/auth/oauth/urls.nim:BLR:9cfbc9aab75c9fd9:0",
+      "file": "src/auth/oauth/urls.nim",
+      "line": 149,
+      "mutator": "BLR",
+      "original": "false",
+      "replacement": "true",
+      "class": "test_owed",
+      "reason": "認可の URL とトークンの要求の本文で、空白が `%20` ではなく `+` になる。外部テストはどれも `decodeQuery` で読むので、どちらの綴りも同じ値になり見えない / MCP-AUTH-37 (「a form field with a space is encoded as %20」)。B の suite「A Bearer challenge seen through the public entries」に 1 本: `consentedFor(v, \"Bearer scope=\\\"files:read files:write\\\", resource_metadata=\\\"{prm}\\\"\")` の `urls[0]` を復号せずに見て、`\"scope=files%3Aread%20files%3Awrite\" in url`。変異では `files%3Aread+files%3Awrite`"
+    },
+    {
+      "fingerprint": "src/auth/oauth/urls.nim:SDL:f3884ee08630e876:0",
+      "file": "src/auth/oauth/urls.nim",
+      "line": 153,
+      "mutator": "SDL",
+      "original": "result.add (k, v)",
+      "replacement": "discard",
+      "class": "spec_question",
+      "reason": "`formDecode` と `queryOf` は src に使い手が無い (`queryOf` が `formDecode` を呼ぶだけ)。入口から export もされない。tests/external は自前の同名の補助 (`auth_fixtures.nim`・`ext_auth_fixtures.nim`) を使い、tests/internal に使い手は無く、呼ぶのは `tests/fuzz/targets.nim` の 2 行だけ。どの仕様 ID にも当たらない。問い: src に使い手の無い `formDecode`・`queryOf` を消すか、仕様を持つ公開の関数にするか / 推奨: 消す (fuzz の 2 行も一緒に)。認可の応答の読み取りは `UserAuthorizer` が返す対の列で受け取るので、SDK の中に問い合わせを復号する場面が無い。「公開から外して役割のモジュールに分ける」は要らない (どの入口も export していない)"
+    },
+    {
+      "fingerprint": "src/auth/oauth/urls.nim:SDL:5335507b217f25ce:0",
+      "file": "src/auth/oauth/urls.nim",
+      "line": 156,
+      "mutator": "SDL",
+      "original": "formDecode(parseUri(url).query)",
+      "replacement": "discard",
+      "class": "spec_question",
+      "reason": "同上 (`queryOf` は src にも tests/external・tests/internal にも使い手が無い) / 上と同じ問い・同じ推奨"
+    },
+    {
       "fingerprint": "src/auth/resource_server.nim:ROR:dedcfbcc643201d9:0",
       "file": "src/auth/resource_server.nim",
       "line": 100,
@@ -329,6 +839,26 @@
       "replacement": "<return default>",
       "class": "equivalent",
       "reason": "114 行と同じ (前の仕分けの id 34) / なし"
+    },
+    {
+      "fingerprint": "src/client/elicitation.nim:SDL:cf63b65dd3d0f435:0",
+      "file": "src/client/elicitation.nim",
+      "line": 73,
+      "mutator": "SDL",
+      "original": "stderr.writeLine(\"[mcp-client] the elicitation handler\\'s answer was not sent: \" &; peerText(faults[0]))",
+      "replacement": "discard",
+      "class": "accepted",
+      "reason": "失敗の文面は契約ではない (代表の決定 2026-10-23)。ハンドラの答えが要求に合わないとき、-32603 で断ることは変異でも保たれ (次の行の `return newJsonRpcErrorResponse`、既存のテストが確かめている)、消えるのは stderr の診断の 1 行だけ。プログラムがこの行を読んで動作を変える箇所は無い。前の記録 (id 13) も許容"
+    },
+    {
+      "fingerprint": "src/client/elicitation.nim:RVR:7363684acd3b7ee7:0",
+      "file": "src/client/elicitation.nim",
+      "line": 96,
+      "mutator": "RVR",
+      "original": "return none(seq[McpElicitRequest])",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "リテラルではない return なので `default(Option[seq[McpElicitRequest]])` になる。`Option` の既定値は none で、`none(...)` と同じ値 (前の記録の id 24 と同じ判断)"
     },
     {
       "fingerprint": "src/client/extensions.nim:RVR:3ac2bd94b4efe6f7:0",
@@ -1459,6 +1989,66 @@
       "replacement": "discard",
       "class": "test_owed",
       "reason": "正しい ASCII でない文字がすべて消える。 / MCP-SEC-HTTP-7。T-B。"
+    },
+    {
+      "fingerprint": "src/protocol/elicitation.nim:BLR:559268148d6adf9d:0",
+      "file": "src/protocol/elicitation.nim",
+      "line": 49,
+      "mutator": "BLR",
+      "original": "false",
+      "replacement": "true",
+      "class": "unreached",
+      "reason": "`isInteger` は非公開で、呼び手は `valueProblems` の 1 か所だけ (335 行)。その直前の `if not value.isNumber: return` が JInt・JFloat 以外を先に返すので、`else` の枝に届く値を入口から作れない (前の記録の id 187 と同じ判断)"
+    },
+    {
+      "fingerprint": "src/protocol/elicitation.nim:BLR:559268148d6adf9d:1",
+      "file": "src/protocol/elicitation.nim",
+      "line": 84,
+      "mutator": "BLR",
+      "original": "false",
+      "replacement": "true",
+      "class": "spec_question",
+      "reason": "前の記録 (id 201) は「検査を通った schema の format は 4 つのどれかなので届かない」としたが、届く。`propertyProblems` は `enum` を持つ string の property では `format` を見ない (`plainEnumProblems` だけ) ので、`{\"type\": \"string\", \"enum\": [\"a\"], \"format\": \"bogus\"}` は検査を通り、答え `\"a\"` で `valueProblems` が `formatProblem(\"bogus\", \"a\")` を呼ぶ。元は問題なし、変異は「is not a valid bogus」で、サーバーは正しい答えを McpPayloadError で捨て、クライアントは -32603 を返す。どの仕様 ID も enum の property に付いた format を述べていない (MCP-ELICIT-3 は format を持つ string だけ)。問い: enum を持つ string の property に付いた `format` (MCP の EnumSchema に無いキーワード) を、答えの検査で見るか / 推奨: 見ない。モジュールの冒頭の約束「schema が定めないキーワードは確かめない」に合わせ、`valueProblems` は enum の property では format を飛ばす。そうすれば `formatProblem` の `else` は届かなくなり (unreached)、今の「enum と既知の format (`email`) が両方あると enum の値が format で落ちる」振る舞いも消える。見ると決めるなら、未知の format の扱いを MCP-ELICIT-ENUM-2 に足して E テストを書く"
+    },
+    {
+      "fingerprint": "src/protocol/elicitation.nim:SDL:1cfc19a0e7261886:0",
+      "file": "src/protocol/elicitation.nim",
+      "line": 143,
+      "mutator": "SDL",
+      "original": "none(seq[JsonNode])",
+      "replacement": "discard",
+      "class": "equivalent",
+      "reason": "関数の末尾の式が消えると `result` の既定値がそのまま返る。`Option` の既定値は none で同じ値。手前の枝はどれも `return some(...)` で抜けるので、`result` に別の値が入ったままここへ来ることも無い (前の記録の id 210 と同じ判断)"
+    },
+    {
+      "fingerprint": "src/protocol/elicitation.nim:RVR:03da7914661f1d4b:0",
+      "file": "src/protocol/elicitation.nim",
+      "line": 226,
+      "mutator": "RVR",
+      "original": "return emForm",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "列挙値の return は `default(ElicitMode)` になる。`ElicitMode` の最初の値 (序数 0) が `emForm` なので同じ値 (前の記録の id 283)"
+    },
+    {
+      "fingerprint": "src/protocol/elicitation.nim:RVR:03da7914661f1d4b:1",
+      "file": "src/protocol/elicitation.nim",
+      "line": 228,
+      "mutator": "RVR",
+      "original": "return emForm",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "同上 (前の記録の id 284)"
+    },
+    {
+      "fingerprint": "src/protocol/elicitation.nim:LOR:b47c5833fd3e23b2:1",
+      "file": "src/protocol/elicitation.nim",
+      "line": 372,
+      "mutator": "LOR",
+      "original": "properties.isNil or properties.kind != JObject",
+      "replacement": "<or -> and>",
+      "class": "spec_question",
+      "reason": "SDK の中の流れ (サーバーは `formElicitationParams`、クライアントは `elicitationParamsProblems` を先に通す) では `properties` は必ずオブジェクトで、差は出ない。ただし `contentProblems`・`elicitationResultProblems`・`parseElicitationResult` は入口から直接呼べ、検査していない params (`requestedSchema` の無い form、`properties` がオブジェクトでない schema) を渡すと、元は required だけを見て返り、変異は nil の `kind` を読むか `hasKey` の表明で落ちる。`contentProblems` の文書コメントは「検査を通った schema」を前提にするが、`elicitationResultProblems` は前提を書かず、未知の mode の params は落ちずに報告する (MCP-ELICIT-7)。前の記録 (id 182) の「残す」は司会の判断 (2026-10-07) で、代表の決定ではない。問い: 検査を通っていない params への答えを確かめたとき、落ちずに返ることを仕様にするか、前提違反として防御を消すか / 推奨: 仕様にする (MCP-ELICIT-7 の When に「requestedSchema が無い・properties がオブジェクトでない params への答え」を足す)。相手から来た params を先に検査せずにこの関数へ渡す使い方は入口から書けるので、落ちるより報告が安全。E テストは `test_elicitation_payload` に 1 本: `elicitationResultProblems(%*{\"action\": \"accept\", \"content\": {\"a\": 1}}, %*{\"message\": \"m\"})` と `properties` が配列の schema で、どちらも例外なしに返る。変異では落ちる。使い手: src は `protocol/elicitation.nim` の中の 1 か所 (`elicitationResultProblems`)、tests/external は `test_elicitation_payload.nim`、tests/internal は無し。公開から外す案は、`contentProblems` だけなら取れる (入口から呼ぶのはテストだけ) が、`elicitationResultProblems` を通って同じ行に届くので、この生き残りは消えない"
     },
     {
       "fingerprint": "src/protocol/extensions.nim:ROR:048f9da66bbc8bda:0",
@@ -2629,6 +3219,16 @@
       "replacement": "<> -> >=>",
       "class": "equivalent",
       "reason": "差が出るのは `v == result.get` のときだけで、そのとき行うのは `result = some(v)`、つまり今と同じ値の代入。`supported` に同じ版が重なっていても返る値は変わらない。`result.isNone` のときは `or` の左で決まり、右は評価されない。 / なし (前の測定の id 9 と同じ判断。行は 83 から 96 に動いた)"
+    },
+    {
+      "fingerprint": "src/server/elicit.nim:LOR:a8742f6ee65f2793:0",
+      "file": "src/server/elicit.nim",
+      "line": 20,
+      "mutator": "LOR",
+      "original": "known.state != mlsOperational or known.negotiatedVersion.isNone",
+      "replacement": "<or -> and>",
+      "class": "spec_question",
+      "reason": "差が出るのは、`initialize` には答えたが `notifications/initialized` をまだ送っていないクライアント (`mlsInitializing` で版は決まっている) だけ。`elicit`・`elicitUrl` は、変異でも後段の `server.request` が同じ McpCapabilityError で送信の前に断る (文面だけの差。schema が規則を破るときだけ McpPayloadError が先に出る)。前の記録 (id 309) はここまでを見て「冗長」とした。しかし `notifyElicitationComplete` の後段は `server.sendNotification` で、状態を確かめない。変異では、握手の済んでいないクライアントに `notifications/elicitation/complete` が送られる (元は McpCapabilityError で何も送らない)。どの仕様 ID の Given にも「initialized を送っていないクライアント」は無い (MCP-ELICIT-4・MCP-ELICIT-URL-2 は宣言と版、MCP-SERVERREQ-4 は sampling と roots の要求)。問い: initialized を送っていないクライアントには elicitation の完了の通知も送らず、capability のエラーで断ることを仕様にするか / 推奨: 仕様にする (MCP-ELICIT-URL-2 の Given に「initialized を送っていないクライアント」を足す。MCP の lifecycle は、initialized の前にサーバーが送ってよいものを ping と logging に限る)。E テストは `test_server_elicitation` に 1 本: `initialize` (2025-11-25、url モードを宣言) だけを注入したセッションに `server.notifyElicitationComplete` → `expect McpCapabilityError`、`t.messagesOf(\"notifications/elicitation/complete\").len == 0`。変異では通知が 1 件出る"
     },
     {
       "fingerprint": "src/server/mrtr.nim:RVR:3ac2bd94b4efe6f7:0",
