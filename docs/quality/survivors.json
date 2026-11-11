@@ -631,6 +631,86 @@
       "reason": "正しい ASCII でない文字がすべて消える。 / MCP-SEC-HTTP-7。T-B。"
     },
     {
+      "fingerprint": "src/protocol/features.nim:BLR:fd541d232acef4ff:0",
+      "file": "src/protocol/features.nim",
+      "line": 104,
+      "mutator": "BLR",
+      "original": "false",
+      "replacement": "true",
+      "class": "test_owed",
+      "reason": "`until` が「在る、版は既定値の 2024-11-05」になり、`version < 2024-11-05` はどの版でも偽なので、終わりの無い機能 (`ftTools`・`ftSamplingTools`・`ftElicitation` など) がすべての版で「無い」になる。例: `ftSamplingTools` が 2025-11-25 と 2026-07-28 で無くなる。 / MCP-SAMPLING-TOOLS-1。既存の `tests/external/test_sampling_tools_payload.nim` の `Given tools and a tool choice, when the request is checked in 2025-11-25 and later, then there is nothing to report` が検出するはず (変異だと `tools` が問題として報告され `len == 0` が落ちる)。testCommand に足す。"
+    },
+    {
+      "fingerprint": "src/protocol/features.nim:BLR:c7f595570f3a2986:0",
+      "file": "src/protocol/features.nim",
+      "line": 107,
+      "mutator": "BLR",
+      "original": "true",
+      "replacement": "false",
+      "class": "test_owed",
+      "reason": "終わりのある機能が終わらなくなる。例: `ftTasks` が 2026-07-28 で、`ftJsonRpcBatch`・`ftAuthDefaultEndpoints` が 2025-06-18 以降で、`ftHttpSessions`・`ftPing` が 2026-07-28 で「在る」になる。 / MCP-TASKS-2。既存の `tests/external/test_tasks_server.nim` の `Given a 2026-07-28 request, when the server describes itself, then tasks are not declared` が検出するはず (変異だと `server/discover` の capabilities に `tasks` が残る)。同じ suite の `…when it calls tasks/get, tasks/result, tasks/list or tasks/cancel, then the method is unknown` も落ちるはず。既定の版が 2026-07-28 のビルドでだけ走る suite。testCommand に足す。"
+    },
+    {
+      "fingerprint": "src/protocol/features.nim:LOR:56840ae9a1303474:0",
+      "file": "src/protocol/features.nim",
+      "line": 158,
+      "mutator": "LOR",
+      "original": "version >= s.since and (not s.until.present or version < s.until.version)",
+      "replacement": "<and -> or>",
+      "class": "test_owed",
+      "reason": "終わりの無い機能は、始まる前の版でも「在る」になる (右辺が常に真)。終わりのある機能は、始まる前の版と終わった後の版で「在る」になる。例: `ftSamplingTools` が 2025-06-18 以前で、`ftTasks` が 2025-06-18 以前と 2026-07-28 で在ることになる。 / MCP-SAMPLING-TOOLS-2。既存の `tests/external/test_sampling_tools_payload.nim` の `Given tools or a tool choice, when checked in 2025-06-18, then the field is reported` が検出するはず (変異だと 2025-06-18 で `tools` が報告されない)。MCP-TASKS-2 の `test_tasks_server.nim` の `Given a client of an older version, when it calls tasks/get, then the method is unknown` (2025-06-18 を定数で使う) も落ちるはず。testCommand に足す。"
+    },
+    {
+      "fingerprint": "src/protocol/features.nim:LOR:6c550e70d3915cd6:0",
+      "file": "src/protocol/features.nim",
+      "line": 158,
+      "mutator": "LOR",
+      "original": "not s.until.present or version < s.until.version",
+      "replacement": "<or -> and>",
+      "class": "test_owed",
+      "reason": "終わりのある機能は `not present` が偽で、終わりの無い機能は `version < 2024-11-05` (既定値) が偽なので、`has` がどの機能・どの版でも偽を返す。例: `ftSamplingTools` が 2025-11-25 で、`ftTasks` が 2025-11-25 で無くなる。 / MCP-SAMPLING-TOOLS-1。既存の `tests/external/test_sampling_tools_payload.nim` の `Given tools and a tool choice, when the request is checked in 2025-11-25 and later, then there is nothing to report` が検出するはず。testCommand に足す。"
+    },
+    {
+      "fingerprint": "src/protocol/features.nim:ROR:12ca2a82fc644ed8:0",
+      "file": "src/protocol/features.nim",
+      "line": 158,
+      "mutator": "ROR",
+      "original": "version >= s.since",
+      "replacement": "<>= -> >>",
+      "class": "test_owed",
+      "reason": "機能が始まった版ちょうどで「無い」になる。例: `ftSamplingTools` と `ftTasks` が 2025-11-25 で、`ftElicitation` が 2025-06-18 で、`ftAuthorization` が 2025-03-26 で無くなる。 / MCP-SAMPLING-TOOLS-1。既存の `tests/external/test_sampling_tools_payload.nim` の `Given tools and a tool choice, when the request is checked in 2025-11-25 and later, then there is nothing to report` が検出するはず (`WithTools` は始まった版ちょうどの `mpv20251125` を定数で含む)。MCP-TASKS-1 の `test_tasks_server.nim` の `Given tasks enabled, when a 2025-11-25 client handshakes, then the server declares list, cancel and tools/call` も落ちるはず。testCommand に足す。"
+    },
+    {
+      "fingerprint": "src/protocol/features.nim:ROR:818cc11b5bfbb09f:0",
+      "file": "src/protocol/features.nim",
+      "line": 158,
+      "mutator": "ROR",
+      "original": "version < s.until.version",
+      "replacement": "<< -> <=>",
+      "class": "test_owed",
+      "reason": "機能が終わった版ちょうどで「在る」になる。例: `ftTasks`・`ftHttpSessions`・`ftPing`・`ftResourceSubscribe` が 2026-07-28 で、`ftJsonRpcBatch`・`ftAuthDefaultEndpoints` が 2025-06-18 で在ることになる。 / MCP-TASKS-2。既存の `tests/external/test_tasks_server.nim` の `Given a 2026-07-28 request, when the server describes itself, then tasks are not declared` が検出するはず (`ftTasks` が終わる版ちょうどの `mpv20260728` を定数で使う)。既定の版が 2026-07-28 のビルドでだけ走る。testCommand に足す。"
+    },
+    {
+      "fingerprint": "src/protocol/features.nim:SDL:ec5c33aa9b5418dc:0",
+      "file": "src/protocol/features.nim",
+      "line": 163,
+      "mutator": "SDL",
+      "original": "result.add feature",
+      "replacement": "discard",
+      "class": "spec_question",
+      "reason": "`featuresOf` が常に空の列を返す。`mcp` が `features` を丸ごと export するので公開の入口から違いは見えるが、`src/` の中に呼び手は無く、使うのは `tools/gen_docs.nim` (文書の生成) と `tests/internal/test_features.nim` だけ。`specs/*.feature` にこの関数の振る舞いを定める仕様 ID は無い。 / 代表への問い: `featuresOf` を公開 API の仕様にして仕様 ID と E テストを足しますか、それとも文書を作る道具の部品として `tools/` の側へ移し (2026-10-13 に `implementation_status.nim` を対象から外したのと同じ扱い)、ジョブの対象から外しますか。"
+    },
+    {
+      "fingerprint": "src/protocol/features.nim:ROR:b4abacca4aebefdf:0",
+      "file": "src/protocol/features.nim",
+      "line": 237,
+      "mutator": "ROR",
+      "original": "version >= mpv20260728",
+      "replacement": "<>= -> >>",
+      "class": "spec_question",
+      "reason": "2026-07-28 が最新の版なので `modern` が常に偽になり、`specPage(ftStdio, mpv20260728)` が `basic/transports/stdio` ではなく `basic/transports` を返すなど、2026-07-28 のページが旧版のページになる。公開の入口から違いは見えるが、`src/` の中に呼び手は無く、使うのは `tools/gen_docs.nim` と `tests/internal/test_features.nim` だけ。仕様 ID は無い。 / 代表への問い: `specPage` (仕様書のページの対応) を公開 API の仕様にして仕様 ID と E テストを足しますか、それとも `featuresOf` と一緒に文書を作る道具の側へ移してジョブの対象から外しますか。"
+    },
+    {
       "fingerprint": "src/protocol/lifecycle.nim:RVR:a94ce88da5074921:0",
       "file": "src/protocol/lifecycle.nim",
       "line": 36,
