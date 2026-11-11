@@ -502,6 +502,23 @@ suite "OAuth parsers and checks (mutation review, g2f-oauth-b)":
           discard waitFor clientOf(resourceServer.url, fetchPolicy = named).unchallenged()
 
 
+  test "Given metadata with an authorization endpoint whose host holds a colon but is no IPv6 address, when parsed, then it is rejected":
+    # The endpoint is not fetched, only the user is sent to it. Were `::zz`
+    # taken for a name, the resolver would answer loopback and let it through.
+    if not (DefaultProtocolVersion.has(ftIncrementalScopeConsent)):
+      skip()
+    else:
+      let authServer = startFakeAs()
+      let resourceServer = startFakeRs(authServer)
+      defer:
+        resourceServer.stop()
+        authServer.stop()
+      authServer.metadata["authorization_endpoint"] = %"https://[::zz]/authorize"
+      var named = defaultFetchPolicy()
+      named.resolver = everyHostIsLoopback()
+      expect OAuthSecurityError:
+        discard waitFor clientOf(resourceServer.url, fetchPolicy = named).unchallenged()
+
   test "Given an error answer that is not JSON, when the error is built, then it names the HTTP status and is no OAuth error response":
     # The client probes the well-known URLs without a resource_metadata only from the version with incremental scope consent.
     if not (DefaultProtocolVersion.has(ftIncrementalScopeConsent)):

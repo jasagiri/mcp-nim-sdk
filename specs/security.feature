@@ -373,6 +373,7 @@ Feature: Security properties
     When it is read as an address
     Then each digit has its value in its base, a digit its base does not have makes the text a name, and an empty part makes it a name
     And the last part must fit in the bytes left for it, so that 127.16777215 is loopback and 127.16777216 and 4294967296 are names
+    And a part of up to 16 digits after its prefix is read, so that 0x000000007f000001 is loopback, and a host with a longer part is a name, so that 0x0000000007f000001 is
 
   @spec:MCP-SEC-WIRE-14
   Scenario: Plain http reaches a name only when every address of the name is loopback
@@ -431,6 +432,12 @@ Feature: Security properties
     When an IPv6 address outside it, such as fec0::1, ::ff:7f00:1 or 100:0:0:1::, is classified and no other class (loopback, link-local, unique local, IPv4-embedding, multicast) claims it
     Then it is reserved, and so is refused in every notation, whatever the policy allows
     And an address inside 2000::/3 that no block sets aside is public, to its first and last address
+
+  @spec:MCP-SEC-WIRE-24
+  Scenario: A host with a colon that is no IPv6 address is refused, fetched or not
+    Given a URL that came from the network, such as an authorization endpoint the client sends the user to and does not fetch
+    When its host holds a colon but does not read as an IPv6 address, such as `[::zz]`
+    Then the URL is refused, whatever the policy allows
 
   @spec:MCP-SEC-WIRE-22
   Scenario: A client told which certificate authorities to trust uses them for every https request

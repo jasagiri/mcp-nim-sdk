@@ -90,6 +90,23 @@ suite "fetching an icon (mutation review, g2f-ap-a)":
       refusal = e.msg
     check "exceeds" in refusal
 
+  test "Given a data URI of 2N + 128 or 2N + 129 characters whose decoded bytes fit N, when fetched, then the first is read and the second is refused":
+    # The media type part is made as long as the length asks for.
+    let limit = Png.len
+    proc dataUri(length: int): string =
+      let body = encode(Png)
+      let head = "data:image/png;x="
+      let tail = ";base64," & body
+      head & 'a'.repeat(length - head.len - tail.len) & tail
+    let atLimit = dataUri(limit * 2 + 128)
+    check atLimit.len == limit * 2 + 128
+    check waitFor(fetchIcon(McpIcon(src: atLimit), Origin,
+                            IconFetchOptions(maxBytes: limit))).kind == itPng
+    let beyond = dataUri(limit * 2 + 129)
+    check beyond.len == limit * 2 + 129
+    expect McpIconError:
+      discard waitFor fetchIcon(McpIcon(src: beyond), Origin, IconFetchOptions(maxBytes: limit))
+
   test "Given a data URI whose base64 ends in two pad characters, one, or none, when fetched, then the icon is read":
     for extra in ["x", "xy", ""]:
       let bytes = Png & extra

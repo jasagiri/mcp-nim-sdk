@@ -248,6 +248,8 @@ Feature: Authorization
     Then the client refreshes without the user
     And when the refresh token is spent it authorizes again
     And a new client with a persisted token store presents the stored token first
+    And a refresh token that was refused is removed from the store
+    And credentials are sent only to the issuer that issued them
 
   @spec:MCP-AUTH-30 @feature:ftAuthorization
   Scenario: Authorization endpoints are reached over HTTPS only

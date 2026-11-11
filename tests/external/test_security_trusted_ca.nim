@@ -7,7 +7,7 @@
 ## Needs `-d:ssl` (nimble test runs it so) and the `openssl` command, which
 ## makes a CA and the server certificates in a temporary directory.
 
-import std/[unittest, asyncdispatch, asyncnet, json, net, os, osproc, strutils]
+import std/[unittest, asyncdispatch, asyncnet, json, net, options, os, osproc, strutils]
 import mcp
 import auth/client
 import transport/http_compat
@@ -262,6 +262,14 @@ else:
         "HTTP/1.1 200 OK\c\LContent-Type: application/octet-stream\c\LContent-Length: " & $Png.len & "\c\L\c\L" & Png)
       let origin = "https://127.0.0.1:" & $server.port
       let icon = waitFor fetchIcon(McpIcon(src: origin & "/icon.png"), origin,
+                                   IconFetchOptions(caFile: caFile))
+      check icon.bytes == Png
+
+    test "Given a Content-Type of image/png and an icon whose mimeType is image/jpeg, when an icon is fetched, then the server's type is the one used and it arrives":
+      let server = startTlsServer(local.cert, local.key,
+        "HTTP/1.1 200 OK\c\LContent-Type: image/png\c\LContent-Length: " & $Png.len & "\c\L\c\L" & Png)
+      let origin = "https://127.0.0.1:" & $server.port
+      let icon = waitFor fetchIcon(McpIcon(src: origin & "/icon.png", mimeType: some("image/jpeg")), origin,
                                    IconFetchOptions(caFile: caFile))
       check icon.bytes == Png
 

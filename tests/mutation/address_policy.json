@@ -4,7 +4,7 @@
     "src/transport/guarded_wire.nim",
     "src/client/icons.nim"
   ],
-  "testCommand": "nim c -r --hints:off tests/external/test_security_address.nim && nim c -r --hints:off tests/external/test_security_icons.nim && nim c -r --hints:off tests/external/test_icons.nim && nim c -r --hints:off tests/external/test_icon_fetch.nim && nim c -r --hints:off tests/external/test_icon_svg_prop.nim && nim c -r -d:ssl --hints:off tests/external/test_security_trusted_ca.nim && nim c -r --hints:off tests/external/test_icon_svg_g0f.nim",
+  "testCommand": "nim c -r --hints:off tests/external/test_security_address.nim && nim c -r --hints:off tests/external/test_security_icons.nim && nim c -r --hints:off tests/external/test_icons.nim && nim c -r --hints:off tests/external/test_icon_fetch.nim && nim c -r --hints:off tests/external/test_icon_svg_prop.nim && nim c -r -d:ssl --hints:off tests/external/test_security_trusted_ca.nim && nim c -r --hints:off tests/external/test_icon_svg_g0f.nim && nim c -r --hints:off tests/external/test_auth_oauth_basics.nim",
   "mutators": [
     "AOR",
     "ROR",

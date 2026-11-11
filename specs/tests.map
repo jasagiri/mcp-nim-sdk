@@ -97,6 +97,7 @@ MCP-STDIO-9 | tests/external/test_utf8_refused_fix.nim | Given a string that is 
 MCP-STDIO-9 | tests/external/test_utf8_refused_fix.nim | Given strings that are UTF-8, when a message holds them, then it is sent as it is
 MCP-STDIO-9 | tests/external/test_utf8_refused_fix.nim | Given a result that holds a string that is not UTF-8, when the response is sent, then the peer gets an internal error under the same id and what is written is UTF-8
 MCP-STDIO-9 | tests/external/test_utf8_refused_fix.nim | Given a response whose id is a string that is not UTF-8, when it is sent, then the peer gets an internal error with a null id and what is written is UTF-8
+MCP-STDIO-9 | tests/external/test_utf8_refused_fix.nim | Given a response that holds a string that is not UTF-8, when it is sent as an internal error, then one line is logged and the bytes that are not UTF-8 are not in it
 MCP-STDIO-10 | tests/external/test_stdio_messages_g0a.nim | Given a server that exits while a call is waiting, when the client waits, then the call fails as a closed connection and closing the client succeeds
 MCP-STDIO-11 | tests/external/test_stdio_messages_g0a.nim | Given a 2026-07-28 server over stdio that lists a tool whose x-mcp-header is invalid, when the client lists tools and calls it, then the tool is listed and the call is sent
 MCP-STDIO-12 | tests/external/test_stdio_exit_g0d.nim | Given a server that exits while a request waits, when the output stream ends, then the request fails as a closed connection
@@ -105,6 +106,7 @@ MCP-STDIO-13 | tests/external/test_stdio.nim | Given an environment and a direct
 MCP-STDIO-13 | tests/external/test_stdio.nim | Given no environment, when a server is started, then it inherits this process's environment and directory
 MCP-STDIO-13 | tests/external/test_stdio.nim | Given this process's environment, when the default server environment is made, then only the basic variables pass and the given ones win
 MCP-STDIO-13 | tests/external/test_stdio.nim | Given a basic variable this process does not have, when the default server environment is made, then the server does not get it either
+MCP-STDIO-13 | tests/external/test_stdio.nim | Given a basic variable whose value is a shell function, when the default server environment is made, then the server does not get it
 MCP-STDIO-13 | tests/external/test_stdio.nim | Given a directory that does not exist, when a server is started there, then McpTransportError names it
 MCP-HTTP-1 | tests/external/test_streamable_http.nim | Given a path other than the endpoint, when posted to, then the answer is 404
 MCP-HTTP-1 | tests/external/test_streamable_http.nim | Given the endpoint, when it receives PUT, then the answer is 405 naming the allowed methods
@@ -193,6 +195,7 @@ MCP-RESOURCES-16 | tests/external/test_client_resource_error_g0c.nim | Given a s
 MCP-RESOURCES-17 | tests/external/test_handler_results_fix.nim | Given a resource whose blob is not base64, when it is read, then the answer is an internal error
 MCP-RESOURCES-17 | tests/external/test_handler_results_fix.nim | Given a resource whose blob is base64 with or without padding groups, or that has text only, when it is read, then the contents are sent as they are
 MCP-RESOURCES-17 | tests/external/test_handler_results_prop.nim | Given any contents a resource handler returns, when a client sends resources/read, then they are sent as given if a blob is base64 and the read is an internal error otherwise
+MCP-RESOURCES-18 | tests/external/test_handler_results_fix.nim | Given a resource whose contents hold an entry that is not an object, when it is read, then the answer is an internal error
 MCP-LISTCHANGED-1 | tests/external/test_server_notifications.nim | Given two initialized clients, when the tool list changes, then each is told on its own session
 MCP-LISTCHANGED-1 | tests/external/test_server_notifications.nim | Given resources, prompts and tools, when each list changes, then each notification has its method
 MCP-LISTCHANGED-1 | tests/external/test_server_notifications.nim | Given a server that did not declare listChanged, when a list changes, then nothing is sent
@@ -952,6 +955,7 @@ MCP-LIFECYCLE-23 | tests/external/test_ttl_not_negative_fix.nim | Given a handle
 MCP-LIFECYCLE-23 | tests/external/test_ttl_not_negative_fix.nim | Given a handler whose tools/list result says a ttlMs that is a fraction or a boolean, when a 2026-07-28 client lists tools, then the answer is an internal error
 MCP-LIFECYCLE-23 | tests/external/test_ttl_not_negative_fix.nim | Given a handler whose tools/list result says a cacheScope that is neither public nor private, when a 2026-07-28 client lists tools, then the answer is an internal error
 MCP-LIFECYCLE-23 | tests/external/test_ttl_not_negative_fix.nim | Given a handler whose tools/list result says ttlMs 5 and cacheScope public, when a 2026-07-28 client lists tools, then both are sent as set
+MCP-LIFECYCLE-23 | tests/external/test_ttl_not_negative_fix.nim | Given a handler whose tools/call result says a ttlMs below zero and a cacheScope that is not public or private, when a 2026-07-28 client calls the tool, then the result is sent as the handler set it
 MCP-LIFECYCLE-25 | tests/external/test_initialize_order_fix.nim | Given a client that has sent initialize, when the caller sends tools/list before the answer, then it is refused and not on the wire
 MCP-LIFECYCLE-25 | tests/external/test_initialize_order_fix.nim | Given a client that has sent initialize, when the caller pings before the answer, then the ping is sent
 MCP-LIFECYCLE-25 | tests/external/test_initialize_order_fix.nim | Given a client whose initialize was answered, when the caller sends tools/list, then it is sent
@@ -1702,6 +1706,7 @@ MCP-CONTENT-FIELDS-13 | tests/external/test_handler_results_fix.nim | Given mess
 MCP-CONTENT-FIELDS-14 | tests/external/test_handler_results_fix.nim | Given message content that is an array holding a bad image or an embedded resource without uri, when the prompt is got, then the answer is an internal error
 MCP-CONTENT-FIELDS-14 | tests/external/test_handler_results_fix.nim | Given an embedded resource with a uri, a mimeType and its text, or its base64 blob, when the prompt is got, then it is sent as it is
 MCP-CONTENT-FIELDS-14 | tests/external/test_handler_results_prop.nim | Given any embedded resource a prompt handler returns, when a client sends prompts/get, then it is sent as given if it has a uri, a mimeType and text or blob and is an internal error otherwise
+MCP-CONTENT-FIELDS-15 | tests/external/test_handler_results_fix.nim | Given a prompt result without messages, or a message without content, when the prompt is got, then the answer is an internal error
 MCP-ICONS-6 | tests/internal/test_icon_fetch_internal.nim | Given an icon of an allowed type, when fetched, then the bytes and the type found in them are returned
 MCP-ICONS-6 | tests/internal/test_icon_fetch_internal.nim | Given a fetch, when the request goes out, then it carries no credentials
 MCP-ICONS-6 | tests/internal/test_icon_fetch_internal.nim | Given an icon whose Content-Type disagrees with its bytes, when fetched, then it is refused
@@ -1725,6 +1730,7 @@ MCP-ICONS-7 | tests/external/test_icon_fetch.nim | Given a signature cut short, 
 MCP-ICONS-7 | tests/external/test_icon_fetch.nim | Given markup that opens with a comment or a doctype, when it holds an svg element, then it is an SVG
 MCP-ICONS-7 | tests/external/test_icon_fetch.nim | Given markup that holds no svg element at its start, when sniffed, then it is not an SVG
 MCP-ICONS-8 | tests/external/test_icon_fetch.nim | Given a data URI icon of exactly the allowed size, when fetched, then it is read; one byte more, refused
+MCP-ICONS-8 | tests/external/test_icon_fetch.nim | Given a data URI of 2N + 128 or 2N + 129 characters whose decoded bytes fit N, when fetched, then the first is read and the second is refused
 MCP-SAMPLING-TOOLS-8 | tests/external/test_sampling_tools_payload.nim | Given an audio block in a message, when the request is checked, then only versions with audio content accept it
 MCP-SAMPLING-TOOLS-8 | tests/external/test_sampling_tools_payload.nim | Given an image block in a message, when the request is checked, then every version accepts it
 MCP-SAMPLING-TOOLS-9 | tests/external/test_sampling_tools_payload.nim | Given no params, no answer or an answer without content, when asked for tool uses, then there are none
@@ -1771,6 +1777,8 @@ MCP-SAMPLING-TOOLS-17 | tests/external/test_sampling_asks_fix.nim | Given a bloc
 MCP-SAMPLING-TOOLS-17 | tests/external/test_sampling_asks_fix.nim | Given a block that is not a tool_result but carries a structuredContent breaking a schema, when the server asks with a tool_result that conforms, then the request is sent
 MCP-SAMPLING-TOOLS-17 | tests/external/test_sampling_asks_fix.nim | Given two tools with different outputSchemas, when the server asks with a tool_result that conforms to its own tool only, then the request is sent
 MCP-SAMPLING-TOOLS-17 | tests/external/test_sampling_asks_fix.nim | Given a 2026-07-28 handler that asks with a tool_result that conforms, when the request is served, then the answer is input_required
+MCP-SAMPLING-TOOLS-17 | tests/external/test_sampling_asks_fix.nim | Given a tool_result without a structuredContent for a tool that lists an outputSchema, when the server asks, then the request is sent
+MCP-SAMPLING-TOOLS-17 | tests/external/test_sampling_asks_fix.nim | Given a tool whose outputSchema cannot be used as a schema, when the server asks with a tool_result of it that has a structuredContent, then it is refused and nothing is sent
 MCP-EXT-10 | tests/external/test_extensions.nim | Given extensions registered without onLegacyHandshake, when a legacy client initializes, then the request and the result are those of a peer with no extensions
 MCP-EXT-11 | tests/external/test_extensions.nim | Given an extension declared with onLegacyHandshake, when a legacy client initializes, then the request carries it and only it
 MCP-EXT-12 | tests/external/test_extensions.nim | Given a legacy client that declared an extension in initialize, when a handler asks, then it sees the settings; without the declaration it does not
@@ -1997,6 +2005,7 @@ MCP-SEC-WIRE-5 | tests/external/test_security_address.nim | Given a name that re
 MCP-SEC-WIRE-5 | tests/internal/test_security_address_internal.nim | Given a name that resolves to a metadata service address, when the policy allows loopback and private networks, then the request is still refused
 MCP-SEC-WIRE-5 | tests/internal/test_security_address_internal.nim | Given a name that resolves to a public and a private address, when the policy refuses private networks, then the request is refused
 MCP-SEC-WIRE-5 | tests/external/test_security_address.nim | Given a name that does not resolve, when a request is made, then the request is refused
+MCP-SEC-WIRE-5 | tests/external/test_security_address.nim | Given no resolver in the policy, when a metadata URL names localhost, then the system resolver is asked and the request reaches the listener
 MCP-SEC-WIRE-5 | tests/internal/test_security_address_internal.nim | Given a name that resolves to an allowed address, when a request is made, then the connection goes to that address
 MCP-SEC-WIRE-6 | tests/internal/test_security_address_internal.nim | Given a policy and a server URL, when narrowed, then loopback stays allowed only for a loopback server
 MCP-SEC-WIRE-6 | tests/external/test_security_address.nim | Given a remote server that names a loopback metadata URL, when the client answers its 401, then OAuthSecurityError is raised and nothing is requested
@@ -2051,6 +2060,7 @@ MCP-SEC-WIRE-13 | tests/external/test_security_address.nim | Given a part that i
 MCP-SEC-WIRE-13 | tests/external/test_security_address.nim | Given a digit that its base does not have, when a URL names the host, then the text is a name
 MCP-SEC-WIRE-13 | tests/external/test_security_address.nim | Given an empty part, when a URL names the host, then the text is a name
 MCP-SEC-WIRE-13 | tests/external/test_security_address.nim | Given the last part of a host in a URL, when it is one more than the bytes left for it hold, then the text is a name
+MCP-SEC-WIRE-13 | tests/external/test_security_address.nim | Given a part of 16 or 17 digits after its prefix, when a URL names the host, then 16 are read and 17 make the text a name
 MCP-SEC-WIRE-14 | tests/internal/test_security_address_internal.nim | Given hosts that stand for loopback, public and mixed addresses, when a destination is chosen, then it is loopback-only exactly when every address is loopback
 MCP-SEC-WIRE-14 | tests/internal/test_security_address_internal.nim | Given a host written as an address, when the system resolver is asked, then it answers with that address
 MCP-SEC-WIRE-14 | tests/external/test_security_address.nim | Given localhost resolves to loopback addresses only, when a plain http URL names it, then the request is not refused
@@ -2179,6 +2189,7 @@ MCP-PAGINATION-2 | tests/external/test_server_pagination.nim | Given a cursor th
 MCP-SEC-WIRE-9 | tests/external/test_server_pagination.nim | Given a cursor that is not base64, when a client lists, then the error is invalid params and the server goes on answering
 MCP-ICONS-6 | tests/internal/test_icon_fetch_internal.nim | Given a data URI whose data is not base64, when fetched, then it is refused
 MCP-ICONS-6 | tests/internal/test_icon_fetch_internal.nim | Given a data URI whose base64 has no padding, when fetched, then the icon is read
+MCP-ICONS-6 | tests/external/test_security_trusted_ca.nim | Given a Content-Type of image/png and an icon whose mimeType is image/jpeg, when an icon is fetched, then the server's type is the one used and it arrives
 MCP-SEC-WIRE-9 | tests/internal/test_icon_fetch_internal.nim | Given a data URI whose data is not base64, when fetched, then it is refused
 MCP-SEC-SCHEMA-9 | tests/internal/test_security_schema_internal.nim | Given a pattern with a literal character above U+00FF, when matched, then it stands for itself
 MCP-SEC-SCHEMA-9 | tests/internal/test_security_schema_internal.nim | Given an escaped character above U+00FF, when matched, then it stands for itself
@@ -2265,12 +2276,14 @@ MCP-RATE-2 | tests/external/test_request_rate_fix.nim | Given requests without a
 MCP-RATE-2 | tests/external/test_request_rate_fix.nim | Given a Streamable HTTP server of 2026-07-28 without authorization, when two connections from one address make three requests, then the third is refused
 MCP-RATE-3 | tests/external/test_request_rate_fix.nim | Given a limit of 2 senders, when a third sender speaks, then the sender quiet longest is forgotten and has its full allowance again
 MCP-RATE-3 | tests/external/test_request_rate_fix.nim | Given a limit of 2 senders, when the sender that spoke first is not the one quiet longest, then the one quiet longest is forgotten and the other is remembered
+MCP-RATE-3 | tests/external/test_request_rate_fix.nim | Given a limit of 2 senders, when a third sender speaks while one is full again and another is still used up, then the full one is forgotten and the used-up one is remembered
 MCP-SEC-WIRE-23 | tests/external/test_security_wire_shapes.nim | Given a status code above 599, when the answer head is read, then the request fails
 MCP-SEC-WIRE-23 | tests/external/test_security_wire_shapes.nim | Given a negative status code, when the answer head is read, then the request fails
 MCP-SEC-WIRE-23 | tests/external/test_security_wire_shapes.nim | Given a chunk size that does not fit in an integer, when the answer body is read, then the request fails
 MCP-SEC-WIRE-23 | tests/external/test_security_wire_shapes.nim | Given bytes between a chunk's data and its line end, when the answer body is read, then the request fails
 MCP-SEC-WIRE-23 | tests/external/test_security_wire_shapes.nim | Given a well-formed chunked answer, when it is read, then the notification is delivered
 MCP-SEC-WIRE-23 | tests/external/test_security_wire_shapes.nim | Given an item that is not an object, when its icons are read, then it is a shape error
+MCP-SEC-WIRE-24 | tests/external/test_auth_oauth_basics.nim | Given metadata with an authorization endpoint whose host holds a colon but is no IPv6 address, when parsed, then it is rejected
 MCP-TASKS-7 | tests/external/test_tasks_store.nim | Given a time whose minute or second is out of range, when a task is read, then none is returned
 MCP-TASKS-7 | tests/external/test_tasks_store.nim | Given a time that is not RFC 3339, such as a signed year, when a task is read, then none is returned
 MCP-EXT-AUTH-1 | tests/external/test_ext_auth_client_credentials.nim | Given a 401 and a client secret, when a request is sent, then one client_credentials request carries resource and the secret in Basic, and the retry succeeds without any user step

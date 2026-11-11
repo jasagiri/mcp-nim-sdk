@@ -217,8 +217,8 @@
       "mutator": "ROR",
       "original": "src.len > options.maxBytes * 2 + 128",
       "replacement": "<> -> >=>",
-      "class": "spec_question",
-      "reason": "文面だけの違いではない。`isSafeIconUri` はヘッダ (`image/…;base64`) の長さを限らないので、ヘッダを長くすれば「全体がちょうど 2N+128 文字で、復号後が N バイト以下」の data URI を作れる。元は読み、変異は「exceeds」で断る。前の記録 (id 14) は接頭辞が最小の場合だけを見て許容としていた。全体の長さの上限 2N+128 はどの仕様 ID にも無く、MCP-ICONS-8 は「復号後が N バイトなら読む」としか言わない。 / 問い: data URI 全体の長さの上限 (2N+128 文字。ヘッダが長いと、復号後が N バイト以下でも断る) を MCP-ICONS-8 に足して仕様にするか、この前置きの検査を消して復号後のバイト数だけで決めるか。仕様にする場合の E テスト: `tests/external/test_icon_fetch.nim` で `maxBytes: 64`、`data:image/png;x=<詰め物>;base64,<Png の base64>` を全体 256 文字にして読めること、257 文字で断ること。"
+      "class": "test_owed",
+      "reason": "The representative decided the rule on 2026-11-11; it now has a specification line and an E test (MCP-SEC-WIRE-5, -13, -24, MCP-ICONS-8). To be confirmed by the next run."
     },
     {
       "fingerprint": "src/client/icons.nim:BLR:7a096473f5c56e36:0",
@@ -2167,8 +2167,8 @@
       "mutator": "ROR",
       "original": "text.len > 16",
       "replacement": "<> -> >=>",
-      "class": "spec_question",
-      "reason": "接頭辞を除いてちょうど 16 桁の部分 (例: `0x000000007f000001`) が、元はアドレス (127.0.0.1、loopback)、変異は名前になる。E テストの `seenHost` で「loopback」と「name」の違いとして見える。桁数の上限 16 はどの仕様 ID にも無い (MCP-SEC-WIRE-13 は「inet_aton の読み方で読む」で、inet_aton は 0 を詰めた 17 桁以上も読む。元のコードは 17 桁以上を名前にする)。前の記録 (id 102) は「どちらでも名前として解決され、得たアドレスが判定されるので安全側」として許容にしていた。 / 問い: IPv4 リテラルの 1 部分の桁数の上限 (16 桁までは読み、17 桁からは名前) を MCP-SEC-WIRE-13 に足して仕様にするか、上限を消して値の上限 (32 ビット) だけにするか。仕様にする場合の E テスト: `tests/external/test_security_address.nim` で `seenHost(\"0x000000007f000001\") == \"loopback\"`、`seenHost(\"0x0000000007f000001\") == \"name\"`。"
+      "class": "test_owed",
+      "reason": "The representative decided the rule on 2026-11-11; it now has a specification line and an E test (MCP-SEC-WIRE-5, -13, -24, MCP-ICONS-8). To be confirmed by the next run."
     },
     {
       "fingerprint": "src/transport/address_policy.nim:RVR:189e39fef5ff9821:0",
@@ -2357,8 +2357,8 @@
       "mutator": "RVR",
       "original": "return some(acReserved)",
       "replacement": "<return default>",
-      "class": "spec_question",
-      "reason": "`:` を含むが IPv6 として読めないホスト (例: `https://[::zz]/authorize`) が、reserved ではなく「名前」になる。取りに行く URL では、`chooseDestination` が同じホストを「malformed」で断るので、違いは文面だけ (どちらも OAuthSecurityError)。しかし取りに行かない URL (`metadata.nim` が `checkFetchUrl` で確かめる `authorization_endpoint`、`client.nim` の client metadata document URL) では、元は断り、変異は通して利用者をその URL に送る。「読めないアドレスは reserved として断る」はどの仕様 ID にも無い (MCP-SEC-WIRE-4 は読めるアドレスの表記、MCP-AUTH-38 は plain http だけ)。 / 問い: `:` を含むが IPv6 として読めないホストの URL を、取りに行かないエンドポイントでも断ることを仕様 (MCP-SEC-WIRE-4 か MCP-AUTH-38 に 1 行) にするか。仕様にする場合の E テスト: `tests/external/test_auth_oauth_basics.nim` の「Given metadata with a plain http authorization or registration endpoint…」と同じ形 (`startFakeAs`・`startFakeRs`・`clientOf(…).unchallenged()`) で、`authServer.metadata[\"authorization_endpoint\"] = %\"https://[::zz]/authorize\"` に OAuthSecurityError を期待する。このファイルは今の testCommand に無いので、足すときは testCommand にも入れる。"
+      "class": "test_owed",
+      "reason": "The representative decided the rule on 2026-11-11; it now has a specification line and an E test (MCP-SEC-WIRE-5, -13, -24, MCP-ICONS-8). To be confirmed by the next run."
     },
     {
       "fingerprint": "src/transport/address_policy.nim:SDL:ad636063358436a8:0",
@@ -2377,8 +2377,8 @@
       "mutator": "SDL",
       "original": "result.add text",
       "replacement": "discard",
-      "class": "spec_question",
-      "reason": "Only a host name handed to the system resolver reaches this, and the E tests have so far passed it numbers only (the earlier decision of this job). Question for the representative: may an E test under MCP-SEC-WIRE-5 resolve \"localhost\" through the system resolver? If yes, one test that fetches http://localhost:<port>/ with the default policy tells this; if no, it cannot be told through a public entry."
+      "class": "test_owed",
+      "reason": "The representative decided the rule on 2026-11-11; it now has a specification line and an E test (MCP-SEC-WIRE-5, -13, -24, MCP-ICONS-8). To be confirmed by the next run."
     },
     {
       "fingerprint": "src/transport/address_policy.nim:SDL:587af74a67c0104c:0",
@@ -2397,8 +2397,8 @@
       "mutator": "ROR",
       "original": "result.len == 0",
       "replacement": "<== -> !=>",
-      "class": "spec_question",
-      "reason": "Only a host name handed to the system resolver reaches this, and the E tests have so far passed it numbers only (the earlier decision of this job). Question for the representative: may an E test under MCP-SEC-WIRE-5 resolve \"localhost\" through the system resolver? If yes, one test that fetches http://localhost:<port>/ with the default policy tells this; if no, it cannot be told through a public entry."
+      "class": "test_owed",
+      "reason": "The representative decided the rule on 2026-11-11; it now has a specification line and an E test (MCP-SEC-WIRE-5, -13, -24, MCP-ICONS-8). To be confirmed by the next run."
     },
     {
       "fingerprint": "src/transport/address_policy.nim:SDL:a49b63d6c5610a7a:0",
@@ -2407,8 +2407,8 @@
       "mutator": "SDL",
       "original": "result.add parseIpAddress(text)",
       "replacement": "discard",
-      "class": "spec_question",
-      "reason": "Only a host name handed to the system resolver reaches this, and the E tests have so far passed it numbers only (the earlier decision of this job). Question for the representative: may an E test under MCP-SEC-WIRE-5 resolve \"localhost\" through the system resolver? If yes, one test that fetches http://localhost:<port>/ with the default policy tells this; if no, it cannot be told through a public entry."
+      "class": "test_owed",
+      "reason": "The representative decided the rule on 2026-11-11; it now has a specification line and an E test (MCP-SEC-WIRE-5, -13, -24, MCP-ICONS-8). To be confirmed by the next run."
     },
     {
       "fingerprint": "src/transport/address_policy.nim:ROR:22cf8d6f11883448:1",
@@ -2417,8 +2417,8 @@
       "mutator": "ROR",
       "original": "result.len == 0",
       "replacement": "<== -> !=>",
-      "class": "spec_question",
-      "reason": "Only a host name handed to the system resolver reaches this, and the E tests have so far passed it numbers only (the earlier decision of this job). Question for the representative: may an E test under MCP-SEC-WIRE-5 resolve \"localhost\" through the system resolver? If yes, one test that fetches http://localhost:<port>/ with the default policy tells this; if no, it cannot be told through a public entry."
+      "class": "test_owed",
+      "reason": "The representative decided the rule on 2026-11-11; it now has a specification line and an E test (MCP-SEC-WIRE-5, -13, -24, MCP-ICONS-8). To be confirmed by the next run."
     },
     {
       "fingerprint": "src/transport/event_stream.nim:ROR:40a8f14bb3a39089:0",

@@ -260,6 +260,10 @@ when HasChallengeVersion:
       check seenHost("10.255.0.1") == "private"
       check seenHost("10.256.0.1") == "name"
 
+    test "Given a part of 16 or 17 digits after its prefix, when a URL names the host, then 16 are read and 17 make the text a name":
+      check seenHost("0x000000007f000001") == "loopback"
+      check seenHost("0x0000000007f000001") == "name"
+
     test "Given a digit that its base does not have, when a URL names the host, then the text is a name":
       for host in ["08.1.1.1", "1a.1.1.1", "0x1g.1.1.1"]:
         checkpoint host
@@ -360,6 +364,41 @@ when HasChallengeVersion:
         message = e.msg
       check "redirected (HTTP 302)" in message
       check requested == @["GET /moved HTTP/1.1"]
+
+when HasChallengeVersion:
+  suite "a name the system resolves, seen through the public entries":
+
+    test "Given no resolver in the policy, when a metadata URL names localhost, then the system resolver is asked and the request reaches the listener":
+      # localhost goes to the system resolver here (decided by the owner on
+      # 2026-11-11): it stays on the machine. The listener is on 127.0.0.1,
+      # which the resolver gives before any IPv6 address.
+      let listener = newAsyncSocket(buffered = false)
+      listener.setSockOpt(OptReuseAddr, true)
+      listener.bindAddr(Port(0), "127.0.0.1")
+      listener.listen()
+      let port = listener.getLocalAddr()[1].int
+      var requested: seq[string]
+      proc serveOne(client: AsyncSocket) {.async.} =
+        let request = await client.recv(4096)
+        requested.add request.splitLines()[0]
+        await client.send("HTTP/1.1 200 OK\c\LContent-Type: application/json\c\LContent-Length: 2\c\L\c\L{}")
+        client.close()
+      proc serve() {.async.} =
+        while true:
+          asyncCheck serveOne(await listener.accept())
+      asyncCheck serve()
+      let authorize: UserAuthorizer = proc(url: string): Future[seq[(string, string)]] {.async.} =
+        raise newException(OAuthError, "no user in this test")
+      let oauth = newOAuthClient(newOAuthClientConfig(
+        "http://127.0.0.1:" & $port & "/mcp", "http://127.0.0.1:53682/callback", authorize,
+        ChallengeVersion.get))
+      # What the listener answers is no metadata, so the challenge fails after
+      # the request was made.
+      expect OAuthError:
+        discard waitFor oauth.handleChallenge(401,
+          @["Bearer resource_metadata=\"http://localhost:" & $port & "/x\""])
+      check requested == @["GET /x HTTP/1.1"]
+      listener.close()
 
 when HasChallengeVersion:
   suite "plain http to a name that stands for loopback, seen through the public entries":
