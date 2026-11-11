@@ -281,6 +281,36 @@
       "reason": "関数の最後の式 none(SkillResource) を消すと result の既定値が返り、Option の既定値は none なので同じ値になる"
     },
     {
+      "fingerprint": "src/protocol/base64_shape.nim:BLR:9e1445f6b0165a86:0",
+      "file": "src/protocol/base64_shape.nim",
+      "line": 14,
+      "mutator": "BLR",
+      "original": "false",
+      "replacement": "true",
+      "class": "test_owed",
+      "reason": "先頭の = を落とすと isPaddedBase64(\"=QUE\") が真になる。cursor とヘッダは後ろの復号が ValueError で断るが、資源の blob (result_shape) は形だけで決めるので通ってしまう (MCP-RESOURCES-17、MCP-SEC-WIRE-9)。test_handler_results_fix.nim の blob の表に \"=QUE\" を足し、ジョブの testCommand にこのファイルを足した。測り直しで消えることを確かめる"
+    },
+    {
+      "fingerprint": "src/protocol/base64_shape.nim:LOR:b20c24dfb3c73560:0",
+      "file": "src/protocol/base64_shape.nim",
+      "line": 31,
+      "mutator": "LOR",
+      "original": "text.len - body.len <= 2 and body.allCharsInSet(Base64Alphabet)",
+      "replacement": "<and -> or>",
+      "class": "test_owed",
+      "reason": "pad が 3 つの data URI が復号まで進み、アイコンとして受け取られる。test_icon_fetch.nim に「pad が 3 つなら断る」を足した (MCP-SEC-WIRE-9)。アルファベット外の文字は後ろの復号が ValueError で断るので、この変異で変わるのは pad の数だけ。測り直しで消えることを確かめる"
+    },
+    {
+      "fingerprint": "src/protocol/base64_shape.nim:ROR:67fea339bf507896:0",
+      "file": "src/protocol/base64_shape.nim",
+      "line": 31,
+      "mutator": "ROR",
+      "original": "text.len - body.len <= 2",
+      "replacement": "<<= -> <>",
+      "class": "test_owed",
+      "reason": "pad が 2 つの data URI が断られる。殺すテストは内部側 (test_icon_fetch_internal.nim) にしか無かった。test_icon_fetch.nim に「pad が 2 つ・1 つ・無しのどれでも読む」を足した (MCP-ICONS-6、MCP-SEC-WIRE-9)。測り直しで消えることを確かめる"
+    },
+    {
       "fingerprint": "src/protocol/lifecycle.nim:RVR:a94ce88da5074921:0",
       "file": "src/protocol/lifecycle.nim",
       "line": 36,

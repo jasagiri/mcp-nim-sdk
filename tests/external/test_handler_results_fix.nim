@@ -72,7 +72,7 @@ suite "the blob of a resource":
 
   test "Given a resource whose blob is not base64, when it is read, then the answer is an internal error":
     for v in SupportedProtocolVersions:
-      for blob in ["not base64!!", "abc", "QQ=", "QQ==QQ=="]:
+      for blob in ["not base64!!", "abc", "QQ=", "QQ==QQ==", "=QUE"]:
         check readResource(%*{"uri": "file:///b", "mimeType": "image/png", "blob": blob}, v).isError(-32603)
 
   test "Given a resource whose blob is base64 with or without padding groups, or that has text only, when it is read, then the contents are sent as they are":

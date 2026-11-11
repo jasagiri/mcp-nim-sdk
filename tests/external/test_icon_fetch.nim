@@ -89,3 +89,19 @@ suite "fetching an icon (mutation review, g2f-ap-a)":
     except McpIconError as e:
       refusal = e.msg
     check "exceeds" in refusal
+
+  test "Given a data URI whose base64 ends in two pad characters, one, or none, when fetched, then the icon is read":
+    for extra in ["x", "xy", ""]:
+      let bytes = Png & extra
+      let padded = encode(bytes)
+      check padded.count('=') == [0, 2, 1][bytes.len mod 3]
+      for data in [padded, padded.strip(leading = false, chars = {'='})]:
+        let icon = waitFor fetchIcon(McpIcon(src: "data:image/png;base64," & data), Origin, IconFetchOptions())
+        check icon.kind == itPng
+        check icon.bytes == bytes
+
+  test "Given a data URI whose data has three pad characters, when fetched, then it is refused":
+    # std/base64.decode reads it as the icon; the shape is checked before it.
+    check decode(encode(Png) & "===") == Png
+    expect McpIconError:
+      discard waitFor fetchIcon(McpIcon(src: "data:image/png;base64," & encode(Png) & "==="), Origin, IconFetchOptions())
