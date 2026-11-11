@@ -4,7 +4,7 @@
 
 import std/[asyncdispatch, json, options]
 import ./types
-import ./tasks
+import ./task_store
 import ../server/pagination
 import ../server/errors
 

@@ -36,7 +36,7 @@ import ./wire
 import ../official_common
 
 export wire
-export tasks except setResultStream, `onResultStream=`
+export tasks
 
 const
   ExtOwnerPrefix = "ext-tasks:"

@@ -1,6 +1,6 @@
 {
   "sources": [
-    "src/protocol/tasks.nim",
+    "src/protocol/task_store.nim",
     "src/protocol/task_methods.nim",
     "src/server/tasks.nim",
     "src/client/tasks.nim"

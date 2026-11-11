@@ -12,9 +12,10 @@ import ./server
 import ../protocol/types
 import ../protocol/features
 import ../protocol/tasks
+import ../protocol/task_store
 import ../protocol/task_methods
 
-export tasks except setResultStream, `onResultStream=`
+export tasks
 export task_methods
 
 type

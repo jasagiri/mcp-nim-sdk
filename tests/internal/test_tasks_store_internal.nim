@@ -4,6 +4,7 @@
 
 import std/[asyncdispatch, json, options, os, unittest]
 import protocol/tasks
+import protocol/task_store
 import protocol/task_methods
 import protocol/types
 

@@ -5,6 +5,7 @@
 import std/[asyncdispatch, json, options, unittest]
 import ./server_harness
 import protocol/tasks
+import protocol/types
 import protocol/version
 import server/tasks
 
@@ -88,8 +89,11 @@ suite "security: what one owner may make the store keep":
     let time = FakeTime(nowMs: 1_000)
     let store = newTaskStore(clock = proc(): int64 = time.nowMs, maxTasksPerOwner = 3)
     for _ in 1 .. 3:
-      let task = store.create("mallory", some(10_000'i64))
-      discard store.finish(task.taskId, TaskOutcome(result: some(newJObject())))
+      # The store ends a task only for the request it stands for.
+      let work = newFuture[JsonRpcResponse]("work")
+      work.complete(newJsonRpcResponse("1", newJObject()))
+      discard runAsTask(store, "mallory", some(10_000'i64), proc(id: string): TaskWork =
+        (response: work, cancel: nil))
     check raisesTaskError(proc() = discard store.create("mallory", none(int64)), -32603)
     time.nowMs += 10_000
     discard store.create("mallory", none(int64))

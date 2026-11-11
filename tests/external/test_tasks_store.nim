@@ -21,6 +21,27 @@ proc failure(code: int, message: string): TaskOutcome =
 proc success(node: JsonNode): TaskOutcome =
   TaskOutcome(result: some(node))
 
+# Tasks end through the request they stand for: the store has no public way to
+# set an outcome, so these run a task whose work is a future of the test's own.
+proc runningTask(store: TaskStore, work: Future[JsonRpcResponse], owner = "a",
+                 ttl = none(int64)): McpTask =
+  runAsTask(store, owner, ttl, proc(id: string): TaskWork =
+    (response: work, cancel: nil))
+
+proc responseOf(outcome: TaskOutcome): JsonRpcResponse =
+  JsonRpcResponse(jsonrpc: "2.0", id: "1", result: outcome.result, error: outcome.error)
+
+proc settle() =
+  ## Let the task that waits for its request see the request end.
+  waitFor sleepAsync(1)
+
+proc ended(store: TaskStore, outcome: TaskOutcome, owner = "a",
+           ttl = none(int64)): McpTask =
+  ## A task whose request has already returned `outcome`.
+  let work = newFuture[JsonRpcResponse]("work")
+  work.complete(responseOf(outcome))
+  store.runningTask(work, owner, ttl)
+
 proc loggedWhile(body: proc()): string =
   ## Everything the code under test wrote to stderr.
   let path = getTempDir() / "mcp-tasks-store-" & $getCurrentProcessId() & ".log"
@@ -147,25 +168,25 @@ suite "tasks: status lifecycle":
     var seen: seq[(string, TaskStatus)]
     store.onStatusChange = proc(owner: string, task: McpTask) =
       seen.add (owner, task.status)
-    let task = store.create("alice", none(int64))
+    let work = newFuture[JsonRpcResponse]("work")
+    let task = store.runningTask(work, "alice")
     discard store.transition(task.taskId, tsInputRequired)
     discard store.transition(task.taskId, tsWorking)
-    check store.finish(task.taskId, success(%*{"ok": true}))
+    work.complete(responseOf(success(%*{"ok": true})))
+    settle()
     check seen == @[("alice", tsInputRequired), ("alice", tsWorking), ("alice", tsCompleted)]
 
 suite "tasks: finishing":
   test "Given a request that succeeded, when finished, then the task is completed and keeps the result":
     let store = storeAt(FakeTime())
-    let task = store.create("a", none(int64))
-    check store.finish(task.taskId, success(%*{"content": []}))
+    let task = store.ended(success(%*{"content": []}))
     check store.get("a", task.taskId).status == tsCompleted
     let outcome = waitFor store.awaitOutcome("a", task.taskId)
     check outcome.result.get["content"].len == 0
 
   test "Given a request that ended in a JSON-RPC error, when finished, then the task failed with the error's message":
     let store = storeAt(FakeTime())
-    let task = store.create("a", none(int64))
-    check store.finish(task.taskId, failure(-32602, "bad arguments"))
+    let task = store.ended(failure(-32602, "bad arguments"))
     let failed = store.get("a", task.taskId)
     check failed.status == tsFailed
     check failed.statusMessage == some("bad arguments")
@@ -174,9 +195,8 @@ suite "tasks: finishing":
 
   test "Given a tool result with isError, when finished, then the task failed and the result is kept as it was":
     let store = storeAt(FakeTime())
-    let task = store.create("a", none(int64))
     let toolResult = %*{"content": [{"type": "text", "text": "rate limit"}], "isError": true}
-    check store.finish(task.taskId, success(toolResult))
+    let task = store.ended(success(toolResult))
     check store.get("a", task.taskId).status == tsFailed
     check store.get("a", task.taskId).statusMessage == some("rate limit")
     let outcome = waitFor store.awaitOutcome("a", task.taskId)
@@ -184,27 +204,31 @@ suite "tasks: finishing":
 
   test "Given a cancelled task, when its execution finishes later, then it stays cancelled":
     let store = storeAt(FakeTime())
-    let task = store.create("a", none(int64))
+    let work = newFuture[JsonRpcResponse]("work")
+    let task = store.runningTask(work)
     discard store.cancel("a", task.taskId)
-    check not store.finish(task.taskId, success(%*{}))
+    work.complete(responseOf(success(%*{})))
+    settle()
     check store.get("a", task.taskId).status == tsCancelled
 
 suite "tasks: retrieval":
   test "Given a working task, when the result is awaited, then the wait ends when the task does":
     let store = storeAt(FakeTime())
-    let task = store.create("a", none(int64))
+    let work = newFuture[JsonRpcResponse]("work")
+    let task = store.runningTask(work)
     let waiting = store.awaitOutcome("a", task.taskId)
     check not waiting.finished
-    check store.finish(task.taskId, success(%*{"n": 1}))
+    work.complete(responseOf(success(%*{"n": 1})))
     check waitFor(waiting).result.get["n"].getInt() == 1
 
   test "Given an input_required task, when the result is awaited, then it still waits":
     let store = storeAt(FakeTime())
-    let task = store.create("a", none(int64))
+    let work = newFuture[JsonRpcResponse]("work")
+    let task = store.runningTask(work)
     discard store.transition(task.taskId, tsInputRequired)
     let waiting = store.awaitOutcome("a", task.taskId)
     check not waiting.finished
-    discard store.finish(task.taskId, success(%*{}))
+    work.complete(responseOf(success(%*{})))
     check waitFor(waiting).result.isSome
 
   test "Given a cancelled task, when the result is awaited, then it is a JSON-RPC error, not a result":
@@ -235,8 +259,7 @@ suite "tasks: listing":
 
   test "Given a task that get returns, when listed, then it is in the list too":
     let store = storeAt(FakeTime())
-    let task = store.create("alice", none(int64))
-    discard store.finish(task.taskId, success(%*{}))
+    let task = store.ended(success(%*{}), "alice")
     check task.taskId in store.list("alice").mapIt(it.taskId)
 
 suite "tasks: cancellation":
@@ -272,8 +295,7 @@ suite "tasks: expiry":
     let time = FakeTime(nowMs: 0)
     let store = storeAt(time)
     let working = store.create("a", some(1_000'i64))
-    let done = store.create("a", some(1_000'i64))
-    discard store.finish(done.taskId, success(%*{}))
+    let done = store.ended(success(%*{}), "a", some(1_000'i64))
     time.nowMs = 999
     check store.get("a", working.taskId).status == tsWorking
     time.nowMs = 1_000
@@ -328,12 +350,14 @@ suite "tasks: isolation":
 suite "tasks: resource limits":
   test "Given a limit of active tasks per owner, when it is reached, then a new task is refused until one ends":
     let store = newTaskStore(maxActivePerOwner = 2)
-    let first = store.create("a", none(int64))
+    let work = newFuture[JsonRpcResponse]("work")
+    discard store.runningTask(work)
     discard store.create("a", none(int64))
     expect McpTaskError:
       discard store.create("a", none(int64))
     check store.create("b", none(int64)).status == tsWorking
-    discard store.finish(first.taskId, success(%*{}))
+    work.complete(responseOf(success(%*{})))
+    settle()
     check store.create("a", none(int64)).status == tsWorking
 
 suite "tasks: related-task metadata":
@@ -468,9 +492,19 @@ suite "tasks: the exact values of the rules":
 
 
   test "Given an id the store does not hold, when a status is set or the request finished, then nothing happens":
-    let store = storeAt(FakeTime())
+    let time = FakeTime(nowMs: 0)
+    let store = storeAt(time)
     check not store.transition("nope", tsCompleted)
-    check not store.finish("nope", success(%*{}))
+    # No request can name an id the store never made, so the request ends
+    # after its task expired: the id is gone as well.
+    let work = newFuture[JsonRpcResponse]("work")
+    let task = store.runningTask(work, "a", some(1_000'i64))
+    time.nowMs = 2_000
+    check store.sweep() == @[task.taskId]
+    work.complete(responseOf(success(%*{})))
+    settle()
+    check store.list("a").len == 0
+    check not store.transition(task.taskId, tsCompleted)
 
   test "Given a working task, when working is set again with a message, then only the message changes":
     let store = storeAt(FakeTime())
@@ -484,8 +518,7 @@ suite "tasks: the exact values of the rules":
     for payload in [%*{"isError": true}, %*{"isError": true, "content": "text"},
                     %*{"isError": true, "content": [{"type": "image"}]}]:
       let store = storeAt(FakeTime())
-      let task = store.create("a", none(int64))
-      check store.finish(task.taskId, success(payload))
+      let task = store.ended(success(payload))
       let now = store.get("a", task.taskId)
       check now.status == tsFailed
       check now.statusMessage.isNone
@@ -493,11 +526,12 @@ suite "tasks: the exact values of the rules":
 suite "tasks: waiting and expiry in time":
   test "Given a task with unlimited ttl, when its result is awaited, then the wait ends when the task does":
     let store = storeAt(FakeTime(), defaultTtlMs = none(int64))
-    let task = store.create("a", none(int64))
+    let work = newFuture[JsonRpcResponse]("work")
+    let task = store.runningTask(work)
     let waiting = store.awaitOutcome("a", task.taskId)
     waitFor sleepAsync(20)
     check not waiting.finished
-    check store.finish(task.taskId, success(%*{"ok": true}))
+    work.complete(responseOf(success(%*{"ok": true})))
     check waitFor(waiting).result.get["ok"].getBool()
 
   test "Given a result awaited on a task that expires, when another operation sweeps it, then the wait fails at once":
