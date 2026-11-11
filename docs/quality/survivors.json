@@ -781,6 +781,276 @@
       "reason": "Option[JsonRpcError] の既定値は none で、最後の式 none(JsonRpcError) を消しても返る値が同じ"
     },
     {
+      "fingerprint": "src/protocol/trace_context.nim:ROR:dd50541f3b456bb7:0",
+      "file": "src/protocol/trace_context.nim",
+      "line": 32,
+      "mutator": "ROR",
+      "original": "text.len > 0",
+      "replacement": "<> -> >=>",
+      "class": "equivalent",
+      "reason": "差が出るのは空文字列だけ。`isLowerHex` は非公開で、呼ぶのは `validateTraceparent` の 4 か所 (44・46・48・50 行) だけ。どれも `or` の左で桁数 (2・32・16・2) を先に確かめて短絡するので、空文字列は渡らない。 / -"
+    },
+    {
+      "fingerprint": "src/protocol/trace_context.nim:SDL:2413a04126052c00:0",
+      "file": "src/protocol/trace_context.nim",
+      "line": 54,
+      "mutator": "SDL",
+      "original": "none(string)",
+      "replacement": "discard",
+      "class": "equivalent",
+      "reason": "`validateTraceparent` の `result` は `Option[string]` の既定値で、それは none。末尾の式を消しても同じ値を返す。 / -"
+    },
+    {
+      "fingerprint": "src/protocol/trace_context.nim:ROR:753ddfc3d69c3f68:0",
+      "file": "src/protocol/trace_context.nim",
+      "line": 59,
+      "mutator": "ROR",
+      "original": "at < 0",
+      "replacement": "<< -> <=>",
+      "class": "equivalent",
+      "reason": "差が出るのは `at == 0` (キーが `@` で始まる) だけ。元は tenant が空で `tenant.len in 1 .. 241` が偽。変異後は単純キーの枝に入り、`key[0]` が `@` で `in {'a'..'z'}` が偽。どちらも偽を返し、呼び出し元の文面 (`tracestate key '…' is not valid`) も同じ。 / -"
+    },
+    {
+      "fingerprint": "src/protocol/trace_context.nim:ROR:01650ea0daa1c95e:0",
+      "file": "src/protocol/trace_context.nim",
+      "line": 81,
+      "mutator": "ROR",
+      "original": "eq < 0",
+      "replacement": "<< -> <=>",
+      "class": "accepted",
+      "reason": "失敗の文面は契約ではない (代表の決定 2026-10-23)。差が出るのは `=v` (キーが空のメンバー) だけ。元は `tracestate key '' is not valid`、変異後は `tracestate member '=v' is not key=value`。どちらも断り、サーバーの符号 (-32602) とクライアントの例外の型 (ValueError) は変わらない。文面を読んで分岐する箇所は無い。 / -"
+    },
+    {
+      "fingerprint": "src/protocol/trace_context.nim:SDL:2413a04126052c00:1",
+      "file": "src/protocol/trace_context.nim",
+      "line": 91,
+      "mutator": "SDL",
+      "original": "none(string)",
+      "replacement": "discard",
+      "class": "equivalent",
+      "reason": "`validateTracestate` の `result` は `Option[string]` の既定値 (none)。途中の失敗はすべて `return some(...)` で出るので、末尾に着いたときの `result` は書き換えられていない。 / -"
+    },
+    {
+      "fingerprint": "src/protocol/trace_context.nim:ROR:01650ea0daa1c95e:1",
+      "file": "src/protocol/trace_context.nim",
+      "line": 119,
+      "mutator": "ROR",
+      "original": "eq < 0",
+      "replacement": "<< -> <=>",
+      "class": "accepted",
+      "reason": "失敗の文面は契約ではない (代表の決定 2026-10-23)。差が出るのは `=value` (キーが空。`pair` は前後の空白を切ってある) だけ。元は `baggage key in '=value' is not a token`、変異後は `baggage member '=value' is not key=value`。どちらも断り、符号と例外の型は変わらない。 / -"
+    },
+    {
+      "fingerprint": "src/protocol/trace_context.nim:ROR:4f8852be04c5c1f3:0",
+      "file": "src/protocol/trace_context.nim",
+      "line": 128,
+      "mutator": "ROR",
+      "original": "propEq < 0",
+      "replacement": "<< -> <=>",
+      "class": "equivalent",
+      "reason": "差が出るのは `=` で始まるプロパティだけ。元は `elif` の枝で `isToken(\"\")` が偽、変異後は `if` の枝で `isToken(\"=x\")` が偽 (`=` はトークンの文字でない)。どちらも同じ文面 `baggage property '…' is not valid` を返す。 / -"
+    },
+    {
+      "fingerprint": "src/protocol/trace_context.nim:SDL:2413a04126052c00:2",
+      "file": "src/protocol/trace_context.nim",
+      "line": 134,
+      "mutator": "SDL",
+      "original": "none(string)",
+      "replacement": "discard",
+      "class": "equivalent",
+      "reason": "`validateBaggage` の `result` は `Option[string]` の既定値 (none)。途中の失敗はすべて `return some(...)` で出る。 / -"
+    },
+    {
+      "fingerprint": "src/protocol/trace_context.nim:SDL:2413a04126052c00:3",
+      "file": "src/protocol/trace_context.nim",
+      "line": 167,
+      "mutator": "SDL",
+      "original": "none(string)",
+      "replacement": "discard",
+      "class": "equivalent",
+      "reason": "`validate` の `result` は `Option[string]` の既定値 (none)。途中の失敗はすべて `return problem` で出る。 / -"
+    },
+    {
+      "fingerprint": "src/protocol/trace_context.nim:RVR:55560fa5ef49175d:0",
+      "file": "src/protocol/trace_context.nim",
+      "line": 174,
+      "mutator": "RVR",
+      "original": "return none(JsonRpcError)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "戻り値がリテラルではないので、置き換えは `default(Option[JsonRpcError])` で、それは none。同じ値を返す。 / -"
+    },
+    {
+      "fingerprint": "src/protocol/trace_context.nim:SDL:ac1cdc5394dff63c:0",
+      "file": "src/protocol/trace_context.nim",
+      "line": 183,
+      "mutator": "SDL",
+      "original": "none(JsonRpcError)",
+      "replacement": "discard",
+      "class": "equivalent",
+      "reason": "`rejectInvalidTraceContext` の `result` は `Option[JsonRpcError]` の既定値 (none)。途中の失敗はすべて `return some(...)` で出る。 / -"
+    },
+    {
+      "fingerprint": "src/protocol/version.nim:SDL:a17ede9411b3cb84:0",
+      "file": "src/protocol/version.nim",
+      "line": 34,
+      "mutator": "SDL",
+      "original": "none(McpProtocolVersion)",
+      "replacement": "discard",
+      "class": "equivalent",
+      "reason": "一致する版が無いとき、変異後は暗黙の `result` がそのまま返る。`result` は `Option[McpProtocolVersion]` の既定値で、`isSome` が false、つまり `none(McpProtocolVersion)` と同じ値。一致したときは 33 行目の `return some(v)` で先に返るので 34 行目に来ない。コンパイル時の評価 (`DefaultProtocolVersion`・`OldestProtocolVersion`) でも同じ。 / なし (前の測定の id 16 と同じ判断)"
+    },
+    {
+      "fingerprint": "src/protocol/version.nim:ROR:345195c580206491:0",
+      "file": "src/protocol/version.nim",
+      "line": 96,
+      "mutator": "ROR",
+      "original": "v > result.get",
+      "replacement": "<> -> >=>",
+      "class": "equivalent",
+      "reason": "差が出るのは `v == result.get` のときだけで、そのとき行うのは `result = some(v)`、つまり今と同じ値の代入。`supported` に同じ版が重なっていても返る値は変わらない。`result.isNone` のときは `or` の左で決まり、右は評価されない。 / なし (前の測定の id 9 と同じ判断。行は 83 から 96 に動いた)"
+    },
+    {
+      "fingerprint": "src/server/rate_limit.nim:ROR:0ca230dd385f2a04:0",
+      "file": "src/server/rate_limit.nim",
+      "line": 48,
+      "mutator": "ROR",
+      "original": "bucket.filled(now, perSecond) >= perSecond.float",
+      "replacement": "<>= -> >>",
+      "class": "spec_question",
+      "reason": "`filled` は `min(perSecond.float, …)` なので `>` は決して成り立たず、`makeRoom` の 1 段目 (満杯に戻った送り手を忘れる) が丸ごと働かなくなる。満杯の送り手を忘れること自体は外から見えない (新しいバケツも満杯で始まる) が、代わりに 2 段目が最も古い印の送り手を忘れるので、「満杯の送り手が居るのに、まだ使い切ったままの最古の送り手が忘れられて満額に戻る」という違いが外に出る。MCP-RATE-3 の Scenario は「満杯に戻った送り手が居ないとき」しか述べておらず、居るときにどうなるかはどの仕様 ID にも無い。 / 問い: 「満杯に戻った送り手が居る間は、使い切った送り手を忘れない (満額に戻さない)」を MCP-RATE-3 に足して仕様にしますか、それとも 1 段目 (46〜51 行) を消して「常に最も長く静かな送り手を忘れる」だけにしますか。仕様にするなら案: 毎秒 2・送り手 2 で、alice が 2 回 (使い切り)、bob が 1 回、bob が満杯に戻る 500 ms 過ぎ・alice が満杯に戻る前に carol が話し、直後の alice の 2 回のうち 2 回目が断られること (変異だと alice が忘れられて 2 回とも通る)。時間に依るので `quickRun` と同じく所要時間を測って繰り返す形が要る"
+    },
+    {
+      "fingerprint": "src/server/rate_limit.nim:SDL:9e5c2f527dddabee:0",
+      "file": "src/server/rate_limit.nim",
+      "line": 49,
+      "mutator": "SDL",
+      "original": "quiet.add key",
+      "replacement": "discard",
+      "class": "spec_question",
+      "reason": "`quiet` が常に空になり、1 段目が働かない。外から見える違いは上の行 (48 行) と同じ。 / 上の行と同じ問い・同じテストの案"
+    },
+    {
+      "fingerprint": "src/server/rate_limit.nim:SDL:36c078446e02eae4:0",
+      "file": "src/server/rate_limit.nim",
+      "line": 51,
+      "mutator": "SDL",
+      "original": "limiter.buckets.del(key)",
+      "replacement": "discard",
+      "class": "spec_question",
+      "reason": "満杯の送り手を集めても消さないので、1 段目が働かない。外から見える違いは 48 行の行と同じ (表の大きさは 2 段目が保つので `maxSenders` は越えない)。 / 48 行の行と同じ問い・同じテストの案"
+    },
+    {
+      "fingerprint": "src/server/rate_limit.nim:LOR:ab81a607d669deb3:0",
+      "file": "src/server/rate_limit.nim",
+      "line": 56,
+      "mutator": "LOR",
+      "original": "oldest.len == 0 or bucket.stamp < oldestStamp",
+      "replacement": "<or -> and>",
+      "class": "test_owed",
+      "reason": "変異後は、表を回る順で最初に出会った「印が今より前」の送り手を選び、そこで止まる (2 件目からは `oldest.len == 0` が偽)。最も長く静かな送り手ではなく、ハッシュ表の並びで先に来る送り手が忘れられる。今のテストは alice が最古で、かつ表の並びでも alice が先に来るので通ってしまう (生き残ったことからの推論)。 / MCP-RATE-3。案: 既存の `Given a limit of 2 senders, when a third sender speaks, …` と同じ形で、alice と bob の役を入れ替えた 1 本を足す (毎秒 1・送り手 2。bob が 2 回で 2 回目は断られ、次に alice が 1 回、carol が 1 回、そのあと bob がもう一度通ること。併せて、忘れられていない alice の 2 回目が断られることも見る)。表の並びは鍵で決まり話した順に依らないので、変異だと 2 本のどちらかで「最古でない方」が忘れられ、最古の送り手が断られたままになって落ちる"
+    },
+    {
+      "fingerprint": "src/server/rate_limit.nim:ROR:4df609b56b2ba6c1:0",
+      "file": "src/server/rate_limit.nim",
+      "line": 56,
+      "mutator": "ROR",
+      "original": "bucket.stamp < oldestStamp",
+      "replacement": "<< -> <=>",
+      "class": "unreached",
+      "reason": "差が出るのは、2 つの送り手の印 (`MonoTime`、ナノ秒) がちょうど等しいときだけ (そのとき忘れる相手が、表の並びで先の方から後の方に変わる)。印は `take` の既定の引数 `getMonoTime()` で付き、`server.nim` の `rateLimited` は `now` を渡さないので、公開の入口から 2 つの要求に同じ印を付ける入力を作れない。なお、同じだけ静かな 2 者のどちらを忘れるかは MCP-RATE-3 も定めていない。 / なし"
+    },
+    {
+      "fingerprint": "src/server/rate_limit.nim:LOR:3bd431dcd2ec0d8c:0",
+      "file": "src/server/rate_limit.nim",
+      "line": 66,
+      "mutator": "LOR",
+      "original": "perSecond > 0 and maxSenders > 0",
+      "replacement": "<and -> or>",
+      "class": "unreached",
+      "reason": "差が出るのは片方だけが 0 以下のときだけ。`rateLimited` は `perSecond <= 0` で先に返り、`maxSenders` は `max(1, …)` で 1 以上にしてから渡すので、どちらも起きない。 / なし"
+    },
+    {
+      "fingerprint": "src/server/rate_limit.nim:ROR:6b406dff25c263b4:0",
+      "file": "src/server/rate_limit.nim",
+      "line": 66,
+      "mutator": "ROR",
+      "original": "maxSenders > 0",
+      "replacement": "<> -> >=>",
+      "class": "unreached",
+      "reason": "差が出るのは `maxSenders == 0` のときだけ。`rateLimited` が `max(1, server.maxRateLimitedSenders)` を渡すので、`take` に 0 は届かない。 / なし"
+    },
+    {
+      "fingerprint": "src/server/rate_limit.nim:ROR:81e6fa10bdd566a6:0",
+      "file": "src/server/rate_limit.nim",
+      "line": 66,
+      "mutator": "ROR",
+      "original": "perSecond > 0",
+      "replacement": "<> -> >=>",
+      "class": "unreached",
+      "reason": "差が出るのは `perSecond == 0` のときだけ。`rateLimited` の `if perSecond <= 0: return` が先に返すので、`take` に 0 は届かない。 / なし"
+    },
+    {
+      "fingerprint": "src/server/rate_limit.nim:SDL:57e7ddd2e965b6f0:0",
+      "file": "src/server/rate_limit.nim",
+      "line": 66,
+      "mutator": "SDL",
+      "original": "doAssert perSecond > 0 and maxSenders > 0,; \"a rate limit needs a positive rate and table size\"",
+      "replacement": "discard",
+      "class": "unreached",
+      "reason": "この表明が落ちる入力は公開の入口から作れない。`server.nim` の `rateLimited` が `if perSecond <= 0: return none(…)` で先に返り (MCP-RATE-4 の「0 は制限なし」)、`maxSenders` には `max(1, server.maxRateLimitedSenders)` を渡す。`take` の呼び手はここだけで、`rate_limit` は export されていない。 / なし"
+    },
+    {
+      "fingerprint": "src/server/rate_limit.nim:AOR:0066a8bb1ed0649e:0",
+      "file": "src/server/rate_limit.nim",
+      "line": 86,
+      "mutator": "AOR",
+      "original": "int((1.0 - bucket.tokens) / perSecond.float * 1000.0) + 1",
+      "replacement": "<+ -> ->",
+      "class": "test_owed",
+      "reason": "切り上げの 1 が引き算になり、待ち時間が 2 ms 短くなる。不足分が 2 ms 未満のときは `retryAfterMs` が 0 か −1 になる。今のテストは毎秒 1 (待ち時間が 1000 ms 近く) で `wait > 0` を見るだけなので通る。 / MCP-RATE-1 (`data.retryAfterMs`。既存のテストが「0 ms より大きい」を見ている)。案: 既定の毎秒 100 で 300 回を間を置かずに送り、断られた応答すべての `retryAfterMs` が 1 以上であること。毎秒 100 では不足分が 0〜10 ms に散らばり、変異だと不足分が 2 ms 未満の断り (およそ 5 回に 1 回) で 0 以下になって落ちる。要求が 2 ms に 1 回より遅い実行では何も分からないので、既存の `quickRun` と同じく所要時間を測り、遅い実行は繰り返す。上の 2 行の案と合わせ、「上限 (1000 ÷ 毎秒 + 1)・下限 (残り時間以上)・常に 1 以上」を 1 本にまとめてもよい"
+    },
+    {
+      "fingerprint": "src/server/rate_limit.nim:AOR:53d668ef4efecbc3:0",
+      "file": "src/server/rate_limit.nim",
+      "line": 86,
+      "mutator": "AOR",
+      "original": "(1.0 - bucket.tokens) / perSecond.float * 1000.0",
+      "replacement": "<* -> />",
+      "class": "test_owed",
+      "reason": "秒からミリ秒への換算が逆になり、`int(…)` が 0 になって `retryAfterMs` が常に 1 になる。今のテストは 0 より大きく 1000 以下としか見ていないので通る。言われたとおり 1 ms 待っても、まだ断られる。 / MCP-RATE-1 (`data.retryAfterMs`)、MCP-RATE-2 (待てばまた答えが来る)。案: 毎秒 1 で 2 回続けて送り、断られた 2 回目の `retryAfterMs` が「1000 − 2 回を送るのにかかった ms」以上であること (かかった時間は外で測るので、中の経過時間より長く、下限として安全)。変異だと 1 で落ちる。振る舞いで見るなら、`retryAfterMs` だけ待って送ると通ること"
+    },
+    {
+      "fingerprint": "src/server/rate_limit.nim:AOR:7c64e14a3577099a:0",
+      "file": "src/server/rate_limit.nim",
+      "line": 86,
+      "mutator": "AOR",
+      "original": "(1.0 - bucket.tokens) / perSecond.float",
+      "replacement": "</ -> *>",
+      "class": "test_owed",
+      "reason": "`retryAfterMs` が「不足分 ÷ 毎秒の数」ではなく「不足分 × 毎秒の数」になる。毎秒 1 では同じ値で、今のテスト (`Given a refused request, then the error says how long to wait`) は毎秒 1 でしか見ていないので通る。毎秒 2 以上では待ち時間が毎秒の数の 2 乗倍になる (毎秒 4 で最大 251 ms のはずが最大 4001 ms)。 / MCP-RATE-1 (`data.retryAfterMs`)。案: 毎秒 4 で 5 回続けて送り、断られた 5 回目の `retryAfterMs` が 1 以上 251 以下 (1 回分が戻る時間 1000 ÷ 4 に切り上げの 1) であること。変異だと 1000 を超えて落ちる"
+    },
+    {
+      "fingerprint": "src/transport/event_stream.nim:ROR:40a8f14bb3a39089:0",
+      "file": "src/transport/event_stream.nim",
+      "line": 68,
+      "mutator": "ROR",
+      "original": "colon < 0",
+      "replacement": "<< -> <=>",
+      "class": "equivalent",
+      "reason": "差が出るのは `colon == 0`、つまり行が `:` で始まるときだけ。その行は同じ `takeLine` の 64 行目 (`if line[0] == ':': return`) でコメントとして捨てられ、67 行目の `find` に届かない (バイトオーダーマークを取るのは 53 行目で、64 行目より前)。`feed` にどんな入力を入れても `colon` は負か 1 以上。 / なし (前の測定の id 10 と同じ判断)"
+    },
+    {
+      "fingerprint": "src/transport/event_stream.nim:ROR:fa3c38a119e9cd73:0",
+      "file": "src/transport/event_stream.nim",
+      "line": 69,
+      "mutator": "ROR",
+      "original": "colon < 0",
+      "replacement": "<< -> <=>",
+      "class": "equivalent",
+      "reason": "上の行と同じ。`colon == 0` の行は 64 行目で先に return するので、69 行目で `colon` が 0 になることは無い。 / なし (前の測定の id 11 と同じ判断)"
+    },
+    {
       "fingerprint": "src/transport/transport.nim:BLR:6ec2d660335697fb:0",
       "file": "src/transport/transport.nim",
       "line": 153,
