@@ -1281,6 +1281,26 @@
       "reason": "ツールの outputSchema が検査できない (`InvalidSchemaError`) とき、元は依頼を断る。変異は検査なしで送る。断ること自体が消えるので文面の変異ではない。MCP-SAMPLING-TOOLS-17 はスキーマが検査できない場合を定めていない。 / 問い 5: sampling の依頼の tools にある outputSchema が検査できないとき、その tool_result を含む依頼を断ることを仕様 (MCP-SAMPLING-TOOLS-17 への追記) にするか。"
     },
     {
+      "fingerprint": "src/protocol/sampling_tools.nim:RVR:0c511227513989c7:0",
+      "file": "src/protocol/sampling_tools.nim",
+      "line": 230,
+      "mutator": "RVR",
+      "original": "return none(string)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "戻り値の型は `Option[string]` で、`default(Option[string])` は none。元の戻り値と同じ値が返る (リテラルの反転には当たらない)。 / 無し"
+    },
+    {
+      "fingerprint": "src/protocol/sampling_tools.nim:SDL:2413a04126052c00:0",
+      "file": "src/protocol/sampling_tools.nim",
+      "line": 235,
+      "mutator": "SDL",
+      "original": "none(string)",
+      "replacement": "discard",
+      "class": "equivalent",
+      "reason": "末尾の式が消えると関数は `result` の初期値を返す。`Option[string]` の初期値は none で、元の値と同じ。そこに届く前の 2 つの分岐は `return some(...)` で抜けるので、`result` はほかで書き換えられない。 / 無し"
+    },
+    {
       "fingerprint": "src/protocol/trace_context.nim:ROR:dd50541f3b456bb7:0",
       "file": "src/protocol/trace_context.nim",
       "line": 32,
@@ -1549,6 +1569,66 @@
       "replacement": "<< -> <=>",
       "class": "equivalent",
       "reason": "上の行と同じ。`colon == 0` の行は 64 行目で先に return するので、69 行目で `colon` が 0 になることは無い。 / なし (前の測定の id 11 と同じ判断)"
+    },
+    {
+      "fingerprint": "src/transport/stdio.nim:RVR:0c511227513989c7:0",
+      "file": "src/transport/stdio.nim",
+      "line": 52,
+      "mutator": "RVR",
+      "original": "return none(string)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "戻り値の型は `Option[string]` で、`default(Option[string])` は none。元の戻り値と同じ値が返る (リテラルの反転には当たらない)。 / 無し"
+    },
+    {
+      "fingerprint": "src/transport/stdio.nim:SDL:6dc841eeff259190:0",
+      "file": "src/transport/stdio.nim",
+      "line": 55,
+      "mutator": "SDL",
+      "original": "line.removeSuffix('\\r')",
+      "replacement": "discard",
+      "class": "equivalent",
+      "reason": "`takeLine` の行の使い道は `receiveMessage` の `strip()` と `parseJson` だけで、どちらも行末の `\\r` を空白として読み飛ばす。CRLF の行は変異の後も同じ JSON になり、空行の判定も変わらない。違いが出るのは JSON でない行の診断の文面の中だけ。前の測定 (id 25) でも手で当てて全件通ることを確かめている。 / 無し"
+    },
+    {
+      "fingerprint": "src/transport/stdio.nim:RVR:0c511227513989c7:1",
+      "file": "src/transport/stdio.nim",
+      "line": 65,
+      "mutator": "RVR",
+      "original": "return none(string)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "上の 52 行と同じ。`default(Option[string])` は none。 / 無し"
+    },
+    {
+      "fingerprint": "src/transport/stdio.nim:RVR:fdbf531f9d8a1825:0",
+      "file": "src/transport/stdio.nim",
+      "line": 106,
+      "mutator": "RVR",
+      "original": "return none(string)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "上の 52 行と同じ。`default(Option[string])` は none。 / 無し"
+    },
+    {
+      "fingerprint": "src/transport/stdio.nim:LOR:8fbf38d7885b9d32:0",
+      "file": "src/transport/stdio.nim",
+      "line": 134,
+      "mutator": "LOR",
+      "original": "existsEnv(name) and not value.startsWith(\"()\")",
+      "replacement": "<and -> or>",
+      "class": "test_owed",
+      "reason": "変異だと、この過程に無い基本の変数 (例: `TERM` を消した状態) が空の値で表に入り、サーバーに空の変数として渡る。`()` で始まる値 (シェル関数) も渡る。既存の `tests/external/test_stdio.nim` の「only the basic variables pass」は、在る変数 (`PATH`・`HOME`) と基本でない変数しか見ていない。 / MCP-STDIO-13。`tests/external/test_stdio.nim` に 1 件: 基本の変数の 1 つ (例: `TERM`) を `delEnv` で消してから `defaultServerEnvironment()` を作り、`not env.hasKey(\"TERM\")` を見る (後で元の値に戻す)。変異だと `env[\"TERM\"] == \"\"` が入るので落ちる。補足: 「シェル関数は渡さない」は実装の doc コメントにだけあり、MCP-STDIO-13 の文には無い。仕様に足すなら、`putEnv(\"TERM\", \"() { :; }\")` で `not env.hasKey(\"TERM\")` を見る 1 件も同じ変異を殺す。"
+    },
+    {
+      "fingerprint": "src/transport/stdio.nim:ROR:eaeea1ba334380e3:0",
+      "file": "src/transport/stdio.nim",
+      "line": 211,
+      "mutator": "ROR",
+      "original": "waited >= ms",
+      "replacement": "<>= -> >>",
+      "class": "spec_question",
+      "reason": "子が終了しないとき、terminate・kill に進むまでの待ちが 2000 ms から 2020 ms (`ExitPollMs` 1 回分) に延びる。進む順序と結果は変わらず、変わるのは時間だけ。MCP-STDIO-6 は順序を定めるが猶予の長さを定めていない。前の測定 (id 13) は「受け入れ」としたが、代表が決めた記録は無い。 / 問い: 子の終了を待つ猶予の長さ (`ExitGraceMs` = 2000 ms) を仕様の規則にしますか、それとも「猶予の長さは仕様の外」と決めてこの変異を受け入れますか。"
     },
     {
       "fingerprint": "src/transport/transport.nim:BLR:6ec2d660335697fb:0",

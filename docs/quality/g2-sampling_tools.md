@@ -1,5 +1,23 @@
 # G2 変異検出: sampling_tools ジョブ
 
+## 測り直し (拡張ブランチの b04fcb9c、2026-11-11)
+
+測定: `nim-muter` 0.2.15、ジョブ `tests/mutation/sampling_tools.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。
+状態: 測定済み。生き残りは前の 2 回の測定 (id 163・142) と同じ 2 件で、新しいものは無い。時間切れは無い。
+
+| 全体 | killed | timeout | survived | runError | compileError |
+|---|---|---|---|---|---|
+| 168 | 163 | 0 | 2 | 0 | 3 |
+
+### 生き残りの仕分け
+
+| 指紋 | file:line | 変異 | class | 理由 | 仕様 ID / 足すテストの案 |
+|---|---|---|---|---|---|
+| `src/protocol/sampling_tools.nim:RVR:0c511227513989c7:0` | sampling_tools.nim:230 | `return none(string)` → `return default` (`samplingToolsUnavailable` の早い戻り) | equivalent | 戻り値の型は `Option[string]` で、`default(Option[string])` は none。元の戻り値と同じ値が返る (リテラルの反転には当たらない)。 | 無し |
+| `src/protocol/sampling_tools.nim:SDL:2413a04126052c00:0` | sampling_tools.nim:235 | 末尾の式 `none(string)` → `discard` | equivalent | 末尾の式が消えると関数は `result` の初期値を返す。`Option[string]` の初期値は none で、元の値と同じ。そこに届く前の 2 つの分岐は `return some(...)` で抜けるので、`result` はほかで書き換えられない。 | 無し |
+
+以下は前の測定の記録 (行番号は古い)。
+
 測定: `nim-muter`、ジョブ `tests/mutation/sampling_tools.json`、本線の 36a4c8a5 (2026-10-07)。対象は `src/protocol/sampling_tools.nim` の 1 ファイルで、測定後に変わっていない (行番号は報告書と一致する)。
 
 | 全変異 | killed | timeout | survived | runError | compileError |

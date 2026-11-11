@@ -1,5 +1,51 @@
 # G2 変異検出: `src/transport/stdio.nim`
 
+## 測り直し (拡張ブランチの b04fcb9c、2026-11-11)
+
+測定: `nim-muter` 0.2.15、ジョブ `tests/mutation/stdio.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。
+状態: 測定済み。仕分けはコードと E テストを読んで行い、変異を手で当てて確かめてはいない。
+
+| 全体 | killed | timeout | survived | runError | compileError |
+|---|---|---|---|---|---|
+| 67 | 43 | 15 | 6 | 0 | 3 |
+
+### 生き残りの仕分け
+
+| 指紋 | file:line | 変異 | class | 理由 | 仕様 ID / 足すテストの案 |
+|---|---|---|---|---|---|
+| `src/transport/stdio.nim:RVR:0c511227513989c7:0` | stdio.nim:52 | `return none(string)` → `return default` (`takeLine`) | equivalent | 戻り値の型は `Option[string]` で、`default(Option[string])` は none。元の戻り値と同じ値が返る (リテラルの反転には当たらない)。 | 無し |
+| `src/transport/stdio.nim:SDL:6dc841eeff259190:0` | stdio.nim:55 | `line.removeSuffix('\r')` → `discard` | equivalent | `takeLine` の行の使い道は `receiveMessage` の `strip()` と `parseJson` だけで、どちらも行末の `\r` を空白として読み飛ばす。CRLF の行は変異の後も同じ JSON になり、空行の判定も変わらない。違いが出るのは JSON でない行の診断の文面の中だけ。前の測定 (id 25) でも手で当てて全件通ることを確かめている。 | 無し |
+| `src/transport/stdio.nim:RVR:0c511227513989c7:1` | stdio.nim:65 | `return none(string)` → `return default` (`nextLine` の入力の終わり) | equivalent | 上の 52 行と同じ。`default(Option[string])` は none。 | 無し |
+| `src/transport/stdio.nim:RVR:fdbf531f9d8a1825:0` | stdio.nim:106 | `return none(string)` → `return default` (ストリーム版の `readLine`) | equivalent | 上の 52 行と同じ。`default(Option[string])` は none。 | 無し |
+| `src/transport/stdio.nim:LOR:8fbf38d7885b9d32:0` | stdio.nim:134 | `existsEnv(name) and not value.startsWith("()")` → `or` | test_owed | 変異だと、この過程に無い基本の変数 (例: `TERM` を消した状態) が空の値で表に入り、サーバーに空の変数として渡る。`()` で始まる値 (シェル関数) も渡る。既存の `tests/external/test_stdio.nim` の「only the basic variables pass」は、在る変数 (`PATH`・`HOME`) と基本でない変数しか見ていない。 | MCP-STDIO-13。`tests/external/test_stdio.nim` に 1 件: 基本の変数の 1 つ (例: `TERM`) を `delEnv` で消してから `defaultServerEnvironment()` を作り、`not env.hasKey("TERM")` を見る (後で元の値に戻す)。変異だと `env["TERM"] == ""` が入るので落ちる。補足: 「シェル関数は渡さない」は実装の doc コメントにだけあり、MCP-STDIO-13 の文には無い。仕様に足すなら、`putEnv("TERM", "() { :; }")` で `not env.hasKey("TERM")` を見る 1 件も同じ変異を殺す。 |
+| `src/transport/stdio.nim:ROR:eaeea1ba334380e3:0` | stdio.nim:211 | `waited >= ms` → `>` (`exitedWithin`) | spec_question | 子が終了しないとき、terminate・kill に進むまでの待ちが 2000 ms から 2020 ms (`ExitPollMs` 1 回分) に延びる。進む順序と結果は変わらず、変わるのは時間だけ。MCP-STDIO-6 は順序を定めるが猶予の長さを定めていない。前の測定 (id 13) は「受け入れ」としたが、代表が決めた記録は無い。 | 問い: 子の終了を待つ猶予の長さ (`ExitGraceMs` = 2000 ms) を仕様の規則にしますか、それとも「猶予の長さは仕様の外」と決めてこの変異を受け入れますか。 |
+
+### 時間切れ 15 件の見立て
+
+15 件とも、(i) 変異そのものがテストを止める (読み書きの輪が回り続ける、または来ない行・応答を待ち続ける) と読める。(ii) 負荷による偽の時間切れと疑う理由のあるものは無い。見立てはコードを読んだもので、変異を当てて止まる場所を確かめてはいない。
+
+前の測定 (36a4c8a5、下の「timeout 15 件」) も 15 件だが、記録は id の並びだけで、行も指紋も無いので、1 件ずつの突き合わせはできない。前の記録が挙げる 3 つの原因 (非ブロッキングでなくなる・行が結果に入らない・要求が書かれない) は、下の 15 件の原因と重なる。
+
+| 指紋 | file:line | 変異 | 見立て | 止まる仕組み |
+|---|---|---|---|---|
+| `src/transport/stdio.nim:LOR:0d6691ff5530d803:0` | stdio.nim:45 | `flags == -1 or fcntl(F_SETFL) == -1` → `and` | (i) | `flags` が取れると `F_SETFL` が呼ばれず、記述子がブロッキングのまま残る。`asyncfile` の `read` は登録の前にまず直に `read` を呼ぶので、相手が黙っている間スレッドごと止まり、タイマーも送信も動かない。 |
+| `src/transport/stdio.nim:LOR:94e823247a1b3d9e:0` | stdio.nim:45 | `flags or O_NONBLOCK` → `and` | (i) | `O_NONBLOCK` が立たない (立っていないフラグとの `and` は 0)。上と同じくブロッキングの `read` でスレッドが止まる。 |
+| `src/transport/stdio.nim:AOR:1f7b99d4571d2325:0` | stdio.nim:54 | `newline + 1` → `newline - 1` | (i) | 行を取り出しても改行とその前の 1 文字がバッファに残り、`takeLine` が同じ 1 文字の行を返し続ける。`receiveMessage` は JSON でない行として読み飛ばし続け、待ちを挟まない無限ループになる。 |
+| `src/transport/stdio.nim:SDL:9c08ad6736e9d1c4:0` | stdio.nim:56 | `some(line)` → `discard` | (i) | `takeLine` が行をバッファから消したうえで none を返す。届いた行がすべて失われ、相手が生きている間 (例: `started()` の `receiveMessage`) 次の行を待ち続ける。 |
+| `src/transport/stdio.nim:ROR:e13fdd1bec09d7de:0` | stdio.nim:74 | `chunk.len == 0` → `!=` | (i) | 入力の終わりで `atEnd` が立たず、空の塊をバッファに足して読み直す。終わりの `read` はすぐ空を返すので、待ちを挟まない無限ループになる (データが届いた側は逆に「終わり」とされて捨てられる)。 |
+| `src/transport/stdio.nim:SDL:69fa48aa22ccc1fa:0` | stdio.nim:77 | `reader.buffer.add chunk` → `discard` | (i) | 読んだ塊がバッファに入らず、行が 1 つもできない。相手が生きている間、行を待ち続ける。 |
+| `src/transport/stdio.nim:SDL:d8baf54a9ef37a10:0` | stdio.nim:80 | `setNonBlocking(fd)` → `discard` (`asyncReader`) | (i) | 読み取りの記述子がブロッキングのまま。受信の輪が次の行を読みに行くとスレッドごと止まり、相手が待っている次の要求を送れない。 |
+| `src/transport/stdio.nim:SDL:26fc844231aa356e:0` | stdio.nim:91 | `stdout.write(line & "\n")` → `discard` | (i) | サーバーの過程が stdout に何も書かない。親 (テスト) は来ない応答・通知を待ち続ける。 |
+| `src/transport/stdio.nim:SDL:a294db411784cdab:0` | stdio.nim:92 | `stdout.flushFile()` → `discard` | (i) | stdout がパイプのときは全バッファリングで、書いた行が過程の終わりまで出ない。サーバーは次の入力を待ち、親は応答を待つので、互いに待ち続ける。 |
+| `src/transport/stdio.nim:SDL:12488fcaf40f1ddc:0` | stdio.nim:162 | `setNonBlocking(errFd)` → `discard` | (i) | `forwardStderr` は `asyncCheck` の中で最初の `read` まで同期で進む。stderr がブロッキングだと、子が stderr に書くか終わるまで `newProcessTransport` が戻らない。子は要求を待っているので止まる。 |
+| `src/transport/stdio.nim:SDL:63ff4225d06fbd96:0` | stdio.nim:173 | `toChild.writeLine(line)` → `discard` | (i) | 子に何も書かれない。クライアントは来ない応答を待ち続ける。 |
+| `src/transport/stdio.nim:SDL:eede5e20983bba4e:0` | stdio.nim:174 | `toChild.flush()` → `discard` | (i) | 子の stdin へのストリームはバッファつきで、小さい要求はバッファに残ったまま子に届かない。クライアントは応答を待ち続ける。 |
+| `src/transport/stdio.nim:SDL:139da2d2fbaff24e:0` | stdio.nim:186 | `await t.writeLine(encodeMessage(request))` → `discard` (`sendRequest`) | (i) | 要求が送られない。応答が来ないので、要求を出した側が待ち続ける。 |
+| `src/transport/stdio.nim:SDL:9b2a27edaa28bf34:0` | stdio.nim:192 | `await t.writeLine(encodeMessage(response))` → `discard` (`sendResponse`) | (i) | 応答が送られない。相手が待ち続ける。 |
+| `src/transport/stdio.nim:ROR:12e9d63086392e16:0` | stdio.nim:199 | `line.get.strip().len == 0` → `!=` | (i) | 空でない行がすべて読み飛ばされ、メッセージが 1 つも返らない。相手が生きている間 (例: `started()` の `receiveMessage`) 待ち続ける。 |
+
+以下は前の測定の記録 (行番号は古い)。
+
 測定: `nim-muter`、ジョブ `tests/mutation/stdio.json`、mainline の 36a4c8a5 (2026-10-07)。
 
 | 全体 | killed | timeout | survived | runError | compileError |

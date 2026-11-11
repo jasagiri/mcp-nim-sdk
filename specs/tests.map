@@ -104,6 +104,7 @@ MCP-STDIO-12 | tests/external/test_stdio_exit_g0d.nim | Given a server that has 
 MCP-STDIO-13 | tests/external/test_stdio.nim | Given an environment and a directory, when a server is started, then it sees only that environment and runs there
 MCP-STDIO-13 | tests/external/test_stdio.nim | Given no environment, when a server is started, then it inherits this process's environment and directory
 MCP-STDIO-13 | tests/external/test_stdio.nim | Given this process's environment, when the default server environment is made, then only the basic variables pass and the given ones win
+MCP-STDIO-13 | tests/external/test_stdio.nim | Given a basic variable this process does not have, when the default server environment is made, then the server does not get it either
 MCP-STDIO-13 | tests/external/test_stdio.nim | Given a directory that does not exist, when a server is started there, then McpTransportError names it
 MCP-HTTP-1 | tests/external/test_streamable_http.nim | Given a path other than the endpoint, when posted to, then the answer is 404
 MCP-HTTP-1 | tests/external/test_streamable_http.nim | Given the endpoint, when it receives PUT, then the answer is 405 naming the allowed methods
