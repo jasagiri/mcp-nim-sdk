@@ -731,6 +731,66 @@
       "reason": "Option の既定値は none で、元の戻り値 none(JsonNode) と同じ値を返す"
     },
     {
+      "fingerprint": "src/protocol/modern.nim:SDL:ac1cdc5394dff63c:0",
+      "file": "src/protocol/modern.nim",
+      "line": 121,
+      "mutator": "SDL",
+      "original": "none(JsonRpcError)",
+      "replacement": "discard",
+      "class": "equivalent",
+      "reason": "断る経路はすべて手前の `return some(...)` で抜ける。末尾の式を消すと暗黙の `result` が返り、`Option[JsonRpcError]` の既定値は none なので `none(JsonRpcError)` と同じ値になる。 / 無し"
+    },
+    {
+      "fingerprint": "src/protocol/modern.nim:RVR:f4c12547f4c7a4df:0",
+      "file": "src/protocol/modern.nim",
+      "line": 139,
+      "mutator": "RVR",
+      "original": "return rkComplete",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "列挙値を返す return なので変異は `default(ResultKind)` になる。`ResultKind` は穴の無い列挙で最初の値 (序数 0) が `rkComplete` なので、返る値は同じ。 / 無し"
+    },
+    {
+      "fingerprint": "src/protocol/modern.nim:RVR:0c511227513989c7:0",
+      "file": "src/protocol/modern.nim",
+      "line": 235,
+      "mutator": "RVR",
+      "original": "return none(string)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "`Option[string]` の既定値は none で、`none(string)` と同じ値。呼び手 (`checkRequestHeaders` の `decoded.isNone`) から見える違いは無い。 / 無し"
+    },
+    {
+      "fingerprint": "src/protocol/modern.nim:RVR:0c511227513989c7:1",
+      "file": "src/protocol/modern.nim",
+      "line": 239,
+      "mutator": "RVR",
+      "original": "return none(string)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "同上。`Option[string]` の既定値は none。 / 無し"
+    },
+    {
+      "fingerprint": "src/protocol/modern.nim:RVR:0c511227513989c7:2",
+      "file": "src/protocol/modern.nim",
+      "line": 251,
+      "mutator": "RVR",
+      "original": "return none(string)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "同上。`Option[string]` の既定値は none で、呼び手 (`modernRequestHeaders` の `name.isSome`、`checkRequestHeaders` の `bodyName.isNone`) の分岐は変わらない。 / 無し"
+    },
+    {
+      "fingerprint": "src/protocol/modern.nim:SDL:ac1cdc5394dff63c:1",
+      "file": "src/protocol/modern.nim",
+      "line": 315,
+      "mutator": "SDL",
+      "original": "none(JsonRpcError)",
+      "replacement": "discard",
+      "class": "equivalent",
+      "reason": "食い違いの経路はすべて手前の `return headerMismatch(...)` で抜ける。末尾の式を消すと暗黙の `result` (`Option[JsonRpcError]` の既定値 = none) が返り、同じ値になる。 / 無し"
+    },
+    {
       "fingerprint": "src/protocol/param_headers.nim:BLR:6ec2d660335697fb:0",
       "file": "src/protocol/param_headers.nim",
       "line": 49,

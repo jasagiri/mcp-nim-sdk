@@ -1,5 +1,26 @@
 # G2 変異検出: modern ジョブ
 
+## 測り直し (拡張ブランチの b04fcb9c、2026-11-11)
+
+測定: `nim-muter` 0.2.15、ジョブ `tests/mutation/modern.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。
+
+| 全体 | killed | timeout | survived | runError | compileError |
+|---|---|---|---|---|---|
+| 94 | 80 | 0 | 6 | 0 | 8 |
+
+状態: 測定済み。生き残り 6 件はすべて `equivalent` (変異後の値が型の既定値と同じ)。足すテストは無い。
+
+### 生き残りの仕分け
+
+| 指紋 | file:line | 変異 | class | 理由 | 仕様 ID / 足すテストの案 |
+|---|---|---|---|---|---|
+| `src/protocol/modern.nim:SDL:ac1cdc5394dff63c:0` | modern.nim:121 | `validateModernRequest` の末尾の式 `none(JsonRpcError)` → `discard` | equivalent | 断る経路はすべて手前の `return some(...)` で抜ける。末尾の式を消すと暗黙の `result` が返り、`Option[JsonRpcError]` の既定値は none なので `none(JsonRpcError)` と同じ値になる。 | 無し |
+| `src/protocol/modern.nim:RVR:f4c12547f4c7a4df:0` | modern.nim:139 | `resultKind` の `return rkComplete` → `return default(ResultKind)` | equivalent | 列挙値を返す return なので変異は `default(ResultKind)` になる。`ResultKind` は穴の無い列挙で最初の値 (序数 0) が `rkComplete` なので、返る値は同じ。 | 無し |
+| `src/protocol/modern.nim:RVR:0c511227513989c7:0` | modern.nim:235 | `decodeHeaderValue` の `return none(string)` (詰め物の形が不正) → `return default(Option[string])` | equivalent | `Option[string]` の既定値は none で、`none(string)` と同じ値。呼び手 (`checkRequestHeaders` の `decoded.isNone`) から見える違いは無い。 | 無し |
+| `src/protocol/modern.nim:RVR:0c511227513989c7:1` | modern.nim:239 | `decodeHeaderValue` の `return none(string)` (`base64.decode` の `ValueError`) → `return default(Option[string])` | equivalent | 同上。`Option[string]` の既定値は none。 | 無し |
+| `src/protocol/modern.nim:RVR:0c511227513989c7:2` | modern.nim:251 | `headerNameSource` の `return none(string)` (名前を持たないメソッド、params がオブジェクトでない) → `return default(Option[string])` | equivalent | 同上。`Option[string]` の既定値は none で、呼び手 (`modernRequestHeaders` の `name.isSome`、`checkRequestHeaders` の `bodyName.isNone`) の分岐は変わらない。 | 無し |
+| `src/protocol/modern.nim:SDL:ac1cdc5394dff63c:1` | modern.nim:315 | `checkRequestHeaders` の末尾の式 `none(JsonRpcError)` → `discard` | equivalent | 食い違いの経路はすべて手前の `return headerMismatch(...)` で抜ける。末尾の式を消すと暗黙の `result` (`Option[JsonRpcError]` の既定値 = none) が返り、同じ値になる。 | 無し |
+
 測定: `nim-muter`、ジョブ `tests/mutation/modern.json` (`src/protocol/modern.nim`)、本線の 36a4c8a5 (2026-10-07)。
 行番号は 36a4c8a5 のもの。
 
