@@ -303,6 +303,19 @@ suite "elicitation: a response":
       "mail": "a@b.c", "site": "https://example.com/x", "day": "2026-02-28",
       "moment": "2026-10-06T12:00:00Z"}}, ask).len == 0
 
+  test "Given an enum property that also carries a format, when its value is checked, then the format is not applied":
+    # An enum schema of the specification has no `format`; a keyword the
+    # schema does not define is not checked.
+    let schema = %*{"type": "object", "properties": {
+      "known": {"type": "string", "enum": ["a"], "format": "email"},
+      "unknown": {"type": "string", "enum": ["a"], "format": "bogus"}}}
+    check requestedSchemaProblems(schema, mpv20250618).len == 0
+    let ask = %*{"message": "m", "requestedSchema": schema}
+    check elicitationResultProblems(%*{"action": "accept", "content": {
+      "known": "a", "unknown": "a"}}, ask).len == 0
+    check elicitationResultProblems(%*{"action": "accept", "content": {
+      "known": "b"}}, ask).mentions("known")
+
   test "Given edge values of each string format, when checked, then exactly the valid ones pass":
     # The schema lists the formats by name only; the value rules are those of
     # RFC 5322 (an address needs a local part and a domain), RFC 3986 (scheme
@@ -497,6 +510,20 @@ suite "elicitation: bounds and shapes the mutation review found unexamined":
   test "Given an answer to params with an unknown mode, when checked, then the mode is reported":
     check elicitationResultProblems(%*{"action": "decline"}, %*{"mode": "voice"}).mentions(
       "is not an elicitation mode")
+
+  test "Given params that were not checked, when an answer is checked against them, then it returns without raising":
+    # The answer check does not assume the params passed their own check.
+    let noSchema = %*{"message": "m"}
+    let listed = %*{"message": "m", "requestedSchema": {"type": "object",
+      "properties": [1], "required": ["a"]}}
+    let answer = %*{"action": "accept", "content": {"a": 1}}
+    check elicitationResultProblems(answer, noSchema).len == 0
+    check elicitationResultProblems(answer, listed).len == 0
+    check elicitationResultProblems(%*{"action": "accept", "content": {}},
+                                    listed).mentions("a")
+    discard parseElicitationResult(answer, listed)
+    expect McpPayloadError:
+      discard parseElicitationResult(%*{"action": "accept", "content": {}}, listed)
 
   test "Given values at the limits of their bounds, when checked, then they are accepted":
     let ask = %*{"message": "m", "requestedSchema": contactSchema}

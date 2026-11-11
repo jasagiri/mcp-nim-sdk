@@ -2007,8 +2007,8 @@
       "mutator": "BLR",
       "original": "false",
       "replacement": "true",
-      "class": "spec_question",
-      "reason": "前の記録 (id 201) は「検査を通った schema の format は 4 つのどれかなので届かない」としたが、届く。`propertyProblems` は `enum` を持つ string の property では `format` を見ない (`plainEnumProblems` だけ) ので、`{\"type\": \"string\", \"enum\": [\"a\"], \"format\": \"bogus\"}` は検査を通り、答え `\"a\"` で `valueProblems` が `formatProblem(\"bogus\", \"a\")` を呼ぶ。元は問題なし、変異は「is not a valid bogus」で、サーバーは正しい答えを McpPayloadError で捨て、クライアントは -32603 を返す。どの仕様 ID も enum の property に付いた format を述べていない (MCP-ELICIT-3 は format を持つ string だけ)。問い: enum を持つ string の property に付いた `format` (MCP の EnumSchema に無いキーワード) を、答えの検査で見るか / 推奨: 見ない。モジュールの冒頭の約束「schema が定めないキーワードは確かめない」に合わせ、`valueProblems` は enum の property では format を飛ばす。そうすれば `formatProblem` の `else` は届かなくなり (unreached)、今の「enum と既知の format (`email`) が両方あると enum の値が format で落ちる」振る舞いも消える。見ると決めるなら、未知の format の扱いを MCP-ELICIT-ENUM-2 に足して E テストを書く"
+      "class": "unreached",
+      "reason": "enum を持つ property では format を見ないようにした (MCP-ELICIT-ENUM-2、代表の決定 2026-11-12)。enum でない string の format は requestedSchemaProblems の側で 4 種に限られるので、formatProblem の else に届く入力を公開の入口から作れない。else は case の網羅のために残る"
     },
     {
       "fingerprint": "src/protocol/elicitation.nim:SDL:1cfc19a0e7261886:0",
@@ -2047,8 +2047,8 @@
       "mutator": "LOR",
       "original": "properties.isNil or properties.kind != JObject",
       "replacement": "<or -> and>",
-      "class": "spec_question",
-      "reason": "SDK の中の流れ (サーバーは `formElicitationParams`、クライアントは `elicitationParamsProblems` を先に通す) では `properties` は必ずオブジェクトで、差は出ない。ただし `contentProblems`・`elicitationResultProblems`・`parseElicitationResult` は入口から直接呼べ、検査していない params (`requestedSchema` の無い form、`properties` がオブジェクトでない schema) を渡すと、元は required だけを見て返り、変異は nil の `kind` を読むか `hasKey` の表明で落ちる。`contentProblems` の文書コメントは「検査を通った schema」を前提にするが、`elicitationResultProblems` は前提を書かず、未知の mode の params は落ちずに報告する (MCP-ELICIT-7)。前の記録 (id 182) の「残す」は司会の判断 (2026-10-07) で、代表の決定ではない。問い: 検査を通っていない params への答えを確かめたとき、落ちずに返ることを仕様にするか、前提違反として防御を消すか / 推奨: 仕様にする (MCP-ELICIT-7 の When に「requestedSchema が無い・properties がオブジェクトでない params への答え」を足す)。相手から来た params を先に検査せずにこの関数へ渡す使い方は入口から書けるので、落ちるより報告が安全。E テストは `test_elicitation_payload` に 1 本: `elicitationResultProblems(%*{\"action\": \"accept\", \"content\": {\"a\": 1}}, %*{\"message\": \"m\"})` と `properties` が配列の schema で、どちらも例外なしに返る。変異では落ちる。使い手: src は `protocol/elicitation.nim` の中の 1 か所 (`elicitationResultProblems`)、tests/external は `test_elicitation_payload.nim`、tests/internal は無し。公開から外す案は、`contentProblems` だけなら取れる (入口から呼ぶのはテストだけ) が、`elicitationResultProblems` を通って同じ行に届くので、この生き残りは消えない"
+      "class": "test_owed",
+      "reason": "MCP-ELICIT-7 (検査していない params でも落ちずに返る、代表の決定 2026-11-12)。tests/external/test_elicitation_payload.nim の「Given params that were not checked, when an answer is checked against them, then it returns without raising」を足した。手で当てて落ちることを確認、測り直しで確かめる"
     },
     {
       "fingerprint": "src/protocol/extensions.nim:ROR:048f9da66bbc8bda:0",
@@ -3227,8 +3227,8 @@
       "mutator": "LOR",
       "original": "known.state != mlsOperational or known.negotiatedVersion.isNone",
       "replacement": "<or -> and>",
-      "class": "spec_question",
-      "reason": "差が出るのは、`initialize` には答えたが `notifications/initialized` をまだ送っていないクライアント (`mlsInitializing` で版は決まっている) だけ。`elicit`・`elicitUrl` は、変異でも後段の `server.request` が同じ McpCapabilityError で送信の前に断る (文面だけの差。schema が規則を破るときだけ McpPayloadError が先に出る)。前の記録 (id 309) はここまでを見て「冗長」とした。しかし `notifyElicitationComplete` の後段は `server.sendNotification` で、状態を確かめない。変異では、握手の済んでいないクライアントに `notifications/elicitation/complete` が送られる (元は McpCapabilityError で何も送らない)。どの仕様 ID の Given にも「initialized を送っていないクライアント」は無い (MCP-ELICIT-4・MCP-ELICIT-URL-2 は宣言と版、MCP-SERVERREQ-4 は sampling と roots の要求)。問い: initialized を送っていないクライアントには elicitation の完了の通知も送らず、capability のエラーで断ることを仕様にするか / 推奨: 仕様にする (MCP-ELICIT-URL-2 の Given に「initialized を送っていないクライアント」を足す。MCP の lifecycle は、initialized の前にサーバーが送ってよいものを ping と logging に限る)。E テストは `test_server_elicitation` に 1 本: `initialize` (2025-11-25、url モードを宣言) だけを注入したセッションに `server.notifyElicitationComplete` → `expect McpCapabilityError`、`t.messagesOf(\"notifications/elicitation/complete\").len == 0`。変異では通知が 1 件出る"
+      "class": "test_owed",
+      "reason": "MCP-ELICIT-URL-2 (initialized の前のクライアントには完了の通知も送らない、代表の決定 2026-11-12)。tests/external/test_server_elicitation.nim の「Given a client that has not sent initialized, when the server notifies a completion, then it raises and sends nothing」を足した。手で当てて落ちることを確認、測り直しで確かめる"
     },
     {
       "fingerprint": "src/server/mrtr.nim:RVR:3ac2bd94b4efe6f7:0",

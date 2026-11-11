@@ -680,6 +680,8 @@ MCP-AUTH-11 | tests/external/test_auth_client_flow.nim | Given a failure other t
 MCP-AUTH-11 | tests/internal/test_auth_oauth_basics_internal.nim | Given the 2025-03-26 defaults, when built for a server URL with a path, then they are on the origin
 MCP-AUTH-12 | tests/external/test_auth_client_flow.nim | Given a challenge without resource_metadata and version 2025-06-18, when the client discovers, then it fails: the version defines no other way
 MCP-AUTH-12 | tests/external/test_auth_client_flow.nim | Given a resource metadata document for another resource, when the client discovers, then it is refused
+MCP-AUTH-12 | tests/external/test_auth_oauth_basics.nim | Given a document that lists an insecure authorization server after a good one, when fetching, then the document is refused before any authorization server is asked
+MCP-AUTH-12 | tests/external/test_auth_oauth_basics.nim | Given a document whose resource differs from the server's URL only by a bare slash, when fetching, then it is accepted
 MCP-AUTH-12 | tests/internal/test_auth_oauth_basics_internal.nim | Given PRM for another resource, when parsed, then it is rejected (RFC 9728 3.3)
 MCP-AUTH-12 | tests/internal/test_auth_oauth_basics_internal.nim | Given PRM whose resource differs only by case of host and a bare slash, when parsed, then it is accepted
 MCP-AUTH-12 | tests/internal/test_auth_oauth_basics_internal.nim | Given PRM without authorization servers or with an insecure one, when parsed, then it is rejected
@@ -722,6 +724,8 @@ MCP-AUTH-21 | tests/external/test_auth_client_flow.nim | Given version <version>
 MCP-AUTH-21 | tests/internal/test_auth_oauth_basics_internal.nim | Given the valid examples of the specification, when canonicalized, then they are unchanged
 MCP-AUTH-21 | tests/internal/test_auth_oauth_basics_internal.nim | Given uppercase scheme and host and a bare trailing slash, when canonicalized, then they are lowercased and the slash dropped
 MCP-AUTH-21 | tests/external/test_auth_oauth_basics.nim | Given the invalid examples of the specification, when canonicalized, then they are refused
+MCP-AUTH-21 | tests/external/test_auth_oauth_basics.nim | Given the valid examples of the specification, when canonicalized, then they are accepted
+MCP-AUTH-21 | tests/external/test_auth_oauth_basics.nim | Given a bare trailing slash or capital letters in the scheme or host, when canonicalized, then the resource is not canonical
 MCP-AUTH-21 | tests/internal/test_auth_oauth_basics_internal.nim | Given the resource, when form-encoded as the specification shows, then it matches &resource=https%3A%2F%2Fmcp.example.com
 MCP-AUTH-22 | tests/external/test_auth_client_flow.nim | Given a scope in the challenge, when the client authorizes, then it asks for exactly that scope
 MCP-AUTH-22 | tests/external/test_auth_client_flow.nim | Given no scope in the challenge but scopes_supported, when the client authorizes, then it asks for all of them
@@ -778,6 +782,7 @@ MCP-AUTH-30 | tests/external/test_auth_oauth_basics.nim | Given loopback disallo
 MCP-AUTH-30 | tests/internal/test_auth_oauth_basics_internal.nim | Given the cloud metadata address, when checked, then it is always refused
 MCP-AUTH-30 | tests/internal/test_auth_oauth_basics_internal.nim | Given private ranges, when checked, then they are refused unless allowed
 MCP-AUTH-30 | tests/external/test_auth_oauth_basics.nim | Given other schemes, fragments or credentials, when checked, then they are refused
+MCP-AUTH-30 | tests/external/test_auth_oauth_basics.nim | Given the default policy, when a private network address is named, then it is refused
 MCP-AUTH-31 | tests/external/test_auth_failure.nim | Given a hook that can do nothing about a 403, when a request is sent, then McpAuthorizationError carries the status
 MCP-AUTH-31 | tests/external/test_auth_failure.nim | Given a hook that fails, when a request is sent, then McpAuthorizationError says why and keeps the hook's error
 MCP-AUTH-31 | tests/external/test_auth_failure.nim | Given a hook that always says it improved things, when the server keeps refusing, then McpAuthorizationError ends the attempts
@@ -796,6 +801,8 @@ MCP-AUTH-35 | tests/external/test_auth_oauth_basics.nim | Given a 201 with a val
 MCP-AUTH-35 | tests/external/test_auth_oauth_basics.nim | Given a 200 whose body is not a JSON object, when discovering, then it is a failure of that URL
 MCP-AUTH-35 | tests/external/test_auth_oauth_basics.nim | Given a document that names another issuer, when discovering, then the failure is a security failure that says why
 MCP-AUTH-35 | tests/external/test_auth_oauth_basics.nim | Given a document without a token endpoint, when discovering, then the failure names the field and is not a security failure
+MCP-AUTH-35 | tests/external/test_auth_oauth_basics.nim | Given an issuer whose path ends in a slash, when discovering, then the slash is dropped from every URL tried
+MCP-AUTH-14 | tests/external/test_auth_oauth_basics.nim | Given an issuer without a path, when discovering, then each of the two candidate URLs is asked once
 MCP-AUTH-35 | tests/internal/test_auth_oauth_basics_internal.nim | Given an issuer with a fragment, when discovering, then it is refused before any request is made
 MCP-AUTH-35 | tests/external/test_auth_oauth_basics.nim | Given a server URL on plain http to a remote host, when discovering with the 2025-03-26 rules, then the error names the authorization base URL
 MCP-AUTH-35 | tests/external/test_auth_oauth_basics.nim | Given the root of an origin that answers 201 or a non-object 200, when discovering with the 2025-03-26 rules, then it fails without defaults
@@ -807,12 +814,16 @@ MCP-AUTH-36 | tests/internal/test_auth_oauth_basics_internal.nim | Given an endp
 MCP-AUTH-36 | tests/external/test_auth_oauth_basics.nim | Given plain http to a host name that resolves to loopback, when requested, then it is refused and nothing is sent
 MCP-AUTH-36 | tests/internal/test_auth_oauth_basics_internal.nim | Given a keep-alive answer without a body, when the request is done, then the client has closed the connection
 MCP-AUTH-36 | tests/external/test_auth_oauth_basics.nim | Given an endpoint that never answers, when the time runs out, then the connection is closed as well as reported
+MCP-AUTH-36 | tests/external/test_auth_oauth_basics.nim | Given a body-less keep-alive answer, when requested, then the connection is closed afterwards
 MCP-AUTH-37 | tests/external/test_auth_oauth_basics.nim | Given URLs that name no host or no scheme, when checked, then they are refused
 MCP-AUTH-37 | tests/external/test_auth_oauth_basics.nim | Given a user name alone or a password alone, when checked, then the URL is refused for its credentials
 MCP-AUTH-37 | tests/external/test_auth_oauth_basics.nim | Given a resource without a host or without a scheme, when canonicalized, then it is refused
+MCP-AUTH-37 | tests/external/test_auth_oauth_basics.nim | Given a resource with a query, when canonicalized, then the query is kept
+MCP-AUTH-37 | tests/external/test_auth_oauth_basics.nim | Given a scope with a space in it and version <version>, when the client asks the user, then the authorization URL writes the space as %20
 MCP-AUTH-37 | tests/internal/test_auth_oauth_basics_internal.nim | Given a resource with a query, when canonicalized, then the query is kept (RFC 8707 2)
 MCP-AUTH-37 | tests/internal/test_auth_oauth_basics_internal.nim | Given a field with a space, when form-encoded, then the space is %20
 MCP-AUTH-38 | tests/external/test_auth_oauth_basics.nim | Given metadata with a plain http authorization or registration endpoint on a remote host, when parsed, then it is rejected
+MCP-AUTH-38 | tests/external/test_auth_oauth_basics.nim | Given a plain http registration endpoint on a remote host and a client that registers nothing, when parsed, then it is rejected
 MCP-AUTH-38 | tests/internal/test_auth_oauth_basics_internal.nim | Given a registration endpoint that is missing or null, when parsed, then the server offers no registration
 MCP-AUTH-39 | tests/external/test_auth_oauth_basics.nim | Given redirect URIs with a fragment, no host, plain http to a remote host or another scheme, when checked, then they are refused
 MCP-AUTH-39 | tests/internal/test_auth_oauth_basics_internal.nim | Given a plain http redirect URI to a remote host, when an authorization request is made, then no request is made
@@ -832,6 +843,8 @@ MCP-AUTH-41 | tests/internal/test_security_auth_tokens_internal.nim | Given stri
 MCP-AUTH-41 | tests/internal/test_security_auth_tokens_internal.nim | Given a lone minus sign, when the response is parsed, then it is refused as not a number rather than as a negative one
 MCP-AUTH-41 | tests/internal/test_security_auth_tokens_internal.nim | Given a negative digit string, when the response is parsed, then it is refused as negative
 MCP-AUTH-41 | tests/external/test_security_auth_tokens.nim | Given no JSON object at all, when a lifetime is read, then it is unknown
+MCP-AUTH-41 | tests/external/test_security_auth_tokens.nim | Given an expires_in of zero or at the bound, as a number or digits with leading zeros, when the response is parsed, then it counts by its value
+MCP-AUTH-41 | tests/external/test_security_auth_tokens.nim | Given a token response without an access_token or with an empty one, when the response is parsed, then it is refused
 MCP-AUTH-42 | tests/internal/test_auth_oauth_basics_internal.nim | Given JSON that is absent, not an object, or has the key of another type, when a string is read, then there is none
 MCP-AUTH-42 | tests/external/test_auth_oauth_basics.nim | Given an error answer that is not JSON, when the error is built, then it names the HTTP status and is no OAuth error response
 MCP-AUTH-42 | tests/external/test_auth_oauth_basics.nim | Given an OAuth error answer, when the error is built, then the description follows only when there is one
@@ -1145,6 +1158,7 @@ MCP-ELICIT-7 | tests/external/test_elicitation_payload.nim | Given a mode that i
 MCP-ELICIT-7 | tests/external/test_elicitation_payload.nim | Given error data whose entry is a URL request that breaks the rules, when checked, then it is reported
 MCP-ELICIT-7 | tests/external/test_elicitation_payload.nim | Given a result or content that is not an object, when checked, then it is reported
 MCP-ELICIT-7 | tests/external/test_elicitation_payload.nim | Given an answer to params with an unknown mode, when checked, then the mode is reported
+MCP-ELICIT-7 | tests/external/test_elicitation_payload.nim | Given params that were not checked, when an answer is checked against them, then it returns without raising
 MCP-ELICIT-8 | tests/external/test_elicitation_payload.nim | Given values at the limits of their bounds, when checked, then they are accepted
 MCP-ELICIT-8 | tests/external/test_elicitation_payload.nim | Given a date-time with an offset, when checked, then only a well-formed offset is accepted
 MCP-ELICIT-9 | tests/external/test_elicitation_payload.nim | Given several problems, when an error is built, then its message joins them after the context
@@ -1159,6 +1173,7 @@ MCP-ELICIT-ENUM-1 | tests/external/test_elicitation_payload.nim | Given a plain 
 MCP-ELICIT-ENUM-2 | tests/external/test_elicitation_payload.nim | Given a titled single-select, when a value is checked, then only a const is accepted
 MCP-ELICIT-ENUM-2 | tests/external/test_elicitation_payload.nim | Given a multi-select, when values are checked, then they are an array of allowed values within the counts
 MCP-ELICIT-ENUM-2 | tests/external/test_elicitation_payload.nim | Given a titled multi-select, when values are checked, then they are consts
+MCP-ELICIT-ENUM-2 | tests/external/test_elicitation_payload.nim | Given an enum property that also carries a format, when its value is checked, then the format is not applied
 MCP-ELICIT-ENUM-2 | tests/external/test_server_elicitation.nim | Given a client of 2025-11-25, when the server asks for a multi-select with defaults, then the schema is sent as given and the answer is checked against it
 MCP-ELICIT-ENUM-2 | tests/external/test_client_elicitation.nim | Given a connection of 2025-11-25, when the server asks for a titled enum, then the handler is called and its answer is checked against the options
 MCP-ELICIT-ENUM-3 | tests/external/test_server_elicitation.nim | Given a client of 2025-06-18, when the server asks for a multi-select, then McpPayloadError says the version has none and nothing is sent
@@ -1181,6 +1196,7 @@ MCP-ELICIT-URL-2 | tests/external/test_elicitation_payload.nim | Given the wire 
 MCP-ELICIT-URL-2 | tests/external/test_server_elicitation.nim | Given a client that declared only the form mode, when the server asks in url mode, then it raises and sends nothing
 MCP-ELICIT-URL-2 | tests/external/test_server_elicitation.nim | Given a client that declared only the url mode, when the server asks for a form, then it raises
 MCP-ELICIT-URL-2 | tests/external/test_server_elicitation.nim | Given a connection of 2025-06-18, when the server asks in url mode, then it raises and sends nothing
+MCP-ELICIT-URL-2 | tests/external/test_server_elicitation.nim | Given a client that has not sent initialized, when the server notifies a completion, then it raises and sends nothing
 MCP-ELICIT-URL-3 | tests/external/test_client_elicitation.nim | Given a handler for both modes, when the client connects, then initialize declares form and url
 MCP-ELICIT-URL-3 | tests/external/test_client_elicitation.nim | Given a client that declared only the form mode, when a URL request arrives, then the client answers invalid params
 MCP-ELICIT-URL-4 | tests/external/test_elicitation_payload.nim | Given an elicitation id, when a completion is built, then the params carry it

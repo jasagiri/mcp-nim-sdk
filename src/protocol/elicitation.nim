@@ -327,7 +327,8 @@ func valueProblems(subject: string, prop, value: JsonNode): seq[string] =
       result.add subject & " is shorter than minLength"
     if prop.has("maxLength") and length > prop["maxLength"].getInt():
       result.add subject & " is longer than maxLength"
-    if prop.isString("format") and formatProblem(prop["format"].getStr(), text):
+    if allowed.isNone and prop.isString("format") and
+       formatProblem(prop["format"].getStr(), text):
       result.add subject & " is not a valid " & prop["format"].getStr()
   of "number", "integer":
     if not value.isNumber:
@@ -357,10 +358,11 @@ func valueProblems(subject: string, prop, value: JsonNode): seq[string] =
     discard
 
 func contentProblems*(requestedSchema, content: JsonNode): seq[string] =
-  ## Whether `content` matches `requestedSchema`, which must have passed
-  ## `requestedSchemaProblems`: required properties are there and each given
-  ## value fits its property. Properties the schema does not list are
-  ## allowed, as JSON Schema allows them.
+  ## Whether `content` matches `requestedSchema`: required properties are
+  ## there and each given value fits its property. Properties the schema does
+  ## not list are allowed, as JSON Schema allows them. A schema that did not
+  ## pass `requestedSchemaProblems` is reported on as far as it can be read,
+  ## without failing.
   if content.isNil or content.kind != JObject:
     return @["content is not an object"]
   let properties = requestedSchema{"properties"}

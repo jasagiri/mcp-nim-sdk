@@ -257,6 +257,17 @@ if DefaultProtocolVersion >= mpv20251125:
         waitFor server.notifyElicitationComplete("", id)
       check t.messagesOf("notifications/elicitation/complete").len == 0
 
+    test "Given a client that has not sent initialized, when the server notifies a completion, then it raises and sends nothing":
+      let server = urlServer()
+      let t = server.attach()
+      t.inject("", rpcRequest("init-1", "initialize", %*{
+        "protocolVersion": $mpv20251125, "capabilities": BothModes,
+        "clientInfo": {"name": "test-client", "version": "1"}}))
+      discard t.responseTo("init-1")
+      expect McpCapabilityError:
+        waitFor server.notifyElicitationComplete("", id)
+      check t.messagesOf("notifications/elicitation/complete").len == 0
+
     test "Given a handler that needs a URL elicitation, when the client can do the url mode, then the call fails with code -32042 and the elicitations":
       let server = urlServer()
       let t = server.attach()

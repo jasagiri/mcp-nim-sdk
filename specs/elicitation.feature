@@ -51,6 +51,7 @@ Feature: Elicitation
     Given a form with an enum property
     When the answer holds a value that is not one of the options, or a multi-select with too few or too many entries
     Then the answer does not match the schema
+    And a format keyword on an enum property is not checked, as the schema does not define it there
 
   @spec:MCP-ELICIT-ENUM-3 @feature:ftEnumSchemas
   Scenario: A version without the enum shapes refuses them on the wire
@@ -83,6 +84,7 @@ Feature: Elicitation
     When the server asks in url mode
     Then it fails with a capability error and sends nothing
     And an empty elicitation capability means the form mode alone
+    And a client that has not yet sent initialized gets no elicitation, and no completion notification either
 
   @spec:MCP-ELICIT-URL-3 @feature:ftUrlElicitation
   Scenario: A client declares the modes it supports and refuses the others
@@ -115,6 +117,7 @@ Feature: Elicitation
     Given elicitation/create params, an answer or its content
     When the params, the answer or the content is not an object, or the mode is neither form nor url
     Then the report says so, and the same mode check applies to the answer of a request
+    And an answer checked against params that were not validated, such as one with no requestedSchema or with properties that are not an object, is reported on without failing
 
   @spec:MCP-ELICIT-8 @feature:ftElicitation
   Scenario: A value at the limit of its bounds is accepted and a date-time offset is RFC 3339
