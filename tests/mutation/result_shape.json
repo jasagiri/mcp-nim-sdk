@@ -2,7 +2,7 @@
   "sources": [
     "src/protocol/result_shape.nim"
   ],
-  "testCommand": "nim c -r --hints:off tests/external/test_handler_results_fix.nim && nim c -r --hints:off tests/external/test_handler_results_prop.nim && nim c -r --hints:off tests/external/test_cache_hints_g0b.nim && nim c -r --hints:off tests/external/test_cache_hints_prop.nim && nim c -r --hints:off tests/external/test_embedded_content_g0c.nim && nim c -r --hints:off tests/external/test_tool_listing_prop.nim && nim c -r --hints:off tests/external/test_ttl_not_negative_fix.nim && nim c -r --hints:off tests/external/test_modern_conversations_g0d.nim && nim c -r --hints:off tests/external/test_tool_listing_g0c.nim",
+  "testCommand": "nim c -r --hints:off tests/external/test_handler_results_fix.nim && nim c -r --hints:off tests/external/test_handler_results_prop.nim && nim c -r --hints:off tests/external/test_cache_hints_g0b.nim && nim c -r --hints:off tests/external/test_cache_hints_prop.nim && nim c -r --hints:off tests/external/test_embedded_content_g0c.nim && nim c -r --hints:off tests/external/test_tool_listing_prop.nim && nim c -r --hints:off tests/external/test_ttl_not_negative_fix.nim && nim c -r --hints:off tests/external/test_modern_conversations_g0d.nim && nim c -r --hints:off tests/external/test_tool_listing_g0c.nim && nim c -r --hints:off tests/external/test_sampling_asks_fix.nim && nim c -r --hints:off tests/external/test_server_pagination.nim",
   "mutators": [
     "AOR",
     "ROR",
