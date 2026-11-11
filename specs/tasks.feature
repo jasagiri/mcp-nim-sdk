@@ -45,7 +45,7 @@ Feature: Tasks
   Scenario: A task follows the status transitions of the specification
     Given a task
     When its status changes
-    Then working may move to input_required, completed, failed and cancelled, input_required may also move back to working, and a terminal status never changes
+    Then working may move to input_required, completed, failed and cancelled, input_required may also move back to working, and a terminal status never changes; a receiver's application cannot set a terminal status itself, a task ends with its request or by cancellation
     And lastUpdatedAt moves with every change
 
   @spec:MCP-TASKS-7 @feature:ftTasks

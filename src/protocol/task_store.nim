@@ -238,15 +238,12 @@ proc createTaskResult*(task: McpTask, immediateResponse = ""): JsonNode =
   if immediateResponse.len > 0:
     result["_meta"] = %*{ModelImmediateResponseKey: immediateResponse}
 
-func relatedTaskMeta*(taskId: string): JsonNode =
-  %*{"taskId": taskId}
-
 func withRelatedTask*(node: JsonNode, taskId: string): JsonNode =
   ## A copy of `node` whose `_meta` names the task; other `_meta` keys stay.
   result = if node.isNil: newJObject() else: node.copy()
   if not result.hasKey("_meta") or result["_meta"].kind != JObject:
     result["_meta"] = newJObject()
-  result["_meta"][RelatedTaskKey] = relatedTaskMeta(taskId)
+  result["_meta"][RelatedTaskKey] = %*{"taskId": taskId}
 
 func parseTaskParam*(params: JsonNode): Option[Option[int64]] {.raises: [McpTaskError].} =
   ## Whether a request is task-augmented and which ttl it asks for: none when
@@ -439,14 +436,20 @@ proc transition*(store: TaskStore, id: string, status: TaskStatus,
   ## Move the task to `status`. False, and nothing changes, when the task is
   ## gone or already terminal: a task never leaves a terminal status, and
   ## work that goes on after a cancellation must not undo it. Setting the
-  ## status it already has only replaces the message. Any other move the
-  ## specification does not allow raises McpTaskError.
+  ## status it already has only replaces the message. A terminal status, and
+  ## any other move the specification does not allow, raises McpTaskError.
   discard store.sweep()
   if id notin store.entries:
     return false
   let entry = store.entries[id]
   if entry.task.status.isTerminal:
     return false
+  # A task ends with the request it stands for (`finish`) or by `cancel`,
+  # which move it without this proc: a status the application sets here
+  # would end a task with no outcome behind it.
+  if status.isTerminal:
+    raise newTaskError(InternalErrorCode,
+      "a task cannot be set to " & $status & ": it ends with its request or by cancellation")
   if status != entry.task.status and not canTransition(entry.task.status, status):
     raise newTaskError(InternalErrorCode,
       "a task cannot move from " & $entry.task.status & " to " & $status)

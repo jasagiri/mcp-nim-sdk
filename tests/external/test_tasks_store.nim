@@ -35,6 +35,17 @@ proc settle() =
   ## Let the task that waits for its request see the request end.
   waitFor sleepAsync(1)
 
+proc reach(store: TaskStore, task: McpTask, work: Future[JsonRpcResponse],
+           status: TaskStatus) =
+  ## Bring a task of `runningTask` to a terminal status the way a receiver
+  ## does: its request ends, or it is cancelled.
+  case status
+  of tsCompleted: work.complete(responseOf(success(%*{})))
+  of tsFailed: work.complete(responseOf(failure(-32603, "broken")))
+  of tsCancelled: discard store.cancel("a", task.taskId)
+  of tsWorking, tsInputRequired: raise newException(ValueError, "not a terminal status")
+  settle()
+
 proc ended(store: TaskStore, outcome: TaskOutcome, owner = "a",
            ttl = none(int64)): McpTask =
   ## A task whose request has already returned `outcome`.
@@ -131,26 +142,46 @@ suite "tasks: status lifecycle":
   test "Given a working task, when it moves to each status the specification allows, then it does":
     for next in [tsInputRequired, tsCompleted, tsFailed, tsCancelled]:
       let store = storeAt(FakeTime())
-      let task = store.create("a", none(int64))
-      check store.transition(task.taskId, next)
+      let work = newFuture[JsonRpcResponse]("work")
+      let task = store.runningTask(work)
+      if next == tsInputRequired:
+        check store.transition(task.taskId, next)
+      else:
+        store.reach(task, work, next)
       check store.get("a", task.taskId).status == next
 
   test "Given an input_required task, when it moves on, then working, completed, failed and cancelled are allowed":
     for next in [tsWorking, tsCompleted, tsFailed, tsCancelled]:
       let store = storeAt(FakeTime())
-      let task = store.create("a", none(int64))
+      let work = newFuture[JsonRpcResponse]("work")
+      let task = store.runningTask(work)
       check store.transition(task.taskId, tsInputRequired)
-      check store.transition(task.taskId, next)
+      if next == tsWorking:
+        check store.transition(task.taskId, next)
+      else:
+        store.reach(task, work, next)
       check store.get("a", task.taskId).status == next
 
   test "Given a terminal task, when another status is set, then it stays and the change is refused":
     for terminal in [tsCompleted, tsFailed, tsCancelled]:
       let store = storeAt(FakeTime())
-      let task = store.create("a", none(int64))
-      check store.transition(task.taskId, terminal)
+      let work = newFuture[JsonRpcResponse]("work")
+      let task = store.runningTask(work)
+      store.reach(task, work, terminal)
       for next in [tsWorking, tsInputRequired, tsCompleted, tsFailed, tsCancelled]:
         check not store.transition(task.taskId, next)
         check store.get("a", task.taskId).status == terminal
+
+  test "Given a working task, when the application sets a terminal status with transition, then it is refused and the task stays working":
+    for terminal in [tsCompleted, tsFailed, tsCancelled]:
+      let store = storeAt(FakeTime())
+      let task = store.create("a", none(int64))
+      try:
+        discard store.transition(task.taskId, terminal)
+        fail()
+      except McpTaskError as e:
+        check e.code == -32603
+      check store.get("a", task.taskId).status == tsWorking
 
   test "Given a task that changes, when it does, then lastUpdatedAt moves and createdAt does not":
     let time = FakeTime(nowMs: 1_000)
@@ -273,8 +304,9 @@ suite "tasks: cancellation":
   test "Given a terminal task, when cancelled, then it is Invalid params and names the status":
     for terminal in [tsCompleted, tsFailed, tsCancelled]:
       let store = storeAt(FakeTime())
-      let task = store.create("a", none(int64))
-      discard store.transition(task.taskId, terminal)
+      let work = newFuture[JsonRpcResponse]("work")
+      let task = store.runningTask(work)
+      store.reach(task, work, terminal)
       try:
         discard store.cancel("a", task.taskId)
         fail()

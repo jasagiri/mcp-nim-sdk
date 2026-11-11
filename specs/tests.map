@@ -1512,6 +1512,7 @@ MCP-TASKS-5 | tests/external/test_tasks_store.nim | Given many tasks, when creat
 MCP-TASKS-6 | tests/external/test_tasks_store.nim | Given a working task, when it moves to each status the specification allows, then it does
 MCP-TASKS-6 | tests/external/test_tasks_store.nim | Given an input_required task, when it moves on, then working, completed, failed and cancelled are allowed
 MCP-TASKS-6 | tests/external/test_tasks_store.nim | Given a terminal task, when another status is set, then it stays and the change is refused
+MCP-TASKS-6 | tests/external/test_tasks_store.nim | Given a working task, when the application sets a terminal status with transition, then it is refused and the task stays working
 MCP-TASKS-6 | tests/external/test_tasks_store.nim | Given a task that changes, when it does, then lastUpdatedAt moves and createdAt does not
 MCP-TASKS-6 | tests/external/test_tasks_store.nim | Given a terminal status, when asked about a move from it, then no status is allowed
 MCP-TASKS-6 | tests/external/test_tasks_store.nim | Given an id the store does not hold, when a status is set or the request finished, then nothing happens
