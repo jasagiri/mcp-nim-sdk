@@ -271,6 +271,16 @@
       "reason": "The waiter of a finished listen stays on the shared cancellation token; no public operation gives another result. Not seen from outside, kept by the internal test (代表の決定 2026-11-11)."
     },
     {
+      "fingerprint": "src/client/tasks.nim:RVR:0676a9310a0c6761:1",
+      "file": "src/client/tasks.nim",
+      "line": 220,
+      "mutator": "RVR",
+      "original": "return newJsonRpcErrorResponse(request.id, e.code, e.msg)",
+      "replacement": "<return default>",
+      "class": "accepted",
+      "reason": "失敗の文面は契約ではない (代表の決定 2026-10-23)。ここに届く `McpTaskError` は `create` の上限超過だけで、符号は -32603。結果も誤りも無い応答は `transport.toJson` が -32603 \"Internal error\" にして送るので、断ることと符号は保たれ、変わるのは文面 (\"Too many tasks\" → \"Internal error\") と stderr の 1 行だけ。既存の E テスト (test_tasks_client「Given a store that holds one task at most, ...」) は符号を確かめていて、通る / —"
+    },
+    {
       "fingerprint": "src/ext/skills/catalog.nim:AOR:0a5dc4f793c7bd6f:0",
       "file": "src/ext/skills/catalog.nim",
       "line": 208,
@@ -1791,6 +1801,166 @@
       "reason": "同上 (前の仕分けの id 82) / なし"
     },
     {
+      "fingerprint": "src/protocol/task_methods.nim:ROR:3bea8587e57fcb1d:0",
+      "file": "src/protocol/task_methods.nim",
+      "line": 48,
+      "mutator": "ROR",
+      "original": "store.resultStream(id) == request.id",
+      "replacement": "<== -> !=>",
+      "class": "spec_question",
+      "reason": "`tasks/result` が答えた後も、task がその要求を stream として指したままになる。外から見えるのは (1) 公開の `store.resultStream` の値 (2) 終端になった後も動く道具の質問が、保留されずに、終わった要求の stream へ送られること。(1) を確かめるテストは内部側 (test_tasks_server_internal) にあり、(2) はどの Scenario も定めていない / 問い: 終端・期限切れの task の道具が出す質問を「送らずにその場で断る」と仕様 (MCP-TASKS-23 に 1 文) にするか。あわせて `resultStream`・`setResultStream`・`onResultStream` を公開から外すか。使い手は src で task_methods.nim (結ぶ・解く) と server/tasks.nim (hook と読み出し) だけ。E テストは `resultStream` を待ちの合図に 2 ファイル (test_tasks_http・test_tasks_http_g0e) で使う"
+    },
+    {
+      "fingerprint": "src/protocol/task_methods.nim:SDL:6567f7aacb4bbabc:0",
+      "file": "src/protocol/task_methods.nim",
+      "line": 49,
+      "mutator": "SDL",
+      "original": "store.setResultStream(id, \"\")",
+      "replacement": "discard",
+      "class": "spec_question",
+      "reason": "上の行と同じ (解かれないまま残る) / 上の行と同じ問い"
+    },
+    {
+      "fingerprint": "src/protocol/tasks.nim:RVR:115a88da64ad7c9b:0",
+      "file": "src/protocol/tasks.nim",
+      "line": 165,
+      "mutator": "RVR",
+      "original": "return none(int64)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "`Option[int64]` の既定値は none / —"
+    },
+    {
+      "fingerprint": "src/protocol/tasks.nim:ROR:b6ebb744f6bc2d02:0",
+      "file": "src/protocol/tasks.nim",
+      "line": 169,
+      "mutator": "ROR",
+      "original": "dot >= 0",
+      "replacement": "<>= -> >>",
+      "class": "equivalent",
+      "reason": "違いが出るのは `dot == 0` (文字列が `.` で始まる) だけ。直前の `isDateTime` が 10 文字目の `T` と日付の形を求めるので、そこを通った文字列の先頭は `.` にならない / —"
+    },
+    {
+      "fingerprint": "src/protocol/tasks.nim:ROR:b901314701bfd0a5:0",
+      "file": "src/protocol/tasks.nim",
+      "line": 171,
+      "mutator": "ROR",
+      "original": "stop < base.len",
+      "replacement": "<< -> <=>",
+      "class": "equivalent",
+      "reason": "違いが出るのは小数部の数字が文字列の末尾まで続くときだけ。`isDateTime` が小数部の後ろに `Z` か時差を求めるので、循環は必ず数字でない文字で止まり、`stop == base.len` にならない (前回これを殺した「Given a time whose fraction ends the text」は、今は `isDateTime` が先に断る) / —"
+    },
+    {
+      "fingerprint": "src/protocol/tasks.nim:RVR:115a88da64ad7c9b:1",
+      "file": "src/protocol/tasks.nim",
+      "line": 175,
+      "mutator": "RVR",
+      "original": "return none(int64)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "`Option[int64]` の既定値は none / —"
+    },
+    {
+      "fingerprint": "src/protocol/tasks.nim:RVR:b667109c9117097f:0",
+      "file": "src/protocol/tasks.nim",
+      "line": 190,
+      "mutator": "RVR",
+      "original": "return none(McpTask)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "`Option[McpTask]` の既定値は none / —"
+    },
+    {
+      "fingerprint": "src/protocol/tasks.nim:RVR:b667109c9117097f:1",
+      "file": "src/protocol/tasks.nim",
+      "line": 196,
+      "mutator": "RVR",
+      "original": "return none(McpTask)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "同上 / —"
+    },
+    {
+      "fingerprint": "src/protocol/tasks.nim:RVR:b667109c9117097f:2",
+      "file": "src/protocol/tasks.nim",
+      "line": 207,
+      "mutator": "RVR",
+      "original": "return none(McpTask)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "同上 / —"
+    },
+    {
+      "fingerprint": "src/protocol/tasks.nim:RVR:de4a76bc9ca7094b:0",
+      "file": "src/protocol/tasks.nim",
+      "line": 252,
+      "mutator": "RVR",
+      "original": "return none(Option[int64])",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "`Option[Option[int64]]` の既定値は none / —"
+    },
+    {
+      "fingerprint": "src/protocol/tasks.nim:ROR:394635f51fa4c60e:0",
+      "file": "src/protocol/tasks.nim",
+      "line": 272,
+      "mutator": "ROR",
+      "original": "value >= 9.223372036854776e+18",
+      "replacement": "<>= -> >>",
+      "class": "undecided",
+      "reason": ""
+    },
+    {
+      "fingerprint": "src/protocol/tasks.nim:ROR:68c9d096fcb44c25:0",
+      "file": "src/protocol/tasks.nim",
+      "line": 314,
+      "mutator": "ROR",
+      "original": "ttl > 0",
+      "replacement": "<> -> >=>",
+      "class": "equivalent",
+      "reason": "違いが出るのは `ttl == 0` だけで、そのとき右の項 `createdAtMs > int64.high - 0` は int64 のどの値でも偽 / —"
+    },
+    {
+      "fingerprint": "src/protocol/tasks.nim:ROR:69f45c6ba00f7bdd:0",
+      "file": "src/protocol/tasks.nim",
+      "line": 314,
+      "mutator": "ROR",
+      "original": "entry.task.createdAtMs > int64.high - ttl",
+      "replacement": "<> -> >=>",
+      "class": "equivalent",
+      "reason": "等しいとき、飽和の値 `int64.high` と、飽和しない和 `createdAtMs + ttl` は同じ値で、和は溢れない / —"
+    },
+    {
+      "fingerprint": "src/protocol/tasks.nim:ROR:35b5daa1003aca56:0",
+      "file": "src/protocol/tasks.nim",
+      "line": 383,
+      "mutator": "ROR",
+      "original": "ttl.get > store.maxTtlMs.get",
+      "replacement": "<> -> >=>",
+      "class": "equivalent",
+      "reason": "等しいとき、代入される `maxTtlMs` は今の `ttl` と同じ値 / —"
+    },
+    {
+      "fingerprint": "src/protocol/tasks.nim:ROR:bad777869457471a:0",
+      "file": "src/protocol/tasks.nim",
+      "line": 413,
+      "mutator": "ROR",
+      "original": "requestId.len > 0",
+      "replacement": "<> -> >=>",
+      "class": "spec_question",
+      "reason": "stream を解くとき (`\"\"`) にも `onResultStream` が呼ばれる。SDK のサーバーの hook は保留の質問を取り出して送るが、解く時点 (終端の後) では `onStatusChange` が保留を消し終えているので、サーバーの入口からは違いが出ない。違いが見えるのは、公開の `setResultStream` と `onResultStream` を使い手が直接使ったときだけで、それを確かめるテストは内部側 (test_tasks_store_internal「Given a hook for result streams, ...」) にある / task_methods.nim:48 の行と同じ問い (この 3 つを公開から外せば、この変異は同値になる。公開に残すなら、内部の 2 本を外部へ戻せば 3 件とも殺せる)"
+    },
+    {
+      "fingerprint": "src/protocol/tasks.nim:SDL:2413a04126052c00:0",
+      "file": "src/protocol/tasks.nim",
+      "line": 455,
+      "mutator": "SDL",
+      "original": "none(string)",
+      "replacement": "discard",
+      "class": "equivalent",
+      "reason": "`result` は `Option[string]` で、代入しなければ none / —"
+    },
+    {
       "fingerprint": "src/protocol/trace_context.nim:ROR:dd50541f3b456bb7:0",
       "file": "src/protocol/trace_context.nim",
       "line": 32,
@@ -2079,6 +2249,116 @@
       "replacement": "<return default>",
       "class": "test_owed",
       "reason": "既定値の return で関数を抜け、`(nil, none)` の受け入れになる (期限・メソッド・パラメーター・主体の検査にも進まない)。署名は正しいが本体が `[1]` の状態で起きる。検出していたテストは内部側に移っている。 / MCP-MRTR-10。案 B。鍵で署名した base64url の `[1]` を `verifyRequestState` に渡す → `problem` が some。変異だと none。"
+    },
+    {
+      "fingerprint": "src/server/tasks.nim:RVR:3ac2bd94b4efe6f7:0",
+      "file": "src/server/tasks.nim",
+      "line": 50,
+      "mutator": "RVR",
+      "original": "return none(JsonNode)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "`Option[JsonNode]` の既定値は none / —"
+    },
+    {
+      "fingerprint": "src/server/tasks.nim:RVR:3ac2bd94b4efe6f7:1",
+      "file": "src/server/tasks.nim",
+      "line": 57,
+      "mutator": "RVR",
+      "original": "return none(JsonNode)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "同上 / —"
+    },
+    {
+      "fingerprint": "src/server/tasks.nim:SDL:fb532cd7a80e0870:0",
+      "file": "src/server/tasks.nim",
+      "line": 118,
+      "mutator": "SDL",
+      "original": "sessionOf.del(task.taskId)",
+      "replacement": "discard",
+      "class": "equivalent",
+      "reason": "`sessionOf` を読むのは `onStatusChange` だけで、終端の後はその task に状態の変化が起きない (`transition`・`finish`・`cancel` が終端を先に断る)。残った項目は読まれず、差はメモリだけ (表は `enableTasks` の局所変数で、外から数えられない) / —"
+    },
+    {
+      "fingerprint": "src/server/tasks.nim:SDL:178b5575b6d128b0:0",
+      "file": "src/server/tasks.nim",
+      "line": 124,
+      "mutator": "SDL",
+      "original": "held.del(task.taskId)",
+      "replacement": "discard",
+      "class": "spec_question",
+      "reason": "残った保留は送られない (期限切れの task には `tasks/result` が届かず、hook が呼ばれない) が、上限の勘定には残る。期限切れの後も動き続ける道具が質問を出すと、元は空の列から数え直して保留し、変異後は前の保留を数えて早く断る (`maxQueuedMessages` が 1 なら次の 1 件目で `ctx.elicit` が例外)。期限切れの task の質問の扱いはどの Scenario も定めていない (前回は「読まれない」としたが、`holdForTask` が長さを読む) / task_methods.nim:48 の行と同じ問い (「その場で断る」と決めれば、この掃除は勘定に関わらなくなる)"
+    },
+    {
+      "fingerprint": "src/server/tasks.nim:SDL:fb532cd7a80e0870:1",
+      "file": "src/server/tasks.nim",
+      "line": 125,
+      "mutator": "SDL",
+      "original": "sessionOf.del(task.taskId)",
+      "replacement": "discard",
+      "class": "equivalent",
+      "reason": "期限切れの task は store から消えていて状態の変化が起きないので、`sessionOf` の項目は読まれない。差はメモリだけ / —"
+    },
+    {
+      "fingerprint": "src/server/tasks.nim:RVR:9bd38dfae0fced9f:0",
+      "file": "src/server/tasks.nim",
+      "line": 130,
+      "mutator": "RVR",
+      "original": "return none(JsonRpcResponse)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "`Option[JsonRpcResponse]` の既定値は none / —"
+    },
+    {
+      "fingerprint": "src/server/tasks.nim:RVR:9bd38dfae0fced9f:1",
+      "file": "src/server/tasks.nim",
+      "line": 135,
+      "mutator": "RVR",
+      "original": "return none(JsonRpcResponse)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "同上 / —"
+    },
+    {
+      "fingerprint": "src/server/tasks.nim:RVR:4e102445986c6351:0",
+      "file": "src/server/tasks.nim",
+      "line": 138,
+      "mutator": "RVR",
+      "original": "return none(JsonRpcResponse)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "同上 / —"
+    },
+    {
+      "fingerprint": "src/server/tasks.nim:RVR:9bd38dfae0fced9f:2",
+      "file": "src/server/tasks.nim",
+      "line": 146,
+      "mutator": "RVR",
+      "original": "return none(JsonRpcResponse)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "同上 / —"
+    },
+    {
+      "fingerprint": "src/server/tasks.nim:RVR:9bd38dfae0fced9f:3",
+      "file": "src/server/tasks.nim",
+      "line": 152,
+      "mutator": "RVR",
+      "original": "return none(JsonRpcResponse)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "同上 / —"
+    },
+    {
+      "fingerprint": "src/server/tasks.nim:RVR:686aca932944807c:0",
+      "file": "src/server/tasks.nim",
+      "line": 242,
+      "mutator": "RVR",
+      "original": "return taskOf(resultOf(await server.request(session, \"tasks/cancel\",; %*{\"taskId\": taskId}), \"tasks/cancel\"), \"tasks/cancel\")",
+      "replacement": "<return default>",
+      "class": "test_owed",
+      "reason": "変異後は `tasks/cancel` を送らず、空の `McpTask` (id が空、`working`) を返す。E テストは capability が無くて断る場合しか確かめていない / MCP-TASKS-18 (隣の `listClientTasks` のテストと同じ置き場。取り消しそのものは MCP-TASKS-10)。test_tasks_server の「as the requestor」の suite に: `samplingTasks` (cancel を宣言) の client に `fx.server.cancelClientTask(peer.session, \"c-1\")` を呼び、`fx.answerNext(\"\", \"tasks/cancel\", 0, clientTask(\"c-1\", \"cancelled\"))` で答え、送った要求の `params.taskId == \"c-1\"` と、返った task の `taskId == \"c-1\"`・`status == tsCancelled` を確かめる。変異だと要求が出ず (`answerNext` の待ちが尽きる)、返る task も空"
     },
     {
       "fingerprint": "src/server/tools.nim:ROR:8fbebf3b833c6500:0",

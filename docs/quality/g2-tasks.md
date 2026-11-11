@@ -1,5 +1,67 @@
 # G2 変異検出: tasks ジョブ
 
+## 測り直し (拡張ブランチの b04fcb9c、2026-11-11)
+
+測定: `nim-muter` 0.2.15、ジョブ `tests/mutation/tasks.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。状態: 測定済み。
+
+| 全体 | killed | timeout | survived | runError | compileError |
+|---|---|---|---|---|---|
+| 298 | 236 | 12 | 28 | 0 | 22 |
+
+仕分けは式と呼び出し元を読んで行った (変異を当てて流してはいない)。件数: equivalent 21、spec_question 4、test_owed 1、accepted 1、undecided 1。
+
+### 生き残りの仕分け
+
+| 指紋 | file:line | 変異 | class | 理由 | 仕様 ID / 足すテストの案 |
+|---|---|---|---|---|---|
+| `src/client/tasks.nim:RVR:0676a9310a0c6761:1` | client/tasks.nim:220 | store が断ったときの `return newJsonRpcErrorResponse(request.id, e.code, e.msg)` → 既定値 | accepted | 失敗の文面は契約ではない (代表の決定 2026-10-23)。ここに届く `McpTaskError` は `create` の上限超過だけで、符号は -32603。結果も誤りも無い応答は `transport.toJson` が -32603 "Internal error" にして送るので、断ることと符号は保たれ、変わるのは文面 ("Too many tasks" → "Internal error") と stderr の 1 行だけ。既存の E テスト (test_tasks_client「Given a store that holds one task at most, ...」) は符号を確かめていて、通る | — |
+| `src/protocol/task_methods.nim:ROR:3bea8587e57fcb1d:0` | task_methods.nim:48 | `store.resultStream(id) == request.id` → `!=` | spec_question | `tasks/result` が答えた後も、task がその要求を stream として指したままになる。外から見えるのは (1) 公開の `store.resultStream` の値 (2) 終端になった後も動く道具の質問が、保留されずに、終わった要求の stream へ送られること。(1) を確かめるテストは内部側 (test_tasks_server_internal) にあり、(2) はどの Scenario も定めていない | 問い: 終端・期限切れの task の道具が出す質問を「送らずにその場で断る」と仕様 (MCP-TASKS-23 に 1 文) にするか。あわせて `resultStream`・`setResultStream`・`onResultStream` を公開から外すか。使い手は src で task_methods.nim (結ぶ・解く) と server/tasks.nim (hook と読み出し) だけ。E テストは `resultStream` を待ちの合図に 2 ファイル (test_tasks_http・test_tasks_http_g0e) で使う |
+| `src/protocol/task_methods.nim:SDL:6567f7aacb4bbabc:0` | task_methods.nim:49 | `store.setResultStream(id, "")` → `discard` | spec_question | 上の行と同じ (解かれないまま残る) | 上の行と同じ問い |
+| `src/protocol/tasks.nim:RVR:115a88da64ad7c9b:0` | protocol/tasks.nim:165 | `return none(int64)` → 既定値 | equivalent | `Option[int64]` の既定値は none | — |
+| `src/protocol/tasks.nim:ROR:b6ebb744f6bc2d02:0` | protocol/tasks.nim:169 | `dot >= 0` → `>` | equivalent | 違いが出るのは `dot == 0` (文字列が `.` で始まる) だけ。直前の `isDateTime` が 10 文字目の `T` と日付の形を求めるので、そこを通った文字列の先頭は `.` にならない | — |
+| `src/protocol/tasks.nim:ROR:b901314701bfd0a5:0` | protocol/tasks.nim:171 | `stop < base.len` → `<=` | equivalent | 違いが出るのは小数部の数字が文字列の末尾まで続くときだけ。`isDateTime` が小数部の後ろに `Z` か時差を求めるので、循環は必ず数字でない文字で止まり、`stop == base.len` にならない (前回これを殺した「Given a time whose fraction ends the text」は、今は `isDateTime` が先に断る) | — |
+| `src/protocol/tasks.nim:RVR:115a88da64ad7c9b:1` | protocol/tasks.nim:175 | `return none(int64)` → 既定値 | equivalent | `Option[int64]` の既定値は none | — |
+| `src/protocol/tasks.nim:RVR:b667109c9117097f:0` | protocol/tasks.nim:190 | `return none(McpTask)` → 既定値 | equivalent | `Option[McpTask]` の既定値は none | — |
+| `src/protocol/tasks.nim:RVR:b667109c9117097f:1` | protocol/tasks.nim:196 | 同上 | equivalent | 同上 | — |
+| `src/protocol/tasks.nim:RVR:b667109c9117097f:2` | protocol/tasks.nim:207 | 同上 | equivalent | 同上 | — |
+| `src/protocol/tasks.nim:RVR:de4a76bc9ca7094b:0` | protocol/tasks.nim:252 | `return none(Option[int64])` → 既定値 | equivalent | `Option[Option[int64]]` の既定値は none | — |
+| `src/protocol/tasks.nim:ROR:394635f51fa4c60e:0` | protocol/tasks.nim:272 | `value >= 9.223372036854775807e18` → `>` | undecided | 違いが出るのはちょうど 2^63 の ttl だけで、変異後は範囲の外の float を int64 に変換する (C の未定義動作)。測った機 (arm64) は飽和して `int64.high` になり元と同じ、x86-64 は `int64.low` になり、既存の E テスト (test_tasks_store「Given a ttl of 2^63 milliseconds, ...」、ジョブに入っている) が落ちるはず。機種で結果が分かれ、6 つの語のどれにも収まらない。前回は「許容」としたが、代表が受け入れた記録は無い | 問い: 測る機では同値になる変異を、機種によるものとして受け入れるか、x86-64 で 1 回測って殺されることを確かめるか |
+| `src/protocol/tasks.nim:ROR:68c9d096fcb44c25:0` | protocol/tasks.nim:314 | `ttl > 0` → `>=` | equivalent | 違いが出るのは `ttl == 0` だけで、そのとき右の項 `createdAtMs > int64.high - 0` は int64 のどの値でも偽 | — |
+| `src/protocol/tasks.nim:ROR:69f45c6ba00f7bdd:0` | protocol/tasks.nim:314 | `createdAtMs > int64.high - ttl` → `>=` | equivalent | 等しいとき、飽和の値 `int64.high` と、飽和しない和 `createdAtMs + ttl` は同じ値で、和は溢れない | — |
+| `src/protocol/tasks.nim:ROR:35b5daa1003aca56:0` | protocol/tasks.nim:383 | `ttl.get > store.maxTtlMs.get` → `>=` | equivalent | 等しいとき、代入される `maxTtlMs` は今の `ttl` と同じ値 | — |
+| `src/protocol/tasks.nim:ROR:bad777869457471a:0` | protocol/tasks.nim:413 | `requestId.len > 0` → `>=` | spec_question | stream を解くとき (`""`) にも `onResultStream` が呼ばれる。SDK のサーバーの hook は保留の質問を取り出して送るが、解く時点 (終端の後) では `onStatusChange` が保留を消し終えているので、サーバーの入口からは違いが出ない。違いが見えるのは、公開の `setResultStream` と `onResultStream` を使い手が直接使ったときだけで、それを確かめるテストは内部側 (test_tasks_store_internal「Given a hook for result streams, ...」) にある | task_methods.nim:48 の行と同じ問い (この 3 つを公開から外せば、この変異は同値になる。公開に残すなら、内部の 2 本を外部へ戻せば 3 件とも殺せる) |
+| `src/protocol/tasks.nim:SDL:2413a04126052c00:0` | protocol/tasks.nim:455 | 末尾の `none(string)` → `discard` | equivalent | `result` は `Option[string]` で、代入しなければ none | — |
+| `src/server/tasks.nim:RVR:3ac2bd94b4efe6f7:0` | server/tasks.nim:50 | `return none(JsonNode)` → 既定値 | equivalent | `Option[JsonNode]` の既定値は none | — |
+| `src/server/tasks.nim:RVR:3ac2bd94b4efe6f7:1` | server/tasks.nim:57 | 同上 | equivalent | 同上 | — |
+| `src/server/tasks.nim:SDL:fb532cd7a80e0870:0` | server/tasks.nim:118 | 終端で `sessionOf.del(task.taskId)` → `discard` | equivalent | `sessionOf` を読むのは `onStatusChange` だけで、終端の後はその task に状態の変化が起きない (`transition`・`finish`・`cancel` が終端を先に断る)。残った項目は読まれず、差はメモリだけ (表は `enableTasks` の局所変数で、外から数えられない) | — |
+| `src/server/tasks.nim:SDL:178b5575b6d128b0:0` | server/tasks.nim:124 | 期限切れで `held.del(task.taskId)` → `discard` | spec_question | 残った保留は送られない (期限切れの task には `tasks/result` が届かず、hook が呼ばれない) が、上限の勘定には残る。期限切れの後も動き続ける道具が質問を出すと、元は空の列から数え直して保留し、変異後は前の保留を数えて早く断る (`maxQueuedMessages` が 1 なら次の 1 件目で `ctx.elicit` が例外)。期限切れの task の質問の扱いはどの Scenario も定めていない (前回は「読まれない」としたが、`holdForTask` が長さを読む) | task_methods.nim:48 の行と同じ問い (「その場で断る」と決めれば、この掃除は勘定に関わらなくなる) |
+| `src/server/tasks.nim:SDL:fb532cd7a80e0870:1` | server/tasks.nim:125 | 期限切れで `sessionOf.del(task.taskId)` → `discard` | equivalent | 期限切れの task は store から消えていて状態の変化が起きないので、`sessionOf` の項目は読まれない。差はメモリだけ | — |
+| `src/server/tasks.nim:RVR:9bd38dfae0fced9f:0` | server/tasks.nim:130 | `return none(JsonRpcResponse)` → 既定値 | equivalent | `Option[JsonRpcResponse]` の既定値は none | — |
+| `src/server/tasks.nim:RVR:9bd38dfae0fced9f:1` | server/tasks.nim:135 | 同上 | equivalent | 同上 | — |
+| `src/server/tasks.nim:RVR:4e102445986c6351:0` | server/tasks.nim:138 | 同上 | equivalent | 同上 | — |
+| `src/server/tasks.nim:RVR:9bd38dfae0fced9f:2` | server/tasks.nim:146 | 同上 | equivalent | 同上 | — |
+| `src/server/tasks.nim:RVR:9bd38dfae0fced9f:3` | server/tasks.nim:152 | 同上 | equivalent | 同上 | — |
+| `src/server/tasks.nim:RVR:686aca932944807c:0` | server/tasks.nim:242 | `cancelClientTask` の `return taskOf(resultOf(await server.request(...)))` → 既定値 | test_owed | 変異後は `tasks/cancel` を送らず、空の `McpTask` (id が空、`working`) を返す。E テストは capability が無くて断る場合しか確かめていない | MCP-TASKS-18 (隣の `listClientTasks` のテストと同じ置き場。取り消しそのものは MCP-TASKS-10)。test_tasks_server の「as the requestor」の suite に: `samplingTasks` (cancel を宣言) の client に `fx.server.cancelClientTask(peer.session, "c-1")` を呼び、`fx.answerNext("", "tasks/cancel", 0, clientTask("c-1", "cancelled"))` で答え、送った要求の `params.taskId == "c-1"` と、返った task の `taskId == "c-1"`・`status == tsCancelled` を確かめる。変異だと要求が出ず (`answerNext` の待ちが尽きる)、返る task も空 |
+
+### timeout 12 件 (検出に数える)
+
+12 件とも、ただ遅いのではなく、終わらない待ち・循環になる変異。測り直しは要らない。
+
+| 指紋 | file:line | 変異 | 終わらない理由 |
+|---|---|---|---|
+| `src/client/tasks.nim:RVR:71a44e014d93d55d:0` | client/tasks.nim:87 | `getTask` の return → 既定値 | 既定の `McpTask` は `working` で `pollInterval` も無く、`waitForTask` の poll が終わらない (無限の循環) |
+| `src/protocol/task_methods.nim:SDL:21cca76d35529ab4:0` | task_methods.nim:122 | `await sleepAsync(pause)` → `discard` | `pollTask` の循環が dispatcher に制御を返さない (無限の循環) |
+| `src/protocol/task_methods.nim:SDL:46e91f2a6973c554:0` | task_methods.nim:153 | `asyncCheck finishWhenDone(...)` → `discard` | 仕事が終わっても task が `working` のまま。結果を待つ側・状態を待つ側が終わらない (無限の待ち) |
+| `src/protocol/tasks.nim:SDL:00b7375db0f52332:0` | protocol/tasks.nim:172 | `inc stop` → `discard` | 小数部の数字を数える循環が進まない (無限の循環) |
+| `src/protocol/tasks.nim:LOR:e49625bc6768711d:0` | protocol/tasks.nim:314 | `and` → `or` | ttl のある task すべての期限が `int64.high` になり、期限切れを待つテストが終わらない (無限の待ち) |
+| `src/protocol/tasks.nim:SDL:0fc71c49d8a85dfc:0` | protocol/tasks.nim:328 | `result.add id` → `discard` | 期限切れの id を集めないので何も消えず、`awaitOutcome` が 1 ミリ秒の待ちを繰り返す (無限の循環) |
+| `src/protocol/tasks.nim:SDL:2daf5d8355cab0c8:0` | protocol/tasks.nim:331 | `store.entries.del(id)` → `discard` | 期限切れの task が消えない。同上 |
+| `src/protocol/tasks.nim:SDL:f5ecd6662a858c88:0` | protocol/tasks.nim:475 | `change(entry, tsFailed, ...)` → `discard` | 失敗した task が `working` のまま。結果を待つ側が終わらない (無限の待ち) |
+| `src/protocol/tasks.nim:SDL:ca4f2b74329f947c:0` | protocol/tasks.nim:477 | `change(entry, tsCompleted, ...)` → `discard` | 同上、`completed` |
+| `src/protocol/tasks.nim:SDL:dc19cb5cda93c14c:0` | protocol/tasks.nim:491 | `change(entry, tsCancelled, ...)` → `discard` | 同上、`cancelled` |
+| `src/protocol/tasks.nim:SDL:c74c22393c54b1c4:0` | protocol/tasks.nim:518 | `await waiter` → `discard` | ttl 無しの task の待ちが、譲らない循環になる (無限の循環) |
+| `src/server/tasks.nim:RVR:f84cc25beb6a1bac:0` | server/tasks.nim:217 | `getClientTask` の return → 既定値 | 既定の `McpTask` は `working` で、`awaitClientTask` の poll が終わらない (無限の循環) |
+
 測定: `nim-muter`、ジョブ `tests/mutation/tasks.json`、本線の 36a4c8a5 (2026-10-07)。対象は `src/protocol/tasks.nim`、`src/protocol/task_methods.nim`、`src/server/tasks.nim`、`src/client/tasks.nim`。
 
 | 全変異 | killed | timeout | survived | runError | compileError |
