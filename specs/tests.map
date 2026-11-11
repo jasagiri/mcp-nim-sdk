@@ -744,6 +744,7 @@ MCP-AUTH-25 | tests/external/test_auth_client_flow.nim | Given pre-registered cr
 MCP-AUTH-26 | tests/internal/test_auth_client_flow_internal.nim | Given an authorization server that supports Client ID Metadata Documents, when the client has such a URL, then it uses it and does not register
 MCP-AUTH-26 | tests/external/test_auth_client_flow.nim | Given a client_id URL without a path or over http, when the client is built and used, then it is refused
 MCP-AUTH-26 | tests/external/test_auth_client_flow.nim | Given a Client ID Metadata Document URL but a server that does not advertise support, when the client authorizes, then it registers dynamically
+MCP-AUTH-26 | tests/external/test_auth_client_flow.nim | Given an authorization server that supports Client ID Metadata Documents, when the client has a valid https URL, then it is the client_id and the client does not register
 MCP-AUTH-26 | tests/external/test_auth_client_flow.nim | Given a client_id URL that names a loopback or private address and version <version>, when the client authorizes, then it is refused before the user is asked
 MCP-AUTH-27 | tests/external/test_auth_client_flow.nim | Given metadata advertising iss and a response with another iss, when the client receives it, then the code is never sent
 MCP-AUTH-27 | tests/external/test_auth_client_flow.nim | Given metadata advertising iss and a response without it, when the client receives it, then it is rejected
@@ -756,8 +757,12 @@ MCP-AUTH-29 | tests/external/test_auth_client_flow.nim | Given an expired access
 MCP-AUTH-29 | tests/external/test_auth_client_flow.nim | Given a revoked access token and a valid refresh token and version <version>, when the server answers 401, then the refresh token answers it
 MCP-AUTH-29 | tests/external/test_auth_client_flow.nim | Given a spent refresh token and version <version>, when the server answers 401, then the client authorizes again
 MCP-AUTH-29 | tests/external/test_auth_client_flow.nim | Given a persisted token store and version <version>, when a new client starts, then it presents the stored token first
+MCP-AUTH-29 | tests/external/test_auth_client_flow.nim | Given a refresh that succeeded and version <version>, when two more requests are sent, then the refreshed token is reused and not refreshed again
 MCP-AUTH-29 | tests/external/test_auth_client_flow.nim | Given a configuration made with the defaults, when its clock is read, then it is the system clock
 MCP-AUTH-29 | tests/internal/test_auth_client_flow_internal.nim | Given an expired access token without a refresh token and version <version>, when the header is asked for, then there is none and nothing is sent
+MCP-AUTH-29 | tests/external/test_auth_client_flow.nim | Given credentials whose issuer is not the one that issued the token and version <version>, when the token has expired, then the refresh token is not sent
+MCP-AUTH-29 | tests/external/test_auth_client_flow.nim | Given a refresh token the server rejects and version <version>, when the header is asked for twice, then both are none and only the first asks the server
+MCP-AUTH-29 | tests/external/test_auth_client_flow.nim | Given a refresh token the server rejects and a user who then refuses and version <version>, when the server answers 401, then a new client of the same store has no token to present
 MCP-AUTH-29 | tests/external/test_auth_client_flow.nim | Given an expired access token and a client that has not discovered the server yet and version <version>, when the header is asked for, then there is none and nothing is sent
 MCP-AUTH-29 | tests/internal/test_auth_client_flow_internal.nim | Given credentials whose issuer is not the one that issued the token and version <version>, when the token has expired, then the refresh token is not sent
 MCP-AUTH-29 | tests/internal/test_auth_client_flow_internal.nim | Given a refresh that succeeded and version <version>, when the next request is sent, then the refreshed token is the stored one and is not refreshed again
@@ -1059,6 +1064,7 @@ MCP-STRUCTOUT-6 | tests/external/test_structured_tool_output.nim | Given a tool 
 MCP-RESLINK-1 | tests/external/test_resource_links.nim | Given a version that has resource links, when a tool returns one, then the block is sent as it is
 MCP-RESLINK-1 | tests/external/test_resource_links.nim | Given a version that has resource links, when a prompt message holds one, then it is sent as it is
 MCP-RESLINK-1 | tests/internal/test_resource_links_internal.nim | Given the builder, when a resource link is made, then only the fields that were given are sent
+MCP-RESLINK-1 | tests/external/test_tool_builders.nim | Given a resource link built with a uri and a name only, when it is read, then it has exactly type, uri and name
 MCP-RESLINK-2 | tests/external/test_resource_links.nim | Given a version without resource links, when a tool returns one, then a text block with its name and uri stands in
 MCP-RESLINK-2 | tests/external/test_resource_links.nim | Given a version without resource links, when a prompt message holds one, then it is replaced by text
 MCP-RESLINK-3 | tests/external/test_resource_links.nim | Given a tool result with a resource link, when the client calls the tool, then the item carries the link's fields

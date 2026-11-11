@@ -483,6 +483,20 @@ suite "Authorization flow, client registration":
       discard transportFor(newOAuthClient(env.config), env.resourceServer.url).ping()
       check env.authServer.log.requestsTo("/register").len == 1
 
+    test "Given an authorization server that supports Client ID Metadata Documents, when the client has a valid https URL, then it is the client_id and the client does not register":
+      var env = start(mpv20251125)
+      defer: env.stop()
+      env.authServer.metadata["client_id_metadata_document_supported"] = %true
+      let url = "https://app.example.com/oauth/client-metadata.json"
+      env.config.clientIdMetadataUrl = some(url)
+      let seen = new(seq[string])
+      env.config.authorize = authorizerFor(env.authServer, seen)
+      let transport = transportFor(newOAuthClient(env.config), env.resourceServer.url)
+      check transport.ping(){"result", "served"}.getBool()
+      check seen[].len == 1
+      check seen[][0].queryValue("client_id") == some(url)
+      check env.authServer.log.requestsTo("/register").len == 0
+
   for v in authVersions:
 
     test "Given a pre-registered client with a secret and version " & $v & ", when the token request is sent, then the secret goes in HTTP Basic and not in the body":
@@ -666,6 +680,20 @@ suite "Authorization flow, refreshing":
       check transport.ping(){"result", "served"}.getBool()
       check env.consents[].len == 2
 
+    test "Given a refresh that succeeded and version " & $v & ", when two more requests are sent, then the refreshed token is reused and not refreshed again":
+      var env = start(v)
+      defer: env.stop()
+      env.authServer.accessTokenLifetime = 3600
+      let transport = transportFor(newOAuthClient(env.config), env.resourceServer.url)
+      discard transport.ping()
+      env.clock[] = env.clock[] + initDuration(hours = 2)
+      discard transport.ping()
+      discard transport.ping()
+      # the code exchange and one refresh
+      check env.authServer.log.requestsTo("/token").len == 2
+      let posts = env.resourceServer.log.requestsTo("/mcp")
+      check posts[^1].bearerOf == posts[^2].bearerOf
+
     test "Given a persisted token store and version " & $v & ", when a new client starts, then it presents the stored token first":
       var env = start(v)
       defer: env.stop()
@@ -707,6 +735,48 @@ suite "Authorization flow, when a stored token cannot be refreshed":
       let sent = env.tokenRequests
       check waitFor(newOAuthClient(env.config).authorizationHeader()).isNone
       check env.tokenRequests == sent
+
+    test "Given credentials whose issuer is not the one that issued the token and version " & $v &
+         ", when the token has expired, then the refresh token is not sent":
+      var env = start(v)
+      defer: env.stop()
+      env.authServer.accessTokenLifetime = 60
+      let client = newOAuthClient(env.config)
+      discard transportFor(client, env.resourceServer.url).ping()
+      var creds = env.config.credentialStore.load(env.authServer.issuer).get
+      creds.issuer = "https://other-as.example.com"
+      env.config.credentialStore.save(env.authServer.issuer, creds)
+      env.clock[] = env.clock[] + initDuration(minutes = 5)
+      let sent = env.tokenRequests
+      check waitFor(client.authorizationHeader()).isNone
+      check env.tokenRequests == sent
+
+    test "Given a refresh token the server rejects and version " & $v &
+         ", when the header is asked for twice, then both are none and only the first asks the server":
+      var env = start(v)
+      defer: env.stop()
+      env.authServer.accessTokenLifetime = 60
+      let client = newOAuthClient(env.config)
+      discard transportFor(client, env.resourceServer.url).ping()
+      env.authServer.refreshTokens.clear()
+      env.clock[] = env.clock[] + initDuration(minutes = 5)
+      let sent = env.tokenRequests
+      check waitFor(client.authorizationHeader()).isNone
+      check waitFor(client.authorizationHeader()).isNone
+      check env.tokenRequests == sent + 1
+
+    test "Given a refresh token the server rejects and a user who then refuses and version " & $v &
+         ", when the server answers 401, then a new client of the same store has no token to present":
+      var env = start(v)
+      defer: env.stop()
+      let client = newOAuthClient(env.config)
+      discard transportFor(client, env.resourceServer.url).ping()
+      env.authServer.refreshTokens.clear()
+      var refusing = env.config
+      refusing.authorize = denyingAuthorizer()
+      expect CatchableError:
+        discard waitFor newOAuthClient(refusing).handleChallenge(401, env.resourceChallenge)
+      check waitFor(newOAuthClient(env.config).authorizationHeader()).isNone
 
 
 suite "Authorization flow, answers that are not worth repeating":

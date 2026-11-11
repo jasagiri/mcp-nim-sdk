@@ -16,6 +16,10 @@ suite "tool definitions and results built through the entry":
                                      "b": {"type": "number", "description": "the second"}},
                       "required": ["a", "b"]}}
 
+  test "Given a resource link built with a uri and a name only, when it is read, then it has exactly type, uri and name":
+    check createResourceLinkToolContent("file:///a.txt", "a") ==
+      %*{"type": "resource_link", "uri": "file:///a.txt", "name": "a"}
+
   test "Given a result built without isError, when it is read, then it is not an error":
     let answer = createToolResult(@[createTextToolContent("3")])
     check answer["content"] == %*[{"type": "text", "text": "3"}]
