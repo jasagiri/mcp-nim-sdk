@@ -1,5 +1,35 @@
 # G2 変異検出: ext_tasks ジョブ
 
+## 測り直し (拡張ブランチの b04fcb9c、2026-11-11)
+
+測定: `nim-muter` 0.2.15、ジョブ `tests/mutation/ext_tasks.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。
+状態: 測定済み (仕分けは 2026-11-12、コードを読んだ結論。変異を手では当てていない)。
+
+| 全体 | killed | timeout | survived | runError | compileError |
+|---|---|---|---|---|---|
+| 149 | 128 | 2 | 7 | 0 | 12 |
+
+### 生き残りの仕分け
+
+| 指紋 | file:line | 変異 | class | 理由 | 仕様 ID / 足すテストの案 |
+|---|---|---|---|---|---|
+| `src/ext/tasks/server.nim:SDL:8a17cc5c9a298608:0` | server.nim:112 | `internalError` の `stderr.writeLine("[mcp-tasks] " & what)` → `discard` | accepted | 断ること (-32603 を返す) は保たれ、消えるのは標準エラーに出す診断の 1 行だけ。失敗の文面は契約ではない (代表の決定 2026-10-23)。この行が残るかは、下の `SDL:7a97a8f794ddcf54:0` の問いの答えに従う (防御ごと消すなら変異も消える) | (なし) |
+| `src/ext/tasks/server.nim:SDL:7a97a8f794ddcf54:0` | server.nim:113 | `internalError` の `newRequestError(ErrInternal, "Internal error")` → `discard` (戻り値が nil になり `raise nil`) | spec_question | 拡張自身の経路 (`finishWhenDone`) は結果かエラーを必ず持たせるので届かないが、公開の `ext.store` (`TaskStore`) にアプリケーションが `finish(id, TaskOutcome(), toolErrorsFail = false)` (結果の無い completed) や `finish(id, TaskOutcome(result: some(%*{"isError": true})))` (エラーの無い failed) を呼ぶと届く。元は `tasks/get` が -32603、変異は nil を raise して落ちる。どの仕様 ID も、アプリケーションが拡張の task を store で直接終わらせる場合を述べていない。問い: 拡張の task をアプリケーションが `TaskStore.finish` で直接終わらせることを認めるか。認めるなら「status が要る結果・エラーを欠く task の `tasks/get` は -32603」を MCP-EXT-TASKS-2 に足して E テストを書く。認めないなら `finish` を公開から外し、`detailed` の 2 つの防御を消す | `finish` の使い手: src 1 か所 (`protocol/task_methods.nim` の `finishWhenDone`)、tests/external 2 ファイル 14 か所 (`test_tasks_store.nim` 13、`test_security_tasks.nim` 1)、tests/internal 0。推奨: 公開から外す (公開 API は絞る、代表の方針 2026-11-11)。ただし `test_tasks_store.nim` の E テストが `finish` を直接呼んでいるので、それらを `runAsTask` 経由に書き直すか内部へ移す作業が付く |
+| `src/ext/tasks/server.nim:SDL:93c05b0a9345fd14:0` | server.nim:199 | `requestInput` の取り消し後の `inputs.pending.del(issued)` → `discard` | equivalent | 待ちが取り消しで終わるのは、`serveDetached` の `cancel` が呼ばれたときだけで、呼ぶのは `TaskStore.cancel` と `sweep` の `cancelWork` だけ (この ctx は `inFlight` に載らないので `notifications/cancelled` では止まらない)。どちらも同じ同期の呼び出しの中で、`statusChanged` か `onExpire` が `ext.inputs.del(taskId)` で `TaskInputs` ごと外す。`pending` を読む `detailed`・`fulfil`・次の `requestInput` はどれも `ext.inputs` を引いてから読むので、残った項目は誰にも読まれない。代表の決定「終端・期限切れの task がその後に出す質問は、送らずにその場で断る」(2026-11-12) が当たるのは `scope.taskId notin ext.inputs` の検査のほうで、この行ではない | |
+| `src/ext/tasks/server.nim:RVR:9bd38dfae0fced9f:0` | server.nim:353 | `return none(JsonRpcResponse)` → `<return default>` | equivalent | リテラルではない return なので `default(Option[JsonRpcResponse])` になる。`Option` の既定値は none で、`none(JsonRpcResponse)` と同じ値 | |
+| `src/ext/tasks/server.nim:RVR:4e102445986c6351:0` | server.nim:356 | `return none(JsonRpcResponse)` → `<return default>` | equivalent | 同上 (`default(Option[JsonRpcResponse])` は none) | |
+| `src/ext/tasks/server.nim:RVR:9bd38dfae0fced9f:1` | server.nim:361 | `return none(JsonRpcResponse)` → `<return default>` | equivalent | 同上 | |
+| `src/ext/tasks/server.nim:RVR:9bd38dfae0fced9f:2` | server.nim:364 | `return none(JsonRpcResponse)` → `<return default>` | equivalent | 同上 | |
+
+### timeout 2 件
+
+| 指紋 | file:line | 変異 | 無限ループか、遅いだけか |
+|---|---|---|---|
+| `src/ext/tasks/client.nim:RVR:bde32d695650b607:0` | client.nim:101 | `getTask` の `return detailedOf(answer, GetTaskMethod)` → `<return default>` | 無限ループ。`default(DetailedTask)` の status は `working` なので、`awaitTask` の `while true` が終端を見ずに問い合わせ続ける |
+| `src/ext/tasks/server.nim:SDL:634207a740e79924:0` | server.nim:176 | `requestInput` の `inc inputs.counter` → `discard` | 無限ループ。鍵が毎回 `input-0` になり、同じ task で鍵を省いた 2 回目の質問から `issued notin inputs.used` が偽のまま、await の無い `while true` が回り続ける (イベントループごと止まる) |
+
+## 初回の測定 (拡張ブランチの c9b5c264)
+
 測定: `nim-muter`、ジョブ `tests/mutation/ext_tasks.json`、拡張ブランチの c9b5c264 (初回の測定。比べる記録は無い)。
 対象は `src/ext/tasks.nim` と `src/ext/tasks/{client,server,wire}.nim`。`src/ext/**` は測定後に変わっていないので、行番号は今のものと同じ。 (2026-10-12 より前の話。下記。)
 

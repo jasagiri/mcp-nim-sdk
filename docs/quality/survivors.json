@@ -111,6 +111,166 @@
       "reason": "`handleChallenge` で更新が断られたあと、認可が成功すれば 346 行の `save` が上書きするので違いは出ない。認可が失敗する (利用者が拒む) と、取り消されたトークンが保存に残り、次の要求でまた出される。前に検出していた `Given a refresh token the server rejects and a user who then refuses …` は内部に移った。 / MCP-AUTH-29。「when a stored token cannot be refreshed」の suite に足す。認可を済ませ、`env.authServer.refreshTokens.clear()`、`authorize` を `denyingAuthorizer()` に替えた設定 (保存は共有) の client で `handleChallenge(401, env.resourceChallenge)` が例外。そのあと `newOAuthClient(env.config).authorizationHeader()` が none (変異だと、残った古いトークンの `Bearer …` が返る)。補助 `denyingAuthorizer`・`resourceChallenge` は外部のファイルに既にある。"
     },
     {
+      "fingerprint": "src/auth/oauth/grants.nim:ROR:0d63f1f293da3ba0:0",
+      "file": "src/auth/oauth/grants.nim",
+      "line": 103,
+      "mutator": "ROR",
+      "original": "auth.lifetime > DurationZero",
+      "replacement": "<> -> >=>",
+      "class": "test_owed",
+      "reason": "寿命 0 の `private_key_jwt` で、元は 1 分の assertion、変異は `exp` = `iat` の assertion を送る。入口からは `ClientCredentialsConfig.assertionLifetime = DurationZero` で届く / MCP-EXT-AUTH-7。C: 署名の鍵を持つ config の `assertionLifetime` を `DurationZero` にして ping。served になり、`client_assertion` を fixtures で読むと `exp - iat == 60`。変異では fake の認可サーバーが `exp <= now` で invalid_client を返し、要求が失敗する (内部側に同じ主旨のテスト「... without a lifetime ... lives one minute」がある)"
+    },
+    {
+      "fingerprint": "src/auth/oauth/grants.nim:ROR:e173a3002d324a19:0",
+      "file": "src/auth/oauth/grants.nim",
+      "line": 118,
+      "mutator": "ROR",
+      "original": "scopes.len > 0",
+      "replacement": "<> -> >=>",
+      "class": "test_owed",
+      "reason": "scope が 1 つも無いとき、変異は空の `scope=` をトークンの要求に載せる (RFC 6749 3.3 の scope は 1 つ以上の語)。fake は `.get(\"\")` で読むので今は見えない / MCP-EXT-AUTH-7。C の「Given a 401 and a client secret, ...」に `check r.field(\"scope\").isNone` を足す。変異では `some(\"\")`"
+    },
+    {
+      "fingerprint": "src/auth/oauth/grants.nim:ROR:e173a3002d324a19:1",
+      "file": "src/auth/oauth/grants.nim",
+      "line": 130,
+      "mutator": "ROR",
+      "original": "scopes.len > 0",
+      "replacement": "<> -> >=>",
+      "class": "test_owed",
+      "reason": "拡張は `jwtBearerGrant` に常に `@[]` を渡すので、変異は ID-JAG を出す要求のすべてに空の `scope=` を載せる / MCP-EXT-AUTH-7。E の流れのテスト (例「Given a stored token, ...」) に `check env.rasRequests[][0].field(\"scope\").isNone` を足す。変異では `some(\"\")`"
+    },
+    {
+      "fingerprint": "src/auth/oauth/grants.nim:SDL:44f009e404fffc90:1",
+      "file": "src/auth/oauth/grants.nim",
+      "line": 131,
+      "mutator": "SDL",
+      "original": "fields.add (\"scope\", scopes.join(\" \"))",
+      "replacement": "discard",
+      "class": "unreached",
+      "reason": "この行は `scopes.len > 0` のときだけ走る。src の唯一の呼び手 `auth_enterprise_managed.acquire` は `@[]` を渡し、`jwtBearerGrant` は入口から export されていないので、入口から scope を渡す入力を作れない。`scopes` の引数そのものが入口からは使われていない (引数を消せば 130 行の分岐も消える。司会への申し送り)"
+    },
+    {
+      "fingerprint": "src/auth/oauth/grants.nim:LOR:a275f817c5d87c0d:0",
+      "file": "src/auth/oauth/grants.nim",
+      "line": 147,
+      "mutator": "LOR",
+      "original": "token.isNone or token.get.len == 0",
+      "replacement": "<or -> and>",
+      "class": "test_owed",
+      "reason": "IdP の応答に `access_token` が無いとき、元は OAuthError で断り、変異は none の `get` で UnpackDefect になる (空文字列の `access_token` は、変異でも後段の `decodeJwtUnverified` が断るので文面だけの差) / MCP-EXT-AUTH-11。E: fake の IdP が `access_token` の無い 200 を返す → `failureOf` が McpTransportError を返し、`rasRequests.len == 0`。変異では Defect でテストが落ちる。下の 2 件と同じ 1 本 (欠ける欄を 3 通り)"
+    },
+    {
+      "fingerprint": "src/auth/oauth/grants.nim:LOR:192daf3ac80ad8b2:0",
+      "file": "src/auth/oauth/grants.nim",
+      "line": 150,
+      "mutator": "LOR",
+      "original": "issued.isNone or issued.get.len == 0",
+      "replacement": "<or -> and>",
+      "class": "test_owed",
+      "reason": "`issued_token_type` が無い応答で、元は OAuthError、変異は UnpackDefect (空文字列は後段の `issuedTokenType != TokenTypeIdJag` が断る) / MCP-EXT-AUTH-11。上と同じ 1 本 (`issued_token_type` を欠く応答)"
+    },
+    {
+      "fingerprint": "src/auth/oauth/grants.nim:LOR:ebd4fe332f70f857:0",
+      "file": "src/auth/oauth/grants.nim",
+      "line": 153,
+      "mutator": "LOR",
+      "original": "tokenType.isNone or tokenType.get.len == 0",
+      "replacement": "<or -> and>",
+      "class": "test_owed",
+      "reason": "`token_type` が無い応答で、元は OAuthError、変異は UnpackDefect (空文字列は後段の `N_A` との比較が断る) / MCP-EXT-AUTH-11。上と同じ 1 本 (`token_type` を欠く応答)"
+    },
+    {
+      "fingerprint": "src/auth/oauth/grants.nim:LOR:6002bd0c01bdc0ce:0",
+      "file": "src/auth/oauth/grants.nim",
+      "line": 168,
+      "mutator": "LOR",
+      "original": "request.subjectToken.len == 0 or request.subjectTokenType.len == 0",
+      "replacement": "<or -> and>",
+      "class": "unreached",
+      "reason": "src の唯一の呼び手 `auth_enterprise_managed.obtainGrant` が、`assertion.token.len == 0` を先に OAuthError で断り、`subjectTokenType(kind)` は列挙からの全域の関数で空を返さない。`exchangeToken` は入口から export されていないので、どちらの項も真にする入力を作れない"
+    },
+    {
+      "fingerprint": "src/auth/oauth/grants.nim:ROR:249ccad8aa6a1ac3:0",
+      "file": "src/auth/oauth/grants.nim",
+      "line": 179,
+      "mutator": "ROR",
+      "original": "request.scopes.len > 0",
+      "replacement": "<> -> >=>",
+      "class": "test_owed",
+      "reason": "scope が 1 つも無いとき、変異は IdP への交換の要求に空の `scope=` を載せる。fake は `.get(\"\")` で読むので今は見えない / MCP-EXT-AUTH-7。E の scope を持たない流れのテストに `check env.idpRequests[][0].field(\"scope\").isNone` を足す (130 行のものと同じテストに並べられる)。変異では `some(\"\")`"
+    },
+    {
+      "fingerprint": "src/auth/oauth/jwt.nim:LOR:5bb02e615676ccd7:0",
+      "file": "src/auth/oauth/jwt.nim",
+      "line": 57,
+      "mutator": "LOR",
+      "original": "signer.sign.isNil or signer.alg.len == 0",
+      "replacement": "<or -> and>",
+      "class": "test_owed",
+      "reason": "`JwtSigner` は欄が公開の object で、入口から `JwtSigner(alg: \"HS256\")` (署名の関数が nil) を `newJwtSigner` を通さずに作れる。元は OAuthError「not set up」、変異は nil の関数を呼んで落ちる / MCP-EXT-AUTH-7。C: `config.signer = some(JwtSigner(alg: \"HS256\"))` で ping → McpTransportError、`env.requests[].len == 0`。変異では SIGSEGV (内部側に同じ主旨のテストがある)。申し送り: `JwtSigner` の欄を非公開にすれば `newJwtSigner` だけが作り手になり、この検査は届かなくなる"
+    },
+    {
+      "fingerprint": "src/auth/oauth/jwt.nim:LOR:a7266fa08d380786:0",
+      "file": "src/auth/oauth/jwt.nim",
+      "line": 76,
+      "mutator": "LOR",
+      "original": "segment.len == 0 or; not segment.allCharsInSet({'A' .. 'Z', 'a' .. 'z', '0' .. '9', '-', '_'})",
+      "replacement": "<or -> and>",
+      "class": "test_owed",
+      "reason": "変異では検査が常に偽になり、空の署名部と、`+`・`/`・`=` を含む断片 (`base64.decode` は受ける) が通る。公開の `checkIdentityAssertionGrant` から届く / MCP-EXT-AUTH-11 (内部側の同じ主旨のテストは MCP-EXT-AUTH-7)。E の suite「checkIdentityAssertionGrant」: 正しい ID-JAG の署名部を空にしたものと `+` を混ぜたもの → `expect OAuthError`。変異では受け入れて返る"
+    },
+    {
+      "fingerprint": "src/auth/oauth/jwt.nim:ROR:0b468e35d2c0ed63:0",
+      "file": "src/auth/oauth/jwt.nim",
+      "line": 88,
+      "mutator": "ROR",
+      "original": "token.len > MaxJwtLength",
+      "replacement": "<> -> >=>",
+      "class": "test_owed",
+      "reason": "ちょうど 16384 バイトの JWT を、元は読み、変異は断る。`checkIdentityAssertionGrant` から届く。上限の値は Scenario の文面には無いが、`specs/tests.map` が内部側の境界のテストを MCP-EXT-AUTH-7 に結んでいる / MCP-EXT-AUTH-7。E: claim を詰めて長さをちょうど 16384 にした ID-JAG は通り、1 バイト長いものは OAuthError。変異では前者も断る。`MaxJwtLength` は入口から export されていないので、テストは 16 * 1024 を数で書く"
+    },
+    {
+      "fingerprint": "src/auth/oauth/jwt.nim:LOR:b6c740b163c9d862:0",
+      "file": "src/auth/oauth/jwt.nim",
+      "line": 101,
+      "mutator": "LOR",
+      "original": "header.kind != JObject or claims.kind != JObject",
+      "replacement": "<or -> and>",
+      "class": "spec_question",
+      "reason": "見出しだけがオブジェクトでないときは次の行の `alg` の検査が同じ OAuthError で断る。本文だけがオブジェクトでないとき、元は OAuthError「must be JSON objects」、変異は `checkIdentityAssertionGrant` の `iss` の検査が OAuthSecurityError「was not issued by」で断る。断ることは保たれ、変わるのは文面と例外の種類 (OAuthError → その子の OAuthSecurityError)。src にこの 2 つを見分けて動作を変える箇所は無い (`discovery.nim` の見分けは別の経路)。どの仕様 ID も例外の種類を述べていない。問い: 「形の壊れた ID-JAG」と「宛先の違う ID-JAG」を、呼び手が例外の種類で見分けられることを仕様にするか / 推奨: 仕様にしない (どちらも OAuthError として断れば足りる)。そう決まれば、文面だけの差として accepted (失敗の文面は契約ではない) に移せる"
+    },
+    {
+      "fingerprint": "src/auth/oauth/jwt.nim:LOR:73513c8ac17bdc3a:0",
+      "file": "src/auth/oauth/jwt.nim",
+      "line": 103,
+      "mutator": "LOR",
+      "original": "header{\"alg\"}.isNil or header{\"alg\"}.kind != JString or; header{\"alg\"}.getStr().len == 0",
+      "replacement": "<or -> and>",
+      "class": "test_owed",
+      "reason": "`alg` が空文字列の見出しを、元は断り、変異は受け入れる (無い・文字列でない `alg` は変異でも断る) / MCP-EXT-AUTH-11 (内部側は MCP-EXT-AUTH-7)。上と同じ 1 本に `\"alg\": \"\"` の見出しを足す → `expect OAuthError`。変異では受け入れて返る"
+    },
+    {
+      "fingerprint": "src/auth/oauth/jwt.nim:LOR:b3a5663ab0317565:0",
+      "file": "src/auth/oauth/jwt.nim",
+      "line": 103,
+      "mutator": "LOR",
+      "original": "header{\"alg\"}.isNil or header{\"alg\"}.kind != JString",
+      "replacement": "<or -> and>",
+      "class": "test_owed",
+      "reason": "`alg` の無い見出しで、元は OAuthError、変異は nil の `kind` を読んで落ちる。`checkIdentityAssertionGrant` から届く / MCP-EXT-AUTH-11 (内部側は MCP-EXT-AUTH-7)。E の suite「checkIdentityAssertionGrant」: 見出しが `{\"typ\": \"oauth-id-jag+jwt\"}` だけの JWT を手で組む → `expect OAuthError`。変異では SIGSEGV。下の 1 件と同じ 1 本"
+    },
+    {
+      "fingerprint": "src/auth/oauth/jwt.nim:LOR:455f7b00bd1871aa:0",
+      "file": "src/auth/oauth/jwt.nim",
+      "line": 114,
+      "mutator": "LOR",
+      "original": "clientId.len == 0 or audience.len == 0",
+      "replacement": "<or -> and>",
+      "class": "unreached",
+      "reason": "src の唯一の呼び手 `grants.authenticate` が空の `clientId` を先に OAuthError で断る。`audience` は、client credentials では `found.issuer` か必須の `token_endpoint` (`metadata.nim` の `requiredString`)、enterprise では `withAudience` が空を `idpIssuer` (`checkFetchUrl` 済み)・`found.issuer` で埋めるので、空にならない。`clientAssertion` は入口から export されていない"
+    },
+    {
       "fingerprint": "src/auth/resource_server.nim:ROR:dedcfbcc643201d9:0",
       "file": "src/auth/resource_server.nim",
       "line": 100,
@@ -279,6 +439,166 @@
       "replacement": "<return default>",
       "class": "accepted",
       "reason": "失敗の文面は契約ではない (代表の決定 2026-10-23)。ここに届く `McpTaskError` は `create` の上限超過だけで、符号は -32603。結果も誤りも無い応答は `transport.toJson` が -32603 \"Internal error\" にして送るので、断ることと符号は保たれ、変わるのは文面 (\"Too many tasks\" → \"Internal error\") と stderr の 1 行だけ。既存の E テスト (test_tasks_client「Given a store that holds one task at most, ...」) は符号を確かめていて、通る / —"
+    },
+    {
+      "fingerprint": "src/ext/auth_client_credentials.nim:ROR:a1a5a51b51b89aa6:0",
+      "file": "src/ext/auth_client_credentials.nim",
+      "line": 162,
+      "mutator": "ROR",
+      "original": "c.config.assertionAudience == aaIssuer",
+      "replacement": "<== -> !=>",
+      "class": "test_owed",
+      "reason": "既定 (`aaIssuer`) で assertion の `aud` が token endpoint になり、`aaTokenEndpoint` で issuer になる。C の fake は `registry.audiences` に両方を入れているので見えない / MCP-EXT-AUTH-1。C: `env.registry.audiences = @[issuer]` にして既定の config で served、`@[token_endpoint]` にして `assertionAudience = aaTokenEndpoint` で served。変異ではどちらも invalid_client (内部側に同じ主旨の 2 本がある)"
+    },
+    {
+      "fingerprint": "src/ext/auth_client_credentials.nim:RVR:0c511227513989c7:0",
+      "file": "src/ext/auth_client_credentials.nim",
+      "line": 188,
+      "mutator": "RVR",
+      "original": "return none(string)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "リテラルではない return なので `default(Option[string])` になる。`Option` の既定値は none で、`none(string)` と同じ値"
+    },
+    {
+      "fingerprint": "src/ext/auth_client_credentials.nim:RVR:0c511227513989c7:1",
+      "file": "src/ext/auth_client_credentials.nim",
+      "line": 192,
+      "mutator": "RVR",
+      "original": "return none(string)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "同上 (`default(Option[string])` は none)"
+    },
+    {
+      "fingerprint": "src/ext/auth_client_credentials.nim:RVR:0c511227513989c7:2",
+      "file": "src/ext/auth_client_credentials.nim",
+      "line": 199,
+      "mutator": "RVR",
+      "original": "return none(string)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "同上。直前の `tokenStore.remove` は変異の外で、そのまま走る"
+    },
+    {
+      "fingerprint": "src/ext/auth_enterprise_managed.nim:RVR:e7269eed558d99df:0",
+      "file": "src/ext/auth_enterprise_managed.nim",
+      "line": 182,
+      "mutator": "RVR",
+      "original": "return none(seq[string])",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "`default(Option[seq[string]])` は none で、`none(seq[string])` と同じ値"
+    },
+    {
+      "fingerprint": "src/ext/auth_enterprise_managed.nim:LOR:fd8d1984114a44f0:0",
+      "file": "src/ext/auth_enterprise_managed.nim",
+      "line": 226,
+      "mutator": "LOR",
+      "original": "header{\"typ\"}.isNil or header{\"typ\"}.kind != JString",
+      "replacement": "<or -> and>",
+      "class": "test_owed",
+      "reason": "`typ` の無い ID-JAG で、元は OAuthSecurityError、変異は nil の `kind` を読んで落ちる (文字列でない `typ` は変異でも断る) / MCP-EXT-AUTH-11。E の suite「checkIdentityAssertionGrant」: `typ` を付けずに署名した ID-JAG → `expect OAuthSecurityError`。変異では SIGSEGV"
+    },
+    {
+      "fingerprint": "src/ext/auth_enterprise_managed.nim:LOR:158eacccce0cde09:0",
+      "file": "src/ext/auth_enterprise_managed.nim",
+      "line": 230,
+      "mutator": "LOR",
+      "original": "claims{\"iss\"}.isNil or claims{\"iss\"}.kind != JString",
+      "replacement": "<or -> and>",
+      "class": "test_owed",
+      "reason": "`iss` の無い ID-JAG で、元は OAuthSecurityError、変異は nil の `kind` を読んで落ちる / MCP-EXT-AUTH-11。E の「Given an ID-JAG without sub, jti, iat or exp, ...」と同じ形で `behavior.drop = @[\"iss\"]` と `@[\"client_id\"]` → `refusedGrant` (`rasRequests.len == 0`)。変異では SIGSEGV。下の 1 件と同じ 1 本 (内部側に同じ主旨のテストがある)"
+    },
+    {
+      "fingerprint": "src/ext/auth_enterprise_managed.nim:LOR:18d9809e7aae3e6b:0",
+      "file": "src/ext/auth_enterprise_managed.nim",
+      "line": 236,
+      "mutator": "LOR",
+      "original": "claims{\"client_id\"}.isNil or claims{\"client_id\"}.kind != JString",
+      "replacement": "<or -> and>",
+      "class": "test_owed",
+      "reason": "`client_id` の無い ID-JAG で、元は OAuthSecurityError、変異は nil の `kind` を読んで落ちる / MCP-EXT-AUTH-11。上と同じ 1 本 (`client_id` を落とす)"
+    },
+    {
+      "fingerprint": "src/ext/auth_enterprise_managed.nim:LOR:e83d4a1bf996e377:0",
+      "file": "src/ext/auth_enterprise_managed.nim",
+      "line": 241,
+      "mutator": "LOR",
+      "original": "claims{required}.isNil or claims{required}.kind != JString or; claims{required}.getStr().len == 0",
+      "replacement": "<or -> and>",
+      "class": "test_owed",
+      "reason": "`sub` か `jti` が空文字列の ID-JAG を、元は断り、変異は受け入れる (無い・文字列でないものは変異でも断る) / MCP-EXT-AUTH-11。E の suite「checkIdentityAssertionGrant」: `good` の `sub` を `\"\"` にしたものと `jti` を `\"\"` にしたもの → `expect OAuthError`。変異では受け入れて返る"
+    },
+    {
+      "fingerprint": "src/ext/auth_enterprise_managed.nim:ROR:5367ba632762c479:0",
+      "file": "src/ext/auth_enterprise_managed.nim",
+      "line": 246,
+      "mutator": "ROR",
+      "original": "exp <= float(now.toUnix)",
+      "replacement": "<<= -> <>",
+      "class": "test_owed",
+      "reason": "`exp` がちょうど今の ID-JAG を、元は期限切れとして断り、変異は認可サーバーへ送る / MCP-EXT-AUTH-11。E: `env.behavior.lifetime = 0` → `check \"expired\" in env.refusedGrant()` (`rasRequests.len == 0`)。変異では認可サーバーに 1 回届く (内部側に同じ主旨のテスト「expires at this very second」がある)"
+    },
+    {
+      "fingerprint": "src/ext/auth_enterprise_managed.nim:ROR:0d3faeea190b21d6:0",
+      "file": "src/ext/auth_enterprise_managed.nim",
+      "line": 248,
+      "mutator": "ROR",
+      "original": "exp > float(now.toUnix) + float(MaxTokenLifetimeSeconds)",
+      "replacement": "<> -> >=>",
+      "class": "test_owed",
+      "reason": "`exp` がちょうど今 + 10 年の ID-JAG を、元は受け、変異は断る / MCP-SEC-AUTH-6。S の suite「numbers in an ID-JAG ...」(`grantChecked` の補助だけが残っている): `exp = now + MaxTokenLifetimeSeconds` は通り、1 秒先は OAuthError。変異では前者も断る。`MaxTokenLifetimeSeconds` は入口 `auth/client` が `tokens` ごと export している (内部側に同じ主旨のテストがある)"
+    },
+    {
+      "fingerprint": "src/ext/auth_enterprise_managed.nim:LOR:b34755d00d89735f:0",
+      "file": "src/ext/auth_enterprise_managed.nim",
+      "line": 283,
+      "mutator": "LOR",
+      "original": "grantTypes.isNone or GrantTypeJwtBearer notin grantTypes.get",
+      "replacement": "<or -> and>",
+      "class": "test_owed",
+      "reason": "プロファイルは載せるが `grant_types_supported` に jwt-bearer が無い認可サーバーに、変異は ID-JAG を取りに行って送る (欄ごと無いときは変異は UnpackDefect) / MCP-EXT-AUTH-10。E: `startEnv(rasGrantTypes = @[\"authorization_code\"])` → `refusedBeforeAnyExchange` (`providerCalls`・`idpRequests`・`rasRequests` が 0)。変異では IdP に交換が届く (内部側に同じ主旨のテストがある)"
+    },
+    {
+      "fingerprint": "src/ext/auth_enterprise_managed.nim:ROR:4729d8b6ab5a6378:0",
+      "file": "src/ext/auth_enterprise_managed.nim",
+      "line": 343,
+      "mutator": "ROR",
+      "original": "issued.scopes.len == 0",
+      "replacement": "<== -> !=>",
+      "class": "test_owed",
+      "reason": "保存されるトークンの scope が入れ替わる: 認可サーバーが狭い scope を答えたとき求めたもので上書きし、答えに scope が無いとき空のままにする。見えるのは `config.tokenStore` (公開の欄。`TokenStore` は入口 `auth/client` が export) / MCP-EXT-AUTH-9。E: `config.tokenStore` に自前の `newMemoryStore[TokenSet]()` を渡し、ping の後に `load` した `scopes` を見る。狭い scope の答え (`behavior.grantScope`) なら答えのもの、scope の無い答えなら求めたもの。変異では逆 (内部側に同じ主旨の 2 本がある)"
+    },
+    {
+      "fingerprint": "src/ext/auth_enterprise_managed.nim:RVR:0c511227513989c7:0",
+      "file": "src/ext/auth_enterprise_managed.nim",
+      "line": 355,
+      "mutator": "RVR",
+      "original": "return none(string)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "`default(Option[string])` は none で、`none(string)` と同じ値"
+    },
+    {
+      "fingerprint": "src/ext/auth_enterprise_managed.nim:RVR:0c511227513989c7:1",
+      "file": "src/ext/auth_enterprise_managed.nim",
+      "line": 359,
+      "mutator": "RVR",
+      "original": "return none(string)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "同上"
+    },
+    {
+      "fingerprint": "src/ext/auth_enterprise_managed.nim:RVR:0c511227513989c7:2",
+      "file": "src/ext/auth_enterprise_managed.nim",
+      "line": 367,
+      "mutator": "RVR",
+      "original": "return none(string)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "同上。直前の `c.grant = none(CachedGrant)` と `tokenStore.remove` は変異の外で、そのまま走る"
     },
     {
       "fingerprint": "src/ext/skills/catalog.nim:AOR:0a5dc4f793c7bd6f:0",
@@ -559,6 +879,76 @@
       "replacement": "discard",
       "class": "equivalent",
       "reason": "関数の最後の式 none(SkillResource) を消すと result の既定値が返り、Option の既定値は none なので同じ値になる"
+    },
+    {
+      "fingerprint": "src/ext/tasks/server.nim:SDL:8a17cc5c9a298608:0",
+      "file": "src/ext/tasks/server.nim",
+      "line": 112,
+      "mutator": "SDL",
+      "original": "stderr.writeLine(\"[mcp-tasks] \" & what)",
+      "replacement": "discard",
+      "class": "accepted",
+      "reason": "断ること (-32603 を返す) は保たれ、消えるのは標準エラーに出す診断の 1 行だけ。失敗の文面は契約ではない (代表の決定 2026-10-23)。この行が残るかは、下の `SDL:7a97a8f794ddcf54:0` の問いの答えに従う (防御ごと消すなら変異も消える) / (なし)"
+    },
+    {
+      "fingerprint": "src/ext/tasks/server.nim:SDL:7a97a8f794ddcf54:0",
+      "file": "src/ext/tasks/server.nim",
+      "line": 113,
+      "mutator": "SDL",
+      "original": "newRequestError(ErrInternal, \"Internal error\")",
+      "replacement": "discard",
+      "class": "spec_question",
+      "reason": "拡張自身の経路 (`finishWhenDone`) は結果かエラーを必ず持たせるので届かないが、公開の `ext.store` (`TaskStore`) にアプリケーションが `finish(id, TaskOutcome(), toolErrorsFail = false)` (結果の無い completed) や `finish(id, TaskOutcome(result: some(%*{\"isError\": true})))` (エラーの無い failed) を呼ぶと届く。元は `tasks/get` が -32603、変異は nil を raise して落ちる。どの仕様 ID も、アプリケーションが拡張の task を store で直接終わらせる場合を述べていない。問い: 拡張の task をアプリケーションが `TaskStore.finish` で直接終わらせることを認めるか。認めるなら「status が要る結果・エラーを欠く task の `tasks/get` は -32603」を MCP-EXT-TASKS-2 に足して E テストを書く。認めないなら `finish` を公開から外し、`detailed` の 2 つの防御を消す / `finish` の使い手: src 1 か所 (`protocol/task_methods.nim` の `finishWhenDone`)、tests/external 2 ファイル 14 か所 (`test_tasks_store.nim` 13、`test_security_tasks.nim` 1)、tests/internal 0。推奨: 公開から外す (公開 API は絞る、代表の方針 2026-11-11)。ただし `test_tasks_store.nim` の E テストが `finish` を直接呼んでいるので、それらを `runAsTask` 経由に書き直すか内部へ移す作業が付く"
+    },
+    {
+      "fingerprint": "src/ext/tasks/server.nim:SDL:93c05b0a9345fd14:0",
+      "file": "src/ext/tasks/server.nim",
+      "line": 199,
+      "mutator": "SDL",
+      "original": "inputs.pending.del(issued)",
+      "replacement": "discard",
+      "class": "equivalent",
+      "reason": "待ちが取り消しで終わるのは、`serveDetached` の `cancel` が呼ばれたときだけで、呼ぶのは `TaskStore.cancel` と `sweep` の `cancelWork` だけ (この ctx は `inFlight` に載らないので `notifications/cancelled` では止まらない)。どちらも同じ同期の呼び出しの中で、`statusChanged` か `onExpire` が `ext.inputs.del(taskId)` で `TaskInputs` ごと外す。`pending` を読む `detailed`・`fulfil`・次の `requestInput` はどれも `ext.inputs` を引いてから読むので、残った項目は誰にも読まれない。代表の決定「終端・期限切れの task がその後に出す質問は、送らずにその場で断る」(2026-11-12) が当たるのは `scope.taskId notin ext.inputs` の検査のほうで、この行ではない"
+    },
+    {
+      "fingerprint": "src/ext/tasks/server.nim:RVR:9bd38dfae0fced9f:0",
+      "file": "src/ext/tasks/server.nim",
+      "line": 353,
+      "mutator": "RVR",
+      "original": "return none(JsonRpcResponse)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "リテラルではない return なので `default(Option[JsonRpcResponse])` になる。`Option` の既定値は none で、`none(JsonRpcResponse)` と同じ値"
+    },
+    {
+      "fingerprint": "src/ext/tasks/server.nim:RVR:4e102445986c6351:0",
+      "file": "src/ext/tasks/server.nim",
+      "line": 356,
+      "mutator": "RVR",
+      "original": "return none(JsonRpcResponse)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "同上 (`default(Option[JsonRpcResponse])` は none)"
+    },
+    {
+      "fingerprint": "src/ext/tasks/server.nim:RVR:9bd38dfae0fced9f:1",
+      "file": "src/ext/tasks/server.nim",
+      "line": 361,
+      "mutator": "RVR",
+      "original": "return none(JsonRpcResponse)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "同上"
+    },
+    {
+      "fingerprint": "src/ext/tasks/server.nim:RVR:9bd38dfae0fced9f:2",
+      "file": "src/ext/tasks/server.nim",
+      "line": 364,
+      "mutator": "RVR",
+      "original": "return none(JsonRpcResponse)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "同上"
     },
     {
       "fingerprint": "src/protocol/base64_shape.nim:BLR:9e1445f6b0165a86:0",
