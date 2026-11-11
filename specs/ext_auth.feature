@@ -51,7 +51,7 @@ Feature: Authorization extensions (ext-auth)
   Scenario: The token endpoint requests and JWTs the extensions use follow the RFCs
     Given a token endpoint that authenticates clients by Basic, body secret, private_key_jwt or none
     When client credentials, the JWT bearer grant or a token exchange is requested, or a JWT is signed and read
-    Then each request has the RFC's parameters, the signer is the application's, "none" and malformed JWTs are refused, and no secret reaches an error message
+    Then each request has the RFC's parameters, the signer is the application's, "none" and malformed JWTs are refused, a JWT longer than 16384 bytes is refused, and no secret reaches an error message
 
   @spec:MCP-EXT-AUTH-8
   Scenario: A client with an identity assertion gets an access token through an ID-JAG, without a user step

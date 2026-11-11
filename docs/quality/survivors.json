@@ -237,8 +237,8 @@
       "mutator": "LOR",
       "original": "header.kind != JObject or claims.kind != JObject",
       "replacement": "<or -> and>",
-      "class": "spec_question",
-      "reason": "見出しだけがオブジェクトでないときは次の行の `alg` の検査が同じ OAuthError で断る。本文だけがオブジェクトでないとき、元は OAuthError「must be JSON objects」、変異は `checkIdentityAssertionGrant` の `iss` の検査が OAuthSecurityError「was not issued by」で断る。断ることは保たれ、変わるのは文面と例外の種類 (OAuthError → その子の OAuthSecurityError)。src にこの 2 つを見分けて動作を変える箇所は無い (`discovery.nim` の見分けは別の経路)。どの仕様 ID も例外の種類を述べていない。問い: 「形の壊れた ID-JAG」と「宛先の違う ID-JAG」を、呼び手が例外の種類で見分けられることを仕様にするか / 推奨: 仕様にしない (どちらも OAuthError として断れば足りる)。そう決まれば、文面だけの差として accepted (失敗の文面は契約ではない) に移せる"
+      "class": "accepted",
+      "reason": "失敗の文面は契約ではない (代表の決定 2026-10-23)。本文がオブジェクトでない ID-JAG は変異後も断られ、変わるのは文面と例外の種類 (OAuthError か、その子の OAuthSecurityError か) だけ。この 2 つを見分けて動く箇所は SDK に無く、例外の種類で見分けられることは仕様にしない (代表の決定 2026-11-12)"
     },
     {
       "fingerprint": "src/auth/oauth/jwt.nim:LOR:73513c8ac17bdc3a:0",
