@@ -1,5 +1,27 @@
 # G2 変異検出: `src/protocol/content.nim` と `src/server/tools.nim`
 
+## 測り直し (拡張ブランチの b04fcb9c、2026-11-11)
+
+測定: `nim-muter` 0.2.15、ジョブ `tests/mutation/content.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。
+
+| 全体 | killed | timeout | survived | runError | compileError |
+|---|---|---|---|---|---|
+| 101 | 95 | 0 | 4 | 0 | 2 |
+
+状態: 測定済み。生き残り 4 件: equivalent 1、test_owed 3。timeout は無い。
+
+test_owed の 3 件は `createResourceLinkToolContent` の 1 つの規則 (与えなかった項目は送らない) で、これを確かめるテストは `tests/internal/test_resource_links_internal.nim` に移っている。`tests/external/` に、この組み立ての手続きを呼ぶテストは無い (testCommand に入っていないファイルも含めて探した)。testCommand に足すだけで済むものは無い。
+`specs/tests.map` はこのテストを MCP-RESLINK-1 に結んでいるので、それに従って test_owed とした。ただし MCP-RESLINK-1 の Scenario の文面は「ブロックがハンドラの書いたとおりに届く」で、組み立ての手続きの規則を文としては持たない。同じ規則をほかの組み立ての手続きについて述べているのは MCP-CONTENT-FIELDS-8 (tool の定義・結果・スキーマ) で、resource link は挙げていない。
+
+### 生き残りの仕分け
+
+| 指紋 | file:line | 変異 | class | 理由 | 仕様 ID / 足すテストの案 |
+|---|---|---|---|---|---|
+| `src/protocol/content.nim:RVR:d8d2d1fd991dcb3b:0` | content.nim:51 | `return none(T)` → `<return default>` | equivalent | リテラルではないので `default(Option[T])` になり、それは `none(T)` (`T` は `string` か `bool`)。無い項目が none になる、は変わらない。前の記録の id 76 と同じ判断。 | - |
+| `src/server/tools.nim:ROR:8fbebf3b833c6500:0` | tools.nim:72 | `description.len > 0` → `>=` | test_owed | `createResourceLinkToolContent` に description を渡さないと、`"description": ""` が付いて送られる (受けた client は `linkDescription` を none ではなく `some("")` と読む)。確かめるテスト `Given the builder, when a resource link is made, then only the fields that were given are sent` は内部に移った。 | MCP-RESLINK-1 (`specs/tests.map` の結び。文面は上の注を参照)。`tests/external/test_tool_builders.nim` (`import mcp` だけ。testCommand に既に入っている) に 1 本足す: `createResourceLinkToolContent("file:///a", "a")` が `{"type": "resource_link", "uri": "file:///a", "name": "a"}` にちょうど等しく、全部を渡したときは 4 つの項目が入る。変異だと 1 つ目の比較に `"description": ""` が混じって落ちる。内部のテストと同じ内容で書ける。 |
+| `src/server/tools.nim:ROR:d35dd38b3204ef21:0` | tools.nim:73 | `mimeType.len > 0` → `>=` | test_owed | 同上で、`"mimeType": ""` が付く。 | MCP-RESLINK-1。上の行と同じ 1 本。 |
+| `src/server/tools.nim:ROR:3b8a9a3f639026de:0` | tools.nim:74 | `title.len > 0` → `>=` | test_owed | 同上で、`"title": ""` が付く。 | MCP-RESLINK-1。上の行と同じ 1 本。 |
+
 測定: `nim-muter`、ジョブ `tests/mutation/content.json`、mainline の 36a4c8a5 (2026-10-07)。
 
 | 全体 | killed | timeout | survived | runError | compileError |
