@@ -100,11 +100,31 @@ suite "the requests of one sender":
         let start = getMonoTime()
         discard peer.complete()
         let refused = peer.complete()
+        let took = getMonoTime() - start
         let wait = refused{"error", "data", "retryAfterMs"}.getInt()
-        (getMonoTime() - start, @[
+        (took, @[
           ($version & ": the second is refused", refused.limited),
           ($version & ": the wait is above 0 ms", wait > 0),
-          ($version & ": the wait is at most 1000 ms", wait <= 1000)]))
+          ($version & ": the wait is at most 1000 ms", wait <= 1000),
+          ($version & ": the wait is what the second had left of one second", wait >= 1000 - int(took.inMilliseconds))]))
+
+  test "Given a limit of 4 per second, when a client sends five requests, then the wait of the refused fifth is within a quarter second":
+    for v in SupportedProtocolVersions:
+      let version = v
+      checkAll quickRun(4, proc(): Run =
+        let server = completionServer()
+        let peer = server.connect(server.attach(), version, session = "a")
+        server.maxRequestsPerSecond = 4
+        let start = getMonoTime()
+        for _ in 1 .. 4:
+          discard peer.complete()
+        let refused = peer.complete()
+        let took = getMonoTime() - start
+        let wait = refused{"error", "data", "retryAfterMs"}.getInt()
+        (took, @[
+          ($version & ": the fifth is refused", refused.limited),
+          ($version & ": the wait is above 0 ms", wait > 0),
+          ($version & ": the wait is at most 251 ms", wait <= 251)]))
 
   test "Given a limit of 2 per second, when a client of a version with ping sends pings, then the third is refused too":
     for v in legacyVersions():
@@ -258,6 +278,30 @@ suite "the principal of a request":
         ("bob is answered", bob.hasKey("result")),
         ("carol is answered", carol.hasKey("result")),
         ("alice, forgotten, is answered again", again.hasKey("result"))]))
+
+  test "Given a limit of 2 senders, when the sender that spoke first is not the one quiet longest, then the one quiet longest is forgotten and the other is remembered":
+    checkAll quickRun(1, proc(): Run =
+      let server = completionServer()
+      let t = PrincipalTransport(kind: mtkStreamable, inbox: initDeque[McpIncoming](),
+                                 waiters: initDeque[Future[McpIncoming]]())
+      waitFor server.attachTransport(t)
+      server.maxRequestsPerSecond = 1
+      server.maxRateLimitedSenders = 2
+      let start = getMonoTime()
+      let first = t.complete("s", "bob")
+      let second = t.complete("s", "bob")
+      let alice = t.complete("s", "alice")
+      let carol = t.complete("s", "carol")
+      let aliceAgain = t.complete("s", "alice")
+      let took = getMonoTime() - start
+      let bobAgain = t.complete("s", "bob")
+      (took, @[
+        ("bob's first is answered", first.hasKey("result")),
+        ("bob's second is refused", second.limited),
+        ("alice is answered", alice.hasKey("result")),
+        ("carol is answered", carol.hasKey("result")),
+        ("alice, remembered, is refused again", aliceAgain.limited),
+        ("bob, forgotten, is answered again", bobAgain.hasKey("result"))]))
 
 suite "the address of a request":
 

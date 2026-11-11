@@ -1007,8 +1007,8 @@
       "mutator": "AOR",
       "original": "int((1.0 - bucket.tokens) / perSecond.float * 1000.0) + 1",
       "replacement": "<+ -> ->",
-      "class": "test_owed",
-      "reason": "切り上げの 1 が引き算になり、待ち時間が 2 ms 短くなる。不足分が 2 ms 未満のときは `retryAfterMs` が 0 か −1 になる。今のテストは毎秒 1 (待ち時間が 1000 ms 近く) で `wait > 0` を見るだけなので通る。 / MCP-RATE-1 (`data.retryAfterMs`。既存のテストが「0 ms より大きい」を見ている)。案: 既定の毎秒 100 で 300 回を間を置かずに送り、断られた応答すべての `retryAfterMs` が 1 以上であること。毎秒 100 では不足分が 0〜10 ms に散らばり、変異だと不足分が 2 ms 未満の断り (およそ 5 回に 1 回) で 0 以下になって落ちる。要求が 2 ms に 1 回より遅い実行では何も分からないので、既存の `quickRun` と同じく所要時間を測り、遅い実行は繰り返す。上の 2 行の案と合わせ、「上限 (1000 ÷ 毎秒 + 1)・下限 (残り時間以上)・常に 1 以上」を 1 本にまとめてもよい"
+      "class": "unreached",
+      "reason": "retryAfterMs falls below 1 only when the shortfall is under 1 ms, which needs a limit of 1000 or more per second and a client refused at that rate; through the public entry a request takes about 10 ms, and 3000 pings at 10000 per second were never refused (measured 2026-11-11). A test would fail only by chance."
     },
     {
       "fingerprint": "src/server/rate_limit.nim:AOR:53d668ef4efecbc3:0",
