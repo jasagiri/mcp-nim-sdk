@@ -66,6 +66,7 @@ Feature: stdio transport
     Then the bytes written are valid UTF-8 and read back as the same strings
     And a line of UTF-8 bytes is read as the characters it encodes
     And a string holding bytes that are not UTF-8 is never written as such: the send is refused or the bytes are replaced
+    And when a response holding such a string is answered with the internal error instead, one line on stderr says so, without the bytes that are not UTF-8
 
   @spec:MCP-STDIO-10 @feature:ftStdio
   Scenario: A server that ends its own session is seen as a closed connection
@@ -93,4 +94,5 @@ Feature: stdio transport
     Then it sees only that environment and runs in that directory
     And without an environment it inherits the client's environment and directory
     And the default server environment passes on only the basic variables (HOME, LOGNAME, PATH, SHELL, TERM, USER) and the given ones win
+    And a basic variable whose value is a shell function (it starts with `()`) is not passed on
     And a working directory that does not exist is refused, naming it

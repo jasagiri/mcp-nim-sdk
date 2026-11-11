@@ -303,6 +303,39 @@ suite "the principal of a request":
         ("alice, remembered, is refused again", aliceAgain.limited),
         ("bob, forgotten, is answered again", bobAgain.hasKey("result"))]))
 
+  test "Given a limit of 2 senders, when a third sender speaks while one is full again and another is still used up, then the full one is forgotten and the used-up one is remembered":
+    # The used-up sender spoke first, so it is the one quiet longest: it is
+    # forgotten only if no sender is full again. It is quiet for about 600 ms
+    # between its refusal and the last request, which must stay under a
+    # second, or its allowance would be full again and tell nothing.
+    var observed = false
+    for _ in 1 .. Runs:
+      let server = completionServer()
+      let t = PrincipalTransport(kind: mtkStreamable, inbox: initDeque[McpIncoming](),
+                                 waiters: initDeque[Future[McpIncoming]]())
+      waitFor server.attachTransport(t)
+      server.maxRequestsPerSecond = 2
+      server.maxRateLimitedSenders = 2
+      discard t.complete("s", "alice")
+      discard t.complete("s", "alice")
+      let aliceRefused = t.complete("s", "alice")
+      let refusedAt = getMonoTime()
+      let bobFirst = t.complete("s", "bob")
+      waitFor sleepAsync(600)
+      let carol = t.complete("s", "carol")
+      let aliceFirst = t.complete("s", "alice")
+      let aliceSecond = t.complete("s", "alice")
+      let took = getMonoTime() - refusedAt
+      if aliceRefused.limited and took < initDuration(milliseconds = 900):
+        check bobFirst.hasKey("result")
+        check carol.hasKey("result")
+        check aliceFirst.hasKey("result")
+        check aliceSecond.limited
+        observed = true
+        break
+      checkpoint "a run that took " & $took
+    check observed
+
 suite "the address of a request":
 
   test "Given requests without a principal and without a session, when they come from different addresses, then each address has its own allowance":

@@ -377,6 +377,14 @@ suite "the environment and directory of a server process":
     if had: putEnv("TERM", before)
     check not env.hasKey("TERM")
 
+  test "Given a basic variable whose value is a shell function, when the default server environment is made, then the server does not get it":
+    let had = existsEnv("TERM")
+    let before = getEnv("TERM")
+    putEnv("TERM", "() { :; }")
+    let env = defaultServerEnvironment()
+    if had: putEnv("TERM", before) else: delEnv("TERM")
+    check not env.hasKey("TERM")
+
   test "Given a directory that does not exist, when a server is started there, then McpTransportError names it":
     try:
       discard newProcessTransport(getAppFilename(), ["--senv"], workingDir = "/no/such/directory")

@@ -2,7 +2,7 @@
 ## is never written as such: a request or a notification is not sent, and a
 ## response, which is owed, is sent as an internal error.
 
-import std/[unittest, asyncdispatch, asyncnet, json, nativesockets, net, streams, strutils, unicode]
+import std/[unittest, asyncdispatch, asyncnet, json, nativesockets, net, streams, strutils, unicode, os]
 import mcp
 
 const
@@ -21,6 +21,19 @@ proc refusal(sending: Future[void]): string =
     waitFor sending
   except McpTransportError as e:
     return e.msg
+
+proc loggedWhile(body: proc()): string =
+  ## Everything the code under test wrote to stderr.
+  let path = getTempDir() / "mcp-utf8-refused-" & $getCurrentProcessId() & ".log"
+  let saved = stderr
+  stderr = open(path, fmWrite)
+  try:
+    body()
+  finally:
+    stderr.close()
+    stderr = saved
+  result = readFile(path)
+  removeFile(path)
 
 suite "strings that are not UTF-8, on stdio":
 
@@ -68,6 +81,19 @@ suite "strings that are not UTF-8, on stdio":
       check written["id"].kind == JNull
       check written["error"]["code"].getInt() == -32603
       check not written.hasKey("result")
+
+  test "Given a response that holds a string that is not UTF-8, when it is sent as an internal error, then one line is logged and the bytes that are not UTF-8 are not in it":
+    for text in NotUtf8:
+      checkpoint text.escape
+      for response in [newJsonRpcResponse("r7", %*{"text": text}),
+                       newJsonRpcResponse(text, %*{"ok": true})]:
+        let transport = newStdioTransport(newStringStream(""), newStringStream())
+        let logged = loggedWhile(proc() =
+          check refusal(transport.sendResponse(response)) == "")
+        check logged.count('\n') == 1
+        check logged.endsWith("\n")
+        check validateUtf8(logged) == -1
+        check text notin logged
 
 suite "strings that are not UTF-8, over HTTP":
 

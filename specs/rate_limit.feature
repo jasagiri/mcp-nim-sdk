@@ -22,6 +22,7 @@ Feature: Rate limiting
     Given a server that tells two senders apart, with a third speaking
     When no sender is quiet enough to have a full allowance again
     Then the sender quiet longest is forgotten and has a full allowance again
+    And while a sender is quiet enough to have a full allowance again, it is the one forgotten, and a sender that has used its allowance up is not
 
   @spec:MCP-RATE-4
   Scenario: A limit of 0 turns the request limit off, and the default is 100 per second
