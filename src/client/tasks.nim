@@ -19,6 +19,7 @@ import ../protocol/types
 import ../protocol/diagnostic
 import ../protocol/features
 import ../protocol/tasks
+import ../protocol/task_store
 import ../protocol/task_methods
 from ../server/errors import plainMessage
 

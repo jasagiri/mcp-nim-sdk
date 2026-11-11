@@ -14,11 +14,10 @@ export task_store.RelatedTaskKey, task_store.ModelImmediateResponseKey,
 export task_store.TaskStatus, task_store.TaskSupport, task_store.McpTask,
   task_store.TaskOutcome, task_store.McpTaskError, task_store.TaskClock,
   task_store.TaskStatusCallback, task_store.SleepProc, task_store.TaskStore
-export task_store.taskSupportOf, task_store.isTerminal, task_store.canTransition,
-  task_store.newTaskError, task_store.systemClock, task_store.isoTimestamp,
-  task_store.parseIsoTimestamp, task_store.taskFromJson, task_store.toJson,
-  task_store.createTaskResult, task_store.relatedTaskMeta,
-  task_store.withRelatedTask, task_store.parseTaskParam
+export task_store.isTerminal, task_store.canTransition,
+  task_store.systemClock, task_store.parseIsoTimestamp, task_store.taskFromJson,
+  task_store.toJson, task_store.createTaskResult, task_store.withRelatedTask,
+  task_store.parseTaskParam
 export task_store.newTaskStore, task_store.sweep, task_store.create,
   task_store.get, task_store.list, task_store.attachWork,
   task_store.resultStream, task_store.transition,

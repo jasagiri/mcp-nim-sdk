@@ -13,6 +13,7 @@
 import std/[json, options]
 import ../../protocol/types
 import ../../protocol/tasks
+import ../../protocol/task_store
 import ../../protocol/mrtr
 import ../../protocol/extensions
 
