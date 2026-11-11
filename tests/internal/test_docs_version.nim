@@ -5,7 +5,7 @@
 ## for each version before it runs the tests of that version.
 
 import std/[os, sets, strutils, unittest]
-import protocol/[version, features, implementation_status]
+import protocol/[version, features, feature_docs, implementation_status]
 import ../../tools/gen_docs
 
 const Root = currentSourcePath().parentDir.parentDir.parentDir

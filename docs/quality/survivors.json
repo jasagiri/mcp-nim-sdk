@@ -267,8 +267,8 @@
       "mutator": "SDL",
       "original": "options.cancel.unwatchCancellation(cancelled)",
       "replacement": "discard",
-      "class": "spec_question",
-      "reason": "変異後は、承認まで進んだ `listen` の待ち手が 1 本ずつトークンの `waiters` に残る。公開の入口から呼べる操作の結果は変わらない (後で `cancel` すると残った待ち手が完了するが、`firstOf` の呼び鈴は待つ人がいなければ何もしない。`src/transport/first_of.nim` の `watch`)。変わるのは、長く使うトークンが `listen` の回数だけメモリを持ち続けることだけで、それを読める `heldWaiters` は doc が「for tests」と言う非公開のもの。これを確かめるテスト (「token holds nothing of them」) は 2026-10-13 に内部側 (`tests/internal/test_subscriptions_internal.nim`) へ移り、`specs/tests.map` では MCP-SUBSCRIBE-11 に結ばれているが、その Scenario の文面 (断る・購読を持たない) は待ち手のことを言っていない / 問い: 「共有の取り消しトークンが、終わった `listen` の待ち手を持ち続けない」ことを仕様 (Scenario) にして公開の入口から測れる形 (公開の数え口) を作りますか、それとも外から見えない実装の性質として内部テストに任せ、この変異を同値として扱いますか。`client` ジョブの `sendRequest` 側 (`src/client/client.nim` の同じ呼び出し、MCP-CANCEL-4 に結ばれた内部テスト) も同じ問いになる"
+      "class": "accepted",
+      "reason": "The waiter of a finished listen stays on the shared cancellation token; no public operation gives another result. Not seen from outside, kept by the internal test (代表の決定 2026-11-11)."
     },
     {
       "fingerprint": "src/ext/skills/catalog.nim:AOR:0a5dc4f793c7bd6f:0",
@@ -1027,8 +1027,8 @@
       "mutator": "RVR",
       "original": "return \"null\"",
       "replacement": "<return default>",
-      "class": "spec_question",
-      "reason": "nil どうしの封印と検証は変異の前後とも通る。変わるのは、salient を省いて (nil) 封印した状態を JSON の null (`newJNull()`) の salient で検証したときで、元は受け入れ、変異は「issued for other parameters」で断る。この扱いを定める仕様 ID は無い。 / 問い: salient を省いた (nil) 封印と、JSON の null を salient にした検証を同じ要求とみなすことを仕様にしますか。しないなら nil の分岐は `$node` と区別のつかない実装の都合として同値に移します。"
+      "class": "equivalent",
+      "reason": "A nil salient and a JSON null being the same request is not made a specification (代表の決定 2026-11-11); the nil branch is a convenience of the implementation, and sealing and verifying in one build write the same text either way."
     },
     {
       "fingerprint": "src/protocol/hmac.nim:ROR:20951720b0e24994:0",
@@ -2387,8 +2387,8 @@
       "mutator": "SDL",
       "original": "freeAddrInfo(info)",
       "replacement": "discard",
-      "class": "spec_question",
-      "reason": "`getaddrinfo` の結果を解放しなくなる。戻り値・例外・通信は変わらず、変わるのはプロセスのメモリ (名前を解決するたびに漏れる) だけ。E テストでは見えず、どの仕様 ID にも当たらない。文面の違いではないので、代表の決定 (2026-10-23) の許容には当たらない。前の記録 (id 175) は「リーク検査の担当」として許容にしていたが、代表が受け入れた記録は無い。 / 問い: 資源の漏れだけが変わる変異 (解放を消すもの) を、G2 では「E テストの対象外。リーク検査で守る」として受け入れると決めるか。"
+      "class": "accepted",
+      "reason": "Only a leak of the addrinfo list changes. Outside what E tests tell; a leak check guards it (代表の決定 2026-11-11)."
     },
     {
       "fingerprint": "src/transport/address_policy.nim:ROR:22cf8d6f11883448:0",
@@ -2507,8 +2507,8 @@
       "mutator": "ROR",
       "original": "waited >= ms",
       "replacement": "<>= -> >>",
-      "class": "spec_question",
-      "reason": "子が終了しないとき、terminate・kill に進むまでの待ちが 2000 ms から 2020 ms (`ExitPollMs` 1 回分) に延びる。進む順序と結果は変わらず、変わるのは時間だけ。MCP-STDIO-6 は順序を定めるが猶予の長さを定めていない。前の測定 (id 13) は「受け入れ」としたが、代表が決めた記録は無い。 / 問い: 子の終了を待つ猶予の長さ (`ExitGraceMs` = 2000 ms) を仕様の規則にしますか、それとも「猶予の長さは仕様の外」と決めてこの変異を受け入れますか。"
+      "class": "accepted",
+      "reason": "The grace a child gets to exit becomes 2020 ms instead of 2000; order and outcome are the same. The length of the grace is outside the specification (代表の決定 2026-11-11)."
     },
     {
       "fingerprint": "src/transport/transport.nim:BLR:6ec2d660335697fb:0",

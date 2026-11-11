@@ -24,7 +24,7 @@
 ## when the build speaks 2026-07-28 or later.
 
 import std/[os, strformat, strutils, tables]
-import protocol/[version, features, implementation_status]
+import protocol/[version, features, feature_docs, implementation_status]
 
 const
   Root = currentSourcePath().parentDir.parentDir

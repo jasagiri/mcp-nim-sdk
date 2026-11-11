@@ -56,3 +56,7 @@ compileError の 49 件は、機能表 (`McpFeature` の列挙、`span`・`displ
 テストを置き場で分けた結果、このジョブが走らせていた `test_features` と `test_spec_coverage` は内部実装テスト (文書と表の整合を見る門) になった。変異検査は外部仕様テストだけで測る (ADR-MUTER-0004 §3.1) ので、ジョブを、版の交渉を確かめる外部仕様テスト (`test_version`、`test_legacy_handshake`、`test_era_matrix`) を 5 つの版の既定で流す形に組み直した。対象から `src/protocol/implementation_status.nim` を外した: 文書を作る道具の表で、利用者から見える振る舞いが無く、外部仕様テストでは測れない。
 
 **この組み直しのあとは未測定。** 上の記録は、組み直す前のジョブでの測定である。機能の表 (`features.nim`) の 1 行を誤らせる変異を、版の交渉のテストがどこまで捕まえるかは、測ってみないと分からない。
+
+## 文書用の関数を分けた (2026-11-11)
+
+`featuresOf`・`displayName`・`specPage` は `src/protocol/feature_docs.nim` に移し、`mcp` の公開から外した (代表の方針 2026-11-11「公開APIはできるだけ絞ったほうが良い」「役割が明確になるように適切に分割」)。使うのは `tools/gen_docs.nim` と内部テスト (`tests/internal/test_features.nim`・`tests/internal/test_docs_version.nim`) だけで、プロトコルを話すプログラムは `version.has(feature)` を使う。このジョブの対象 `src/protocol/features.nim` からこの 3 つが無くなるので、spec_question の 2 件 (`featuresOf` の SDL、`specPage` の ROR) は測り直しで消える。`feature_docs.nim` は公開の仕様を持たないので G2 のジョブには入れず、内部テストで守る。

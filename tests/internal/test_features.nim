@@ -3,6 +3,7 @@
 import std/[strutils, unittest]
 import protocol/version
 import protocol/features
+import protocol/feature_docs
 
 suite "protocol features by version":
 
