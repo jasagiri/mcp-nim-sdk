@@ -1612,6 +1612,7 @@ MCP-TASKS-18 | tests/external/test_tasks_server.nim | Given a client that allows
 MCP-TASKS-18 | tests/external/test_tasks_server.nim | Given a client that did not allow tasks on sampling, when the server asks as a task, then nothing is sent
 MCP-TASKS-18 | tests/external/test_tasks_server.nim | Given a client of an older version, when the server asks as a task, then nothing is sent
 MCP-TASKS-18 | tests/external/test_tasks_server.nim | Given a task of the client that failed with an error, when its result is fetched, then the error is raised
+MCP-TASKS-18 | tests/external/test_tasks_server.nim | Given a client with tasks.cancel, when the server cancels one of its tasks, then it sends tasks/cancel and gets the cancelled task
 MCP-TASKS-18 | tests/external/test_tasks_server.nim | Given a client without the cancel capability, when the server cancels one of its tasks, then nothing is sent
 MCP-TASKS-18 | tests/external/test_tasks_end_to_end.nim | Given a client that receives tasks, when the server asks for sampling as a task, then the answer is the handler's
 MCP-TASKS-18 | tests/external/test_tasks_server.nim | Given a client that declared no tasks, when the server asks as a task, then nothing is sent

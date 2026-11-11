@@ -638,6 +638,18 @@ if isSupported(TaskVersion):
       check rest.nextCursor.isNone
       check fx.transport.messagesOf("tasks/list")[1].message["params"]["cursor"].getStr() == "more"
 
+    test "Given a client with tasks.cancel, when the server cancels one of its tasks, then it sends tasks/cancel and gets the cancelled task":
+      let fx = fixture()
+      let peer = fx.connectTo(clientCapabilities = samplingTasks)
+      let cancelling = fx.server.cancelClientTask(peer.session, "c-1")
+      fx.answerNext("", "tasks/cancel", 0, clientTask("c-1", "cancelled"))
+      let cancelled = waitFor cancelling
+      let sent = fx.transport.messagesOf("tasks/cancel")
+      check sent.len == 1
+      check sent[0].message["params"]["taskId"].getStr() == "c-1"
+      check cancelled.taskId == "c-1"
+      check cancelled.status == tsCancelled
+
     test "Given a client without the cancel capability, when the server cancels one of its tasks, then nothing is sent":
       let fx = fixture()
       let peer = fx.connectTo(clientCapabilities = %*{"sampling": {}, "tasks": {
