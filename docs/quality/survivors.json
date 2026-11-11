@@ -311,6 +311,326 @@
       "reason": "pad が 2 つの data URI が断られる。殺すテストは内部側 (test_icon_fetch_internal.nim) にしか無かった。test_icon_fetch.nim に「pad が 2 つ・1 つ・無しのどれでも読む」を足した (MCP-ICONS-6、MCP-SEC-WIRE-9)。測り直しで消えることを確かめる"
     },
     {
+      "fingerprint": "src/protocol/diagnostic.nim:LOR:70124a7496d6cde1:0",
+      "file": "src/protocol/diagnostic.nim",
+      "line": 17,
+      "mutator": "LOR",
+      "original": "c < 0x00000020 or c in 0x0000007F .. 0x0000009F or c in 0x00002028 .. 0x00002029 or; c in 0x0000202A .. 0x0000202E",
+      "replacement": "<or -> and>",
+      "class": "test_owed",
+      "reason": "C1・行区切り・双方向の上書き (U+202A〜U+202E) が生のまま出る。 / MCP-SEC-HTTP-7。T-A。"
+    },
+    {
+      "fingerprint": "src/protocol/diagnostic.nim:LOR:fa4e730b52ed8737:0",
+      "file": "src/protocol/diagnostic.nim",
+      "line": 17,
+      "mutator": "LOR",
+      "original": "c < 0x00000020 or c in 0x0000007F .. 0x0000009F or c in 0x00002028 .. 0x00002029",
+      "replacement": "<or -> and>",
+      "class": "test_owed",
+      "reason": "C1 と行区切り (U+2028・U+2029) が生のまま出る。 / MCP-SEC-HTTP-7。T-A。"
+    },
+    {
+      "fingerprint": "src/protocol/diagnostic.nim:LOR:fcb0f213fea5eeda:0",
+      "file": "src/protocol/diagnostic.nim",
+      "line": 17,
+      "mutator": "LOR",
+      "original": "c < 0x00000020 or c in 0x0000007F .. 0x0000009F",
+      "replacement": "<or -> and>",
+      "class": "test_owed",
+      "reason": "C1 の制御文字 (U+0080〜U+009F) が危険と判定されなくなり、生のまま出る。 / MCP-SEC-HTTP-7。T-A。"
+    },
+    {
+      "fingerprint": "src/protocol/diagnostic.nim:ROR:f62a603f6f9989e5:0",
+      "file": "src/protocol/diagnostic.nim",
+      "line": 17,
+      "mutator": "ROR",
+      "original": "c < 0x00000020",
+      "replacement": "<< -> <=>",
+      "class": "undecided",
+      "reason": ""
+    },
+    {
+      "fingerprint": "src/protocol/diagnostic.nim:LOR:1875a78402bde8c6:0",
+      "file": "src/protocol/diagnostic.nim",
+      "line": 18,
+      "mutator": "LOR",
+      "original": "c < 0x00000020 or c in 0x0000007F .. 0x0000009F or c in 0x00002028 .. 0x00002029 or; c in 0x0000202A .. 0x0000202E or; c in 0x00002066 .. 0x00002069",
+      "replacement": "<or -> and>",
+      "class": "test_owed",
+      "reason": "上に加えて双方向の分離 (U+2066〜U+2069) が生のまま出る。 / MCP-SEC-HTTP-7。T-A。"
+    },
+    {
+      "fingerprint": "src/protocol/diagnostic.nim:LOR:4a79c915cd9887d5:0",
+      "file": "src/protocol/diagnostic.nim",
+      "line": 18,
+      "mutator": "LOR",
+      "original": "c < 0x00000020 or c in 0x0000007F .. 0x0000009F or c in 0x00002028 .. 0x00002029 or; c in 0x0000202A .. 0x0000202E or; c in 0x00002066 .. 0x00002069 or; c in 0x0000200E .. 0x0000200F or; c == 0x0000061C",
+      "replacement": "<or -> and>",
+      "class": "test_owed",
+      "reason": "`isUnsafe` が常に偽になり、危険な符号位置がどれも生のまま出る。 / MCP-SEC-HTTP-7。T-A。"
+    },
+    {
+      "fingerprint": "src/protocol/diagnostic.nim:LOR:4db97eab93bd210d:0",
+      "file": "src/protocol/diagnostic.nim",
+      "line": 18,
+      "mutator": "LOR",
+      "original": "c < 0x00000020 or c in 0x0000007F .. 0x0000009F or c in 0x00002028 .. 0x00002029 or; c in 0x0000202A .. 0x0000202E or; c in 0x00002066 .. 0x00002069 or; c in 0x0000200E .. 0x0000200F",
+      "replacement": "<or -> and>",
+      "class": "test_owed",
+      "reason": "上に加えて方向の印 (U+200E・U+200F) が生のまま出る。 / MCP-SEC-HTTP-7。T-A。"
+    },
+    {
+      "fingerprint": "src/protocol/diagnostic.nim:ROR:e517dd59b589c0bd:0",
+      "file": "src/protocol/diagnostic.nim",
+      "line": 19,
+      "mutator": "ROR",
+      "original": "c == 0x0000061C",
+      "replacement": "<== -> !=>",
+      "class": "test_owed",
+      "reason": "U+061C が生のまま出て、ほかの ASCII でない文字 (日本語など) がすべて `\\u{…}` になる。 / MCP-SEC-HTTP-7。T-A (U+061C) と T-B のどちらでも落ちる。"
+    },
+    {
+      "fingerprint": "src/protocol/diagnostic.nim:ROR:0b5bb378a98ab5b1:0",
+      "file": "src/protocol/diagnostic.nim",
+      "line": 28,
+      "mutator": "ROR",
+      "original": "result.len >= maxLen",
+      "replacement": "<>= -> >>",
+      "class": "test_owed",
+      "reason": "201 バイトの id で、元は 200 バイトと `...(1 more bytes)`、変異後は 201 バイトを出して印が付かない。 / MCP-SEC-HTTP-7 (3 つ目の Then)。T-E。"
+    },
+    {
+      "fingerprint": "src/protocol/diagnostic.nim:AOR:6b522035e597db10:0",
+      "file": "src/protocol/diagnostic.nim",
+      "line": 29,
+      "mutator": "AOR",
+      "original": "text.len - i",
+      "replacement": "<- -> +>",
+      "class": "test_owed",
+      "reason": "省いたバイト数が誤る (201 バイトで 1 が 401 になる)。 / MCP-SEC-HTTP-7 (3 つ目の Then)。T-E (数を厳密に比べる)。"
+    },
+    {
+      "fingerprint": "src/protocol/diagnostic.nim:SDL:bedba8565d355504:0",
+      "file": "src/protocol/diagnostic.nim",
+      "line": 29,
+      "mutator": "SDL",
+      "original": "result.add \"...(\" & $(text.len - i) & \" more bytes)\"",
+      "replacement": "discard",
+      "class": "test_owed",
+      "reason": "切られるが、省いたバイト数が出ない。仕様が「省いたバイト数を添える」と定めている。 / MCP-SEC-HTTP-7 (3 つ目の Then)。T-E。"
+    },
+    {
+      "fingerprint": "src/protocol/diagnostic.nim:ROR:48b5b1e65fb8be17:0",
+      "file": "src/protocol/diagnostic.nim",
+      "line": 32,
+      "mutator": "ROR",
+      "original": "byte < 0x00000080",
+      "replacement": "<< -> <=>",
+      "class": "test_owed",
+      "reason": "単独の 0x80 が ASCII の枝に入り、生のバイトのまま出る (元は `\\x80`)。 / MCP-SEC-HTTP-7 (2 つ目の Then)。T-C。"
+    },
+    {
+      "fingerprint": "src/protocol/diagnostic.nim:SDL:43108caf3797537b:0",
+      "file": "src/protocol/diagnostic.nim",
+      "line": 35,
+      "mutator": "SDL",
+      "original": "result.add \"\\\\r\"",
+      "replacement": "discard",
+      "class": "test_owed",
+      "reason": "CR が `\\r` と出ずに消える。 / MCP-SEC-HTTP-7 (1 つ目の Then)。T-D。"
+    },
+    {
+      "fingerprint": "src/protocol/diagnostic.nim:SDL:05907b3a8a88873d:0",
+      "file": "src/protocol/diagnostic.nim",
+      "line": 36,
+      "mutator": "SDL",
+      "original": "result.add \"\\\\t\"",
+      "replacement": "discard",
+      "class": "test_owed",
+      "reason": "タブが `\\t` と出ずに消える。 / MCP-SEC-HTTP-7 (1 つ目の Then)。T-D。"
+    },
+    {
+      "fingerprint": "src/protocol/diagnostic.nim:SDL:040de086e4543697:0",
+      "file": "src/protocol/diagnostic.nim",
+      "line": 37,
+      "mutator": "SDL",
+      "original": "result.add \"\\\\\\\\\"",
+      "replacement": "discard",
+      "class": "test_owed",
+      "reason": "打たれた `\\` が消え、相手が書いた文字が黙って欠ける。Scenario の文は `\\` を名指していないが、`\\` を重ねないと「エスケープで示す」が読み分けられない (打たれた `\\n` と本物の改行)。`specs/tests.map` も内部側の `Given tab and backslash …` をこの ID に結んでいる。 / MCP-SEC-HTTP-7。T-D。"
+    },
+    {
+      "fingerprint": "src/protocol/diagnostic.nim:ROR:28550222ab53f681:0",
+      "file": "src/protocol/diagnostic.nim",
+      "line": 44,
+      "mutator": "ROR",
+      "original": "byte >= 0x000000C0",
+      "replacement": "<>= -> >>",
+      "class": "equivalent",
+      "reason": "違うのは先頭が 0xC0 のときだけ。元は幅 2 を取るが、末尾なら長さの検査で、そうでなければ `validateUtf8` (0xC2 未満の先頭を断る) で断られ、変異後は幅 0 で断られる。どちらも `\\xc0` を出して 1 バイト進む。 / —"
+    },
+    {
+      "fingerprint": "src/protocol/diagnostic.nim:ROR:7bb30c62fcdcda1c:0",
+      "file": "src/protocol/diagnostic.nim",
+      "line": 44,
+      "mutator": "ROR",
+      "original": "byte >= 0x000000F0",
+      "replacement": "<>= -> >>",
+      "class": "test_owed",
+      "reason": "0xF0 で始まる 4 バイトの文字 (絵文字など) が幅 3 と読まれ、正しい文字が `\\xf0\\x9f\\x98\\x80` に崩れる。 / MCP-SEC-HTTP-7。T-B。"
+    },
+    {
+      "fingerprint": "src/protocol/diagnostic.nim:ROR:dbf4729dd5d1e62b:0",
+      "file": "src/protocol/diagnostic.nim",
+      "line": 44,
+      "mutator": "ROR",
+      "original": "byte >= 0x000000E0",
+      "replacement": "<>= -> >>",
+      "class": "test_owed",
+      "reason": "0xE0 で始まる 3 バイトの文字 (U+0800〜U+0FFF) が幅 2 と読まれ、`\\xNN` に崩れる。 / MCP-SEC-HTTP-7。T-B。"
+    },
+    {
+      "fingerprint": "src/protocol/diagnostic.nim:AOR:fdd68f222fb279b6:0",
+      "file": "src/protocol/diagnostic.nim",
+      "line": 45,
+      "mutator": "AOR",
+      "original": "i + width",
+      "replacement": "<+ -> ->",
+      "class": "test_owed",
+      "reason": "長さの検査が常に偽になり、末尾で切れた文字 (`\\xe3\\x81`) で `text[i ..< i + width]` が範囲外になって IndexDefect で落ちる (元は `\\xe3\\x81` と出す)。 / MCP-SEC-HTTP-7 (2 つ目の Then)。T-C (末尾を切れた文字にする)。"
+    },
+    {
+      "fingerprint": "src/protocol/diagnostic.nim:LOR:a2ccf15b9a50e7b7:0",
+      "file": "src/protocol/diagnostic.nim",
+      "line": 45,
+      "mutator": "LOR",
+      "original": "width == 0 or i + width > text.len or validateUtf8(text[i ..< i + width]) != -1",
+      "replacement": "<or -> and>",
+      "class": "test_owed",
+      "reason": "長さが足りていて中身が不正な列 (`\\xc3` の後が ASCII) が断られず生のまま出る。単独の 0x80 は `\\u{0080}` の繰り返しになる。 / MCP-SEC-HTTP-7 (2 つ目の Then)。T-C。"
+    },
+    {
+      "fingerprint": "src/protocol/diagnostic.nim:LOR:de6a8860a5052e97:0",
+      "file": "src/protocol/diagnostic.nim",
+      "line": 45,
+      "mutator": "LOR",
+      "original": "width == 0 or i + width > text.len",
+      "replacement": "<or -> and>",
+      "class": "test_owed",
+      "reason": "幅 0 のバイトが断られなくなる: 単独の 0x80 は `\\x80` ではなく `\\u{0080}` の繰り返しになる。末尾で切れた文字は範囲外の切り出しで IndexDefect になる。 / MCP-SEC-HTTP-7 (2 つ目の Then)。T-C。"
+    },
+    {
+      "fingerprint": "src/protocol/diagnostic.nim:ROR:128914bf1f19073b:0",
+      "file": "src/protocol/diagnostic.nim",
+      "line": 45,
+      "mutator": "ROR",
+      "original": "i + width > text.len",
+      "replacement": "<> -> >=>",
+      "class": "test_owed",
+      "reason": "文字列の最後にある正しい文字が `\\xNN` に崩れる。 / MCP-SEC-HTTP-7。T-B (id の最後を ASCII でない文字にする)。"
+    },
+    {
+      "fingerprint": "src/protocol/diagnostic.nim:ROR:8799fc3d224eccb1:0",
+      "file": "src/protocol/diagnostic.nim",
+      "line": 45,
+      "mutator": "ROR",
+      "original": "width == 0",
+      "replacement": "<== -> !=>",
+      "class": "test_owed",
+      "reason": "幅のある先頭バイトがすべて `\\xNN` になり、正しい文字が崩れる。続きのバイトは断られずに先へ進み、`i` が進まない (0x80〜0x9F は `\\u{…}` を上限まで繰り返す。0xA0〜0xBF は止まらない)。 / MCP-SEC-HTTP-7。T-B (変異後は止まらないので時間切れで落ちる)。"
+    },
+    {
+      "fingerprint": "src/protocol/diagnostic.nim:AOR:1382231a9c1cfae9:0",
+      "file": "src/protocol/diagnostic.nim",
+      "line": 46,
+      "mutator": "AOR",
+      "original": "i + width",
+      "replacement": "<+ -> ->",
+      "class": "test_owed",
+      "reason": "検査に渡す切り出しの長さが負になる。検査つきのビルドでは正しい文字でも RangeDefect で落ち、落ちない設定では空文字列が常に「正しい」となって不正な列が生のまま出る。 / MCP-SEC-HTTP-7。T-B と T-C (どちらの設定でも片方が落ちる)。"
+    },
+    {
+      "fingerprint": "src/protocol/diagnostic.nim:ROR:027dbfbca2e39cc2:0",
+      "file": "src/protocol/diagnostic.nim",
+      "line": 46,
+      "mutator": "ROR",
+      "original": "validateUtf8(text[i ..< i + width]) != -1",
+      "replacement": "<!= -> ==>",
+      "class": "test_owed",
+      "reason": "正しい文字が `\\xNN` に崩れ、不正な列が生のまま出る。 / MCP-SEC-HTTP-7。T-B と T-C のどちらでも落ちる。"
+    },
+    {
+      "fingerprint": "src/protocol/diagnostic.nim:SDL:4013ad9dd59379cc:1",
+      "file": "src/protocol/diagnostic.nim",
+      "line": 47,
+      "mutator": "SDL",
+      "original": "result.add \"\\\\x\" & toHex(byte, 2).toLowerAscii()",
+      "replacement": "discard",
+      "class": "test_owed",
+      "reason": "不正なバイトがエスケープで示されずに消える。 / MCP-SEC-HTTP-7 (2 つ目の Then)。T-C。"
+    },
+    {
+      "fingerprint": "src/protocol/diagnostic.nim:SDL:c7f896b75934631c:1",
+      "file": "src/protocol/diagnostic.nim",
+      "line": 48,
+      "mutator": "SDL",
+      "original": "inc i",
+      "replacement": "discard",
+      "class": "test_owed",
+      "reason": "不正なバイトで `i` が進まず、同じ `\\xNN` を上限まで繰り返して切れる (止まる。無限ループではない)。 / MCP-SEC-HTTP-7 (2 つ目の Then)。T-C。"
+    },
+    {
+      "fingerprint": "src/protocol/diagnostic.nim:BLR:250308d303f8b8b0:0",
+      "file": "src/protocol/diagnostic.nim",
+      "line": 51,
+      "mutator": "BLR",
+      "original": "false",
+      "replacement": "true",
+      "class": "test_owed",
+      "reason": "`i` が 2 回進み、文字を 1 つおきに飛ばす (次の文字を出すか、範囲外で IndexDefect)。 / MCP-SEC-HTTP-7。T-B (ASCII でない文字を 2 つ以上続ける)。"
+    },
+    {
+      "fingerprint": "src/protocol/diagnostic.nim:SDL:82106f2368aa9ccc:0",
+      "file": "src/protocol/diagnostic.nim",
+      "line": 51,
+      "mutator": "SDL",
+      "original": "fastRuneAt(text, i, r, doInc = false)",
+      "replacement": "discard",
+      "class": "test_owed",
+      "reason": "`r` が 0 のままで `isUnsafe` が常に真になり、正しい文字がすべて `\\u{0000}` と出る。 / MCP-SEC-HTTP-7。T-B。"
+    },
+    {
+      "fingerprint": "src/protocol/diagnostic.nim:SDL:22125ada0be2b99c:0",
+      "file": "src/protocol/diagnostic.nim",
+      "line": 53,
+      "mutator": "SDL",
+      "original": "result.add \"\\\\u{\" & toHex(r.int, 4).toLowerAscii() & \"}\"",
+      "replacement": "discard",
+      "class": "test_owed",
+      "reason": "危険な符号位置が `\\u{…}` で示されずに消える。仕様は「エスケープで示す」。 / MCP-SEC-HTTP-7 (1 つ目の Then)。T-A。"
+    },
+    {
+      "fingerprint": "src/protocol/diagnostic.nim:AOR:bdd8bd961580b77e:0",
+      "file": "src/protocol/diagnostic.nim",
+      "line": 55,
+      "mutator": "AOR",
+      "original": "i + width",
+      "replacement": "<+ -> ->",
+      "class": "test_owed",
+      "reason": "出す切り出しの長さが負になり、正しい文字が出ない (検査つきのビルドでは RangeDefect で落ちる)。 / MCP-SEC-HTTP-7。T-B。"
+    },
+    {
+      "fingerprint": "src/protocol/diagnostic.nim:SDL:6e2e25fc43b76a80:0",
+      "file": "src/protocol/diagnostic.nim",
+      "line": 55,
+      "mutator": "SDL",
+      "original": "result.add text[i ..< i + width]",
+      "replacement": "discard",
+      "class": "test_owed",
+      "reason": "正しい ASCII でない文字がすべて消える。 / MCP-SEC-HTTP-7。T-B。"
+    },
+    {
       "fingerprint": "src/protocol/lifecycle.nim:RVR:a94ce88da5074921:0",
       "file": "src/protocol/lifecycle.nim",
       "line": 36,
