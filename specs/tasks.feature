@@ -157,7 +157,7 @@ Feature: Tasks
   Scenario: A question of a task waits for tasks/result
     Given a task whose tool asks the client while no tasks/result request waits
     When tasks/result arrives
-    Then the question is sent on its stream, not before, and a task with more held questions than the limit has the next one refused
+    Then the question is sent on its stream, not before, a task with more held questions than the limit has the next one refused, and a task that is cancelled or expired has any later question refused at once and never sent
 
   @spec:MCP-TASKS-24 @feature:ftTasks
   Scenario: Tasks are bound to the authorization context

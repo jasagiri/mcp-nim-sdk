@@ -112,9 +112,7 @@ type
       ## Called after a task whose ttl elapsed was deleted, whatever its
       ## status: where a receiver keeps state of its own per task, this is
       ## when to let go of it (`onStatusChange` does not run for an expiry).
-    onResultStream*: proc(owner, taskId, requestId: string) {.closure.}
-      ## Called when a `tasks/result` request (`requestId`) starts to wait on
-      ## a task: the stream the receiver can now send the task's messages on.
+    resultStreamHook: proc(owner, taskId, requestId: string) {.closure.}
 
 const
   InvalidParamsCode = -32602
@@ -405,13 +403,20 @@ proc attachWork*(store: TaskStore, id: string, cancel: proc(reason: string) {.cl
   if id in store.entries:
     store.entries[id].cancelWork = cancel
 
+proc `onResultStream=`*(store: TaskStore, hook: proc(owner, taskId, requestId: string) {.closure.}) =
+  ## Called when a `tasks/result` request (`requestId`) starts to wait on a
+  ## task: the stream the receiver can now send the task's messages on. For the
+  ## receivers of this package: the `server/tasks` and `client/tasks` that
+  ## re-export this module leave it out.
+  store.resultStreamHook = hook
+
 proc setResultStream*(store: TaskStore, id, requestId: string) =
   ## Which `tasks/result` request currently waits on the task ("" for none),
   ## so that the receiver can send its messages for the requestor there.
   if id in store.entries:
     store.entries[id].resultStream = requestId
-    if requestId.len > 0 and not store.onResultStream.isNil:
-      store.onResultStream(store.entries[id].owner, id, requestId)
+    if requestId.len > 0 and not store.resultStreamHook.isNil:
+      store.resultStreamHook(store.entries[id].owner, id, requestId)
 
 proc resultStream*(store: TaskStore, id: string): string =
   if id in store.entries: store.entries[id].resultStream else: ""

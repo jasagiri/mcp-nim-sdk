@@ -25,6 +25,8 @@ type
       ## What the tool "slow" waits for.
     sawCancel: bool
     sampled: Future[JsonNode]
+    refused: Future[int]
+      ## The code with which the tool "asks_late" was refused.
 
 proc tool(name, taskSupport: string): JsonNode =
   result = %*{"name": name, "inputSchema": {"type": "object"}}
@@ -54,7 +56,8 @@ proc fixture(config = TaskConfig(), withCapability = true, maxActive = 0): Fixtu
     return McpPage(items: @[
       tool("slow", "optional"), tool("needs_task", "required"),
       tool("never", "forbidden"), tool("plain", ""), tool("quick", "optional"), tool("failing", "optional"),
-      tool("broken", "optional"), tool("asks", "optional")]))
+      tool("broken", "optional"), tool("asks", "optional"),
+      tool("asks_late", "optional")]))
   fx.server.onToolCall(proc(ctx: McpRequestContext, name: string,
                             arguments: JsonNode): Future[JsonNode] {.async.} =
     case name
@@ -73,9 +76,17 @@ proc fixture(config = TaskConfig(), withCapability = true, maxActive = 0): Fixtu
       let answer = await ctx.createMessage(%*{"messages": [], "maxTokens": 1})
       fx.sampled.complete(answer)
       return textResult("asked")
+    of "asks_late":
+      await fx.gate
+      try:
+        discard await ctx.createMessage(%*{"messages": [], "maxTokens": 1})
+      except McpTaskError as e:
+        fx.refused.complete(e.code)
+      return textResult("asked late")
     else:  # "plain", "quick", "never"
       return textResult("plain done"))
   fx.sampled = newFuture[JsonNode]("sampled")
+  fx.refused = newFuture[int]("refused")
   fx.store = newTaskStore(clock = proc(): int64 = fx.time.nowMs, pollIntervalMs = some(250),
                           maxActivePerOwner = maxActive)
   if withCapability:
@@ -519,6 +530,42 @@ if isSupported(TaskVersion):
       peer.untilStatus(id, "input_required")
       discard peer.ask("tasks/cancel", taskParams(id))
       check peer.ask("tasks/result", taskParams(id)).hasKey("error")
+      settle()
+      check fx.transport.messagesOf("sampling/createMessage").len == 0
+
+    test "Given a tasks/result that waits on a task, when the task ends, then the task no longer names that request as its stream":
+      let fx = fixture()
+      let peer = fx.connectTo()
+      let id = peer.createTask("slow")["taskId"].getStr()
+      check fx.store.resultStream(id) == ""
+      let waiting = freshId()
+      peer.send(%waiting, "tasks/result", taskParams(id))
+      untilTrue("tasks/result to wait on the task", proc(): bool = fx.store.resultStream(id) == waiting)
+      fx.gate.complete()
+      discard fx.transport.responseTo(waiting)
+      check fx.store.resultStream(id) == ""
+
+    test "Given a task that was cancelled, when its tool asks the client afterwards, then the question is refused at once and never sent":
+      let fx = fixture()
+      let peer = fx.connectTo(clientCapabilities = %*{"sampling": {}})
+      let id = peer.createTask("asks_late")["taskId"].getStr()
+      discard peer.ask("tasks/cancel", taskParams(id))
+      fx.gate.complete()
+      untilTrue("the question to be refused", proc(): bool = fx.refused.finished)
+      check fx.refused.read == -32603
+      check peer.ask("tasks/result", taskParams(id)).hasKey("error")
+      settle()
+      check fx.transport.messagesOf("sampling/createMessage").len == 0
+
+    test "Given a task that expired, when its tool asks the client afterwards, then the question is refused at once and never sent":
+      let fx = fixture()
+      let peer = fx.connectTo(clientCapabilities = %*{"sampling": {}})
+      let id = peer.createTask("asks_late", ttl = 1_000)["taskId"].getStr()
+      fx.time.nowMs += 1_001
+      check peer.ask("tasks/get", taskParams(id)).errorCode == -32602
+      fx.gate.complete()
+      untilTrue("the question to be refused", proc(): bool = fx.refused.finished)
+      check fx.refused.read == -32603
       settle()
       check fx.transport.messagesOf("sampling/createMessage").len == 0
 

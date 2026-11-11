@@ -22,7 +22,7 @@ import ../protocol/tasks
 import ../protocol/task_methods
 from ../server/errors import plainMessage
 
-export tasks
+export tasks except setResultStream, `onResultStream=`
 
 type
   McpCreatedTask* = object

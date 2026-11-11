@@ -30,7 +30,8 @@ import ../../protocol/subscriptions
 import ./wire
 import ../official_common
 
-export wire, tasks
+export wire
+export tasks except setResultStream, `onResultStream=`
 
 type
   ToolCallStart* = object

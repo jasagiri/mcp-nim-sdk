@@ -14,7 +14,8 @@ import ../protocol/features
 import ../protocol/tasks
 import ../protocol/task_methods
 
-export tasks, task_methods
+export tasks except setResultStream, `onResultStream=`
+export task_methods
 
 type
   TaskConfig* = object
@@ -93,9 +94,15 @@ proc enableTasks*(server: McpServer, config = TaskConfig(),
   # CreateTaskResult. The specification's way is `input_required` and a
   # `tasks/result` request that serves as the stream, so the request waits for
   # one, held here. Notifications are not held: they go to the GET stream.
+  # A task that is over, or gone, has no entry: nobody is left to read what it
+  # would hold, so its questions are refused at once.
   var held = initTable[string, seq[JsonRpcRequest]]()
   server.holdForTask = proc(taskId: string, request: JsonRpcRequest): bool =
-    var queue = held.getOrDefault(taskId)
+    discard tasksStore.sweep()  # an expiry nobody has looked at yet
+    if taskId notin held:
+      raise newTaskError(-32603, "task " & taskId &
+        " is over: its requests would wait for no tasks/result")
+    var queue = held[taskId]
     if queue.len >= config.maxQueuedMessages:
       raise newTaskError(-32603, "task " & taskId & " has " & $queue.len &
         " requests waiting for tasks/result already")
@@ -103,8 +110,9 @@ proc enableTasks*(server: McpServer, config = TaskConfig(),
     held[taskId] = queue
     true
   tasksStore.onResultStream = proc(owner, taskId, requestId: string) =
-    var queue: seq[JsonRpcRequest]
-    if held.pop(taskId, queue):
+    if taskId in held:
+      let queue = held[taskId]
+      held[taskId] = @[]  # the task goes on, and may ask again
       for request in queue:
         asyncCheck server.sendHeld(request, requestId)
 
@@ -158,6 +166,7 @@ proc enableTasks*(server: McpServer, config = TaskConfig(),
     try:
       created = runAsTask(tasksStore, owner, asked.get, proc(taskId: string): TaskWork =
         sessionOf[taskId] = request.session
+        held[taskId] = @[]
         let scope = TaskScope(
           taskId: taskId,
           awaitingInput: proc(waiting: bool) =

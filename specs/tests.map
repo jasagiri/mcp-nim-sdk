@@ -1661,8 +1661,10 @@ MCP-TASKS-22 | tests/external/test_tasks_http.nim | Given a task and no tasks/re
 MCP-TASKS-23 | tests/internal/test_tasks_http_internal.nim | Given a task that asks and no tasks/result, when tasks/result arrives, then the question is on its stream and not before
 MCP-TASKS-23 | tests/external/test_tasks_http.nim | Given a task whose held questions are limited, when the tool asks beyond the limit, then the question is refused and the task fails
 MCP-TASKS-23 | tests/internal/test_tasks_store_internal.nim | Given a hook for result streams, when a stream is set and then cleared, then the hook hears only of the set
-MCP-TASKS-23 | tests/internal/test_tasks_server_internal.nim | Given a tasks/result that waits on a task, when the task ends, then the task no longer names that request as its stream
+MCP-TASKS-23 | tests/external/test_tasks_server.nim | Given a tasks/result that waits on a task, when the task ends, then the task no longer names that request as its stream
 MCP-TASKS-23 | tests/external/test_tasks_server.nim | Given a question waiting for tasks/result, when the task is cancelled, then a later tasks/result does not send it
+MCP-TASKS-23 | tests/external/test_tasks_server.nim | Given a task that was cancelled, when its tool asks the client afterwards, then the question is refused at once and never sent
+MCP-TASKS-23 | tests/external/test_tasks_server.nim | Given a task that expired, when its tool asks the client afterwards, then the question is refused at once and never sent
 MCP-TASKS-24 | tests/external/test_tasks_principal.nim | Given a task made by one principal, when another with the same session id asks for it, then it is unknown to them
 MCP-TASKS-24 | tests/external/test_tasks_principal.nim | Given a task made by one principal, when another asks for it by its id in a session of their own, then the task store does not show it
 MCP-TASKS-24 | tests/external/test_tasks_principal.nim | Given an authorized request, when a tool runs, then ctx.principal is the subject of the token
@@ -2238,6 +2240,7 @@ MCP-SEC-AUTH-6 | tests/internal/test_security_ext_auth_internal.nim | Given a fr
 MCP-SEC-AUTH-6 | tests/internal/test_security_ext_auth_internal.nim | Given an exp beyond what a grant can plausibly live, when checked, then it is refused and nothing overflows
 MCP-SEC-AUTH-6 | tests/internal/test_security_ext_auth_internal.nim | Given an exp at the largest lifetime or a negative one, when checked, then the first is accepted and the second has expired
 MCP-SEC-AUTH-6 | tests/internal/test_security_ext_auth_internal.nim | Given an expires_in that is huge, negative or not a number in a token exchange response, when parsed, then it is no expiry, an error, an error
+MCP-SEC-AUTH-6 | tests/external/test_security_ext_auth.nim | Given an ID-JAG that expires in exactly the longest lifetime a grant can have and one that expires a second later, when checked, then the first is accepted and the second refused
 MCP-ERRORS-1 | tests/external/test_error_message_g0f.nim | Given requests that fail in each standard way, when the server answers, then every message is one concise sentence
 MCP-ERRORS-1 | tests/external/test_error_message_g0f.nim | Given a handler that fails with a long message of its own, when the server answers, then the peer is told 'Internal error' and nothing the handler wrote
 MCP-ERRORS-1 | tests/external/test_error_message_g0f.nim | Given bodies that are not requests, when posted, then each answer carries one concise sentence
@@ -2296,6 +2299,7 @@ MCP-EXT-AUTH-1 | tests/external/test_ext_auth_client_credentials.nim | Given a t
 MCP-EXT-AUTH-1 | tests/external/test_ext_auth_client_credentials.nim | Given an access token, when requests are sent, then the token is in no URL and goes to the resource server only
 MCP-EXT-AUTH-1 | tests/external/test_ext_auth_client_credentials.nim | Given the default clock, when a signing client requests a token, then the assertion is dated now and the server accepts it
 MCP-EXT-AUTH-1 | tests/external/test_ext_auth_client_credentials.nim | Given an expired token and an authorization server that now refuses the client, when requests fail, then the stale token is dropped and the next request asks once
+MCP-EXT-AUTH-1 | tests/external/test_ext_auth_client_credentials.nim | Given an authorization server that accepts only its issuer or only its token endpoint as audience, when the config names that audience, then the assertion is accepted
 MCP-EXT-AUTH-2 | tests/external/test_ext_auth_client_credentials.nim | Given a challenge with a scope, when the token is requested, then it asks for that scope
 MCP-EXT-AUTH-2 | tests/external/test_ext_auth_client_credentials.nim | Given no scope in the challenge but scopes_supported, when the token is requested, then it asks for those
 MCP-EXT-AUTH-2 | tests/external/test_ext_auth_client_credentials.nim | Given scopes in the config, when the token is requested, then they replace the challenge's
@@ -2353,6 +2357,11 @@ MCP-EXT-AUTH-7 | tests/internal/test_ext_auth_grants_internal.nim | Given a clie
 MCP-EXT-AUTH-7 | tests/internal/test_ext_auth_grants_internal.nim | Given scopes, when the JWT bearer grant is requested, then they are sent as one scope parameter
 MCP-EXT-AUTH-7 | tests/internal/test_ext_auth_grants_internal.nim | Given a private_key_jwt client without a lifetime, when client credentials are requested, then the assertion lives one minute
 MCP-EXT-AUTH-7 | tests/internal/test_ext_auth_grants_internal.nim | Given a subject token and no scopes, when exchanged, then no scope parameter is sent
+MCP-EXT-AUTH-7 | tests/external/test_ext_auth_client_credentials.nim | Given a signing key and an assertion lifetime of zero, when a request is sent, then the assertion lives one minute
+MCP-EXT-AUTH-7 | tests/external/test_ext_auth_client_credentials.nim | Given a signer made without a signing function, when a request is sent, then the request fails and nothing is sent to the authorization server
+MCP-EXT-AUTH-7 | tests/external/test_ext_auth_client_credentials.nim | Given no scope in the config, the challenge or the metadata, when a token is requested, then no scope parameter is sent
+MCP-EXT-AUTH-7 | tests/external/test_ext_auth_enterprise_managed.nim | Given no scope in the config, the challenge or the metadata, when the exchange is made, then neither the IdP nor the authorization server is sent a scope
+MCP-EXT-AUTH-7 | tests/external/test_ext_auth_enterprise_managed.nim | Given an ID-JAG of exactly the largest length a JWT may have and one a byte longer, when checked, then the first is read and the second refused
 MCP-EXT-AUTH-8 | tests/internal/test_ext_auth_enterprise_managed_internal.nim | Given a 401 and an ID token, when a request is sent, then the IdP exchanges it for an ID-JAG for this authorization server and resource, the server turns that into an access token, and the user is never sent anywhere
 MCP-EXT-AUTH-8 | tests/external/test_ext_auth_enterprise_managed.nim | Given the access token the server issued, when it is looked up, then it is restricted to the MCP server named by the ID-JAG's resource
 MCP-EXT-AUTH-8 | tests/internal/test_ext_auth_enterprise_managed_internal.nim | Given a SAML assertion or a refresh token instead of an ID token, when a request is sent, then subject_token_type says which
@@ -2374,11 +2383,14 @@ MCP-EXT-AUTH-9 | tests/external/test_ext_auth_enterprise_managed.nim | Given a 4
 MCP-EXT-AUTH-9 | tests/external/test_ext_auth_enterprise_managed.nim | Given a 403 that names a scope already requested, when handled, then the answer is no and no second exchange is made
 MCP-EXT-AUTH-9 | tests/internal/test_ext_auth_enterprise_managed_internal.nim | Given an authorization server that grants a narrower scope than was asked, when the access token is stored, then its scopes are the granted ones
 MCP-EXT-AUTH-9 | tests/internal/test_ext_auth_enterprise_managed_internal.nim | Given an authorization server that names no scope in its answer, when the access token is stored, then its scopes are the ones asked for
+MCP-EXT-AUTH-9 | tests/external/test_ext_auth_enterprise_managed.nim | Given an authorization server that grants a narrower scope than was asked, when the access token is stored, then its scopes are the granted ones
+MCP-EXT-AUTH-9 | tests/external/test_ext_auth_enterprise_managed.nim | Given an authorization server that names no scope in its answer, when the access token is stored, then its scopes are the ones asked for
 MCP-EXT-AUTH-10 | tests/external/test_ext_auth_enterprise_managed.nim | Given an authorization server that does not list the ID-JAG profile, when a request is sent, then no identity assertion is used
 MCP-EXT-AUTH-10 | tests/external/test_ext_auth_enterprise_managed.nim | Given an authorization server that lists other profiles only, when a request is sent, then no identity assertion is used
 MCP-EXT-AUTH-10 | tests/internal/test_ext_auth_enterprise_managed_internal.nim | Given an authorization server that lists the profile but not the jwt-bearer grant, when a request is sent, then no identity assertion is used
 MCP-EXT-AUTH-10 | tests/external/test_ext_auth_enterprise_managed.nim | Given an IdP that lists identity chaining token types without id-jag, when a request is sent, then the identity assertion is not sent to it
 MCP-EXT-AUTH-10 | tests/external/test_ext_auth_enterprise_managed.nim | Given an IdP that does not advertise identity chaining token types, when a request is sent, then the exchange is tried (the draft says SHOULD)
+MCP-EXT-AUTH-10 | tests/external/test_ext_auth_enterprise_managed.nim | Given an authorization server that lists the profile but not the jwt-bearer grant, when a request is sent, then no identity assertion is used
 MCP-EXT-AUTH-11 | tests/external/test_ext_auth_enterprise_managed.nim | Given an ID-JAG whose typ is not oauth-id-jag+jwt, when it arrives, then it is not sent to the authorization server
 MCP-EXT-AUTH-11 | tests/external/test_ext_auth_enterprise_managed.nim | Given an ID-JAG issued by someone other than the IdP, when it arrives, then it is not sent on
 MCP-EXT-AUTH-11 | tests/external/test_ext_auth_enterprise_managed.nim | Given an ID-JAG for another audience, when it arrives, then it is not sent on
@@ -2410,6 +2422,12 @@ MCP-EXT-AUTH-11 | tests/internal/test_ext_auth_enterprise_managed_internal.nim |
 MCP-EXT-AUTH-11 | tests/internal/test_ext_auth_enterprise_managed_internal.nim | Given claims of the wrong JSON type, when checked, then they are refused
 MCP-EXT-AUTH-11 | tests/internal/test_ext_auth_enterprise_managed_internal.nim | Given an ID-JAG that expires at this very second, when checked, then it has expired
 MCP-EXT-AUTH-11 | tests/internal/test_ext_auth_enterprise_managed_internal.nim | Given an ID-JAG without iss or without client_id, when checked, then it is refused as not from the IdP or not for the client
+MCP-EXT-AUTH-11 | tests/external/test_ext_auth_enterprise_managed.nim | Given an exchange response that leaves out access_token, issued_token_type or token_type, when it arrives, then the request fails and nothing is sent to the authorization server
+MCP-EXT-AUTH-11 | tests/external/test_ext_auth_enterprise_managed.nim | Given an ID-JAG whose signature part is empty or not base64url, when it is checked, then it is refused
+MCP-EXT-AUTH-11 | tests/external/test_ext_auth_enterprise_managed.nim | Given a header without alg or with an empty alg, when the ID-JAG is checked, then it is refused
+MCP-EXT-AUTH-11 | tests/external/test_ext_auth_enterprise_managed.nim | Given an ID-JAG without typ, iss or client_id, when it is checked, then it is refused
+MCP-EXT-AUTH-11 | tests/external/test_ext_auth_enterprise_managed.nim | Given an ID-JAG whose sub or jti is an empty string, when it is checked, then it is refused
+MCP-EXT-AUTH-11 | tests/external/test_ext_auth_enterprise_managed.nim | Given an ID-JAG that expires exactly now or one second later, when it is checked, then the first has expired and the second is accepted
 MCP-EXT-AUTH-14 | tests/external/test_ext_auth_enterprise_managed.nim | Given a client that declares the extension, when it sends a 2026-07-28 request, then clientCapabilities carries the identifier with empty settings
 MCP-EXT-AUTH-14 | tests/external/test_ext_auth_enterprise_managed.nim | Given a client that did not declare the extension, when it sends a request, then clientCapabilities has no extensions
 MCP-EXT-AUTH-14 | tests/external/test_ext_auth_enterprise_managed.nim | Given a server that advertises the extension, when a 2026-07-28 client discovers it, then the capabilities list the identifier
