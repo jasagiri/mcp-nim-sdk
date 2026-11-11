@@ -1,9 +1,10 @@
 ## MCP transport layer
 
-import asyncdispatch, json, options, unicode
+import asyncdispatch, json, options
 import ../protocol/types
 from ../protocol/modern import ErrInternal
 import ../protocol/diagnostic
+import ../compat/utf8
 
 type
   McpTransportKind* = enum
@@ -145,16 +146,6 @@ method protocolVersionNegotiated*(t: McpTransport, version: McpProtocolVersion) 
 
 proc wireId(id: string, idNode: JsonNode): JsonNode =
   if idNode.isNil: %id else: idNode
-
-func isUtf8(text: string): bool {.raises: [].} =
-  ## Whether `text` is UTF-8 as RFC 3629 has it. `validateUtf8` lets the
-  ## surrogates U+D800..U+DFFF through (ED A0..BF xx), which UTF-8 has not.
-  if validateUtf8(text) != -1:
-    return false
-  for i in 0 ..< text.len - 1:
-    if text[i] == '\xED' and text[i + 1] >= '\xA0':
-      return false
-  true
 
 func notUtf8(node: JsonNode, at: string): string {.raises: [].} =
   ## Where in `node` a string (a value or a member name) is not UTF-8, as a

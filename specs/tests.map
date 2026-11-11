@@ -1932,6 +1932,7 @@ MCP-SEC-HTTP-7 | tests/external/test_security_diagnostic.nim | Given a tool whos
 MCP-SEC-HTTP-7 | tests/external/test_security_diagnostic.nim | Given an id with dangerous code points between letters, when the server logs it, then none is written raw and each is shown as an escape
 MCP-SEC-HTTP-7 | tests/external/test_security_diagnostic.nim | Given an id of valid non-ASCII characters, when the server logs it, then it is written as it came
 MCP-SEC-HTTP-7 | tests/external/test_security_diagnostic.nim | Given an id with bytes that are not valid UTF-8, when the server logs it, then no such byte is written raw and each is shown as an escape
+MCP-SEC-HTTP-7 | tests/external/test_security_diagnostic.nim | Given an id with a surrogate, a code point above U+10FFFF or an overlong form, when the server logs it, then none of its bytes is written raw
 MCP-SEC-HTTP-7 | tests/external/test_security_diagnostic.nim | Given an id with a carriage return and a tab, when the server logs it, then neither is written raw and each is shown as an escape
 MCP-SEC-HTTP-7 | tests/external/test_security_diagnostic.nim | Given an id that holds a typed backslash and n, when the server logs it, then the log tells it from a line break
 MCP-SEC-HTTP-7 | tests/external/test_security_diagnostic.nim | Given an id of exactly the limit, when the server logs it, then it is written whole

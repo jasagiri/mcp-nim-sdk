@@ -347,8 +347,8 @@
       "mutator": "ROR",
       "original": "c < 0x00000020",
       "replacement": "<< -> <=>",
-      "class": "undecided",
-      "reason": ""
+      "class": "equivalent",
+      "reason": "isUnsafe に届くのは 2 バイト以上の整った UTF-8 の文字だけで、その符号位置は U+0080 以上。c < 0x20 と c <= 0x20 はどちらも偽になる。b04fcb9c では validateUtf8 が 3・4 バイトの過剰な符号化 (E0 80 A0 = U+0020) を通したので違いが出たが、compat/utf8 の utf8Width が RFC 3629 どおりに断るようにした後は届かない (仕分け担当の指摘。test_security_diagnostic.nim の「surrogate, a code point above U+10FFFF or an overlong form」が確かめる)"
     },
     {
       "fingerprint": "src/protocol/diagnostic.nim:LOR:1875a78402bde8c6:0",

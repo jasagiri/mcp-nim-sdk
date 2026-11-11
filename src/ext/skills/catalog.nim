@@ -14,7 +14,8 @@
 ## (SEP-2640, Final), 2026-07-28 and later.
 
 import std/[asyncdispatch, base64, json, options, os, sets, strutils,
-            tables, unicode]
+            tables]
+import ../../compat/utf8
 import ../../server/server
 import ../../server/extensions
 import ../../protocol/modern
@@ -261,7 +262,7 @@ proc locate(catalog: SkillCatalog, uri: string): Future[Option[Found]] {.async.}
 
 func isText(mimeType, content: string): bool =
   (mimeType.startsWith("text/") or mimeType in ["application/json", "application/yaml"]) and
-    validateUtf8(content) == -1
+    isUtf8(content)
 
 func contentsOf(found: Found): JsonNode =
   result = %*{"uri": found.uri, "mimeType": found.mimeType}

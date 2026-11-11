@@ -7,6 +7,7 @@
 ## bidirectional overrides), or fill the log (any length).
 
 import std/[strutils, unicode]
+import ../compat/utf8
 
 const DefaultPeerTextLength* = 200
   ## Bytes of peer text kept in one diagnostic: enough for an identifier or a
@@ -40,10 +41,9 @@ func peerText*(text: string, maxLen = DefaultPeerTextLength): string {.raises: [
       else: result.add text[i]
       inc i
       continue
-    # A multi-byte sequence: valid only if it decodes whole.
-    let width = if byte >= 0xF0: 4 elif byte >= 0xE0: 3 elif byte >= 0xC0: 2 else: 0
-    if width == 0 or i + width > text.len or
-       validateUtf8(text[i ..< i + width]) != -1:
+    # A multi-byte sequence: valid only if it is a whole character.
+    let width = utf8Width(text, i)
+    if width == 0:
       result.add "\\x" & toHex(byte, 2).toLowerAscii()
       inc i
       continue

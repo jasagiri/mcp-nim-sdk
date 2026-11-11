@@ -118,6 +118,15 @@ suite "peer text in diagnostics (MCP-SEC-HTTP-7)":
     check shown.find("a") < shown.find("b")
     check shown.find("b") < shown.find("cd")
 
+  test "Given an id with a surrogate, a code point above U+10FFFF or an overlong form, when the server logs it, then none of its bytes is written raw":
+    # Sequences that have the layout of UTF-8 and are not UTF-8 (RFC 3629).
+    for bad in ["\xed\xa0\x80", "\xf4\x90\x80\x80", "\xf5\x80\x80\x80", "\xe0\x80\xa0", "\xf0\x80\x80\xa0"]:
+      let (logged, shown) = idShown("a" & bad & "b")
+      check logged.count('\n') == 1
+      check shown.allIt(it.ord < 0x80)
+      check shown.startsWith("a")
+      check shown.endsWith("b")
+
   test "Given an id with a carriage return and a tab, when the server logs it, then neither is written raw and each is shown as an escape":
     let (logged, shown) = idShown("a\rb\tc")
     check '\r' notin logged

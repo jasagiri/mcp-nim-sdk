@@ -6,9 +6,11 @@ import std/[unittest, asyncdispatch, asyncnet, json, nativesockets, net, streams
 import mcp
 
 const
-  NotUtf8 = ["a\xFFb", "\xE3\x81", "\xC0\x80", "\xED\xA0\x80", "\xF8\x88\x80\x80\x80"]
+  NotUtf8 = ["a\xFFb", "\xE3\x81", "\xC0\x80", "\xED\xA0\x80", "\xF8\x88\x80\x80\x80",
+             "\xE0\x80\xA0", "\xF0\x80\x80\xA0", "\xF4\x90\x80\x80", "\xF5\x80\x80\x80"]
     ## A byte no character has, a character cut short, an overlong form, a
-    ## surrogate, and a form longer than four bytes.
+    ## surrogate, and a form longer than four bytes; overlong forms of three
+    ## and of four bytes, and two code points above U+10FFFF (RFC 3629).
   Utf8 = ["", "ascii", "日本語", "é", "\xF0\x9F\x98\x80", "\xED\x9F\xBF", "\xEE\x80\x80"]
     ## The last two are U+D7FF and U+E000, the characters on either side of
     ## the surrogates.

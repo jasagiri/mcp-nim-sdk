@@ -501,6 +501,7 @@ suite "server rules sharpened by the mutation run (g2x-skills-rest)":
       let catalog = newSkillCatalog()
       catalog.addSkill("git-workflow", @[SkillFile(path: "SKILL.md", content: GitMd),
         SkillFile(path: "broken.md", content: "caf\xe9"),
+        SkillFile(path: "surrogate.md", content: "a\xed\xa0\x80b"),
         SkillFile(path: "plain.png", content: "just ascii")])
       server.registerSkills(catalog)
       let peer = server.connect(server.attach(), v)
@@ -512,6 +513,11 @@ suite "server rules sharpened by the mutation run (g2x-skills-rest)":
         %*{"uri": "skill://git-workflow/plain.png"})["result"]["contents"][0]
       check plain["blob"].getStr().decode() == "just ascii"
       check not plain.hasKey("text")
+      # The layout of UTF-8 without being UTF-8 (RFC 3629: no surrogates).
+      let surrogate = peer.ask("resources/read",
+        %*{"uri": "skill://git-workflow/surrogate.md"})["result"]["contents"][0]
+      check surrogate["blob"].getStr().decode() == "a\xed\xa0\x80b"
+      check not surrogate.hasKey("text")
 
   test "Given a dynamic skill beside fixed ones, when a URI no skill serves is read, then the provider is not called":
     for v in versionsWith(ftExtensions):
