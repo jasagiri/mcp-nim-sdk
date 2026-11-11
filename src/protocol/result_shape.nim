@@ -58,14 +58,19 @@ func contentBlockProblems(subject: string, blk: JsonNode): seq[string] {.raises:
     discard
 
 func promptResultProblems*(prompt: JsonNode): seq[string] {.raises: [].} =
-  ## What is wrong with the images and embedded resources of the messages of
-  ## a GetPromptResult; empty when it is right.
-  if prompt.isNil or prompt.kind != JObject or prompt{"messages"}.isNil or prompt{"messages"}.kind != JArray:
-    return
-  for i, message in prompt{"messages"}.getElems():
-    if message.isNil or message.kind != JObject or message{"content"}.isNil:
-      continue
+  ## What is wrong with a GetPromptResult: it has messages, each message has
+  ## content, and the images and embedded resources of the content are
+  ## right; empty when it is right.
+  if prompt.isNil or prompt.kind != JObject:
+    return @["the result is not an object"]
+  let messages = prompt{"messages"}
+  if messages.isNil or messages.kind != JArray:
+    return @["messages is not an array"]
+  for i, message in messages.getElems():
     let subject = "messages[" & $i & "].content"
+    if message.isNil or message.kind != JObject or message{"content"}.isNil:
+      result.add subject & " is missing"
+      continue
     let content = message{"content"}
     if content.kind == JArray:
       for j, blk in content.getElems():
@@ -74,11 +79,15 @@ func promptResultProblems*(prompt: JsonNode): seq[string] {.raises: [].} =
       result.add contentBlockProblems(subject, content)
 
 func resourceContentsProblems*(contents: openArray[JsonNode]): seq[string] {.raises: [].} =
-  ## What is wrong with the `contents` of a resources/read result: the blob of
-  ## each entry that has one is base64 (server/resources).
+  ## What is wrong with the `contents` of a resources/read result: each entry
+  ## is an object, and the blob of each entry that has one is base64
+  ## (server/resources).
   for i, content in contents:
-    if not content.isNil and content.kind == JObject:
-      result.add blobProblems("contents[" & $i & "]", content)
+    let subject = "contents[" & $i & "]"
+    if content.isNil or content.kind != JObject:
+      result.add subject & " is not an object"
+    else:
+      result.add blobProblems(subject, content)
 
 func toolListingProblems*(version: McpProtocolVersion, tool: JsonNode): seq[string] {.raises: [].} =
   ## What is wrong with an entry of tools/list for `version`. From 2025-11-25

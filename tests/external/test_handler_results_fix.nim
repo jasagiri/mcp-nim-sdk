@@ -80,6 +80,25 @@ suite "the embedded resource of a prompt":
         check answer.hasKey("result")
         check answer["result"]["messages"][0]["content"] == message
 
+suite "the shape of a prompt result":
+
+  proc gotResult(promptResult: JsonNode, v: McpProtocolVersion): JsonNode =
+    let server = newServer(McpServerCapabilities(prompts: some(McpPromptsCapability())))
+    server.onPromptGet(proc(ctx: McpRequestContext, name: string,
+                            arguments: JsonNode): Future[JsonNode] {.async.} =
+      return promptResult)
+    server.connect(server.attach(), v).ask("prompts/get", %*{"name": "p"})
+
+  test "Given a prompt result without messages, or a message without content, when the prompt is got, then the answer is an internal error":
+    for v in SupportedProtocolVersions:
+      for promptResult in [%*{}, %*{"description": "no messages"},
+                           %*{"messages": [{"role": "user"}]},
+                           %*{"messages": [{"role": "user", "content": {"type": "text", "text": "ok"}},
+                                           {"role": "assistant"}]}]:
+        let answer = gotResult(promptResult, v)
+        check answer.isError(-32603)
+        check not answer.hasKey("result")
+
 suite "the blob of a resource":
 
   test "Given a resource whose blob is not base64, when it is read, then the answer is an internal error":
@@ -96,6 +115,15 @@ suite "the blob of a resource":
         let answer = readResource(contents, v)
         check answer.hasKey("result")
         check answer["result"]["contents"][0] == contents
+
+suite "the entries of the contents of a resource":
+
+  test "Given a resource whose contents hold an entry that is not an object, when it is read, then the answer is an internal error":
+    for v in SupportedProtocolVersions:
+      for entry in [%*"x", %*7, %*[1, 2], %*true, newJNull()]:
+        let answer = readResource(entry, v)
+        check answer.isError(-32603)
+        check not answer.hasKey("result")
 
 suite "the arguments of a prompt":
 

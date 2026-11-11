@@ -68,3 +68,16 @@ suite "a ttlMs below zero":
       let reply = server.connect(server.attach(), v).ask("tools/list")
       check reply["result"]["ttlMs"].getInt() == 5
       check reply["result"]["cacheScope"].getStr() == "public"
+
+suite "a ttlMs in the result of a method that is not cacheable":
+
+  test "Given a handler whose tools/call result says a ttlMs below zero and a cacheScope that is not public or private, when a 2026-07-28 client calls the tool, then the result is sent as the handler set it":
+    for v in versionsWith(ftCacheHints):
+      let server = newServer(McpServerCapabilities(tools: some(McpToolsCapability())))
+      server.onToolCall(proc(ctx: McpRequestContext, name: string,
+                             arguments: JsonNode): Future[JsonNode] {.async.} =
+        return %*{"content": [], "ttlMs": -5, "cacheScope": "x"})
+      let reply = server.connect(server.attach(), v).ask("tools/call", %*{"name": "t"})
+      check reply.hasKey("result")
+      check reply["result"]["ttlMs"].getInt() == -5
+      check reply["result"]["cacheScope"].getStr() == "x"

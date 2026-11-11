@@ -171,10 +171,11 @@ Feature: Starting a conversation
     Then each ping raises a timeout error, and the caller can close the client, after which it can no longer ping
 
   @spec:MCP-LIFECYCLE-23 @feature:ftCacheHints
-  Scenario: In 2026-07-28 a server never sends a ttlMs below zero
+  Scenario: In 2026-07-28 a server never sends a ttlMs below zero in a cacheable result
     Given a 2026-07-28 server whose handler's result says a ttlMs that is negative or not a number
     When a client asks for a cacheable result
     Then the answer is an internal error and carries no result
+    And the result of a method that is not cacheable is not checked for ttlMs or cacheScope and is sent as the handler set it
 
   @spec:MCP-LIFECYCLE-24 @feature:ftPing
   Scenario: A failed ping is logged

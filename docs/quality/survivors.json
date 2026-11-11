@@ -1347,8 +1347,8 @@
       "mutator": "LOR",
       "original": "prompt.isNil or prompt.kind != JObject or prompt{\"messages\"}.isNil",
       "replacement": "<or -> and>",
-      "class": "spec_question",
-      "reason": "`messages` の無いオブジェクトを返すと、元は何も言わずそのまま送る。変異は nil の `.kind` で落ちる。「messages の無い結果をそのまま送る」と定めた仕様 ID は無い (MCP-PROMPTS-1 は messages がある場合だけ)。 / 問い 1: prompts/get のハンドラが `messages` の無い結果を返したとき、そのまま送ることを仕様にするか、ハンドラの不具合として -32603 で断るか。"
+      "class": "test_owed",
+      "reason": "The representative decided the rule on 2026-11-11 and it now has a specification line and an E test (MCP-CONTENT-FIELDS-15, MCP-RESOURCES-18, MCP-SAMPLING-TOOLS-17, MCP-LIFECYCLE-23); to be confirmed by the next run."
     },
     {
       "fingerprint": "src/protocol/result_shape.nim:LOR:d0db8732f61789e9:0",
@@ -1357,8 +1357,8 @@
       "mutator": "LOR",
       "original": "prompt.isNil or prompt.kind != JObject or prompt{\"messages\"}.isNil or; prompt{\"messages\"}.kind != JArray",
       "replacement": "<or -> and>",
-      "class": "spec_question",
-      "reason": "`messages` が配列でない値のときは `getElems()` が空を返すので同じ。違うのは `messages` が無いときで、変異は nil の `.kind` で落ちる。上の行と同じ入力。 / 問い 1 と同じ。"
+      "class": "test_owed",
+      "reason": "The representative decided the rule on 2026-11-11 and it now has a specification line and an E test (MCP-CONTENT-FIELDS-15, MCP-RESOURCES-18, MCP-SAMPLING-TOOLS-17, MCP-LIFECYCLE-23); to be confirmed by the next run."
     },
     {
       "fingerprint": "src/protocol/result_shape.nim:LOR:f8616f8766c1b134:0",
@@ -1377,8 +1377,8 @@
       "mutator": "LOR",
       "original": "message.isNil or message.kind != JObject or message{\"content\"}.isNil",
       "replacement": "<or -> and>",
-      "class": "spec_question",
-      "reason": "`content` の無いメッセージを、元は飛ばしてそのまま送る。変異は 70 行の `content.kind` で落ちる。そのまま送ると定めた仕様 ID は無い。 / 問い 1 の続き: `content` の無いメッセージを含む結果を、そのまま送るか断るか。"
+      "class": "test_owed",
+      "reason": "The representative decided the rule on 2026-11-11 and it now has a specification line and an E test (MCP-CONTENT-FIELDS-15, MCP-RESOURCES-18, MCP-SAMPLING-TOOLS-17, MCP-LIFECYCLE-23); to be confirmed by the next run."
     },
     {
       "fingerprint": "src/protocol/result_shape.nim:LOR:3b313fedc2f3b260:0",
@@ -1407,8 +1407,8 @@
       "mutator": "LOR",
       "original": "not content.isNil and content.kind == JObject",
       "replacement": "<and -> or>",
-      "class": "spec_question",
-      "reason": "resources/read のハンドラがオブジェクトでない要素 (文字列など) を返すと、元は検査せずそのまま送る。変異は `blobProblems` の `hasKey` の assert で落ちる。MCP-RESOURCES-17 は blob が base64 でない場合だけを定める。 / 問い 2: resources/read のハンドラが返した `contents` の要素がオブジェクトでないとき、そのまま送ることを仕様にするか、-32603 で断るか。"
+      "class": "test_owed",
+      "reason": "The representative decided the rule on 2026-11-11 and it now has a specification line and an E test (MCP-CONTENT-FIELDS-15, MCP-RESOURCES-18, MCP-SAMPLING-TOOLS-17, MCP-LIFECYCLE-23); to be confirmed by the next run."
     },
     {
       "fingerprint": "src/protocol/result_shape.nim:LOR:8a39b698f28f7543:0",
@@ -1437,8 +1437,8 @@
       "mutator": "LOR",
       "original": "not isCacheable(methodName) or resultKind(payload) != rkComplete",
       "replacement": "<or -> and>",
-      "class": "spec_question",
-      "reason": "cacheable でないメソッド (tools/call・prompts/get など) の結果にハンドラが `ttlMs: -5` や `cacheScope: \"x\"` を置くと、元は検査せずそのまま送る。変異は -32603 で断る。MCP-LIFECYCLE-23 の When は「cacheable な結果」に限っているが、Scenario の題は「a server never sends a ttlMs below zero」。 / 問い 3: 2026-07-28 で、cacheable でないメソッドの結果にハンドラが置いた `ttlMs`・`cacheScope` を検査せずに送ることを仕様にするか、cacheable な結果と同じく断るか。"
+      "class": "test_owed",
+      "reason": "The representative decided the rule on 2026-11-11 and it now has a specification line and an E test (MCP-CONTENT-FIELDS-15, MCP-RESOURCES-18, MCP-SAMPLING-TOOLS-17, MCP-LIFECYCLE-23); to be confirmed by the next run."
     },
     {
       "fingerprint": "src/protocol/result_shape.nim:RVR:0c511227513989c7:0",
@@ -1637,8 +1637,8 @@
       "mutator": "LOR",
       "original": "blk.kind != JObject or blk{\"type\"}.getStr() != \"tool_result\" or; blk{\"structuredContent\"}.isNil",
       "replacement": "<or -> and>",
-      "class": "spec_question",
-      "reason": "outputSchema を持つツールの tool_result が `structuredContent` を持たないとき、元は検査せず送る。変異は nil を `validate` に渡す (断るか落ちる)。MCP-SAMPLING-TOOLS-17 の Given は structuredContent がある場合だけ。 / 問い 4: outputSchema を持つツールへの tool_result が `structuredContent` を持たないとき、検査せずに送ることを仕様 (MCP-SAMPLING-TOOLS-17 への追記) にするか、断るか。"
+      "class": "test_owed",
+      "reason": "The representative decided the rule on 2026-11-11 and it now has a specification line and an E test (MCP-CONTENT-FIELDS-15, MCP-RESOURCES-18, MCP-SAMPLING-TOOLS-17, MCP-LIFECYCLE-23); to be confirmed by the next run."
     },
     {
       "fingerprint": "src/protocol/result_shape.nim:ROR:7c578a4d4baee544:0",
@@ -1747,8 +1747,8 @@
       "mutator": "SDL",
       "original": "result.add subject & \": the outputSchema cannot be checked: \" & e.msg",
       "replacement": "discard",
-      "class": "spec_question",
-      "reason": "ツールの outputSchema が検査できない (`InvalidSchemaError`) とき、元は依頼を断る。変異は検査なしで送る。断ること自体が消えるので文面の変異ではない。MCP-SAMPLING-TOOLS-17 はスキーマが検査できない場合を定めていない。 / 問い 5: sampling の依頼の tools にある outputSchema が検査できないとき、その tool_result を含む依頼を断ることを仕様 (MCP-SAMPLING-TOOLS-17 への追記) にするか。"
+      "class": "test_owed",
+      "reason": "The representative decided the rule on 2026-11-11 and it now has a specification line and an E test (MCP-CONTENT-FIELDS-15, MCP-RESOURCES-18, MCP-SAMPLING-TOOLS-17, MCP-LIFECYCLE-23); to be confirmed by the next run."
     },
     {
       "fingerprint": "src/protocol/sampling_tools.nim:RVR:0c511227513989c7:0",
@@ -1937,8 +1937,8 @@
       "mutator": "ROR",
       "original": "bucket.filled(now, perSecond) >= perSecond.float",
       "replacement": "<>= -> >>",
-      "class": "spec_question",
-      "reason": "`filled` は `min(perSecond.float, …)` なので `>` は決して成り立たず、`makeRoom` の 1 段目 (満杯に戻った送り手を忘れる) が丸ごと働かなくなる。満杯の送り手を忘れること自体は外から見えない (新しいバケツも満杯で始まる) が、代わりに 2 段目が最も古い印の送り手を忘れるので、「満杯の送り手が居るのに、まだ使い切ったままの最古の送り手が忘れられて満額に戻る」という違いが外に出る。MCP-RATE-3 の Scenario は「満杯に戻った送り手が居ないとき」しか述べておらず、居るときにどうなるかはどの仕様 ID にも無い。 / 問い: 「満杯に戻った送り手が居る間は、使い切った送り手を忘れない (満額に戻さない)」を MCP-RATE-3 に足して仕様にしますか、それとも 1 段目 (46〜51 行) を消して「常に最も長く静かな送り手を忘れる」だけにしますか。仕様にするなら案: 毎秒 2・送り手 2 で、alice が 2 回 (使い切り)、bob が 1 回、bob が満杯に戻る 500 ms 過ぎ・alice が満杯に戻る前に carol が話し、直後の alice の 2 回のうち 2 回目が断られること (変異だと alice が忘れられて 2 回とも通る)。時間に依るので `quickRun` と同じく所要時間を測って繰り返す形が要る"
+      "class": "test_owed",
+      "reason": "The representative decided on 2026-11-11 that a sender that is full again is forgotten before one that is used up; MCP-RATE-3 says so now and an E test tells it. To be confirmed by the next run."
     },
     {
       "fingerprint": "src/server/rate_limit.nim:SDL:9e5c2f527dddabee:0",
@@ -1947,8 +1947,8 @@
       "mutator": "SDL",
       "original": "quiet.add key",
       "replacement": "discard",
-      "class": "spec_question",
-      "reason": "`quiet` が常に空になり、1 段目が働かない。外から見える違いは上の行 (48 行) と同じ。 / 上の行と同じ問い・同じテストの案"
+      "class": "test_owed",
+      "reason": "The representative decided on 2026-11-11 that a sender that is full again is forgotten before one that is used up; MCP-RATE-3 says so now and an E test tells it. To be confirmed by the next run."
     },
     {
       "fingerprint": "src/server/rate_limit.nim:SDL:36c078446e02eae4:0",
@@ -1957,8 +1957,8 @@
       "mutator": "SDL",
       "original": "limiter.buckets.del(key)",
       "replacement": "discard",
-      "class": "spec_question",
-      "reason": "満杯の送り手を集めても消さないので、1 段目が働かない。外から見える違いは 48 行の行と同じ (表の大きさは 2 段目が保つので `maxSenders` は越えない)。 / 48 行の行と同じ問い・同じテストの案"
+      "class": "test_owed",
+      "reason": "The representative decided on 2026-11-11 that a sender that is full again is forgotten before one that is used up; MCP-RATE-3 says so now and an E test tells it. To be confirmed by the next run."
     },
     {
       "fingerprint": "src/server/rate_limit.nim:LOR:ab81a607d669deb3:0",
@@ -2667,8 +2667,8 @@
       "mutator": "SDL",
       "original": "stderr.writeLine(\"[mcp-transport] response \" & peerText(response.id) &; \" holds a string that is not UTF-8 (\" &; peerText(where) &; \"); sent as an internal error\")",
       "replacement": "discard",
-      "class": "spec_question",
-      "reason": "応答が内部エラーに差し替わることは保たれ、stderr の 1 行が出なくなる。文面が変わるのではなく行そのものが消えるので「失敗の文面」の決定には当てなかった。この行を定める仕様 ID は無い (MCP-STDIO-9 は書かれるバイトだけを定める) / 問い: UTF-8 でない応答を内部エラーに差し替えたとき stderr に 1 行書くことを仕様にするか (結果も error も無い応答のほうは MCP-TRANSPORT-3 が「1 行を記録する」と定めている)、それともこの行を消すか"
+      "class": "test_owed",
+      "reason": "The representative decided on 2026-11-11 that the line is logged; MCP-STDIO-9 says so now and an E test reads stderr. To be confirmed by the next run."
     },
     {
       "fingerprint": "src/transport/transport.nim:ROR:70f734de428b7829:0",

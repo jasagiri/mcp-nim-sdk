@@ -176,6 +176,22 @@ suite "a tool_result conforms to the outputSchema of its tool":
         continue
       check requestIsSent(conversation(%*{"temp": 21}, twoSchemas), v)
 
+  test "Given a tool_result without a structuredContent for a tool that lists an outputSchema, when the server asks, then the request is sent":
+    for v in versionsWith(ftSamplingTools):
+      if not v.has(ftServerInitiatedRequests):
+        continue
+      var params = conversation(%*{"temp": 21})
+      params["messages"][2]["content"][0].delete("structuredContent")
+      check requestIsSent(params, v)
+
+  test "Given a tool whose outputSchema cannot be used as a schema, when the server asks with a tool_result of it that has a structuredContent, then it is refused and nothing is sent":
+    for v in versionsWith(ftSamplingTools):
+      if not v.has(ftServerInitiatedRequests):
+        continue
+      for schema in [%*{"$schema": 5}, %*{"$schema": "https://example.com/no-such-dialect"}]:
+        let unusable = %*[{"name": "weather", "inputSchema": {"type": "object"}, "outputSchema": schema}]
+        check not requestIsSent(conversation(%*{"temp": 21}, unusable), v)
+
   test "Given a 2026-07-28 handler that asks with a tool_result that breaks the schema, when the request is served, then the answer is an error and not input_required":
     for v in versionsWith(ftMultiRoundTripRequests):
       let reply = asksForSample(conversation(%*{"temp": "hot"}), ToolsCapability, v)

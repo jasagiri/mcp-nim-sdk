@@ -119,3 +119,5 @@ Feature: Sampling with tools
     When the structuredContent breaks the outputSchema, in 2025-11-25 or 2026-07-28
     Then the ask is refused and nothing is sent, in 2026-07-28 the request being answered with an error and not input_required
     And a structuredContent that conforms is sent
+    And a tool_result of a tool that lists an outputSchema, but without a structuredContent, is sent without a check
+    And a tool_result with a structuredContent for a tool whose outputSchema cannot be used as a schema refuses the ask

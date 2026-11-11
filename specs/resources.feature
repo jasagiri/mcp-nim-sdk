@@ -134,3 +134,11 @@ Feature: Resources
     Given a resource handler that returns contents whose blob is not base64
     When a client sends resources/read
     Then the answer is an internal error and no such blob is sent
+
+  # rule
+  # not met
+  @spec:MCP-RESOURCES-18 @feature:ftResources
+  Scenario: Each entry of the contents of a resource is an object
+    Given a resource handler that returns contents with an entry that is not an object
+    When a client sends resources/read
+    Then the answer is an internal error and no such entry is sent

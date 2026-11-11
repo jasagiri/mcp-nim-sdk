@@ -123,6 +123,7 @@ Feature: Content of tools, resources and prompts
     Given a tool result and a prompt message that hold a resource_link block
     When a client of a version with resource links receives them
     Then the block arrives as the handler wrote it
+    And a field the builder was not given (description, mimeType, title) is not sent
 
   @spec:MCP-RESLINK-2 @feature:ftResourceLinks
   Scenario: A version without resource links is given the name and uri as text
@@ -226,6 +227,7 @@ Feature: Content of tools, resources and prompts
     Given an icon of a server whose origin is known
     When the client fetches it
     Then it sends no credentials, stays on the origin of the server through redirects, limits the size, and accepts only allowed image types found in the bytes whatever the declared MIME type says
+    And the mimeType of the icon is used only when the server declares no type or a generic one such as application/octet-stream
 
   @spec:MCP-ICONS-7 @feature:ftIcons
   Scenario: The type of an icon is the one its first bytes say
@@ -240,6 +242,7 @@ Feature: Content of tools, resources and prompts
     When the decoded bytes are N bytes
     Then the icon is read
     And when they are N + 1 bytes it is refused
+    And a data URI longer than 2N + 128 characters is refused before it is decoded, however long its media type part is, and one of exactly that length is read
 
   @spec:MCP-CONTENT-FIELDS-3
   Scenario: Annotations and an Implementation that are not JSON objects are a protocol violation
@@ -325,3 +328,11 @@ Feature: Content of tools, resources and prompts
     Given a prompt handler that returns an embedded resource without a uri, without a mimeType, or with neither text nor blob
     When a client sends prompts/get
     Then the answer is an internal error and no such resource is sent
+
+  # rule
+  # not met
+  @spec:MCP-CONTENT-FIELDS-15 @feature:ftPrompts
+  Scenario: A prompt result holds messages and each message holds content
+    Given a prompt handler that returns a result without messages, or a message without content
+    When a client sends prompts/get
+    Then the answer is an internal error and no such result is sent
