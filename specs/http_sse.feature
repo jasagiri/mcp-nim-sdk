@@ -63,6 +63,7 @@ Feature: HTTP with Server-Sent Events (2024-11-05)
     Given a client that connects
     When the endpoint event names another host, the server never sends an endpoint, or answers the stream request with 404
     Then the client refuses to post there, gives up with a transport error, or reports the status
+    And the status decides whatever the length of the body of an answer: an error is reported with its status, a 2xx is a success, and a body past the limit is not read to its end
 
   @spec:MCP-HTTPSSE-9 @feature:ftHttpSse
   Scenario: A client sees the end of the stream
@@ -120,6 +121,7 @@ Feature: HTTP with Server-Sent Events (2024-11-05)
     Given a client reading a stream
     When the stream fails on a message that is not JSON
     Then a line naming the stream and the failure goes to stderr
+    And a stream the client closes itself, because no endpoint came in time, is not reported as failed: the failure is the one the send raises
 
   @spec:MCP-HTTPSSE-18
   Scenario: The wrapper that tries Streamable HTTP first passes everything on to the transport it chose

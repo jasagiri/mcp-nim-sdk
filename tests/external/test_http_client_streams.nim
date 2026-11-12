@@ -715,6 +715,15 @@ suite "client: what an exchange leaves behind (mutation review, g2g-hc-b)":
     transport.requestIsForgotten()
     waitFor transport.close()
 
+  test "Given a request whose id is the empty string and whom the server leaves unanswered, when the client cancels it, then sendRequest returns without an error":
+    let transport = newStreamableHttpTransport(startSequence(@[bHold]))
+    let sending = transport.sendRequest(newJsonRpcRequest("", "tools/call", newJObject()))
+    waitFor sleepAsync(50)
+    transport.cancelRequest("")
+    check waitFor withTimeout(sending, 2000)
+    check not sending.failed
+    waitFor transport.close()
+
   test "Given a request cancelled while its JSON body is arriving, when the client cancels, then sendRequest returns without an error and the id is free again":
     let transport = newStreamableHttpTransport(startSequence(@[bPartialHold, bSseEnds]))
     let sending = transport.sendRequest(newJsonRpcRequest("r1", "tools/call", newJObject()))
@@ -964,6 +973,26 @@ if speaks >= mpv20250326:
       discard transport.received()
       check transport.received()["id"].getStr() == "r1"
       check lastIds == @["a-1", "a-1"]
+      waitFor transport.close()
+
+    test "Given a stream whose last event carries an empty id, when it is cut before the response, then the client resumes with the last id that was not empty":
+      var lastIds: seq[string] = @[]
+      var postedId: JsonNode = nil
+      let url = startRawServer(proc(request: RawRequest, socket: AsyncSocket) {.async.} =
+        await eventStreamHead(socket)
+        if request.httpMethod == "POST":
+          postedId = parseJson(request.body)["id"]
+          await socket.send(formatSseEvent($notification(1), id = "a-1"))
+          await socket.send("id:\c\Ldata: " & $notification(2) & "\c\L\c\L")
+        else:
+          lastIds.add request.header("Last-Event-ID")
+          await socket.send(formatSseEvent($(%*{"jsonrpc": "2.0", "id": postedId, "result": {}}))))
+      let transport = resumingTransport(url)
+      transport.ask()
+      discard transport.received()
+      discard transport.received()
+      check transport.received()["id"].getStr() == "r1"
+      check lastIds == @["a-1"]
       waitFor transport.close()
 
     test "Given a server that says something on every resumed stream, when the stream is cut more often than the limit, then the response still arrives":

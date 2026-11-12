@@ -123,10 +123,13 @@ proc connect(t: SseLegacyTransport) {.async.} =
                                     connectTimeoutMs = t.connectTimeoutMs,
                                     headerTimeoutMs = t.connectTimeoutMs)
   if not response.code.is2xx:
-    let text = await response.readAll(ErrorBodyPreview)
-    response.close()
-    raise failure("HTTP " & $response.code & " from " & t.sseUrl & ": " &
-                  text[0 ..< min(text.len, ErrorBodyPreview)], response.code.int)
+    var text: string
+    try:
+      text = await response.readPrefix(ErrorBodyPreview)
+    finally:
+      response.close()
+    raise failure("HTTP " & $response.code & " from " & t.sseUrl & ": " & text,
+                  response.code.int)
   if not response.headers.getOrDefault("Content-Type").toLowerAscii().startsWith("text/event-stream"):
     response.close()
     raise failure(t.sseUrl & " did not answer with an event stream")
@@ -158,12 +161,12 @@ proc post(t: SseLegacyTransport, body: string) {.async.} =
   let response = await wire.request(t.endpoint, HttpPost, headers, body, caFile = t.caFile)
   var text: string
   try:
-    text = await response.readAll(ErrorBodyPreview)
+    text = await response.readPrefix(ErrorBodyPreview)
   finally:
     response.close()
   if not response.code.is2xx:
-    raise failure("HTTP " & $response.code & " from " & t.endpoint & ": " &
-                  text[0 ..< min(text.len, ErrorBodyPreview)], response.code.int)
+    raise failure("HTTP " & $response.code & " from " & t.endpoint & ": " & text,
+                  response.code.int)
 
 method sendRequest*(t: SseLegacyTransport, request: JsonRpcRequest): Future[void] {.async.} =
   await t.post(encodeMessage(request))

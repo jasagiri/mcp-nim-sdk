@@ -406,16 +406,18 @@ proc postOnce(t: StreamableHttpTransport, body: string,
   headers["Content-Type"] = "application/json"
   await t.authorize(headers)
 
-  let key = if requestId.isNil: "" else: idKey(requestId)
+  # A notification has no id; a request whose id is the empty string has one.
+  let tracked = not requestId.isNil
+  let key = if tracked: idKey(requestId) else: ""
   let connected: wire.Connected = proc(connection: WireResponse) {.closure, gcsafe.} =
-    if key.len > 0:
+    if tracked:
       t.inflight[key] = connection
   var response: WireResponse
   try:
     response = await wire.request(t.baseUrl, HttpPost, headers, body, connected,
       caFile = t.caFile, connectTimeoutMs = t.connectTimeoutMs)
   except McpTransportError:
-    if key.len > 0:
+    if tracked:
       t.inflight.del key
     if key in t.abandoned:
       # Cancelled while waiting: nobody wants an answer or an error.
@@ -442,7 +444,7 @@ proc postOnce(t: StreamableHttpTransport, body: string,
       return
     raise
   finally:
-    if key.len > 0:
+    if tracked:
       t.inflight.del key
     response.close()
 

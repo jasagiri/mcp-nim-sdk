@@ -187,6 +187,7 @@ Feature: Streamable HTTP transport
     Given a request that was answered with a JSON body or an event stream, failed after the connection was made, or was cancelled while the server was silent or its body was arriving
     When the client cancels it afterwards and sends the same id again
     Then the new request is not taken for a cancelled one: when its stream ends without a response, the stream-closed error is delivered
+    And a request whose id is the empty string is cancelled like one with any other id: a notification has no id, the empty string is an id
 
   @spec:MCP-HTTP-33
   Scenario: Closing the transport ends the event streams it has open
@@ -265,6 +266,7 @@ Feature: Streamable HTTP transport
   Scenario: A POST stream is resumed from the last event id, however often it breaks while the server is working
     Given a stream broken before the response
     When a resumed stream carries no ids, the next resumption names the last id that was sent
+    And an event whose id is empty does not replace it: the stream is resumed from the last id that was not empty
     And a stream that delivers something resets the count of attempts
     And a resumed stream that carries the response ends the resumption
 

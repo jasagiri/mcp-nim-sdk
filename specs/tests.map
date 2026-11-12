@@ -564,6 +564,8 @@ MCP-HTTPSSE-7 | tests/external/test_http_sse_legacy.nim | Given headers set on t
 MCP-HTTPSSE-8 | tests/external/test_http_sse_legacy.nim | Given an endpoint event naming another host, when the client connects, then it refuses to post there
 MCP-HTTPSSE-8 | tests/external/test_http_sse_legacy.nim | Given a server that never sends an endpoint, when the client connects, then it gives up with McpTransportError
 MCP-HTTPSSE-8 | tests/external/test_http_sse_legacy.nim | Given a server that answers the stream request with 404, when the client connects, then McpTransportError carries the status
+MCP-HTTPSSE-8 | tests/external/test_http_sse_legacy.nim | Given a server answering the stream request with 500 and a body of 2000 bytes, when the client connects, then McpTransportError carries the status 500
+MCP-HTTPSSE-8 | tests/external/test_http_sse_legacy.nim | Given a server answering the POST with 200 and a body of 2000 bytes, when the client sends, then the send succeeds
 MCP-HTTPSSE-9 | tests/external/test_http_sse_legacy.nim | Given a stream that ends, when the client waits for a message, then McpTransportClosedError is raised
 MCP-HTTPSSE-9 | tests/external/test_http_sse_legacy.nim | Given a closed client, when it sends, then McpTransportError is raised
 MCP-HTTPSSE-10 | tests/external/test_http_sse_legacy.nim | Given a server of the old transport, when a client given its SSE URL connects, then it falls back and works
@@ -588,6 +590,7 @@ MCP-HTTPSSE-16 | tests/external/test_http_sse_legacy.nim | Given a server that n
 MCP-HTTPSSE-16 | tests/external/test_http_sse_legacy.nim | Given a POST the server answered, when the client has read the answer, then it closes its end of the POST connection
 MCP-HTTPSSE-16 | tests/external/test_http_sse_legacy.nim | Given a connected client, when it is closed, then it closes its end of the stream
 MCP-HTTPSSE-17 | tests/external/test_http_sse_legacy.nim | Given a stream that fails on a message that is not JSON, when the client reads it, then it says so on stderr
+MCP-HTTPSSE-17 | tests/external/test_http_sse_legacy.nim | Given a server that names no endpoint in time, when the client gives up, then the failure is reported once and the stream is not reported as failed too
 MCP-HTTPSSE-18 | tests/external/test_http_sse_legacy.nim | Given a server of the old transport, when the client sends a notification after falling back, then the server receives it
 MCP-HTTPSSE-18 | tests/external/test_http_sse_legacy.nim | Given a server of the old transport, when the client answers a request after falling back, then the server receives the response
 MCP-HTTPSSE-18 | tests/external/test_http_sse_legacy.nim | Given a version agreed through the wrapper, when a Streamable HTTP server is used, then later requests name it
@@ -1831,6 +1834,7 @@ MCP-HTTP-32 | tests/external/test_http_client_streams.nim | Given a request whos
 MCP-HTTP-32 | tests/external/test_http_client_streams.nim | Given a request whose answer was an event stream, when the client cancels it afterwards and sends the id again, then the new request is not taken for a cancelled one
 MCP-HTTP-32 | tests/external/test_http_client_streams.nim | Given a request that failed after the connection was made, when the client cancels it afterwards and sends the id again, then the new request is not taken for a cancelled one
 MCP-HTTP-32 | tests/external/test_http_client_streams.nim | Given a request cancelled while the server was silent, when the id is sent again, then the new request is not taken for a cancelled one
+MCP-HTTP-32 | tests/external/test_http_client_streams.nim | Given a request whose id is the empty string and whom the server leaves unanswered, when the client cancels it, then sendRequest returns without an error
 MCP-HTTP-32 | tests/external/test_http_client_streams.nim | Given a request cancelled while its JSON body is arriving, when the client cancels, then sendRequest returns without an error and the id is free again
 MCP-HTTP-33 | tests/external/test_http_client_streams.nim | Given a request whose event stream is open, when the transport closes, then the server sees the client leave
 MCP-HTTP-34 | tests/external/test_http_client_streams.nim | Given a server that answers a notification with 202 and an empty body, when the notification is sent, then the client closes the connection
@@ -1873,6 +1877,7 @@ MCP-HTTP-29 | tests/external/test_http_client_streams.nim | Given a GET stream t
 MCP-HTTP-29 | tests/external/test_http_client_streams.nim | Given a GET stream still being opened, when the client closes, then the connection of that stream is closed as well
 MCP-HTTP-29 | tests/external/test_http_client_streams.nim | Given a negotiated version that has the header, when the client posts, opens the GET stream and ends the session, then each request names the version
 MCP-HTTP-30 | tests/external/test_http_client_streams.nim | Given a resumed stream whose events carry no id, when it is cut too, then the next resumption still names the last id that was sent
+MCP-HTTP-30 | tests/external/test_http_client_streams.nim | Given a stream whose last event carries an empty id, when it is cut before the response, then the client resumes with the last id that was not empty
 MCP-HTTP-30 | tests/external/test_http_client_streams.nim | Given a server that says something on every resumed stream, when the stream is cut more often than the limit, then the response still arrives
 MCP-HTTP-31 | tests/external/test_http_client_streams.nim | Given a server that ends every GET stream at once, when the session is initialized, then the client asks once and as often again as it may reconnect
 MCP-HTTP-31 | tests/external/test_http_client_streams.nim | Given a GET stream cut after a message, when the client reconnects, then it waits for the reconnect delay

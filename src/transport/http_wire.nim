@@ -475,3 +475,19 @@ proc readAll*(r: WireResponse, maxSize: int): Future[string] {.async.} =
     if result.len > maxSize:
       r.close()
       raise httpFailure("response body exceeds " & $maxSize & " bytes")
+
+proc readPrefix*(r: WireResponse, limit: int): Future[string] {.async.} =
+  ## At most the first `limit` bytes of the body, for a caller that decides by
+  ## the status and wants the body only to show. A body that goes on past
+  ## `limit` is not read further: the connection is closed.
+  while true:
+    let part = await r.readSome()
+    if part.len == 0:
+      if r.cut:
+        raise httpFailure("the response was closed before its whole body was read")
+      break
+    result.add part
+    if result.len > limit:
+      r.close()
+      result.setLen(limit)
+      break

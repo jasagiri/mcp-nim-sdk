@@ -727,6 +727,22 @@ suite "HTTP+SSE client, what it closes and reports (mutation review, g2g-hc-d)":
     check waitFor closed
     waitFor transport.close()
 
+  test "Given a server that names no endpoint in time, when the client gives up, then the failure is reported once and the stream is not reported as failed too":
+    let (listener, port) = listenLocal()
+    let closed = answerFirstWith(listener, StreamHead & formatSseComment("hello"))
+    let transport = newSseLegacyTransport("http://127.0.0.1:" & $port & "/sse")
+    transport.connectTimeoutMs = 200
+    let logged = loggedWhile(proc() =
+      expect McpTransportError:
+        waitFor transport.sendNotification(newJsonRpcNotification("x", newJObject()))
+      # The stream has ended when waiting for a message says so; anything it
+      # had to report has been reported by then.
+      expect McpTransportClosedError:
+        discard waitFor transport.receiveMessage())
+    check waitFor closed
+    check logged == ""
+    waitFor transport.close()
+
   test "Given a POST the server answered, when the client has read the answer, then it closes its end of the POST connection":
     let (listener, port) = listenLocal()
     let held = serveHeld(listener)
@@ -744,6 +760,40 @@ suite "HTTP+SSE client, what it closes and reports (mutation review, g2g-hc-d)":
     check waitFor held.stream
 
 import std/[asynchttpserver, nativesockets]
+
+suite "HTTP+SSE client, answers with a long body (the status decides)":
+
+  test "Given a server answering the stream request with 500 and a body of 2000 bytes, when the client connects, then McpTransportError carries the status 500":
+    let (listener, port) = listenLocal()
+    discard answerFirstWith(listener,
+      "HTTP/1.1 500 Internal Server Error\c\LContent-Length: 2000\c\L\c\L" & repeat('e', 2000))
+    let transport = newSseLegacyTransport("http://127.0.0.1:" & $port & "/sse")
+    var code = -1
+    try:
+      waitFor transport.sendNotification(newJsonRpcNotification("x", newJObject()))
+    except McpTransportError as e:
+      code = e.code
+    check code == 500
+    waitFor transport.close()
+
+  test "Given a server answering the POST with 200 and a body of 2000 bytes, when the client sends, then the send succeeds":
+    let (listener, port) = listenLocal()
+    proc serveOne(socket: AsyncSocket) {.async.} =
+      let head = await socket.readHead()
+      if head.startsWith("get "):
+        await socket.send(StreamHead & formatSseEvent("/post", event = "endpoint"))
+        discard await socket.peerClosed(5000)
+      else:
+        await socket.send("HTTP/1.1 200 OK\c\LContent-Length: 2000\c\L\c\L" & repeat('o', 2000))
+        discard await socket.peerClosed(2000)
+      socket.close()
+    proc acceptLoop() {.async.} =
+      while true:
+        asyncCheck serveOne(await listener.accept())
+    asyncCheck acceptLoop()
+    let transport = newSseLegacyTransport("http://127.0.0.1:" & $port & "/sse")
+    waitFor transport.sendNotification(newJsonRpcNotification("x", newJObject()))
+    waitFor transport.close()
 
 suite "client that tries Streamable HTTP first (mutation review, g2g-hc-b)":
 
