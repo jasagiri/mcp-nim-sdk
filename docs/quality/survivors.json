@@ -4051,6 +4051,296 @@
       "reason": "`guardedRequest` を呼ぶのは `auth/oauth/fetch.nim` の `exchange` (`followRedirects = false` を明示) と `client/icons.nim` の `guardedGet` (`true` を明示) の 2 か所だけで、どちらも既定値を使わない。`guardedRequest` は公開の入口から export されていない。検出していたテスト (「Given an answer that redirects, when no one asked for redirects to be followed…」) は `guardedRequest` を直接呼ぶもので、`tests/internal/` に移っている。E テストの「Given a metadata URL that answers with a redirect…」は `fetch.nim` の明示の `false` を確かめている。 / - (MCP-SEC-WIRE-11 の「unless asked」は、公開の入口からは `fetch.nim` の経路でだけ確かめられる)"
     },
     {
+      "fingerprint": "src/transport/http_server.nim:LOR:098b466bdedd5d25:0",
+      "file": "src/transport/http_server.nim",
+      "line": 303,
+      "mutator": "LOR",
+      "original": "body.isNil or body.kind != JObject",
+      "replacement": "<or -> and>",
+      "class": "equivalent",
+      "reason": "`(A and B) or C` になる。`body` は `message[key]` か応答の `result` で nil にならず、`clientId` (`Exchange.idNode`) は `isRequest` を通った `item[\"id\"]`・`message[\"id\"]` なので nil にならない。object でない `body` は次の `body{\"_meta\"}` が nil を返し、同じ `return body` に着く"
+    },
+    {
+      "fingerprint": "src/transport/http_server.nim:LOR:becbdc05a26c9e55:0",
+      "file": "src/transport/http_server.nim",
+      "line": 303,
+      "mutator": "LOR",
+      "original": "body.isNil or body.kind != JObject or clientId.isNil",
+      "replacement": "<or -> and>",
+      "class": "equivalent",
+      "reason": "`A or (B and C)` になる。C (`clientId.isNil`) は上の理由で常に偽なので `A` だけが残り、object でない `body` は `meta.isNil` の枝で同じ `return body` に着く"
+    },
+    {
+      "fingerprint": "src/transport/http_server.nim:ROR:9b77def2f96bc83b:0",
+      "file": "src/transport/http_server.nim",
+      "line": 474,
+      "mutator": "ROR",
+      "original": "(now - session.lastActive) * 1000 >= t.sessionIdleTimeoutMs.float",
+      "replacement": "<>= -> >>",
+      "class": "unreached",
+      "reason": "違いが出るのは、`epochTime()` 2 つの差がちょうど設定値に等しい一点だけ。時計を差し込む公開の口が無く、その一点を通る入力を作れない (境界の両側は既存の期限切れのテストが通る)。前の記録 (id 73) は担当の「受け入れ」で、代表の決定の記録は無いので accepted にはしていない"
+    },
+    {
+      "fingerprint": "src/transport/http_server.nim:ROR:b954d4dbaf3b2860:0",
+      "file": "src/transport/http_server.nim",
+      "line": 526,
+      "mutator": "ROR",
+      "original": "close < 0",
+      "replacement": "<< -> <=>",
+      "class": "equivalent",
+      "reason": "`value.startsWith(\"[\")` の後なので 0 番は `[` で、`find(']')` は -1 か 1 以上。0 は出ない"
+    },
+    {
+      "fingerprint": "src/transport/http_server.nim:RVR:c309449461795c77:0",
+      "file": "src/transport/http_server.nim",
+      "line": 526,
+      "mutator": "RVR",
+      "original": "return if close < 0:; value; else:; value[1 ..< close]",
+      "replacement": "<return default>",
+      "class": "test_owed",
+      "reason": "角括弧つきの Host の名前が空になる。loopback は `full` で決まるので既存の `[::1]:port` のテストは通るが、`allowedHosts` に IPv6 の番地を載せたとき `[番地]:port` が 403 になる (元は通す) / MCP-SEC-HTTP-5 (「the listed hosts are served」)。`tests/external/test_security_http.nim`: `allowedHosts = @[\"2001:db8::1\"]` の transport に `sendAs(\"[2001:db8::1]:8443\", …/mcp, HttpPost, ping)` と `sendAs(\"[2001:db8::1]\", …)` を送り、403 でないことを見る。変異だと 403"
+    },
+    {
+      "fingerprint": "src/transport/http_server.nim:LOR:6446cd08fe02427a:0",
+      "file": "src/transport/http_server.nim",
+      "line": 528,
+      "mutator": "LOR",
+      "original": "colon >= 0 and value.count(':') == 1",
+      "replacement": "<and -> or>",
+      "class": "test_owed",
+      "reason": "角括弧の無い、`:` が 2 つ以上の Host (裸の IPv6) が最後の `:` で切られる。loopback は `full` で決まるようになったので、既存の `::1` のテスト (MCP-HTTPSTREAM-18) はこの変異を見分けない。`allowedHosts = @[\"2001:db8::1\"]` のとき、別の番地である `2001:db8::1:8443` が変異では通る (元は 403) / MCP-SEC-HTTP-5 / MCP-HTTPSTREAM-18 (「judged as the sender wrote it」)。上の 526 行と同じテストに `sendAs(\"2001:db8::1:8443\", …) == Http403` を足す。変異だと 403 にならない"
+    },
+    {
+      "fingerprint": "src/transport/http_server.nim:ROR:0f037721df479561:0",
+      "file": "src/transport/http_server.nim",
+      "line": 528,
+      "mutator": "ROR",
+      "original": "colon >= 0",
+      "replacement": "<>= -> >>",
+      "class": "spec_question",
+      "reason": "違いが出るのは Host が `:80` のように `:` で始まるときだけで、名前が元は空文字列、変異は `:80` になる。`allowedHosts` に空文字列を入れた設定でだけ、元は通し変異は 403。問い: 空の名前の Host を `allowedHosts = @[\"\"]` で通す挙動を仕様にするか、空の名前を常に断るようコードを直すか、仕様にせず残すか / 仕様 ID なし (MCP-SEC-HTTP-5 は空の名前に触れない)"
+    },
+    {
+      "fingerprint": "src/transport/http_server.nim:SDL:2413a04126052c00:0",
+      "file": "src/transport/http_server.nim",
+      "line": 606,
+      "mutator": "SDL",
+      "original": "none(string)",
+      "replacement": "discard",
+      "class": "equivalent",
+      "reason": "`Option[string]` の `result` の既定値は none で、書かなくても同じ値が返る"
+    },
+    {
+      "fingerprint": "src/transport/http_server.nim:ROR:97b629f387fc2d90:0",
+      "file": "src/transport/http_server.nim",
+      "line": 648,
+      "mutator": "ROR",
+      "original": "session.created < oldestAt",
+      "replacement": "<< -> <=>",
+      "class": "unreached",
+      "reason": "違いが出るのは、追い出しの候補 2 つの `created` (`epochTime()`) がちょうど等しいときだけ (どちらを落とすかが入れ替わる)。別々の要求で作られるセッションの時刻を等しくする公開の口が無い。等しい 2 つのどちらが「いちばん古い」かは仕様に無い"
+    },
+    {
+      "fingerprint": "src/transport/http_server.nim:BLR:ec9050dbd4339b51:0",
+      "file": "src/transport/http_server.nim",
+      "line": 696,
+      "mutator": "BLR",
+      "original": "true",
+      "replacement": "false",
+      "class": "equivalent",
+      "reason": "`abandoned` を読むのは `sendResponse` と `deliver` だけで、どちらも去った client のストリームへ push しないための早い return。変異すると、誰も読まないストリームと `group.responses` に溜まるだけで、交換の削除・`onRequestCancelled` の呼び出し・例外は変わらない。外から見える違いはメモリの使用量だけ (前の記録 id 213 で司会が「残す」と判断したコード)"
+    },
+    {
+      "fingerprint": "src/transport/http_server.nim:RVR:55560fa5ef49175d:0",
+      "file": "src/transport/http_server.nim",
+      "line": 707,
+      "mutator": "RVR",
+      "original": "return none(JsonRpcError)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "`Option[JsonRpcError]` の既定値は none"
+    },
+    {
+      "fingerprint": "src/transport/http_server.nim:RVR:55560fa5ef49175d:1",
+      "file": "src/transport/http_server.nim",
+      "line": 710,
+      "mutator": "RVR",
+      "original": "return none(JsonRpcError)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "同上"
+    },
+    {
+      "fingerprint": "src/transport/http_server.nim:SDL:ac1cdc5394dff63c:0",
+      "file": "src/transport/http_server.nim",
+      "line": 715,
+      "mutator": "SDL",
+      "original": "none(JsonRpcError)",
+      "replacement": "discard",
+      "class": "equivalent",
+      "reason": "`result` を書かなければ既定値の none が返る"
+    },
+    {
+      "fingerprint": "src/transport/http_server.nim:SDL:fc9c7696c04a0178:0",
+      "file": "src/transport/http_server.nim",
+      "line": 992,
+      "mutator": "SDL",
+      "original": "req.client.close()",
+      "replacement": "discard",
+      "class": "equivalent",
+      "reason": "ここに来るのは `gone` が先に終わったとき、つまり相手が接続を閉じた (読みが EOF か失敗) 後だけ。閉じなくても、ハンドラが戻ると `asynchttpserver` の `processClient` が次の要求を読んで EOF を受け、自分で閉じる。相手から見える違いは無く、変わるのは記述子を手放す時機だけ (前の記録 id 317。読んで決めた。記述子の数は測っていない)"
+    },
+    {
+      "fingerprint": "src/transport/http_server.nim:ROR:ec6f999e329551a1:0",
+      "file": "src/transport/http_server.nim",
+      "line": 1004,
+      "mutator": "ROR",
+      "original": "group.pending > 0",
+      "replacement": "<> -> >=>",
+      "class": "equivalent",
+      "reason": "`pending == 0` なら全ての応答で `sendResponse` が `t.exchanges.del` を済ませているので、`cancel` は呼ぶ相手 (`onRequestCancelled`) を見つけない。変わるのは `group.abandoned` だけで、それを読む応答と通知はもうそのグループに来ない"
+    },
+    {
+      "fingerprint": "src/transport/http_server.nim:SDL:ba5f3d9a3fc84eac:0",
+      "file": "src/transport/http_server.nim",
+      "line": 1077,
+      "mutator": "SDL",
+      "original": "stderr.writeLine(\"[mcp-http] authorization hook failed: \" & $e.name)",
+      "replacement": "discard",
+      "class": "spec_question",
+      "reason": "500 で断ることと何も通さないことは保たれる (MCP-SEC-HTTP-9 のテストが見ている)。消えるのは診断の 1 行の全体で、文言の違いではない。問い: 認可フックの失敗を記録に 1 行残すことを MCP-SEC-HTTP-9 に足すか (トランスポート内部の失敗は MCP-SEC-HTTP-8 が「the log holds one line naming the failure」と定めている)、それとも「失敗の文面は契約ではない (代表の決定 2026-10-23)」に含めて accepted とするか / 仕様にするなら MCP-SEC-HTTP-9 に 1 句を足し、既存のテスト \"Given an authorization hook that raises, …\" で stderr を取って `[mcp-http] authorization hook failed: ` とエラーの型名を見る"
+    },
+    {
+      "fingerprint": "src/transport/http_server.nim:SDL:fc9c7696c04a0178:2",
+      "file": "src/transport/http_server.nim",
+      "line": 1178,
+      "mutator": "SDL",
+      "original": "req.client.close()",
+      "replacement": "discard",
+      "class": "equivalent",
+      "reason": "書き込みが OSError / IOError で失敗した = 相手は去っている。閉じなくても応答は誰にも届かず、接続は `processClient` の次の読みが EOF を受けて閉じる。相手から見える違いは無く、記述子を手放す時機だけが変わる (前の記録 id 356。読んで決めた。書き込みの失敗を決まった形で起こす方法は前の担当も見つけていない)"
+    },
+    {
+      "fingerprint": "src/transport/http_server.nim:SDL:fc9c7696c04a0178:3",
+      "file": "src/transport/http_server.nim",
+      "line": 1185,
+      "mutator": "SDL",
+      "original": "req.client.close()",
+      "replacement": "discard",
+      "class": "equivalent",
+      "reason": "同上 (前の記録 id 359)"
+    },
+    {
+      "fingerprint": "src/transport/http_server.nim:SDL:9a1b2e84b3078684:0",
+      "file": "src/transport/http_server.nim",
+      "line": 1213,
+      "mutator": "SDL",
+      "original": "await sleepAsync(50)",
+      "replacement": "discard",
+      "class": "spec_question",
+      "reason": "変異すると、記述子が上限の 5 つ手前まで使われたとき `serve` の輪が await なしで回り、イベントループが止まって進行中の交換も終わらない。枝に入る条件を作る公開の口が無い (`asynchttpserver` の `maxFDs` は非公開。前の担当は `setrlimit` で試して不安定だった)。問い: 「記述子が尽きても進行中の交換は終わる」を仕様にする (上限を下げる口を足す) か、仕様にせずコードを残すか / 仕様 ID なし"
+    },
+    {
+      "fingerprint": "src/transport/sse_stream.nim:BLR:6ec2d660335697fb:0",
+      "file": "src/transport/sse_stream.nim",
+      "line": 77,
+      "mutator": "BLR",
+      "original": "false",
+      "replacement": "true",
+      "class": "equivalent",
+      "reason": "上と同じ変異 (戻り値だけ)"
+    },
+    {
+      "fingerprint": "src/transport/sse_stream.nim:RVR:f09e9e232af8b35b:0",
+      "file": "src/transport/sse_stream.nim",
+      "line": 77,
+      "mutator": "RVR",
+      "original": "return false",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "終わったストリームに何も足さずに戻る点は変わらず、変わるのは戻り値だけ。`push` の呼び手は `http_server.nim` の中だけで、全て `discard` している。`sse_stream` は公開の入口から export されない (`test_http_server_api.nim` が `serveStream` の非公開を確かめている)。**`push` の戻り値を無くせば、この変異は生まれない** / (MCP-HTTPSTREAM-19 の「the push is refused」は内部のテストだけが見ている)"
+    },
+    {
+      "fingerprint": "src/transport/sse_stream.nim:BLR:b8309a95375a2001:0",
+      "file": "src/transport/sse_stream.nim",
+      "line": 83,
+      "mutator": "BLR",
+      "original": "true",
+      "replacement": "false",
+      "class": "equivalent",
+      "reason": "受け付けた event は足されて `wake` も済んでいる。変わるのは、どの呼び手も読まない戻り値だけ。`push` の戻り値を無くせば生まれない"
+    },
+    {
+      "fingerprint": "src/transport/sse_stream.nim:ROR:e0b5738f1224ebef:0",
+      "file": "src/transport/sse_stream.nim",
+      "line": 97,
+      "mutator": "ROR",
+      "original": "dash <= 0",
+      "replacement": "<<= -> <>",
+      "class": "equivalent",
+      "reason": "`-5` が空のストリーム id の event id として読まれるが、唯一の呼び手 `handleGet` では、空の id のストリームは `session.streams` にも `listen` にも無く (id は `newStreamId` の 16 桁)、`stream` が nil のまま同じ 400 になる / (MCP-HTTPSTREAM-19 の「a stream id is never empty」は内部のテストだけが見ている。外からは MCP-HTTPSTREAM-8 の 400 と区別できない)"
+    },
+    {
+      "fingerprint": "src/transport/sse_stream.nim:RVR:a64288e7521eef5f:0",
+      "file": "src/transport/sse_stream.nim",
+      "line": 98,
+      "mutator": "RVR",
+      "original": "return none(tuple[streamId: string, seqNo: int])",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "`Option` の既定値は none"
+    },
+    {
+      "fingerprint": "src/transport/sse_stream.nim:ROR:59cf3a8c74726a32:0",
+      "file": "src/transport/sse_stream.nim",
+      "line": 106,
+      "mutator": "ROR",
+      "original": "s.events.len > 0",
+      "replacement": "<> -> >=>",
+      "class": "unreached",
+      "reason": "変異が違うのは event を 1 つも持たないストリームに `canResumeAfter` を尋ねたときだけ (`events[0]` で落ちる)。`handleGet` がそこへ行くには `Last-Event-ID` がそのストリームの id を名指す必要があるが、id は乱数で、event の `id:` 欄でしか client に渡らない。event を出したストリームは (`maxStreamEvents` が 1 以上なら) 空に戻らず、0 以下なら event が書かれないので id も渡らない"
+    },
+    {
+      "fingerprint": "src/transport/sse_stream.nim:SDL:bab0d2220e6ff25c:0",
+      "file": "src/transport/sse_stream.nim",
+      "line": 169,
+      "mutator": "SDL",
+      "original": "bell.watch(idle)",
+      "replacement": "discard",
+      "class": "test_owed",
+      "reason": "何も起きないストリームで、最初の keep-alive のコメントが出ない (ほかの理由で起きるまで `idle` を見ない)。keep-alive を見るテストは内部側 (`serveStream` を直接呼び、短い周期を渡す) にしか無い / MCP-HTTPSTREAM-20 (「a keep-alive comment goes out and the stream stays open」)。`tests/external/test_http_streams.nim`: セッションの GET ストリームを開いて何も送らず、15 秒 (`DefaultKeepAliveMs`) 過ぎに `: keep-alive` のコメントが届き、ストリームが開いたままであることを見る。変異だとコメントが来ない。**周期を縮める公開の口が無いので、1 本で 15 秒以上かかる**"
+    },
+    {
+      "fingerprint": "src/transport/sse_stream.nim:ROR:e7951a920652ef89:0",
+      "file": "src/transport/sse_stream.nim",
+      "line": 186,
+      "mutator": "ROR",
+      "original": "batch.len > 0",
+      "replacement": "<> -> >=>",
+      "class": "test_owed",
+      "reason": "何も書かなかった接続が `written` を `afterSeq` まで進める。GET ストリームで、どの接続も書いていない event の id を `Last-Event-ID` に名指して再開すると、その後に `Last-Event-ID` なしで開いた接続 (`writtenUpTo` の次から始まる) が、書かれていない event を受け取れなくなる / MCP-HTTPSTREAM-20 (「events that no connection wrote are not reported as written」)。`tests/external/test_http_streams.nim`: GET で通知 1 を受けて id を控えて切る → サーバーが通知 2・3 を送る → 同じストリームの 3 番を名指す `Last-Event-ID` で GET して切る → `Last-Event-ID` なしで GET し、通知 2・3 が届くことを見る。変異だと届かない"
+    },
+    {
+      "fingerprint": "src/transport/sse_stream.nim:SDL:bab0d2220e6ff25c:1",
+      "file": "src/transport/sse_stream.nim",
+      "line": 206,
+      "mutator": "SDL",
+      "original": "bell.watch(idle)",
+      "replacement": "discard",
+      "class": "test_owed",
+      "reason": "keep-alive のコメントが 1 回しか出ない (2 回目以降の時計を見ない) / MCP-HTTPSTREAM-20。上の 169 行のテストを 2 周期 (30 秒余り) 待ち、コメントが 2 回届くことを見る。変異だと 1 回"
+    },
+    {
+      "fingerprint": "src/transport/sse_stream.nim:SDL:82dd9d5f40b493f4:0",
+      "file": "src/transport/sse_stream.nim",
+      "line": 208,
+      "mutator": "SDL",
+      "original": "await req.client.send(formatSseComment(\"keep-alive\"))",
+      "replacement": "discard",
+      "class": "test_owed",
+      "reason": "keep-alive のコメントが 1 回も出ない / MCP-HTTPSTREAM-20。169 行と同じテスト。変異だとコメントが来ない"
+    },
+    {
       "fingerprint": "src/transport/stdio.nim:RVR:0c511227513989c7:0",
       "file": "src/transport/stdio.nim",
       "line": 52,
