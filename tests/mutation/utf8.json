@@ -1,0 +1,25 @@
+{
+  "sources": [
+    "src/compat/utf8.nim"
+  ],
+  "testCommand": "nim c -r --hints:off tests/external/test_utf8_refused_fix.nim && nim c -r --hints:off tests/external/test_stdio_messages_g0a.nim && nim c -r --hints:off tests/external/test_http_client_g0a.nim",
+  "mutators": [
+    "AOR",
+    "ROR",
+    "LOR",
+    "BLR",
+    "SDL",
+    "RVR"
+  ],
+  "parallelism": 0,
+  "timeoutMs": 0,
+  "minScore": 0.0,
+  "reports": [
+    "console",
+    "json"
+  ],
+  "outputDir": ".nim-muter/utf8",
+  "incremental": false,
+  "network": "loopback",
+  "testOutput": "unittest"
+}
