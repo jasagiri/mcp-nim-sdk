@@ -114,6 +114,7 @@ Feature: Security properties
     Given a transport with an authorization hook that fails with an error
     When a request to the MCP endpoint arrives
     Then the answer is 500, the request does not reach the server, and no session is made
+    And one line about the failure is written to the diagnostic log
 
   @spec:MCP-SEC-HTTP-5
   Scenario: A request must be addressed to this server

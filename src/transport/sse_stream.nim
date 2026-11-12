@@ -135,6 +135,14 @@ proc writeHead*(req: Request, code: HttpCode, headers: HttpHeaders): Future[void
   msg.add "Connection: close\c\L\c\L"
   req.client.send(msg)
 
+proc keepAliveTimer(keepAliveMs: int): Future[void] =
+  ## Completes after one keep-alive period; with none (`keepAliveMs <= 0`)
+  ## it never completes, so no comment is written.
+  if keepAliveMs > 0:
+    sleepAsync(keepAliveMs)
+  else:
+    newFuture[void]("keepAliveTimer.never")
+
 proc serveStream*(req: Request, stream: SseStream, afterSeq: int,
                   headers: HttpHeaders, gone: Future[void],
                   keepAliveMs = DefaultKeepAliveMs,
@@ -160,7 +168,7 @@ proc serveStream*(req: Request, stream: SseStream, afterSeq: int,
   headers["Cache-Control"] = "no-cache"
   headers["X-Accel-Buffering"] = "no"  # a proxy must not hold events back
   var cursor = afterSeq
-  var idle = sleepAsync(keepAliveMs)
+  var idle = keepAliveTimer(keepAliveMs)
   # `gone` and `idle` outlive many waits. Each is watched once: a callback
   # cannot be taken off a future again, so waiting on them afresh in every
   # round would pile one up per event on a connection that lives for hours.
@@ -202,7 +210,7 @@ proc serveStream*(req: Request, stream: SseStream, afterSeq: int,
         watchedChange = changed
       await bell.wait()
       if idle.finished:
-        idle = sleepAsync(keepAliveMs)
+        idle = keepAliveTimer(keepAliveMs)
         bell.watch(idle)
         if not gone.finished:
           await req.client.send(formatSseComment("keep-alive"))

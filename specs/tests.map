@@ -464,6 +464,8 @@ MCP-HTTPSTREAM-20 | tests/internal/test_http_streams_internal.nim | Given events
 MCP-HTTPSTREAM-20 | tests/external/test_http_streams.nim | Given a client that asked to keep its connection, when the event stream of its request ends, then the server closes the connection
 MCP-HTTPSTREAM-20 | tests/external/test_http_streams.nim | Given a client that sent a stray byte into its event stream, when it then closes the connection, then the server is told the request was cancelled
 MCP-HTTPSTREAM-20 | tests/external/test_http_streams.nim | Given events no connection wrote, when a connection resumes after the last of them, then a later connection without Last-Event-ID still gets them
+MCP-HTTPSTREAM-20 | tests/external/test_http_streams.nim | Given a keep-alive period set on the transport, when a GET stream is open and nothing is sent, then a keep-alive comment arrives in every period and the stream stays open
+MCP-HTTPSTREAM-20 | tests/external/test_http_streams.nim | Given a keep-alive period of 0 on the transport, when a GET stream is open and nothing is sent, then no keep-alive comment arrives
 MCP-HTTPSTREAM-21 | tests/external/test_http_client_g0a.nim | Given comment lines before, between and inside events, when the stream is read, then they are ignored and only the two messages arrive
 MCP-HTTPSTREAM-22 | tests/external/test_http_client_g0a.nim | Given a GET stream and two request streams open together, when the server speaks on each, then all three deliver and were open at the same time
 MCP-HTTPSTREAM-23 | tests/external/test_http_client_g0a.nim | Given a session id and a server that redirects the next POST to another origin, when the client sends it, then it raises and the other origin sees nothing
@@ -1936,7 +1938,7 @@ MCP-SEC-HTTP-1 | tests/external/test_security_http.nim | Given an authorized tra
 MCP-SEC-HTTP-1 | tests/external/test_security_http.nim | Given a token, when a client opens /sse and posts, then the request reaches the server as that principal
 MCP-SEC-HTTP-1 | tests/external/test_security_http.nim | Given an invalid token, when GET /sse comes, then the answer is 401
 MCP-SEC-HTTP-1 | tests/external/test_security_http.nim | Given an authorized transport with documents, when a document and the metadata are read without a token, then both are served
-MCP-SEC-HTTP-9 | tests/external/test_security_http.nim | Given an authorization hook that raises, when a request arrives, then the answer is 500 and nothing reaches the server
+MCP-SEC-HTTP-9 | tests/external/test_security_http.nim | Given an authorization hook that raises, when a request arrives, then the answer is 500, nothing reaches the server and one line about the failure is logged
 MCP-SEC-HTTP-2 | tests/external/test_security_http.nim | Given alice's session, when bob posts with its id, then the answer is 404 and the server sees nothing
 MCP-SEC-HTTP-2 | tests/external/test_security_http.nim | Given alice's session, when alice posts with its id, then it is served
 MCP-SEC-HTTP-2 | tests/external/test_security_http.nim | Given alice's session, when bob opens its GET stream, then the answer is 404

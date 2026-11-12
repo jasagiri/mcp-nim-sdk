@@ -225,6 +225,10 @@ type
       ## 2025-11-25 and later: the `retry` field the server sends before it
       ## closes the connection of a stream it keeps, which is when a newer
       ## connection takes the stream over. 0 sends none.
+    sseKeepAliveMs*: int
+      ## How long an event stream may be silent before the server writes a
+      ## comment line to it, so that the connection is not taken for dead;
+      ## 0 or less sends none.
     legacySsePath*: string
       ## Where the HTTP+SSE transport of 2024-11-05 opens its event stream;
       ## "" does not serve it.
@@ -269,6 +273,7 @@ proc newHttpServerTransport*(host: string = "127.0.0.1",
     maxStoredStreams: DefaultMaxStoredStreams,
     sessionIdleTimeoutMs: DefaultSessionIdleTimeoutMs,
     sseRetryMs:       DefaultSseRetryMs,
+    sseKeepAliveMs:   DefaultKeepAliveMs,
     legacySsePath:    "/sse",
     legacyMessagesPath: "/messages",
     documents:        initTable[string, HttpDocument](),
@@ -778,6 +783,7 @@ proc serveSessionStream(t: HttpServerTransport, req: Request, session: Session,
   ## like. The record leaves out the id.
   let polling = not session.isNil and session.version.has(ftSsePolling)
   result = await serveStream(req, stream, after, securityHeaders(), gone,
+                             keepAliveMs = t.sseKeepAliveMs,
                              retryMs = if polling: t.sseRetryMs else: 0)
   if result == seReplaced:
     stderr.writeLine("[mcp-http-server] the " & kind & " was taken over by connection " &
@@ -1021,7 +1027,8 @@ proc handleLegacySse(t: HttpServerTransport, req: Request,
   t.sessions[id] = session
   let gone = watchDisconnect(req.client)
   try:
-    discard await serveStream(req, session.listen, 0, securityHeaders(), gone)
+    discard await serveStream(req, session.listen, 0, securityHeaders(), gone,
+                              keepAliveMs = t.sseKeepAliveMs)
   finally:
     t.endSession(id)
 

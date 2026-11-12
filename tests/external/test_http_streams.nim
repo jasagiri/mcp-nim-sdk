@@ -1217,6 +1217,43 @@ suite "the buffer behind an event stream (mutation review, g2f-hs-c)":
       skip()
 
 
+proc openGetStream(port: int, session: string, version: McpProtocolVersion): AsyncSocket =
+  ## A raw HTTP/1.1 client that has asked for the GET stream of `session`.
+  result = newAsyncSocket(buffered = false)
+  waitFor result.connect("127.0.0.1", Port(port))
+  var request = "GET /mcp HTTP/1.1\c\LHost: localhost\c\LAccept: text/event-stream\c\L"
+  for (name, value) in legacyHeaders(session, version):
+    request.add name & ": " & value & "\c\L"
+  waitFor result.send(request & "\c\L")
+
+suite "the keep-alive of a GET stream":
+
+  test "Given a keep-alive period set on the transport, when a GET stream is open and nothing is sent, then a keep-alive comment arrives in every period and the stream stays open":
+    when mpv20250326 <= DefaultProtocolVersion:
+      let version = min(DefaultProtocolVersion, mpv20251125)
+      let (transport, url, _) = startRaw(version)
+      transport.sseKeepAliveMs = 50
+      let session = initialize(url, version)
+      let sock = openGetStream(transport.port, session, version)
+      check sock.receivedWithin(": keep-alive\n\n: keep-alive\n\n")
+      sock.close()
+    else:
+      skip()
+
+  test "Given a keep-alive period of 0 on the transport, when a GET stream is open and nothing is sent, then no keep-alive comment arrives":
+    when mpv20250326 <= DefaultProtocolVersion:
+      let version = min(DefaultProtocolVersion, mpv20251125)
+      let (transport, url, _) = startRaw(version)
+      transport.sseKeepAliveMs = 0
+      let session = initialize(url, version)
+      let sock = openGetStream(transport.port, session, version)
+      check sock.receivedWithin("\c\L\c\L")  # the head
+      check not sock.receivedWithin(": keep-alive", timeoutMs = 300)
+      sock.close()
+    else:
+      skip()
+
+
 when SpeaksModern:
   proc postKeepingConnection(url: string, id: int, name: string): AsyncSocket =
     ## A raw HTTP/1.1 client that has posted a request and asked to keep the

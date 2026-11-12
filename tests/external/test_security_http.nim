@@ -566,19 +566,40 @@ proc sendWithin(url: string, httpMethod: HttpMethod, body: string,
   else:
     none(tuple[code: HttpCode, headers: HttpHeaders, body: string])
 
+import std/os
+
+proc loggedWhile(body: proc()): string =
+  ## Everything the code under test wrote to stderr.
+  let path = getTempDir() / "mcp-security-http-" & $getCurrentProcessId() & ".log"
+  let saved = stderr
+  stderr = open(path, fmWrite)
+  try:
+    body()
+  finally:
+    stderr.close()
+    stderr = saved
+  result = readFile(path)
+  removeFile(path)
+
 suite "A hook that fails lets nothing through (mutation review, g2f-hs-b)":
-  test "Given an authorization hook that raises, when a request arrives, then the answer is 500 and nothing reaches the server":
+  test "Given an authorization hook that raises, when a request arrives, then the answer is 500, nothing reaches the server and one line about the failure is logged":
     let env = startOpen()
     env.transport.auth = HttpServerAuth(
       check: proc(httpMethod, path: string, authorization: Option[string]):
                  Future[HttpServerAuthOutcome] {.async.} =
         raise newException(ValueError, "the hook could not decide"))
-    let reply = sendWithin(env.base & "/mcp", HttpPost, initializeBody())
+    var reply: Option[tuple[code: HttpCode, headers: HttpHeaders, body: string]]
+    let log = loggedWhile(proc() =
+      reply = sendWithin(env.base & "/mcp", HttpPost, initializeBody()))
     require reply.isSome
     check reply.get.code == Http500
     waitFor sleepAsync(50)
     check env.script.received.len == 0
     check env.transport.sessionCount == 0
+    let lines = log.strip(leading = false).splitLines()
+    check lines.len == 1
+    check lines[0].len > 0
+    check not lines[0].anyIt(it < ' ')
 
 if ServesLegacySse:
   suite "The limits hold on the HTTP+SSE endpoints (mutation review, g2f-hs-b)":
@@ -596,23 +617,8 @@ if ServesLegacySse:
       check reply.get.headers.hasKey("Retry-After")
       stream.close()
 
-import std/os
-
 if ServesSessions:
   suite "A failure inside the transport is logged and not told to the peer (mutation review, g2f-hs-c)":
-    proc loggedWhile(body: proc()): string =
-      ## Everything the code under test wrote to stderr.
-      let path = getTempDir() / "mcp-security-http-" & $getCurrentProcessId() & ".log"
-      let saved = stderr
-      stderr = open(path, fmWrite)
-      try:
-        body()
-      finally:
-        stderr.close()
-        stderr = saved
-      result = readFile(path)
-      removeFile(path)
-
     test "Given a session whose end callback raises, when the client sends DELETE, then the answer is a bare 500, the log names the failure and the server goes on":
       let version = latestLegacyVersion(Spoken).get
       let env = startOpen(version)

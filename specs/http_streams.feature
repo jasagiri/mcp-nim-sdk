@@ -252,6 +252,7 @@ Feature: Event streams over Streamable HTTP
     And the server closes the connection when the stream ends, even for a client that asked to keep it
     And the departure of the peer is noticed after a stray byte as well
     And events that no connection wrote are not reported as written
+    And the keep-alive period is a setting of the transport (sseKeepAliveMs), and with 0 or less none goes out
 
   @spec:MCP-HTTPSTREAM-21 @feature:ftStreamableHttp
   Scenario: A client ignores comment lines of an event stream (a rule)
