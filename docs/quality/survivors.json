@@ -4107,8 +4107,8 @@
       "mutator": "ROR",
       "original": "event.id.len > 0",
       "replacement": "<> -> >=>",
-      "class": "spec_question",
-      "reason": "サーバーが id を送った後に空の `id:` を送ると、解析器の最後の id が空になる。元は最後の空でない id を残して再開に使い、変異は消して再開しない (要求は lost と報告される)。外から見えるが、空の `id:` を定める仕様 ID が無い (MCP-HTTP-30 は「id の無いイベント」だけ) / 問い: 空の `id:` の後も最後の空でない id で再開する、を MCP-HTTP-30 に足すか。足さないなら条件を消して `lastEventId = event.id` にする (SSE の規格の読み)"
+      "class": "test_owed",
+      "reason": "空の id: のあとは最後の空でない id で再開を続ける、を MCP-HTTP-30 に足す (代表の決定 2026-11-13)。E テストで確かめる"
     },
     {
       "fingerprint": "src/transport/http.nim:LOR:56c66a7ffe4ae195:0",
@@ -4167,8 +4167,8 @@
       "mutator": "ROR",
       "original": "key.len > 0",
       "replacement": "<> -> >=>",
-      "class": "spec_question",
-      "reason": "空の id の要求の取り消し。前の記録 (2026-10-12) に決めた人の名が無い。条件を not requestId.isNil にすれば変異が生まれない、という案とともに代表に問う"
+      "class": "test_owed",
+      "reason": "id のある要求だけを取り消しの対象にする条件を「id がある」に改める (代表の決定 2026-11-13)。変異は生まれなくなり、空文字列の id の取り消しを E テストで確かめる"
     },
     {
       "fingerprint": "src/transport/http.nim:ROR:3711cde0363a1b89:1",
@@ -4227,8 +4227,8 @@
       "mutator": "SDL",
       "original": "stderr.writeLine(\"[mcp-http] DELETE \" & t.baseUrl & \" timed out\")",
       "replacement": "discard",
-      "class": "spec_question",
-      "reason": "DELETE に 5 秒 (`DeleteTimeoutMs`、定数) 答えないサーバーのときの 1 行が出なくなる。閉じること自体は成功のまま。MCP-HTTP-36 が定めるのは「500 か切断を記録する」で、答えないサーバーは入っていない / 問い: 「DELETE に答えないサーバーも記録する」を MCP-HTTP-36 に足すか (5 秒待つテストになる。待ち時間を設定にすれば短くできる)、診断の 1 行として受け入れるか"
+      "class": "accepted",
+      "reason": "DELETE に答えないサーバーのときの timed out の診断 1 行。仕様にすると 5 秒待つテストになるので、診断の行として受け入れる (代表の決定 2026-11-13)"
     },
     {
       "fingerprint": "src/transport/http.nim:SDL:9a1cd9d884668560:0",
@@ -4477,8 +4477,8 @@
       "mutator": "ROR",
       "original": "url.port.len > 0",
       "replacement": "<> -> >=>",
-      "class": "spec_question",
-      "reason": "ポートの無い URL の Host。前の記録 (id 233) の許容は担当の判断で、代表の決定の記録が無い。代表に問う"
+      "class": "accepted",
+      "reason": "ポートの無い URL の Host。公開の入口からは相手役が Host を見る形でしか確かめられず、内部テストが確かめている。受け入れる (代表の決定 2026-11-13)"
     },
     {
       "fingerprint": "src/transport/http_wire.nim:LOR:2f7089b6f1a8c01a:0",
@@ -4587,8 +4587,8 @@
       "mutator": "BLR",
       "original": "true",
       "replacement": "false",
-      "class": "spec_question",
-      "reason": "`close` は待っている recv を EBADF で失敗させるので、起きた `receive` が「中断」でなく `reading the response failed` の McpTransportError で終わる。Streamable HTTP では取り消し (`abandoned`) と close (`closed`) の両方で上の層がその失敗を黙って捨てるので結果は同じ。外に出るのは失敗の文面と、旧 SSE で endpoint を待ち切れて閉じたときに診断 `[mcp-sse] event stream … failed` が 1 行増えることだけで、その診断を定める仕様 ID は無い / 問い Q1 (下)"
+      "class": "test_owed",
+      "reason": "旧 SSE で endpoint を待ち切れたとき、報告は失敗 1 つでストリームの失敗の診断は重ねて出ない、を仕様に足す (代表の決定 2026-11-13)。E テストで確かめる"
     },
     {
       "fingerprint": "src/transport/http_wire.nim:SDL:d6e20945c156a180:0",
@@ -4597,8 +4597,8 @@
       "mutator": "SDL",
       "original": "r.interrupt.complete()",
       "replacement": "discard",
-      "class": "spec_question",
-      "reason": "上と同じ。待っている読み取りは `interrupt` でなく recv の失敗で起き、`reading the response failed` で終わる (止まりはしない: 止まるなら取り消しのテストが落ちる) / 問い Q1"
+      "class": "test_owed",
+      "reason": "旧 SSE で endpoint を待ち切れたとき、報告は失敗 1 つでストリームの失敗の診断は重ねて出ない、を仕様に足す (代表の決定 2026-11-13)。E テストで確かめる"
     },
     {
       "fingerprint": "src/transport/http_wire.nim:LOR:57c83ac1dd79dc2b:0",
@@ -4647,8 +4647,8 @@
       "mutator": "LOR",
       "original": "r.closed or not pending.finished",
       "replacement": "<or -> and>",
-      "class": "spec_question",
-      "reason": "`close` の後は recv が失敗で終わっているので条件が偽になり、`pending.read()` の OSError から `reading the response failed` になる。199・201 行と同じ結果 / 問い Q1"
+      "class": "test_owed",
+      "reason": "旧 SSE で endpoint を待ち切れたとき、報告は失敗 1 つでストリームの失敗の診断は重ねて出ない、を仕様に足す (代表の決定 2026-11-13)。E テストで確かめる"
     },
     {
       "fingerprint": "src/transport/http_wire.nim:BLR:815d0a6eb4cc9d4b:1",
