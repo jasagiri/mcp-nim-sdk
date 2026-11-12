@@ -1,5 +1,180 @@
 # G2 変異検出: http_client ジョブ
 
+## 測り直し (拡張ブランチの b04fcb9c、2026-11-11)
+
+測定: nim-muter 0.2.15、全 414 変異。killed 279、survived 73、timeout 39、compileError 23。
+生き残りは 2 人で分担して仕分けた (http_wire.nim と、それ以外)。
+
+### http_wire.nim の生き残り
+
+状態: 測定済み。生き残り 52 件。
+内訳: test_owed 34、equivalent 9、unreached 5、spec_question 3、accepted 1、undecided 0。
+E テストは `http_wire` を直接 import しないので、見えるのは `StreamableHttpTransport`・`SseLegacyTransport`・アイコンの取得・認可の取得を通した振る舞いだけ。
+`http_wire.request` の呼び手が使うメソッドは GET・POST (本文つき)・DELETE だけで、HEAD と PUT、本文の無い POST は公開の入口から作れない。
+仕分けは読解だけで行い、変異を当てて走らせてはいない。
+
+| 指紋 | 場所 | 変異 | class | 理由 | 仕様 ID / 足すテストの案 |
+|---|---|---|---|---|---|
+| `src/transport/http_wire.nim:SDL:6550c95298b9a3f4:0` | http_wire.nim:83 | `X509_free(certificate)` → `discard` | equivalent | 接続 1 本につき X509 の参照を 1 つ解放しないだけ。応答・例外・記述子は変わらず、公開の入口から見えるものは無い (残るのはメモリだけ。前回 id 306 と同じ読み) | — |
+| `src/transport/http_wire.nim:SDL:23821c14d11f59f0:0` | http_wire.nim:103 | 証明書を断ったときの `socket.close()` → `discard` | test_owed | 証明書を断った接続の記述子が残り、サーバーは切断を見ない。今これを見るのは内部の `tests/internal/test_security_wire_tls.nim` だけ | MCP-SEC-WIRE-20。案 W13 |
+| `src/transport/http_wire.nim:ROR:f786273d59942e92:0` | http_wire.nim:139 | `url.path.len > 0` → `>=` | test_owed | パスの無い URL で要求行が `POST  HTTP/1.1` (対象が空) になる | MCP-SEC-WIRE-15。案 W1 |
+| `src/transport/http_wire.nim:ROR:7f2b6c957092d608:0` | http_wire.nim:140 | `url.query.len > 0` → `>=` | test_owed | クエリの無い URL で要求行が `POST /? HTTP/1.1` になる | MCP-SEC-WIRE-15。案 W1 |
+| `src/transport/http_wire.nim:ROR:a2cefaede4013b4c:0` | http_wire.nim:142 | `url.port.len > 0` → `>=` | accepted | ポートの無い URL で `Host: name:` になる。見るには 80 番 (https なら 443 番) で待つ相手が要り、公開の入口には接続先だけを差し替える口が無い。前の記録「内部実装テストの扱い」の id 233 (「このテストでしか検出できない変異は…許容とする」) による。**その記録はリードの判断で、代表の記録かは確かめられていない** | MCP-SEC-WIRE-15 の「Host names … the port only when the URL has one」は E テストを持てない |
+| `src/transport/http_wire.nim:ROR:3659d57a7d6c5662:0` | http_wire.nim:148 | `body.len > 0` → `>=` | test_owed | 本文の無い GET・DELETE に `Content-Length: 0` が付く | MCP-SEC-WIRE-15。案 W2 |
+| `src/transport/http_wire.nim:LOR:2f7089b6f1a8c01a:0` | http_wire.nim:148 | `body.len > 0 or httpMethod == HttpPost` → `and` | equivalent | 差が出るのは本文の無い POST と、POST 以外で本文のある要求だけ。呼び手 (`http.nim` の POST は JSON-RPC のメッセージ、`sse_legacy.nim` の POST も同じ、`auth/oauth/fetch.nim` の POST はフォームか JSON の文書、GET と DELETE は本文なし) はどちらも作らない | MCP-SEC-WIRE-15 の「for a POST and for any request with a body」のうち、本文の無い POST と PUT は公開の入口から確かめられない |
+| `src/transport/http_wire.nim:ROR:acbce228c56a3ffa:0` | http_wire.nim:148 | `httpMethod == HttpPost` → `!=` | test_owed | 本文の無い GET・DELETE に `Content-Length: 0` が付く (本文のある POST は左の条件で付くまま) | MCP-SEC-WIRE-15。案 W2 |
+| `src/transport/http_wire.nim:ROR:9ad2cda0f77cc4cb:0` | http_wire.nim:162 | `status.len < 2` → `<=` | test_owed | 理由句の無い状態行 (`HTTP/1.1 200`) が「HTTP の応答ではない」と断られる | MCP-SEC-WIRE-16。案 W3 |
+| `src/transport/http_wire.nim:ROR:95d1016392c12067:0` | http_wire.nim:169 | `code < 100` → `<=` | test_owed | 状態 100 が「状態行が不正」と断られる。元は応答として受け、`McpTransportError.code` が 100 になる (変異では 0) | MCP-SEC-WIRE-23 (範囲は 100 から 599)。案 W4 |
+| `src/transport/http_wire.nim:LOR:8cda8e348861f1df:0` | http_wire.nim:169 | `code < 100 or code > 599` → `and` | test_owed | 範囲の外の状態 (2049、-5) を通し、`HttpCode(code)` が RangeDefect になる | MCP-SEC-WIRE-23。既存の `tests/external/test_security_wire_shapes.nim` の「Given a status code above 599 …」「Given a negative status code …」が検出するはず。testCommand に足す |
+| `src/transport/http_wire.nim:ROR:f8aa84cb4705fa6b:0` | http_wire.nim:169 | `code > 599` → `>=` | test_owed | 状態 599 が「状態行が不正」と断られる (`code` が 599 でなく 0) | MCP-SEC-WIRE-23。案 W4 |
+| `src/transport/http_wire.nim:ROR:fb29fb68bb0cf79a:0` | http_wire.nim:175 | `colon > 0` → `>=` | equivalent | `: x` の行が名前の空のヘッダーとして入るだけ。応答のヘッダーを読む側 (Content-Type・Mcp-Session-Id・Location・WWW-Authenticate・Transfer-Encoding・Content-Length) は空の名前を引かない | MCP-SEC-WIRE-16 の「a line without a name is no header」は公開の入口から確かめられない |
+| `src/transport/http_wire.nim:LOR:afa1d4e3d056925c:0` | http_wire.nim:180 | `httpMethod == HttpHead or code < 200` → `and` | test_owed | HEAD でない要求への 1xx が「接続が閉じるまでが本文」になり、相手が接続を保つと終わらない (元は本文なしで直ちに終わり、接続を閉じる)。HEAD の側は呼び手が無い | MCP-SEC-WIRE-16。案 W5 |
+| `src/transport/http_wire.nim:LOR:2d4d48653272c466:0` | http_wire.nim:180 | `… or code in [204, 304]` → `and` | test_owed | 1xx・204・304 がどれも本文を待つ。204 で答えて接続を保つ相手への通知が終わらない (既存の 204 のテストは DELETE で、本文を読まずに閉じるので見ない) | MCP-SEC-WIRE-16。案 W5 |
+| `src/transport/http_wire.nim:BLR:6648c3d18d2d303a:0` | http_wire.nim:199 | `close` の `r.closed = true` → `false` | spec_question | `close` は待っている recv を EBADF で失敗させるので、起きた `receive` が「中断」でなく `reading the response failed` の McpTransportError で終わる。Streamable HTTP では取り消し (`abandoned`) と close (`closed`) の両方で上の層がその失敗を黙って捨てるので結果は同じ。外に出るのは失敗の文面と、旧 SSE で endpoint を待ち切れて閉じたときに診断 `[mcp-sse] event stream … failed` が 1 行増えることだけで、その診断を定める仕様 ID は無い | 問い Q1 (下) |
+| `src/transport/http_wire.nim:SDL:d6e20945c156a180:0` | http_wire.nim:201 | `r.interrupt.complete()` → `discard` | spec_question | 上と同じ。待っている読み取りは `interrupt` でなく recv の失敗で起き、`reading the response failed` で終わる (止まりはしない: 止まるなら取り消しのテストが落ちる) | 問い Q1 |
+| `src/transport/http_wire.nim:LOR:57c83ac1dd79dc2b:0` | http_wire.nim:202 | `not r.socket.isNil and not r.socket.isClosed` → `or` | equivalent | `AsyncSocket.close` は閉じ済みなら何もしない。`socket` が nil のまま `close` が呼ばれることも無い (`connected` も例外の処理も `socket` を入れた後)。前回 id 284 と同じ読み | — |
+| `src/transport/http_wire.nim:RVR:1cd163f0376d5767:0` | http_wire.nim:209 | `return (data: "", interrupted: true)` → 既定値 | unreached | 閉じた応答で `receive` が呼ばれない。`readSome` は `close` が立てる `finished` を先に見て抜け、`exchangeHead` は送信の後に待ちを挟まず `receive` に入る (送信の途中で閉じられれば送信の失敗で抜ける)。前の記録「内部実装テストの扱い」も「公開の口からは届かない」 | — |
+| `src/transport/http_wire.nim:BLR:815d0a6eb4cc9d4b:0` | http_wire.nim:209 | `interrupted: true` → `false` | unreached | 上と同じ文 | — |
+| `src/transport/http_wire.nim:SDL:69127dcb00db7d48:0` | http_wire.nim:215 | recv の失敗の `r.close()` → `discard` | unreached | この節に来るのは、`close` より先に recv が OSError で失敗したときだけ。相手役からは作れない (接続の切断は asyncdispatch が空の読み取りにする。前回 id 326 で試して作れなかった) | — |
+| `src/transport/http_wire.nim:LOR:aa607b45cf389e41:0` | http_wire.nim:220 | `r.closed or not pending.finished` → `and` | spec_question | `close` の後は recv が失敗で終わっているので条件が偽になり、`pending.read()` の OSError から `reading the response failed` になる。199・201 行と同じ結果 | 問い Q1 |
+| `src/transport/http_wire.nim:RVR:1cd163f0376d5767:1` | http_wire.nim:221 | `return (data: "", interrupted: true)` → 既定値 | test_owed | 中断が「相手が閉じた」(空の読み取り) になる。Content-Length の無い JSON の本文 (閉じるまでが本文) の途中で取り消すと、途中までの本文が全部として返り、`sendRequest` が JSON の解析の失敗で終わる。既存のテスト (`bPartialHold`) は Content-Length つきなので、変異でも McpTransportError になり `abandoned` が黙らせる | MCP-SEC-WIRE-19 (MCP-HTTP-32)。案 W6 |
+| `src/transport/http_wire.nim:BLR:815d0a6eb4cc9d4b:1` | http_wire.nim:221 | `interrupted: true` → `false` | test_owed | 上と同じプログラム | MCP-SEC-WIRE-19。案 W6 |
+| `src/transport/http_wire.nim:SDL:69127dcb00db7d48:1` | http_wire.nim:225 | 2 つ目の `except OSError` の `r.close()` → `discard` | unreached | `r.closed` なら 221 行で先に戻る。閉じていないのに `pending` が失敗していれば 213 行の `firstOf` が先に失敗する。前回 id 327 と同じ読み | — |
+| `src/transport/http_wire.nim:SDL:443904262a20286a:0` | http_wire.nim:244 | 遅れて終わる接続への `attempt.addCallback(…)` → `discard` | test_owed | 接続の制限時間の後に TLS のハンドシェイクが終わると、その接続が閉じられずに残る。今これを見るのは内部の `test_security_wire_tls.nim` だけ | MCP-SEC-WIRE-20。案 W14 |
+| `src/transport/http_wire.nim:SDL:d25407cf64c95e94:0` | http_wire.nim:248 | `attempt.read().close()` → `discard` | test_owed | 上と同じ | MCP-SEC-WIRE-20。案 W14 |
+| `src/transport/http_wire.nim:ROR:e582ac1448caec29:0` | http_wire.nim:268 | `head.len > MaxHeadSize` → `>=` | test_owed | ちょうど 64 KiB まで届いて終わりがまだ来ていない頭が断られる | MCP-SEC-WIRE-18。案 W7 |
+| `src/transport/http_wire.nim:SDL:92cccf31e1675a58:0` | http_wire.nim:297 | ヘッダーの待ち切れの `response.close()` → `discard` | equivalent | 直後の `raise` が同じ `try` の `except CatchableError` に入り、そこの `response.close()` が待ちを挟まずに走る。前回 id 341 と同じ読み | — |
+| `src/transport/http_wire.nim:SDL:2b50c5c53d3d4667:0` | http_wire.nim:298 | 放棄した `exchange` の失敗を読む `addCallback` → `discard` | equivalent | 誰も待たない future の失敗は、読んでも読まなくても何も起こさない (`asyncCheck` していない)。前回 id 342 と同じ読み | — |
+| `src/transport/http_wire.nim:LOR:c021a896957300f5:0` | http_wire.nim:362 | `text.len == 0 or text.len > 15` → `and` | test_owed | 16 桁以上の大きさを通し、`result * 16 + digit` が OverflowDefect になる | MCP-SEC-WIRE-23。既存の `tests/external/test_security_wire_shapes.nim` の「Given a chunk size that does not fit in an integer …」が検出するはず。testCommand に足す |
+| `src/transport/http_wire.nim:ROR:908a6271e751bc55:0` | http_wire.nim:362 | `text.len > 15` → `>=` | test_owed | 15 桁の大きさ (先頭に 0 を並べたもの。int に収まる) が断られる | MCP-SEC-WIRE-23。案 W8 |
+| `src/transport/http_wire.nim:AOR:677494dbad0b5697:0` | http_wire.nim:367 | `ord(c) - ord('0')` → `+` | test_owed | 数字の桁が 96 以上になり、チャンクの大きさが狂う。イベントストリームでは届いた分が先に配られ、最後の失敗は診断になるだけなので、既存のチャンクのテストは通る。JSON の本文なら要求が失敗する | MCP-SEC-WIRE-23。既存の `test_security_wire_shapes.nim` の「Given a well-formed chunked answer …」(大きさ `58`) が検出するはず。testCommand に足す |
+| `src/transport/http_wire.nim:AOR:904ad839e5d0aace:0` | http_wire.nim:368 | `ord(c) - ord('a')` → `+` | test_owed | 小文字の桁 `a`〜`f` が 204 以上になる。JSON の本文で、大きさに英字の桁を持つものを読む E テストが無い | MCP-SEC-WIRE-23。案 W8 |
+| `src/transport/http_wire.nim:AOR:cedabd4dfadbc44c:0` | http_wire.nim:368 | `… + 10` → `- 10` | test_owed | 小文字の桁が負になり、大きさが負になる | MCP-SEC-WIRE-23。案 W8 |
+| `src/transport/http_wire.nim:AOR:2c181b06a9cd674e:0` | http_wire.nim:369 | `ord(c) - ord('A')` → `+` | test_owed | 大文字の桁 `A`〜`F` が狂う | MCP-SEC-WIRE-23。案 W8 |
+| `src/transport/http_wire.nim:AOR:91a1613fc6739f4c:0` | http_wire.nim:369 | `… + 10` → `- 10` | test_owed | 大文字の桁が負になる | MCP-SEC-WIRE-23。案 W8 |
+| `src/transport/http_wire.nim:ROR:6bc662be21c97f8d:0` | http_wire.nim:387 | `r.line.len > 64` → `>=` | test_owed | 64 バイトの大きさの行 (拡張つき) が断られる | MCP-SEC-WIRE-18。案 W9 |
+| `src/transport/http_wire.nim:LOR:9e79d51c8bf60178:0` | http_wire.nim:404 | `c == '\c' and r.line.len == 0` → `or` | test_owed | データの直後の余分な 1 バイトを通す。既存の `test_security_wire_shapes.nim` は余分を 2 バイト (`XX`) 置くので、2 バイト目で断られ、変異でも通る | MCP-SEC-WIRE-23。案 W10 |
+| `src/transport/http_wire.nim:ROR:53e018ffc3bff233:2` | http_wire.nim:411 | トレーラーの `c == '\n'` → `!=` | test_owed | 最後のチャンクの次の 1 バイト目で本文が終わる。空行が来る前に接続が切れても、本文が全部として受け取られる | MCP-SEC-WIRE-18。案 W11 |
+| `src/transport/http_wire.nim:ROR:36bb4f701e0752b8:0` | http_wire.nim:412 | `r.line.len == 0` → `!=` | test_owed | 空行で終わらず、トレーラーの行で終わる。トレーラーの無い本文は終わらなくなり、相手が閉じると失敗する | MCP-SEC-WIRE-18。既存の `test_security_wire_shapes.nim` の「Given a well-formed chunked answer …」が検出するはず。testCommand に足す (案 W11 も検出する) |
+| `src/transport/http_wire.nim:ROR:388fe6862d760fd1:0` | http_wire.nim:415 | `c != '\c'` → `==` | test_owed | CR が行に溜まって空行を認められず、正しいチャンクの本文が終わらない | MCP-SEC-WIRE-18。既存の `test_security_wire_shapes.nim` の「Given a well-formed chunked answer …」が検出するはず。testCommand に足す |
+| `src/transport/http_wire.nim:SDL:8cb5943fd131cd10:1` | http_wire.nim:416 | トレーラーの `r.line.add c` → `discard` | test_owed | トレーラーの行が空と見なされ、その行の終わりで本文が終わる (空行を待たない) | MCP-SEC-WIRE-18。案 W11 |
+| `src/transport/http_wire.nim:RVR:87aa8baa528c4cef:0` | http_wire.nim:433 | `return ""` → 既定値 | equivalent | 文字列のリテラルの置き換えは `""` で、同じプログラム | — |
+| `src/transport/http_wire.nim:BLR:d81d812f01f9642e:1` | http_wire.nim:437 | `bmNone` の `r.finished = true` → `false` | unreached | `chooseBodyMode` が `bmNone` なら `finished` を立てるので、`while not r.finished` の中に `bmNone` で入らない。前回 id 302 と同じ読み | — |
+| `src/transport/http_wire.nim:SDL:69127dcb00db7d48:2` | http_wire.nim:440 | Content-Length の本文が途中で切れたときの `r.close()` → `discard` | test_owed | Streamable HTTP・アイコン・認可の呼び手は失敗しても自分で閉じるので見えない。旧 SSE の `connect` は、エラーの応答の本文を読む `readAll` が失敗すると閉じないので、そこでだけ記述子が残る | MCP-SEC-WIRE-18 (「a body cut short fails, and the response is finished」)。案 W15 |
+| `src/transport/http_wire.nim:ROR:5d8027d83be9c587:0` | http_wire.nim:446 | `n > 0` → `>=` | equivalent | ここでは `data.len > 0` かつ `remaining > 0` (0 なら `finished`)、負の Content-Length は入口で断るので、n は常に 1 以上。前回 id 266 と同じ読み | — |
+| `src/transport/http_wire.nim:SDL:69127dcb00db7d48:5` | http_wire.nim:455 | チャンクの本文が途中で切れたときの `r.close()` → `discard` | test_owed | 440 行と同じ (チャンクの本文で) | MCP-SEC-WIRE-18。案 W15 |
+| `src/transport/http_wire.nim:SDL:69127dcb00db7d48:6` | http_wire.nim:459 | 最後のチャンクの後の `r.close()` → `discard` | test_owed | 本文が終わっても応答が終わらず、次の読み取りが相手を待つ。相手が閉じると「最後のチャンクの前に閉じた」で失敗する | MCP-SEC-WIRE-18。既存の `test_security_wire_shapes.nim` の「Given a well-formed chunked answer …」が検出するはず。testCommand に足す |
+| `src/transport/http_wire.nim:ROR:97f56bf0367a2e95:0` | http_wire.nim:460 | `decoded.len > 0` → `>=` | test_owed | 大きさの行だけが先に届くと `readSome` が "" (本文の終わり) を返し、`readAll` が空の本文で終える。既存のチャンクのテストは 7 バイト目で切るのでデータが 3 バイト入り、見ない | MCP-SEC-WIRE-18。案 W12 |
+| `src/transport/http_wire.nim:RVR:87aa8baa528c4cef:1` | http_wire.nim:462 | 末尾の `return ""` → 既定値 | equivalent | 433 行と同じ | — |
+| `src/transport/http_wire.nim:SDL:69127dcb00db7d48:7` | http_wire.nim:476 | 上限を超えたときの `r.close()` → `discard` | test_owed | Streamable HTTP の呼び手は `finally` で閉じるので見えない。旧 SSE の `connect` は `readAll(ErrorBodyPreview)` が失敗すると閉じないので、512 バイトを超えるエラーの本文を送り続ける相手との接続が残る | MCP-SEC-WIRE-18 (「a body that outgrows its limit has its connection closed」)。案 W16 |
+
+#### http_wire.nim: 足すテストの案
+
+まず `tests/external/test_security_wire_shapes.nim` (MCP-SEC-WIRE-23) を `tests/mutation/http_client.json` の testCommand に足す。新しいテストは要らず、169 行の LOR、362 行の LOR、367・412・415・459 行の 6 件を検出するはず。
+
+残りは `StreamableHttpTransport` の通知・要求を、答えをそのまま書ける相手役 (`test_security_wire_headers.nim` の `startScripted`) に送る形で書ける。
+
+| 案 | 仕様 ID | 入れるもの・見るもの | 検出する変異 (行) |
+|---|---|---|---|
+| W1 | MCP-SEC-WIRE-15 | パスもクエリも無い URL (`http://127.0.0.1:<port>`) と、`/a?b=1` の URL へ通知を送る。相手が受けた要求行が `POST / HTTP/1.1`、`POST /a?b=1 HTTP/1.1` であること | 139、140 |
+| W2 | MCP-SEC-WIRE-15 | 本文の無い要求 (ストリームを開く GET か、セッションを終える DELETE) を相手が受ける。その頭に `Content-Length` が無いこと | 148 の ROR 2 件 |
+| W3 | MCP-SEC-WIRE-16 | `HTTP/1.1 200` (理由句なし) と `Content-Length: 0` で答える。通知が成功すること | 162 |
+| W4 | MCP-SEC-WIRE-23 | 状態 100 と 599 で答える。失敗が McpTransportError で、その `code` が 100、599 であること (「状態行が不正」ではない) | 169 の ROR 2 件 |
+| W5 | MCP-SEC-WIRE-16 | 100・204・304 を本文なしで答え、接続を保つ。通知が待ち続けず (204 は成功、ほかは HTTP の失敗)、クライアントが接続を閉じること | 180 の LOR 2 件 |
+| W6 | MCP-SEC-WIRE-19 | 200・`application/json`・Content-Length なしで本文を半分だけ送って黙る。その要求を取り消すと `sendRequest` が失敗せずに終わること | 221 の RVR・BLR |
+| W7 | MCP-SEC-WIRE-18 | 頭をちょうど 65536 バイト送って待ち、その後で終わりの空行を送る。通知が成功すること (1 バイト多ければ断る) | 268 |
+| W8 | MCP-SEC-WIRE-23 | JSON の答えをチャンクに分け、大きさを小文字の英字の桁 (`a`〜`f`)、大文字の桁 (`A`〜`F`)、先頭に 0 を並べた 15 桁で書く。メッセージがそのまま届くこと | 362 の ROR、368・369 の AOR 4 件 |
+| W9 | MCP-SEC-WIRE-18 | 大きさの行を拡張で 64 バイト (CR を含む) にする。受け取ること (65 バイトは断る) | 387 |
+| W10 | MCP-SEC-WIRE-23 | チャンクのデータと行末の間に余分を 1 バイトだけ置く。要求が McpTransportError で失敗すること | 404 |
+| W11 | MCP-SEC-WIRE-18 | 最後のチャンクとトレーラーの 1 行まで送り、空行を送らずに閉じる。要求が失敗すること (空行まで送れば成功) | 411、416 (412 も) |
+| W12 | MCP-SEC-WIRE-18 | 大きさの行だけを送って少し待ち、その後でデータと最後のチャンクを送る。メッセージが届くこと | 460 |
+| W13 | MCP-SEC-WIRE-20 | `-d:ssl` の `test_security_trusted_ca.nim` で、別のホストの証明書を出すサーバーへ繰り返し送る。開いている記述子の数が増えないこと (またはサーバーが切断を見ること) | 103 |
+| W14 | MCP-SEC-WIRE-20 | 同じファイルで、ハンドシェイクを `connectTimeoutMs` より遅らせる中継を挟む。失敗の後、ハンドシェイクが終わった接続をクライアントが閉じること | 244、248 |
+| W15 | MCP-SEC-WIRE-18 | 旧 SSE のトランスポートの GET に、500 と、Content-Length (またはチャンク) より短い本文で答えて閉じる、を繰り返す。開いている記述子の数が増えないこと | 440、455 |
+| W16 | MCP-SEC-WIRE-18 | 旧 SSE の GET に、500 と 512 バイトを超えて続く本文で答えて接続を保つ。クライアントが接続を閉じること | 476 |
+
+W15・W16 は、`sse_legacy.nim` の `connect` が `readAll` の失敗のときに自分で閉じるように直すと、Streamable HTTP と同じく二重の守りになり、3 件は公開の入口から見えなくなる。どちらにするかは実装の担当と司会の判断。
+
+#### http_wire.nim: 代表への問い
+
+- Q1 (199・201・220 行の 3 件): `close` で起こした読み取りを「失敗」でなく「中断」として終える区別は、公開の入口では、旧 SSE で endpoint を待ち切れて閉じたときに診断が 1 行増えるかどうかにしか現れない。これを仕様にするか。
+  - 案 A (推奨): 仕様に足す。「旧 SSE で endpoint を待ち切れたとき、報告は待ち切れの失敗 1 つで、ストリームの失敗の診断は出ない」を `specs/` に足し、E テストを 1 本書く。3 件とも検出できる。
+  - 案 B: 仕様にしない。区別は wire の層の内部の作りとして残し、3 件は「外に出るのは失敗の文面と診断だけ」として受け入れる。
+
+#### http_wire.nim: timeout の 16 件
+
+読んだ限り、16 件とも無限ループか、相手を待ち続ける変異で、遅いだけのものは無い (走らせて確かめてはいない)。
+
+- `BLR:085d09f9368c1317:0` (95 行、`buffered = false` → `true`): 読み取りが 16 KiB 溜まるまで戻らず、届いたイベントが配られない。待ち続ける。
+- `SDL:5126c393547291a4:0` (150 行): 要求の頭が空行で終わらず、相手が頭を待ち続ける。
+- `SDL:81c71e71da00fe1e:0` (151 行): 本文が送られず、相手が Content-Length の分を待ち続ける。
+- `SDL:e79dfbd7dc6e33dc:0` (176 行): 応答のヘッダーが 1 つも入らず、どの本文も「閉じるまで」になって待ち続ける。
+- `AOR:806e5f00fa515203:0` (176 行、`colon + 1` → `- 1`): ヘッダーの値の頭に名前の末尾と `:` が付く。Content-Length は断られ、Content-Type はイベントストリームと認められず、ストリームを「閉じるまでの本文」として待ち続ける。
+- `LOR:36218ee9716291c1:0`・`ROR:d3520d2ffd069e77:0`・`ROR:7745eaab4f5e0fcb:0` (194 行): 本文の無い応答 (Content-Length: 0 など) が終わらず、読み取りが相手を待ち続ける。
+- `SDL:39e61f218cbb9ce6:0` (260 行): 要求を送らないので、双方が待ち続ける。
+- `ROR:032e232f62ac8a98:0` (273 行): 相手が閉じると空の読み取りを足し続ける。無限ループ。
+- `SDL:d280f1d5546c923c:0` (275 行): 頭が溜まらず、読み続ける。相手が閉じた後は無限ループ。
+- `SDL:67a1badf9643ab78:0` (277 行): 本文の読み方が決まらず `finished` も立たないので、本文を捨てたうえで相手を待ち続ける。
+- `ROR:58fb097c98a9bf39:0`・`LOR:b2f25044cf8c9a57:0` (375 行): 入力の終わりを越えて回る。データの途中なら進まずに無限ループ。
+- `SDL:c7f896b75934631c:2` (410 行): トレーラーで `i` が進まず無限ループ。
+- `ROR:941050a292b5b5e8:0` (470 行): 本文の終わり ("") で抜けず、空を足し続ける無限ループ。
+
+### http.nim・sse_legacy.nim・first_of.nim・http_compat.nim の生き残り
+
+状態: 測定済み。生き残り 21 件 (http.nim 17、first_of.nim 2、sse_legacy.nim 2、http_compat.nim 0)。
+内訳: test_owed 4、spec_question 2、equivalent 12、unreached 2、accepted 1、undecided 0。
+仕分けは読解だけで行い、変異を当てて走らせてはいない。
+
+| 指紋 | 場所 | 変異 | class | 理由 | 仕様 ID / 足すテストの案 |
+|---|---|---|---|---|---|
+| `src/transport/first_of.nim:BLR:e6b33bb416d844ca:0` | first_of.nim:43 | `bell.rung = true` → `false` | test_owed | `firstOf` では差が無い (終わっている future への `addCallback` は `callSoon` で、`wait` が先に待ち手を置く)。差が出るのは `Doorbell` を使い回す `sse_stream.nim` の配送ループ: `await req.client.send` の間に `idle` (keep-alive の時計) が鳴ると、鳴ったことが失われ、時計が掛け直されず、次の出来事まで keep-alive が出なくなる | MCP-HTTPSTREAM-20 (keep-alive は周期ごとに出る)。案 T1: 下の「足すテストの案」 |
+| `src/transport/first_of.nim:SDL:36d44f174725a394:0` | first_of.nim:55 | `bell.deliver(result)` → `discard` | test_owed | 上と同じ場面 (誰も待っていない間に鳴った) で、次の `wait` が完了せず `rung` も真のまま残るので、その接続の配送ループが止まる。以後のイベントも keep-alive も書かれない | MCP-HTTPSTREAM-20。案 T1 (同じ 1 本) |
+| `src/transport/http.nim:ROR:3f525d5735463583:0` | http.nim:146 | `declared.bindings.len > 0` → `>=` | equivalent | 束縛が空の tool に空の seq が入るだけ。`paramHeaderFor` は `hasKey` で入るが、`paramHeadersFor` は空の束縛では何も足さず断りも返さない | — |
+| `src/transport/http.nim:ROR:dd1900757d85feff:0` | http.nim:244 | `index >= 0` → `>` | equivalent | 先頭の閉じた応答が `t.streams` に残るだけ。`streams` を読むのは `untrack` の `find` (参照の同一性) と `close()` で、`WireResponse.close` は閉じ済みなら何もしない。公開の入口から見えるものは変わらない (残るのはメモリだけ) | — |
+| `src/transport/http.nim:SDL:9910722072133c8e:0` | http.nim:245 | `t.streams.delete(index)` → `discard` | equivalent | 上と同じ。閉じた応答が `close()` まで `t.streams` に残り、長く生きるトランスポートでは増え続けるが、公開の入口からは見えない (`streams` の長さを見る口が無い) | — |
+| `src/transport/http.nim:ROR:c4ff7c8002fa0bae:0` | http.nim:267 | `event.id.len > 0` → `>=` | spec_question | サーバーが id を送った後に空の `id:` を送ると、解析器の最後の id が空になる。元は最後の空でない id を残して再開に使い、変異は消して再開しない (要求は lost と報告される)。外から見えるが、空の `id:` を定める仕様 ID が無い (MCP-HTTP-30 は「id の無いイベント」だけ) | 問い: 空の `id:` の後も最後の空でない id で再開する、を MCP-HTTP-30 に足すか。足さないなら条件を消して `lastEventId = event.id` にする (SSE の規格の読み) |
+| `src/transport/http.nim:LOR:56c66a7ffe4ae195:0` | http.nim:279 | `not t.closed and (…)` → `or` | unreached | 差が出るのは `t.closed` が真のまま `consume` が例外で終わるときだけ。`close()` は追跡中の全ストリームを閉じ、`track` は閉じた後に開いたものをその場で閉じる。閉じた応答の `receive` は例外ではなく中断 (`r.closed` で `interrupted`) を返すので、その経路が無い | — |
+| `src/transport/http.nim:RVR:f05a7a388d80ae9f:0` | http.nim:303 | `return none(WireResponse)` → `<return default>` | equivalent | `default(Option[WireResponse])` は `none` と同じ値 | — |
+| `src/transport/http.nim:SDL:d624ad06191cc360:0` | http.nim:311 | 末尾の式 `none(WireResponse)` → `discard` | equivalent | async proc の `result` の既定値が `none` なので、式を消しても戻り値は同じ | — |
+| `src/transport/http.nim:RVR:43c46aaddc669ed7:0` | http.nim:335 | `return outcome.answered` → `<return default>` (false) | test_owed | 再開したストリームで応答が届いても `resume` が false を返し、`pump` が `reportLost` を呼ぶ: 応答が届いた要求に `onRequestLost` が呼ばれる。既存のテスト (`Given a resumed stream that carries the response …`) は「メッセージがもう届かない」だけを見ており、失われた報告がメッセージではなくなった今 (MCP-HTTP-49) は検出できない | MCP-HTTP-30・MCP-HTTP-49。案 T2 |
+| `src/transport/http.nim:SDL:6a94f725a86c88ec:0` | http.nim:352 | `t.abandoned.excl key` → `discard` | test_owed | 取り消した id が `abandoned` に残り、同じ id の次の要求のストリームが切れても `onRequestLost` が呼ばれない。既存のテスト (`Given an id that was cancelled while its stream was open …`) は検出するはずだが、`lostIds`・`lostSeen` がファイル全体で共有され、直前のテストが残した読まれていない "r1" を `lostRequest()` が拾うので通ってしまう | MCP-HTTP-28 (cancelled id can be used again)。案 T3 |
+| `src/transport/http.nim:ROR:3711cde0363a1b89:0` | http.nim:411 | `key.len > 0` → `>=` | accepted | 通知の POST の接続が `inflight[""]` に入る。見えるのは `cancelRequest("")` を呼んだときだけ。前の記録「id 83 (`http.nim` の `key.len > 0`): 空文字列の id の要求は取り消せない。SDK のクライアントは空の id を作らない」「2026-10-12 に今のままと決めた」(下の「残っているもの」と g2g-hc-b の節) による。記録に決めた人の名は無い | 条件を `not requestId.isNil` にすれば、この行と下の 2 行の変異は生まれない |
+| `src/transport/http.nim:ROR:3711cde0363a1b89:1` | http.nim:418 | `key.len > 0` → `>=` | equivalent | 411 行が `""` を入れないので、`inflight` に無い `""` を `del` するだけ | — |
+| `src/transport/http.nim:ROR:3711cde0363a1b89:2` | http.nim:445 | `key.len > 0` → `>=` | equivalent | 同上 | — |
+| `src/transport/http.nim:ROR:f99471a73a0fec35:1` | http.nim:482 | `text.len > 0` → `>=` | equivalent | 空の本文は `parseJson("")` が例外を出し、直後の `except` が `nil` にする。条件が偽のときと同じく HTTP のエラーになる | — |
+| `src/transport/http.nim:SDL:bb40b74fada7da28:0` | http.nim:510 | `t.inflight.del requestId` → `discard` | equivalent | 取り消した要求の項目は、接続の失敗 (418 行)・本文の読み終わり (445 行)・`pumpAnswer` のどれかが必ず消す。それまでの間の 2 度目の取り消しは、集合への同じ id の追加と閉じ済みの接続の `close` で、何も変えない | — |
+| `src/transport/http.nim:BLR:3adb551801d7e426:0` | http.nim:526 | `var retry = false` → `true` | equivalent | 直後の `try` が `retry` に必ず代入するか、例外で抜ける | — |
+| `src/transport/http.nim:SDL:d18cca18d4f2372e:0` | http.nim:615 | `stderr.writeLine("… DELETE … timed out")` → `discard` | spec_question | DELETE に 5 秒 (`DeleteTimeoutMs`、定数) 答えないサーバーのときの 1 行が出なくなる。閉じること自体は成功のまま。MCP-HTTP-36 が定めるのは「500 か切断を記録する」で、答えないサーバーは入っていない | 問い: 「DELETE に答えないサーバーも記録する」を MCP-HTTP-36 に足すか (5 秒待つテストになる。待ち時間を設定にすれば短くできる)、診断の 1 行として受け入れるか |
+| `src/transport/http.nim:SDL:9a1cd9d884668560:0` | http.nim:630 | `t.streams.setLen(0)` → `discard` | equivalent | `close()` の後に `t.streams` を読むのは、読み終えた `untrack` の `find` と `delete` だけ。`closed` が立っているので `close()` の 2 度目は何もしない | — |
+| `src/transport/sse_legacy.nim:ROR:09f7b2257dfb84c7:0` | sse_legacy.nim:100 | `event.data.len > t.maxResponseSize` → `>=` | unreached | 差が出るのは data がちょうど `maxResponseSize` バイトのとき。解析器 (`initSseParser(max, max)`) は `data` の値の長さ + 1 が `max` を超えると `SseLimitError` で先に断る (`event_stream.nim` の `takeLine`) ので、ここに届く data は `max - 1` バイトまで | — |
+| `src/transport/sse_legacy.nim:SDL:b82c8dfda034100c:0` | sse_legacy.nim:139 | `await ready` → `discard` | equivalent | `withTimeout(ready, …)` は `ready` が失敗していればその失敗で自分が失敗する (標準ライブラリの今の実装)。真を返した時点で `ready` は成功しており、`await ready` は何も足さない | — |
+
+足すテストの案:
+
+- T1 (MCP-HTTPSTREAM-20。first_of.nim の 2 件): `tests/external/test_http_streams.nim` の keep-alive の suite に足す。短い `sseKeepAliveMs` のサーバーの GET ストリームを開き、クライアントが読まないまま、ソケットのバッファが埋まるだけの通知をサーバーから送る (書き込みが keep-alive の周期より長く止まる)。そのあと全部読み、何も送らずに keep-alive が周期のうちに届くこと、続けて送った通知が届くことを見る。BLR では keep-alive が届かず、SDL では keep-alive も後の通知も届かない。このテストのファイルは http_client のジョブの testCommand に入っていないので、足すか、`first_of.nim` を http_server のジョブの sources に移す。
+- T2 (MCP-HTTP-30・MCP-HTTP-49。http.nim:335): `tests/external/test_http_client_streams.nim` の `Given a resumed stream that carries the response, when it ends, …` に、`onRequestLost` がこのテストの間に 1 度も呼ばれないことの確かめを足す (テストの中で置いた数え手で数える)。変異では "r1" が 1 度報告される。
+- T3 (MCP-HTTP-28。http.nim:352): 同じファイルの `Given an id that was cancelled while its stream was open, …` で、失われた報告をテストの中の数え手で受ける (ファイルで共有している `lostIds`・`lostSeen` を使わない)。変異では 2 度目の "r1" が報告されず落ちる。共有の数え手は、ほかの `lostRequest()` の確かめも同じ理由で弱めている。
+
+### http.nim・sse_legacy.nim・first_of.nim・http_compat.nim の timeout
+
+39 件のうち 23 件。どれも「遅いだけ」ではなく、テストが通らなくなる変異と読んだ (走らせてはいない)。
+
+- 譲らずに回り続ける (無限ループ) 6 件:
+  first_of.nim:31 (`rung` が真のまま残り、`sse_stream.nim` の配送ループの `wait` が毎回すぐ返る)、
+  http.nim:264 (ストリームの終わりの空の読み取りで抜けない)、
+  http.nim:535 (認可のやり直しの回数が増えない)、
+  http.nim:632・sse_legacy.nim:70・sse_legacy.nim:196 (待ち手を取り出さない `while t.waiters.len > 0`)。
+- 待ちが終わらない 17 件:
+  first_of.nim:34・41・49・65 (`firstOf` が完了しない)、
+  http.nim:231 (イベントストリームを本文として最後まで読もうとする)、
+  http.nim:494 (HTTP のエラーに載った JSON-RPC の答えを配らない)、
+  http_compat.nim:43・70・80 (決まったことが伝わらない・要求を送らない・決まる前に Streamable 側で待つ)、
+  sse_legacy.nim:59・61・103・186 (届いたメッセージを待ち手に渡さない・待ち手を置かない)、
+  sse_legacy.nim:114 (ストリームの終わりで待ち手を失敗させない)、
+  sse_legacy.nim:154・169・172 (接続しない・要求や通知を送らない)。
+
+## 最初の測定 (本線の 36a4c8a5、2026-10-07)
+
 測定: `nim-muter`、ジョブ `tests/mutation/http_client.json`、本線の 36a4c8a5 (2026-10-07)。
 
 | 全変異 | killed | timeout | survived | runError | compileError |

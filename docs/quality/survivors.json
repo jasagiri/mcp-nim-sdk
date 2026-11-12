@@ -4041,6 +4041,26 @@
       "reason": "上の行と同じ。`colon == 0` の行は 64 行目で先に return するので、69 行目で `colon` が 0 になることは無い。 / なし (前の測定の id 11 と同じ判断)"
     },
     {
+      "fingerprint": "src/transport/first_of.nim:BLR:e6b33bb416d844ca:0",
+      "file": "src/transport/first_of.nim",
+      "line": 43,
+      "mutator": "BLR",
+      "original": "true",
+      "replacement": "false",
+      "class": "test_owed",
+      "reason": "`firstOf` では差が無い (終わっている future への `addCallback` は `callSoon` で、`wait` が先に待ち手を置く)。差が出るのは `Doorbell` を使い回す `sse_stream.nim` の配送ループ: `await req.client.send` の間に `idle` (keep-alive の時計) が鳴ると、鳴ったことが失われ、時計が掛け直されず、次の出来事まで keep-alive が出なくなる / MCP-HTTPSTREAM-20 (keep-alive は周期ごとに出る)。案 T1: 下の「足すテストの案」"
+    },
+    {
+      "fingerprint": "src/transport/first_of.nim:SDL:36d44f174725a394:0",
+      "file": "src/transport/first_of.nim",
+      "line": 55,
+      "mutator": "SDL",
+      "original": "bell.deliver(result)",
+      "replacement": "discard",
+      "class": "test_owed",
+      "reason": "上と同じ場面 (誰も待っていない間に鳴った) で、次の `wait` が完了せず `rung` も真のまま残るので、その接続の配送ループが止まる。以後のイベントも keep-alive も書かれない / MCP-HTTPSTREAM-20。案 T1 (同じ 1 本)"
+    },
+    {
       "fingerprint": "src/transport/guarded_wire.nim:BLR:6129904a4ce5d728:0",
       "file": "src/transport/guarded_wire.nim",
       "line": 16,
@@ -4049,6 +4069,176 @@
       "replacement": "true",
       "class": "unreached",
       "reason": "`guardedRequest` を呼ぶのは `auth/oauth/fetch.nim` の `exchange` (`followRedirects = false` を明示) と `client/icons.nim` の `guardedGet` (`true` を明示) の 2 か所だけで、どちらも既定値を使わない。`guardedRequest` は公開の入口から export されていない。検出していたテスト (「Given an answer that redirects, when no one asked for redirects to be followed…」) は `guardedRequest` を直接呼ぶもので、`tests/internal/` に移っている。E テストの「Given a metadata URL that answers with a redirect…」は `fetch.nim` の明示の `false` を確かめている。 / - (MCP-SEC-WIRE-11 の「unless asked」は、公開の入口からは `fetch.nim` の経路でだけ確かめられる)"
+    },
+    {
+      "fingerprint": "src/transport/http.nim:ROR:3f525d5735463583:0",
+      "file": "src/transport/http.nim",
+      "line": 146,
+      "mutator": "ROR",
+      "original": "declared.bindings.len > 0",
+      "replacement": "<> -> >=>",
+      "class": "equivalent",
+      "reason": "束縛が空の tool に空の seq が入るだけ。`paramHeaderFor` は `hasKey` で入るが、`paramHeadersFor` は空の束縛では何も足さず断りも返さない / —"
+    },
+    {
+      "fingerprint": "src/transport/http.nim:ROR:dd1900757d85feff:0",
+      "file": "src/transport/http.nim",
+      "line": 244,
+      "mutator": "ROR",
+      "original": "index >= 0",
+      "replacement": "<>= -> >>",
+      "class": "equivalent",
+      "reason": "先頭の閉じた応答が `t.streams` に残るだけ。`streams` を読むのは `untrack` の `find` (参照の同一性) と `close()` で、`WireResponse.close` は閉じ済みなら何もしない。公開の入口から見えるものは変わらない (残るのはメモリだけ) / —"
+    },
+    {
+      "fingerprint": "src/transport/http.nim:SDL:9910722072133c8e:0",
+      "file": "src/transport/http.nim",
+      "line": 245,
+      "mutator": "SDL",
+      "original": "t.streams.delete(index)",
+      "replacement": "discard",
+      "class": "equivalent",
+      "reason": "上と同じ。閉じた応答が `close()` まで `t.streams` に残り、長く生きるトランスポートでは増え続けるが、公開の入口からは見えない (`streams` の長さを見る口が無い) / —"
+    },
+    {
+      "fingerprint": "src/transport/http.nim:ROR:c4ff7c8002fa0bae:0",
+      "file": "src/transport/http.nim",
+      "line": 267,
+      "mutator": "ROR",
+      "original": "event.id.len > 0",
+      "replacement": "<> -> >=>",
+      "class": "spec_question",
+      "reason": "サーバーが id を送った後に空の `id:` を送ると、解析器の最後の id が空になる。元は最後の空でない id を残して再開に使い、変異は消して再開しない (要求は lost と報告される)。外から見えるが、空の `id:` を定める仕様 ID が無い (MCP-HTTP-30 は「id の無いイベント」だけ) / 問い: 空の `id:` の後も最後の空でない id で再開する、を MCP-HTTP-30 に足すか。足さないなら条件を消して `lastEventId = event.id` にする (SSE の規格の読み)"
+    },
+    {
+      "fingerprint": "src/transport/http.nim:LOR:56c66a7ffe4ae195:0",
+      "file": "src/transport/http.nim",
+      "line": 279,
+      "mutator": "LOR",
+      "original": "not t.closed and (requestId.isNil or idKey(requestId) notin t.abandoned)",
+      "replacement": "<and -> or>",
+      "class": "unreached",
+      "reason": "差が出るのは `t.closed` が真のまま `consume` が例外で終わるときだけ。`close()` は追跡中の全ストリームを閉じ、`track` は閉じた後に開いたものをその場で閉じる。閉じた応答の `receive` は例外ではなく中断 (`r.closed` で `interrupted`) を返すので、その経路が無い / —"
+    },
+    {
+      "fingerprint": "src/transport/http.nim:RVR:f05a7a388d80ae9f:0",
+      "file": "src/transport/http.nim",
+      "line": 303,
+      "mutator": "RVR",
+      "original": "return none(WireResponse)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "`default(Option[WireResponse])` は `none` と同じ値 / —"
+    },
+    {
+      "fingerprint": "src/transport/http.nim:SDL:d624ad06191cc360:0",
+      "file": "src/transport/http.nim",
+      "line": 311,
+      "mutator": "SDL",
+      "original": "none(WireResponse)",
+      "replacement": "discard",
+      "class": "equivalent",
+      "reason": "async proc の `result` の既定値が `none` なので、式を消しても戻り値は同じ / —"
+    },
+    {
+      "fingerprint": "src/transport/http.nim:RVR:43c46aaddc669ed7:0",
+      "file": "src/transport/http.nim",
+      "line": 335,
+      "mutator": "RVR",
+      "original": "return outcome.answered",
+      "replacement": "<return default>",
+      "class": "test_owed",
+      "reason": "再開したストリームで応答が届いても `resume` が false を返し、`pump` が `reportLost` を呼ぶ: 応答が届いた要求に `onRequestLost` が呼ばれる。既存のテスト (`Given a resumed stream that carries the response …`) は「メッセージがもう届かない」だけを見ており、失われた報告がメッセージではなくなった今 (MCP-HTTP-49) は検出できない / MCP-HTTP-30・MCP-HTTP-49。案 T2"
+    },
+    {
+      "fingerprint": "src/transport/http.nim:SDL:6a94f725a86c88ec:0",
+      "file": "src/transport/http.nim",
+      "line": 352,
+      "mutator": "SDL",
+      "original": "t.abandoned.excl key",
+      "replacement": "discard",
+      "class": "test_owed",
+      "reason": "取り消した id が `abandoned` に残り、同じ id の次の要求のストリームが切れても `onRequestLost` が呼ばれない。既存のテスト (`Given an id that was cancelled while its stream was open …`) は検出するはずだが、`lostIds`・`lostSeen` がファイル全体で共有され、直前のテストが残した読まれていない \"r1\" を `lostRequest()` が拾うので通ってしまう / MCP-HTTP-28 (cancelled id can be used again)。案 T3"
+    },
+    {
+      "fingerprint": "src/transport/http.nim:ROR:3711cde0363a1b89:0",
+      "file": "src/transport/http.nim",
+      "line": 411,
+      "mutator": "ROR",
+      "original": "key.len > 0",
+      "replacement": "<> -> >=>",
+      "class": "spec_question",
+      "reason": "空の id の要求の取り消し。前の記録 (2026-10-12) に決めた人の名が無い。条件を not requestId.isNil にすれば変異が生まれない、という案とともに代表に問う"
+    },
+    {
+      "fingerprint": "src/transport/http.nim:ROR:3711cde0363a1b89:1",
+      "file": "src/transport/http.nim",
+      "line": 418,
+      "mutator": "ROR",
+      "original": "key.len > 0",
+      "replacement": "<> -> >=>",
+      "class": "equivalent",
+      "reason": "411 行が `\"\"` を入れないので、`inflight` に無い `\"\"` を `del` するだけ / —"
+    },
+    {
+      "fingerprint": "src/transport/http.nim:ROR:3711cde0363a1b89:2",
+      "file": "src/transport/http.nim",
+      "line": 445,
+      "mutator": "ROR",
+      "original": "key.len > 0",
+      "replacement": "<> -> >=>",
+      "class": "equivalent",
+      "reason": "同上 / —"
+    },
+    {
+      "fingerprint": "src/transport/http.nim:ROR:f99471a73a0fec35:1",
+      "file": "src/transport/http.nim",
+      "line": 482,
+      "mutator": "ROR",
+      "original": "text.len > 0",
+      "replacement": "<> -> >=>",
+      "class": "equivalent",
+      "reason": "空の本文は `parseJson(\"\")` が例外を出し、直後の `except` が `nil` にする。条件が偽のときと同じく HTTP のエラーになる / —"
+    },
+    {
+      "fingerprint": "src/transport/http.nim:SDL:bb40b74fada7da28:0",
+      "file": "src/transport/http.nim",
+      "line": 510,
+      "mutator": "SDL",
+      "original": "t.inflight.del requestId",
+      "replacement": "discard",
+      "class": "equivalent",
+      "reason": "取り消した要求の項目は、接続の失敗 (418 行)・本文の読み終わり (445 行)・`pumpAnswer` のどれかが必ず消す。それまでの間の 2 度目の取り消しは、集合への同じ id の追加と閉じ済みの接続の `close` で、何も変えない / —"
+    },
+    {
+      "fingerprint": "src/transport/http.nim:BLR:3adb551801d7e426:0",
+      "file": "src/transport/http.nim",
+      "line": 526,
+      "mutator": "BLR",
+      "original": "false",
+      "replacement": "true",
+      "class": "equivalent",
+      "reason": "直後の `try` が `retry` に必ず代入するか、例外で抜ける / —"
+    },
+    {
+      "fingerprint": "src/transport/http.nim:SDL:d18cca18d4f2372e:0",
+      "file": "src/transport/http.nim",
+      "line": 615,
+      "mutator": "SDL",
+      "original": "stderr.writeLine(\"[mcp-http] DELETE \" & t.baseUrl & \" timed out\")",
+      "replacement": "discard",
+      "class": "spec_question",
+      "reason": "DELETE に 5 秒 (`DeleteTimeoutMs`、定数) 答えないサーバーのときの 1 行が出なくなる。閉じること自体は成功のまま。MCP-HTTP-36 が定めるのは「500 か切断を記録する」で、答えないサーバーは入っていない / 問い: 「DELETE に答えないサーバーも記録する」を MCP-HTTP-36 に足すか (5 秒待つテストになる。待ち時間を設定にすれば短くできる)、診断の 1 行として受け入れるか"
+    },
+    {
+      "fingerprint": "src/transport/http.nim:SDL:9a1cd9d884668560:0",
+      "file": "src/transport/http.nim",
+      "line": 630,
+      "mutator": "SDL",
+      "original": "t.streams.setLen(0)",
+      "replacement": "discard",
+      "class": "equivalent",
+      "reason": "`close()` の後に `t.streams` を読むのは、読み終えた `untrack` の `find` と `delete` だけ。`closed` が立っているので `close()` の 2 度目は何もしない / —"
     },
     {
       "fingerprint": "src/transport/http_server.nim:LOR:098b466bdedd5d25:0",
@@ -4239,6 +4429,546 @@
       "replacement": "discard",
       "class": "accepted",
       "reason": "記述子が尽きたときの待ち。条件を作る公開の口が無く (maxFDs は非公開)、setrlimit での試験は不安定だった。仕様にせずコードを残す (代表の決定 2026-11-12)"
+    },
+    {
+      "fingerprint": "src/transport/http_wire.nim:SDL:6550c95298b9a3f4:0",
+      "file": "src/transport/http_wire.nim",
+      "line": 83,
+      "mutator": "SDL",
+      "original": "X509_free(certificate)",
+      "replacement": "discard",
+      "class": "equivalent",
+      "reason": "接続 1 本につき X509 の参照を 1 つ解放しないだけ。応答・例外・記述子は変わらず、公開の入口から見えるものは無い (残るのはメモリだけ。前回 id 306 と同じ読み) / —"
+    },
+    {
+      "fingerprint": "src/transport/http_wire.nim:SDL:23821c14d11f59f0:0",
+      "file": "src/transport/http_wire.nim",
+      "line": 103,
+      "mutator": "SDL",
+      "original": "socket.close()",
+      "replacement": "discard",
+      "class": "test_owed",
+      "reason": "証明書を断った接続の記述子が残り、サーバーは切断を見ない。今これを見るのは内部の `tests/internal/test_security_wire_tls.nim` だけ / MCP-SEC-WIRE-20。案 W13"
+    },
+    {
+      "fingerprint": "src/transport/http_wire.nim:ROR:f786273d59942e92:0",
+      "file": "src/transport/http_wire.nim",
+      "line": 139,
+      "mutator": "ROR",
+      "original": "url.path.len > 0",
+      "replacement": "<> -> >=>",
+      "class": "test_owed",
+      "reason": "パスの無い URL で要求行が `POST  HTTP/1.1` (対象が空) になる / MCP-SEC-WIRE-15。案 W1"
+    },
+    {
+      "fingerprint": "src/transport/http_wire.nim:ROR:7f2b6c957092d608:0",
+      "file": "src/transport/http_wire.nim",
+      "line": 140,
+      "mutator": "ROR",
+      "original": "url.query.len > 0",
+      "replacement": "<> -> >=>",
+      "class": "test_owed",
+      "reason": "クエリの無い URL で要求行が `POST /? HTTP/1.1` になる / MCP-SEC-WIRE-15。案 W1"
+    },
+    {
+      "fingerprint": "src/transport/http_wire.nim:ROR:a2cefaede4013b4c:0",
+      "file": "src/transport/http_wire.nim",
+      "line": 142,
+      "mutator": "ROR",
+      "original": "url.port.len > 0",
+      "replacement": "<> -> >=>",
+      "class": "spec_question",
+      "reason": "ポートの無い URL の Host。前の記録 (id 233) の許容は担当の判断で、代表の決定の記録が無い。代表に問う"
+    },
+    {
+      "fingerprint": "src/transport/http_wire.nim:LOR:2f7089b6f1a8c01a:0",
+      "file": "src/transport/http_wire.nim",
+      "line": 148,
+      "mutator": "LOR",
+      "original": "body.len > 0 or httpMethod == HttpPost",
+      "replacement": "<or -> and>",
+      "class": "equivalent",
+      "reason": "差が出るのは本文の無い POST と、POST 以外で本文のある要求だけ。呼び手 (`http.nim` の POST は JSON-RPC のメッセージ、`sse_legacy.nim` の POST も同じ、`auth/oauth/fetch.nim` の POST はフォームか JSON の文書、GET と DELETE は本文なし) はどちらも作らない / MCP-SEC-WIRE-15 の「for a POST and for any request with a body」のうち、本文の無い POST と PUT は公開の入口から確かめられない"
+    },
+    {
+      "fingerprint": "src/transport/http_wire.nim:ROR:3659d57a7d6c5662:0",
+      "file": "src/transport/http_wire.nim",
+      "line": 148,
+      "mutator": "ROR",
+      "original": "body.len > 0",
+      "replacement": "<> -> >=>",
+      "class": "test_owed",
+      "reason": "本文の無い GET・DELETE に `Content-Length: 0` が付く / MCP-SEC-WIRE-15。案 W2"
+    },
+    {
+      "fingerprint": "src/transport/http_wire.nim:ROR:acbce228c56a3ffa:0",
+      "file": "src/transport/http_wire.nim",
+      "line": 148,
+      "mutator": "ROR",
+      "original": "httpMethod == HttpPost",
+      "replacement": "<== -> !=>",
+      "class": "test_owed",
+      "reason": "本文の無い GET・DELETE に `Content-Length: 0` が付く (本文のある POST は左の条件で付くまま) / MCP-SEC-WIRE-15。案 W2"
+    },
+    {
+      "fingerprint": "src/transport/http_wire.nim:ROR:9ad2cda0f77cc4cb:0",
+      "file": "src/transport/http_wire.nim",
+      "line": 162,
+      "mutator": "ROR",
+      "original": "status.len < 2",
+      "replacement": "<< -> <=>",
+      "class": "test_owed",
+      "reason": "理由句の無い状態行 (`HTTP/1.1 200`) が「HTTP の応答ではない」と断られる / MCP-SEC-WIRE-16。案 W3"
+    },
+    {
+      "fingerprint": "src/transport/http_wire.nim:LOR:8cda8e348861f1df:0",
+      "file": "src/transport/http_wire.nim",
+      "line": 169,
+      "mutator": "LOR",
+      "original": "code < 100 or code > 599",
+      "replacement": "<or -> and>",
+      "class": "test_owed",
+      "reason": "範囲の外の状態 (2049、-5) を通し、`HttpCode(code)` が RangeDefect になる / MCP-SEC-WIRE-23。既存の `tests/external/test_security_wire_shapes.nim` の「Given a status code above 599 …」「Given a negative status code …」が検出するはず。testCommand に足す"
+    },
+    {
+      "fingerprint": "src/transport/http_wire.nim:ROR:95d1016392c12067:0",
+      "file": "src/transport/http_wire.nim",
+      "line": 169,
+      "mutator": "ROR",
+      "original": "code < 100",
+      "replacement": "<< -> <=>",
+      "class": "test_owed",
+      "reason": "状態 100 が「状態行が不正」と断られる。元は応答として受け、`McpTransportError.code` が 100 になる (変異では 0) / MCP-SEC-WIRE-23 (範囲は 100 から 599)。案 W4"
+    },
+    {
+      "fingerprint": "src/transport/http_wire.nim:ROR:f8aa84cb4705fa6b:0",
+      "file": "src/transport/http_wire.nim",
+      "line": 169,
+      "mutator": "ROR",
+      "original": "code > 599",
+      "replacement": "<> -> >=>",
+      "class": "test_owed",
+      "reason": "状態 599 が「状態行が不正」と断られる (`code` が 599 でなく 0) / MCP-SEC-WIRE-23。案 W4"
+    },
+    {
+      "fingerprint": "src/transport/http_wire.nim:ROR:fb29fb68bb0cf79a:0",
+      "file": "src/transport/http_wire.nim",
+      "line": 175,
+      "mutator": "ROR",
+      "original": "colon > 0",
+      "replacement": "<> -> >=>",
+      "class": "equivalent",
+      "reason": "`: x` の行が名前の空のヘッダーとして入るだけ。応答のヘッダーを読む側 (Content-Type・Mcp-Session-Id・Location・WWW-Authenticate・Transfer-Encoding・Content-Length) は空の名前を引かない / MCP-SEC-WIRE-16 の「a line without a name is no header」は公開の入口から確かめられない"
+    },
+    {
+      "fingerprint": "src/transport/http_wire.nim:LOR:2d4d48653272c466:0",
+      "file": "src/transport/http_wire.nim",
+      "line": 180,
+      "mutator": "LOR",
+      "original": "httpMethod == HttpHead or code < 200 or code in [204, 304]",
+      "replacement": "<or -> and>",
+      "class": "test_owed",
+      "reason": "1xx・204・304 がどれも本文を待つ。204 で答えて接続を保つ相手への通知が終わらない (既存の 204 のテストは DELETE で、本文を読まずに閉じるので見ない) / MCP-SEC-WIRE-16。案 W5"
+    },
+    {
+      "fingerprint": "src/transport/http_wire.nim:LOR:afa1d4e3d056925c:0",
+      "file": "src/transport/http_wire.nim",
+      "line": 180,
+      "mutator": "LOR",
+      "original": "httpMethod == HttpHead or code < 200",
+      "replacement": "<or -> and>",
+      "class": "test_owed",
+      "reason": "HEAD でない要求への 1xx が「接続が閉じるまでが本文」になり、相手が接続を保つと終わらない (元は本文なしで直ちに終わり、接続を閉じる)。HEAD の側は呼び手が無い / MCP-SEC-WIRE-16。案 W5"
+    },
+    {
+      "fingerprint": "src/transport/http_wire.nim:BLR:6648c3d18d2d303a:0",
+      "file": "src/transport/http_wire.nim",
+      "line": 199,
+      "mutator": "BLR",
+      "original": "true",
+      "replacement": "false",
+      "class": "spec_question",
+      "reason": "`close` は待っている recv を EBADF で失敗させるので、起きた `receive` が「中断」でなく `reading the response failed` の McpTransportError で終わる。Streamable HTTP では取り消し (`abandoned`) と close (`closed`) の両方で上の層がその失敗を黙って捨てるので結果は同じ。外に出るのは失敗の文面と、旧 SSE で endpoint を待ち切れて閉じたときに診断 `[mcp-sse] event stream … failed` が 1 行増えることだけで、その診断を定める仕様 ID は無い / 問い Q1 (下)"
+    },
+    {
+      "fingerprint": "src/transport/http_wire.nim:SDL:d6e20945c156a180:0",
+      "file": "src/transport/http_wire.nim",
+      "line": 201,
+      "mutator": "SDL",
+      "original": "r.interrupt.complete()",
+      "replacement": "discard",
+      "class": "spec_question",
+      "reason": "上と同じ。待っている読み取りは `interrupt` でなく recv の失敗で起き、`reading the response failed` で終わる (止まりはしない: 止まるなら取り消しのテストが落ちる) / 問い Q1"
+    },
+    {
+      "fingerprint": "src/transport/http_wire.nim:LOR:57c83ac1dd79dc2b:0",
+      "file": "src/transport/http_wire.nim",
+      "line": 202,
+      "mutator": "LOR",
+      "original": "not r.socket.isNil and not r.socket.isClosed",
+      "replacement": "<and -> or>",
+      "class": "equivalent",
+      "reason": "`AsyncSocket.close` は閉じ済みなら何もしない。`socket` が nil のまま `close` が呼ばれることも無い (`connected` も例外の処理も `socket` を入れた後)。前回 id 284 と同じ読み / —"
+    },
+    {
+      "fingerprint": "src/transport/http_wire.nim:BLR:815d0a6eb4cc9d4b:0",
+      "file": "src/transport/http_wire.nim",
+      "line": 209,
+      "mutator": "BLR",
+      "original": "true",
+      "replacement": "false",
+      "class": "unreached",
+      "reason": "上と同じ文 / —"
+    },
+    {
+      "fingerprint": "src/transport/http_wire.nim:RVR:1cd163f0376d5767:0",
+      "file": "src/transport/http_wire.nim",
+      "line": 209,
+      "mutator": "RVR",
+      "original": "return (data: \"\", interrupted: true)",
+      "replacement": "<return default>",
+      "class": "unreached",
+      "reason": "閉じた応答で `receive` が呼ばれない。`readSome` は `close` が立てる `finished` を先に見て抜け、`exchangeHead` は送信の後に待ちを挟まず `receive` に入る (送信の途中で閉じられれば送信の失敗で抜ける)。前の記録「内部実装テストの扱い」も「公開の口からは届かない」 / —"
+    },
+    {
+      "fingerprint": "src/transport/http_wire.nim:SDL:69127dcb00db7d48:0",
+      "file": "src/transport/http_wire.nim",
+      "line": 215,
+      "mutator": "SDL",
+      "original": "r.close()",
+      "replacement": "discard",
+      "class": "unreached",
+      "reason": "この節に来るのは、`close` より先に recv が OSError で失敗したときだけ。相手役からは作れない (接続の切断は asyncdispatch が空の読み取りにする。前回 id 326 で試して作れなかった) / —"
+    },
+    {
+      "fingerprint": "src/transport/http_wire.nim:LOR:aa607b45cf389e41:0",
+      "file": "src/transport/http_wire.nim",
+      "line": 220,
+      "mutator": "LOR",
+      "original": "r.closed or not pending.finished",
+      "replacement": "<or -> and>",
+      "class": "spec_question",
+      "reason": "`close` の後は recv が失敗で終わっているので条件が偽になり、`pending.read()` の OSError から `reading the response failed` になる。199・201 行と同じ結果 / 問い Q1"
+    },
+    {
+      "fingerprint": "src/transport/http_wire.nim:BLR:815d0a6eb4cc9d4b:1",
+      "file": "src/transport/http_wire.nim",
+      "line": 221,
+      "mutator": "BLR",
+      "original": "true",
+      "replacement": "false",
+      "class": "test_owed",
+      "reason": "上と同じプログラム / MCP-SEC-WIRE-19。案 W6"
+    },
+    {
+      "fingerprint": "src/transport/http_wire.nim:RVR:1cd163f0376d5767:1",
+      "file": "src/transport/http_wire.nim",
+      "line": 221,
+      "mutator": "RVR",
+      "original": "return (data: \"\", interrupted: true)",
+      "replacement": "<return default>",
+      "class": "test_owed",
+      "reason": "中断が「相手が閉じた」(空の読み取り) になる。Content-Length の無い JSON の本文 (閉じるまでが本文) の途中で取り消すと、途中までの本文が全部として返り、`sendRequest` が JSON の解析の失敗で終わる。既存のテスト (`bPartialHold`) は Content-Length つきなので、変異でも McpTransportError になり `abandoned` が黙らせる / MCP-SEC-WIRE-19 (MCP-HTTP-32)。案 W6"
+    },
+    {
+      "fingerprint": "src/transport/http_wire.nim:SDL:69127dcb00db7d48:1",
+      "file": "src/transport/http_wire.nim",
+      "line": 225,
+      "mutator": "SDL",
+      "original": "r.close()",
+      "replacement": "discard",
+      "class": "unreached",
+      "reason": "`r.closed` なら 221 行で先に戻る。閉じていないのに `pending` が失敗していれば 213 行の `firstOf` が先に失敗する。前回 id 327 と同じ読み / —"
+    },
+    {
+      "fingerprint": "src/transport/http_wire.nim:SDL:443904262a20286a:0",
+      "file": "src/transport/http_wire.nim",
+      "line": 244,
+      "mutator": "SDL",
+      "original": "attempt.addCallback(proc () =; if attempt.failed:; discard attempt.readError(); else:; attempt.read().close())",
+      "replacement": "discard",
+      "class": "test_owed",
+      "reason": "接続の制限時間の後に TLS のハンドシェイクが終わると、その接続が閉じられずに残る。今これを見るのは内部の `test_security_wire_tls.nim` だけ / MCP-SEC-WIRE-20。案 W14"
+    },
+    {
+      "fingerprint": "src/transport/http_wire.nim:SDL:d25407cf64c95e94:0",
+      "file": "src/transport/http_wire.nim",
+      "line": 248,
+      "mutator": "SDL",
+      "original": "attempt.read().close()",
+      "replacement": "discard",
+      "class": "test_owed",
+      "reason": "上と同じ / MCP-SEC-WIRE-20。案 W14"
+    },
+    {
+      "fingerprint": "src/transport/http_wire.nim:ROR:e582ac1448caec29:0",
+      "file": "src/transport/http_wire.nim",
+      "line": 268,
+      "mutator": "ROR",
+      "original": "head.len > MaxHeadSize",
+      "replacement": "<> -> >=>",
+      "class": "test_owed",
+      "reason": "ちょうど 64 KiB まで届いて終わりがまだ来ていない頭が断られる / MCP-SEC-WIRE-18。案 W7"
+    },
+    {
+      "fingerprint": "src/transport/http_wire.nim:SDL:92cccf31e1675a58:0",
+      "file": "src/transport/http_wire.nim",
+      "line": 297,
+      "mutator": "SDL",
+      "original": "response.close()",
+      "replacement": "discard",
+      "class": "equivalent",
+      "reason": "直後の `raise` が同じ `try` の `except CatchableError` に入り、そこの `response.close()` が待ちを挟まずに走る。前回 id 341 と同じ読み / —"
+    },
+    {
+      "fingerprint": "src/transport/http_wire.nim:SDL:2b50c5c53d3d4667:0",
+      "file": "src/transport/http_wire.nim",
+      "line": 298,
+      "mutator": "SDL",
+      "original": "exchange.addCallback(proc () =; if exchange.failed:; discard exchange.readError())",
+      "replacement": "discard",
+      "class": "equivalent",
+      "reason": "誰も待たない future の失敗は、読んでも読まなくても何も起こさない (`asyncCheck` していない)。前回 id 342 と同じ読み / —"
+    },
+    {
+      "fingerprint": "src/transport/http_wire.nim:LOR:c021a896957300f5:0",
+      "file": "src/transport/http_wire.nim",
+      "line": 362,
+      "mutator": "LOR",
+      "original": "text.len == 0 or text.len > 15",
+      "replacement": "<or -> and>",
+      "class": "test_owed",
+      "reason": "16 桁以上の大きさを通し、`result * 16 + digit` が OverflowDefect になる / MCP-SEC-WIRE-23。既存の `tests/external/test_security_wire_shapes.nim` の「Given a chunk size that does not fit in an integer …」が検出するはず。testCommand に足す"
+    },
+    {
+      "fingerprint": "src/transport/http_wire.nim:ROR:908a6271e751bc55:0",
+      "file": "src/transport/http_wire.nim",
+      "line": 362,
+      "mutator": "ROR",
+      "original": "text.len > 15",
+      "replacement": "<> -> >=>",
+      "class": "test_owed",
+      "reason": "15 桁の大きさ (先頭に 0 を並べたもの。int に収まる) が断られる / MCP-SEC-WIRE-23。案 W8"
+    },
+    {
+      "fingerprint": "src/transport/http_wire.nim:AOR:677494dbad0b5697:0",
+      "file": "src/transport/http_wire.nim",
+      "line": 367,
+      "mutator": "AOR",
+      "original": "ord(c) - ord('0')",
+      "replacement": "<- -> +>",
+      "class": "test_owed",
+      "reason": "数字の桁が 96 以上になり、チャンクの大きさが狂う。イベントストリームでは届いた分が先に配られ、最後の失敗は診断になるだけなので、既存のチャンクのテストは通る。JSON の本文なら要求が失敗する / MCP-SEC-WIRE-23。既存の `test_security_wire_shapes.nim` の「Given a well-formed chunked answer …」(大きさ `58`) が検出するはず。testCommand に足す"
+    },
+    {
+      "fingerprint": "src/transport/http_wire.nim:AOR:904ad839e5d0aace:0",
+      "file": "src/transport/http_wire.nim",
+      "line": 368,
+      "mutator": "AOR",
+      "original": "ord(c) - ord('a')",
+      "replacement": "<- -> +>",
+      "class": "test_owed",
+      "reason": "小文字の桁 `a`〜`f` が 204 以上になる。JSON の本文で、大きさに英字の桁を持つものを読む E テストが無い / MCP-SEC-WIRE-23。案 W8"
+    },
+    {
+      "fingerprint": "src/transport/http_wire.nim:AOR:cedabd4dfadbc44c:0",
+      "file": "src/transport/http_wire.nim",
+      "line": 368,
+      "mutator": "AOR",
+      "original": "ord(c) - ord('a') + 10",
+      "replacement": "<+ -> ->",
+      "class": "test_owed",
+      "reason": "小文字の桁が負になり、大きさが負になる / MCP-SEC-WIRE-23。案 W8"
+    },
+    {
+      "fingerprint": "src/transport/http_wire.nim:AOR:2c181b06a9cd674e:0",
+      "file": "src/transport/http_wire.nim",
+      "line": 369,
+      "mutator": "AOR",
+      "original": "ord(c) - ord('A')",
+      "replacement": "<- -> +>",
+      "class": "test_owed",
+      "reason": "大文字の桁 `A`〜`F` が狂う / MCP-SEC-WIRE-23。案 W8"
+    },
+    {
+      "fingerprint": "src/transport/http_wire.nim:AOR:91a1613fc6739f4c:0",
+      "file": "src/transport/http_wire.nim",
+      "line": 369,
+      "mutator": "AOR",
+      "original": "ord(c) - ord('A') + 10",
+      "replacement": "<+ -> ->",
+      "class": "test_owed",
+      "reason": "大文字の桁が負になる / MCP-SEC-WIRE-23。案 W8"
+    },
+    {
+      "fingerprint": "src/transport/http_wire.nim:ROR:6bc662be21c97f8d:0",
+      "file": "src/transport/http_wire.nim",
+      "line": 387,
+      "mutator": "ROR",
+      "original": "r.line.len > 64",
+      "replacement": "<> -> >=>",
+      "class": "test_owed",
+      "reason": "64 バイトの大きさの行 (拡張つき) が断られる / MCP-SEC-WIRE-18。案 W9"
+    },
+    {
+      "fingerprint": "src/transport/http_wire.nim:LOR:9e79d51c8bf60178:0",
+      "file": "src/transport/http_wire.nim",
+      "line": 404,
+      "mutator": "LOR",
+      "original": "c == '\\r' and r.line.len == 0",
+      "replacement": "<and -> or>",
+      "class": "test_owed",
+      "reason": "データの直後の余分な 1 バイトを通す。既存の `test_security_wire_shapes.nim` は余分を 2 バイト (`XX`) 置くので、2 バイト目で断られ、変異でも通る / MCP-SEC-WIRE-23。案 W10"
+    },
+    {
+      "fingerprint": "src/transport/http_wire.nim:ROR:53e018ffc3bff233:2",
+      "file": "src/transport/http_wire.nim",
+      "line": 411,
+      "mutator": "ROR",
+      "original": "c == '\\n'",
+      "replacement": "<== -> !=>",
+      "class": "test_owed",
+      "reason": "最後のチャンクの次の 1 バイト目で本文が終わる。空行が来る前に接続が切れても、本文が全部として受け取られる / MCP-SEC-WIRE-18。案 W11"
+    },
+    {
+      "fingerprint": "src/transport/http_wire.nim:ROR:36bb4f701e0752b8:0",
+      "file": "src/transport/http_wire.nim",
+      "line": 412,
+      "mutator": "ROR",
+      "original": "r.line.len == 0",
+      "replacement": "<== -> !=>",
+      "class": "test_owed",
+      "reason": "空行で終わらず、トレーラーの行で終わる。トレーラーの無い本文は終わらなくなり、相手が閉じると失敗する / MCP-SEC-WIRE-18。既存の `test_security_wire_shapes.nim` の「Given a well-formed chunked answer …」が検出するはず。testCommand に足す (案 W11 も検出する)"
+    },
+    {
+      "fingerprint": "src/transport/http_wire.nim:ROR:388fe6862d760fd1:0",
+      "file": "src/transport/http_wire.nim",
+      "line": 415,
+      "mutator": "ROR",
+      "original": "c != '\\r'",
+      "replacement": "<!= -> ==>",
+      "class": "test_owed",
+      "reason": "CR が行に溜まって空行を認められず、正しいチャンクの本文が終わらない / MCP-SEC-WIRE-18。既存の `test_security_wire_shapes.nim` の「Given a well-formed chunked answer …」が検出するはず。testCommand に足す"
+    },
+    {
+      "fingerprint": "src/transport/http_wire.nim:SDL:8cb5943fd131cd10:1",
+      "file": "src/transport/http_wire.nim",
+      "line": 416,
+      "mutator": "SDL",
+      "original": "r.line.add c",
+      "replacement": "discard",
+      "class": "test_owed",
+      "reason": "トレーラーの行が空と見なされ、その行の終わりで本文が終わる (空行を待たない) / MCP-SEC-WIRE-18。案 W11"
+    },
+    {
+      "fingerprint": "src/transport/http_wire.nim:RVR:87aa8baa528c4cef:0",
+      "file": "src/transport/http_wire.nim",
+      "line": 433,
+      "mutator": "RVR",
+      "original": "return \"\"",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "文字列のリテラルの置き換えは `\"\"` で、同じプログラム / —"
+    },
+    {
+      "fingerprint": "src/transport/http_wire.nim:BLR:d81d812f01f9642e:1",
+      "file": "src/transport/http_wire.nim",
+      "line": 437,
+      "mutator": "BLR",
+      "original": "true",
+      "replacement": "false",
+      "class": "unreached",
+      "reason": "`chooseBodyMode` が `bmNone` なら `finished` を立てるので、`while not r.finished` の中に `bmNone` で入らない。前回 id 302 と同じ読み / —"
+    },
+    {
+      "fingerprint": "src/transport/http_wire.nim:SDL:69127dcb00db7d48:2",
+      "file": "src/transport/http_wire.nim",
+      "line": 440,
+      "mutator": "SDL",
+      "original": "r.close()",
+      "replacement": "discard",
+      "class": "test_owed",
+      "reason": "Streamable HTTP・アイコン・認可の呼び手は失敗しても自分で閉じるので見えない。旧 SSE の `connect` は、エラーの応答の本文を読む `readAll` が失敗すると閉じないので、そこでだけ記述子が残る / MCP-SEC-WIRE-18 (「a body cut short fails, and the response is finished」)。案 W15"
+    },
+    {
+      "fingerprint": "src/transport/http_wire.nim:ROR:5d8027d83be9c587:0",
+      "file": "src/transport/http_wire.nim",
+      "line": 446,
+      "mutator": "ROR",
+      "original": "n > 0",
+      "replacement": "<> -> >=>",
+      "class": "equivalent",
+      "reason": "ここでは `data.len > 0` かつ `remaining > 0` (0 なら `finished`)、負の Content-Length は入口で断るので、n は常に 1 以上。前回 id 266 と同じ読み / —"
+    },
+    {
+      "fingerprint": "src/transport/http_wire.nim:SDL:69127dcb00db7d48:5",
+      "file": "src/transport/http_wire.nim",
+      "line": 455,
+      "mutator": "SDL",
+      "original": "r.close()",
+      "replacement": "discard",
+      "class": "test_owed",
+      "reason": "440 行と同じ (チャンクの本文で) / MCP-SEC-WIRE-18。案 W15"
+    },
+    {
+      "fingerprint": "src/transport/http_wire.nim:SDL:69127dcb00db7d48:6",
+      "file": "src/transport/http_wire.nim",
+      "line": 459,
+      "mutator": "SDL",
+      "original": "r.close()",
+      "replacement": "discard",
+      "class": "test_owed",
+      "reason": "本文が終わっても応答が終わらず、次の読み取りが相手を待つ。相手が閉じると「最後のチャンクの前に閉じた」で失敗する / MCP-SEC-WIRE-18。既存の `test_security_wire_shapes.nim` の「Given a well-formed chunked answer …」が検出するはず。testCommand に足す"
+    },
+    {
+      "fingerprint": "src/transport/http_wire.nim:ROR:97f56bf0367a2e95:0",
+      "file": "src/transport/http_wire.nim",
+      "line": 460,
+      "mutator": "ROR",
+      "original": "decoded.len > 0",
+      "replacement": "<> -> >=>",
+      "class": "test_owed",
+      "reason": "大きさの行だけが先に届くと `readSome` が \"\" (本文の終わり) を返し、`readAll` が空の本文で終える。既存のチャンクのテストは 7 バイト目で切るのでデータが 3 バイト入り、見ない / MCP-SEC-WIRE-18。案 W12"
+    },
+    {
+      "fingerprint": "src/transport/http_wire.nim:RVR:87aa8baa528c4cef:1",
+      "file": "src/transport/http_wire.nim",
+      "line": 462,
+      "mutator": "RVR",
+      "original": "return \"\"",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "433 行と同じ / —"
+    },
+    {
+      "fingerprint": "src/transport/http_wire.nim:SDL:69127dcb00db7d48:7",
+      "file": "src/transport/http_wire.nim",
+      "line": 476,
+      "mutator": "SDL",
+      "original": "r.close()",
+      "replacement": "discard",
+      "class": "test_owed",
+      "reason": "Streamable HTTP の呼び手は `finally` で閉じるので見えない。旧 SSE の `connect` は `readAll(ErrorBodyPreview)` が失敗すると閉じないので、512 バイトを超えるエラーの本文を送り続ける相手との接続が残る / MCP-SEC-WIRE-18 (「a body that outgrows its limit has its connection closed」)。案 W16"
+    },
+    {
+      "fingerprint": "src/transport/sse_legacy.nim:ROR:09f7b2257dfb84c7:0",
+      "file": "src/transport/sse_legacy.nim",
+      "line": 100,
+      "mutator": "ROR",
+      "original": "event.data.len > t.maxResponseSize",
+      "replacement": "<> -> >=>",
+      "class": "unreached",
+      "reason": "差が出るのは data がちょうど `maxResponseSize` バイトのとき。解析器 (`initSseParser(max, max)`) は `data` の値の長さ + 1 が `max` を超えると `SseLimitError` で先に断る (`event_stream.nim` の `takeLine`) ので、ここに届く data は `max - 1` バイトまで / —"
+    },
+    {
+      "fingerprint": "src/transport/sse_legacy.nim:SDL:b82c8dfda034100c:0",
+      "file": "src/transport/sse_legacy.nim",
+      "line": 139,
+      "mutator": "SDL",
+      "original": "await ready",
+      "replacement": "discard",
+      "class": "equivalent",
+      "reason": "`withTimeout(ready, …)` は `ready` が失敗していればその失敗で自分が失敗する (標準ライブラリの今の実装)。真を返した時点で `ready` は成功しており、`await ready` は何も足さない / —"
     },
     {
       "fingerprint": "src/transport/sse_stream.nim:BLR:6ec2d660335697fb:0",
