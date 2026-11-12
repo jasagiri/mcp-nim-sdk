@@ -1687,8 +1687,8 @@
       "mutator": "ROR",
       "original": "part.len <= 9",
       "replacement": "<<= -> <>",
-      "class": "spec_question",
-      "reason": "差が出るのは、先頭が 0 でない丁度 9 桁の添字が配列の中を指すときだけで、schema に 10^8 個以上の要素の配列が要る (それ未満ならどちらも「points at nothing」)。当たる仕様 ID は無い。前の記録 (id 37) は「許容」だが、決めた人が書かれていない / 問い: 9 桁の添字の `$ref` を仕様にするか、前の記録どおり受け入れるか。推奨は受け入れる (10^8 要素の配列を E テストで作るのは見合わない)"
+      "class": "accepted",
+      "reason": "9 桁の添字の $ref の境目。差が出るには 10^8 要素以上の配列が要り、テストが見合わない。仕様にしない (代表の決定 2026-11-12)"
     },
     {
       "fingerprint": "src/jsonschema/json_schema.nim:ROR:bd53d7c28467c010:0",
@@ -1717,8 +1717,8 @@
       "mutator": "ROR",
       "original": "abs(quotient - round(quotient)) > 1e-9 * max(1.0, abs(quotient))",
       "replacement": "<> -> >=>",
-      "class": "spec_question",
-      "reason": "外から見える: `{\"multipleOf\": 1}` に `1e-9` を入れると商の端数が許容差と丁度等しく、元は適合、変異は違反。許容差の大きさと境目を定める仕様 ID は無い (MCP-SCHEMA-6 は丸め誤差のある小数の倍数が適合することだけ)。前の記録 (id 48) は「許容」だが、決めた人が書かれていない / 問い: multipleOf の許容差 (相対 1e-9、境目は適合) を番号つきの規則にするか、実装の定数として受け入れるか。推奨は受け入れる。規則にするなら MCP-SCHEMA-6 に「`multipleOf: 1` に `1e-9` は適合、`1.1e-9` は違反」を足す"
+      "class": "accepted",
+      "reason": "multipleOf の許容差 1e-9 ちょうどの扱い。許容差は実装の定数で、境目は仕様にしない (代表の決定 2026-11-12)"
     },
     {
       "fingerprint": "src/jsonschema/json_schema.nim:ROR:987684071949cfd3:0",
@@ -4117,8 +4117,8 @@
       "mutator": "ROR",
       "original": "colon >= 0",
       "replacement": "<>= -> >>",
-      "class": "spec_question",
-      "reason": "違いが出るのは Host が `:80` のように `:` で始まるときだけで、名前が元は空文字列、変異は `:80` になる。`allowedHosts` に空文字列を入れた設定でだけ、元は通し変異は 403。問い: 空の名前の Host を `allowedHosts = @[\"\"]` で通す挙動を仕様にするか、空の名前を常に断るようコードを直すか、仕様にせず残すか / 仕様 ID なし (MCP-SEC-HTTP-5 は空の名前に触れない)"
+      "class": "accepted",
+      "reason": "差が出るのは Host の名前が空で、かつ allowedHosts に空文字列を載せたときだけ。意味のある設定ではなく、仕様にしない (代表の決定 2026-11-12)"
     },
     {
       "fingerprint": "src/transport/http_server.nim:SDL:2413a04126052c00:0",
@@ -4207,8 +4207,8 @@
       "mutator": "SDL",
       "original": "stderr.writeLine(\"[mcp-http] authorization hook failed: \" & $e.name)",
       "replacement": "discard",
-      "class": "spec_question",
-      "reason": "500 で断ることと何も通さないことは保たれる (MCP-SEC-HTTP-9 のテストが見ている)。消えるのは診断の 1 行の全体で、文言の違いではない。問い: 認可フックの失敗を記録に 1 行残すことを MCP-SEC-HTTP-9 に足すか (トランスポート内部の失敗は MCP-SEC-HTTP-8 が「the log holds one line naming the failure」と定めている)、それとも「失敗の文面は契約ではない (代表の決定 2026-10-23)」に含めて accepted とするか / 仕様にするなら MCP-SEC-HTTP-9 に 1 句を足し、既存のテスト \"Given an authorization hook that raises, …\" で stderr を取って `[mcp-http] authorization hook failed: ` とエラーの型名を見る"
+      "class": "test_owed",
+      "reason": "認可フックの失敗は記録に 1 行残る、を MCP-SEC-HTTP-9 に足す (代表の決定 2026-11-12)。E テストで stderr を確かめる"
     },
     {
       "fingerprint": "src/transport/http_server.nim:SDL:fc9c7696c04a0178:2",
@@ -4237,8 +4237,8 @@
       "mutator": "SDL",
       "original": "await sleepAsync(50)",
       "replacement": "discard",
-      "class": "spec_question",
-      "reason": "変異すると、記述子が上限の 5 つ手前まで使われたとき `serve` の輪が await なしで回り、イベントループが止まって進行中の交換も終わらない。枝に入る条件を作る公開の口が無い (`asynchttpserver` の `maxFDs` は非公開。前の担当は `setrlimit` で試して不安定だった)。問い: 「記述子が尽きても進行中の交換は終わる」を仕様にする (上限を下げる口を足す) か、仕様にせずコードを残すか / 仕様 ID なし"
+      "class": "accepted",
+      "reason": "記述子が尽きたときの待ち。条件を作る公開の口が無く (maxFDs は非公開)、setrlimit での試験は不安定だった。仕様にせずコードを残す (代表の決定 2026-11-12)"
     },
     {
       "fingerprint": "src/transport/sse_stream.nim:BLR:6ec2d660335697fb:0",
