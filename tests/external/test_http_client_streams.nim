@@ -73,23 +73,37 @@ proc notification(n: int): JsonNode =
   %*{"jsonrpc": "2.0", "method": "notifications/progress",
      "params": {"progressToken": "t", "progress": n}}
 
-var lostIds: seq[string]
-var lostSeen = 0
+type LostLog = ref object
+  ids: seq[string]
+  seen: int
+
+var lostLogs: seq[tuple[transport: StreamableHttpTransport, log: LostLog]]
+
+proc lostLog(transport: StreamableHttpTransport): LostLog =
+  ## Every transport has its own log, so that what one test leaves unread
+  ## cannot be picked up by another.
+  for entry in lostLogs:
+    if entry.transport == transport:
+      return entry.log
+  result = LostLog()
+  lostLogs.add (transport, result)
 
 proc lostRequest(transport: StreamableHttpTransport, timeoutMs = 3000): string =
   ## The id of the next request the transport reported as lost; "" when none
   ## was reported within `timeoutMs`.
+  let log = transport.lostLog()
   var waited = 0
-  while lostIds.len <= lostSeen and waited < timeoutMs:
+  while log.ids.len <= log.seen and waited < timeoutMs:
     waitFor sleepAsync(10)
     waited += 10
-  if lostIds.len > lostSeen:
-    result = lostIds[lostSeen]
-    inc lostSeen
+  if log.ids.len > log.seen:
+    result = log.ids[log.seen]
+    inc log.seen
 
 proc ask(transport: StreamableHttpTransport, id = "r1") =
   ## The loss handler is set before the request goes out.
-  transport.onRequestLost = proc(requestId: string, reason: string) = lostIds.add requestId
+  let log = transport.lostLog()
+  transport.onRequestLost = proc(requestId: string, reason: string) = log.ids.add requestId
   waitFor transport.sendRequest(newJsonRpcRequest(id, "tools/call", newJObject()))
 
 proc received(transport: StreamableHttpTransport, timeoutMs = 3000): JsonNode =
@@ -992,6 +1006,7 @@ if speaks >= mpv20250326:
       check transport.received()["id"].getStr() == "r1"
       check transport.nothingMoreWithin(200)
       check gets == 1
+      check transport.lostLog().ids.len == 0
       waitFor transport.close()
 
     test "Given a server that ends every GET stream at once, when the session is initialized, then the client asks once and as often again as it may reconnect":

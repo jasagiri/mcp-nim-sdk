@@ -1253,6 +1253,48 @@ suite "the keep-alive of a GET stream":
     else:
       skip()
 
+  test "Given a client that reads nothing for longer than a keep-alive period, when it reads on, then a keep-alive comment follows the event that was blocked":
+    when mpv20250326 <= DefaultProtocolVersion:
+      let version = min(DefaultProtocolVersion, mpv20251125)
+      let (transport, url, _) = startRaw(version)
+      transport.sseKeepAliveMs = 50
+      let session = initialize(url, version)
+      # An event too large for the socket buffers: the server's write stays
+      # blocked for as long as the client does not read.
+      waitFor transport.sendNotification(
+        newJsonRpcNotification("notifications/message",
+          %*{"pad": 'x'.repeat(16 * 1024 * 1024), "end": "END-OF-EVENT"}),
+        MessageRoute(session: session))
+      let sock = openGetStream(transport.port, session, version)
+      waitFor sleepAsync(300)  # several periods, a lower bound only
+      # First the event is read to its end (each read may stall for a while
+      # on a loaded machine, the total is not bounded); only what follows
+      # it is waited for against a deadline. Only a tail is searched, so that
+      # the 16 MB are not scanned again for every chunk.
+      var tail = ""
+      var eventRead = false
+      var deadline = 0.0
+      while true:
+        if eventRead:
+          let at = tail.find("END-OF-EVENT")
+          if tail.find(": keep-alive\n\n", at) >= 0:
+            break
+          doAssert epochTime() < deadline, "no keep-alive after the event"
+        let chunk = sock.recv(65536)
+        doAssert waitFor withTimeout(chunk, 5000), "the stream stalled"
+        doAssert chunk.read.len > 0, "the stream ended"
+        tail.add chunk.read
+        if not eventRead:
+          if tail.find("END-OF-EVENT") >= 0:
+            eventRead = true
+            deadline = epochTime() + 5
+          elif tail.len > 64:
+            tail = tail[tail.len - 64 .. ^1]
+      check eventRead
+      sock.close()
+    else:
+      skip()
+
 
 when SpeaksModern:
   proc postKeepingConnection(url: string, id: int, name: string): AsyncSocket =

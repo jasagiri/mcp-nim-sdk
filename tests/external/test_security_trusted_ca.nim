@@ -52,6 +52,8 @@ else:
       ## Requests whose head arrived, that is, HTTP sent after a handshake.
     peerClosed: bool
       ## The client closed its end after the answer was sent.
+    leftEarly: bool
+      ## The client closed its end before a request head had arrived.
 
   proc startTlsServer(cert, key: string, answerFor: proc(head: string): string,
                       delayMs = 0, handshakeDelayMs = 0): TlsServer =
@@ -72,10 +74,13 @@ else:
         while not head.contains("\c\L\c\L"):
           let data = await client.recv(4096)
           if data.len == 0:
+            server.leftEarly = true
+            client.close()
             return
           head.add data
       except CatchableError:
-        return # the handshake failed: the client refused the certificate
+        client.close() # the handshake failed: the client refused the certificate
+        return
       inc server.requests
       await sleepAsync(delayMs)
       await client.send(answerFor(head))
@@ -149,6 +154,39 @@ else:
     test "Given no caFile, when the server's CA is not one the system trusts, then it fails before any HTTP is sent":
       let server = startTlsServer(local.cert, local.key, Accepted)
       check not notify("https://localhost:" & $server.port & "/mcp", "")
+      check server.requests == 0
+
+  proc openDescriptors(): int =
+    for _ in walkDir("/dev/fd"):
+      inc result
+
+  suite "a connection that does not become a response is closed (mutation review, g2g-wire-e)":
+
+    test "Given a certificate for another host, when requests are refused again and again, then no connection is left open":
+      if not dirExists("/dev/fd"):
+        skip()
+      else:
+        let server = startTlsServer(other.cert, other.key, Accepted)
+        let url = "https://localhost:" & $server.port & "/mcp"
+        check not notify(url, caFile)
+        waitUntil(proc(): bool = false, 200)
+        let before = openDescriptors()
+        for attempt in 1 .. 3:
+          check not notify(url, caFile)
+        waitUntil(proc(): bool = false, 300)
+        check openDescriptors() == before
+        check server.requests == 0
+
+    test "Given a handshake that finishes after the connect timeout, when the request has failed, then the client closes that connection":
+      let server = startTlsServer(local.cert, local.key, Accepted, handshakeDelayMs = 500)
+      let transport = newStreamableHttpTransport("https://localhost:" & $server.port & "/mcp")
+      transport.caFile = caFile
+      transport.connectTimeoutMs = 100
+      expect McpTransportError:
+        waitFor transport.sendNotification(JsonRpcNotification(
+          jsonrpc: "2.0", `method`: "notifications/initialized", params: newJObject()))
+      waitUntil(proc(): bool = server.leftEarly)
+      check server.leftEarly
       check server.requests == 0
 
   proc iconFailure(origin: string, options: IconFetchOptions): string =

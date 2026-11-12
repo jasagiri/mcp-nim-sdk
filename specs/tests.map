@@ -466,6 +466,7 @@ MCP-HTTPSTREAM-20 | tests/external/test_http_streams.nim | Given a client that s
 MCP-HTTPSTREAM-20 | tests/external/test_http_streams.nim | Given events no connection wrote, when a connection resumes after the last of them, then a later connection without Last-Event-ID still gets them
 MCP-HTTPSTREAM-20 | tests/external/test_http_streams.nim | Given a keep-alive period set on the transport, when a GET stream is open and nothing is sent, then a keep-alive comment arrives in every period and the stream stays open
 MCP-HTTPSTREAM-20 | tests/external/test_http_streams.nim | Given a keep-alive period of 0 on the transport, when a GET stream is open and nothing is sent, then no keep-alive comment arrives
+MCP-HTTPSTREAM-20 | tests/external/test_http_streams.nim | Given a client that reads nothing for longer than a keep-alive period, when it reads on, then a keep-alive comment follows the event that was blocked
 MCP-HTTPSTREAM-21 | tests/external/test_http_client_g0a.nim | Given comment lines before, between and inside events, when the stream is read, then they are ignored and only the two messages arrive
 MCP-HTTPSTREAM-22 | tests/external/test_http_client_g0a.nim | Given a GET stream and two request streams open together, when the server speaks on each, then all three deliver and were open at the same time
 MCP-HTTPSTREAM-23 | tests/external/test_http_client_g0a.nim | Given a session id and a server that redirects the next POST to another origin, when the client sends it, then it raises and the other origin sees nothing
@@ -2101,6 +2102,8 @@ MCP-SEC-WIRE-15 | tests/internal/test_security_wire_headers_internal.nim | Given
 MCP-SEC-WIRE-15 | tests/external/test_security_wire_headers.nim | Given a Host header and a Content-Length of the caller, when a request is sent, then the SDK's own are the only ones
 MCP-SEC-WIRE-15 | tests/external/test_security_wire_headers.nim | Given a URL with no port, when a request is sent, then the connection is attempted (the URL is not refused as malformed)
 MCP-SEC-WIRE-15 | tests/external/test_security_wire_headers.nim | Given a host that does not resolve and a server on loopback, when a request is sent, then the host named in the URL is the one that is connected to
+MCP-SEC-WIRE-15 | tests/external/test_security_wire_headers.nim | Given URLs with no path, a path, and a path with a query, when a notification is sent, then the request line names the path and query, or / when there is none
+MCP-SEC-WIRE-15 | tests/external/test_security_wire_headers.nim | Given a session on a version with the GET stream, when the stream is opened and the session ended, then neither the GET nor the DELETE carries a Content-Length
 MCP-SEC-WIRE-15 | tests/internal/test_http_wire_internals.nim | Given a URL without a port, when the request is written, then Host names the host alone; with a port, host and port
 MCP-SEC-WIRE-16 | tests/internal/test_security_wire_headers_internal.nim | Given a status line without a reason phrase, when the head is read, then the status is taken
 MCP-SEC-WIRE-16 | tests/external/test_security_wire_headers.nim | Given a status line that does not start with HTTP/, or has no status, when the head is read, then it is refused
@@ -2110,12 +2113,21 @@ MCP-SEC-WIRE-16 | tests/external/test_security_wire_headers.nim | Given a negati
 MCP-SEC-WIRE-16 | tests/internal/test_security_wire_headers_internal.nim | Given a HEAD request, when the answer announces a Content-Length, then there is no body to wait for
 MCP-SEC-WIRE-16 | tests/internal/test_security_wire_headers_internal.nim | Given an answer of 1xx, 204 or 304, when the head is read, then the response has no body and is finished
 MCP-SEC-WIRE-16 | tests/external/test_security_wire_headers.nim | Given an answer that is not HTTP, when the request fails, then the connection is closed
+MCP-SEC-WIRE-16 | tests/external/test_security_wire_headers.nim | Given a status line without a reason phrase, when the head is read, then the response is taken
+MCP-SEC-WIRE-16 | tests/external/test_security_wire_headers.nim | Given a 204, when the server keeps the connection open, then the request succeeds at once and the client ends the connection
+MCP-SEC-WIRE-16 | tests/external/test_security_wire_headers.nim | Given a 1xx or a 304, when the server keeps the connection open, then the request fails as an HTTP failure at once and the client ends the connection
 MCP-SEC-WIRE-16 | tests/internal/test_security_wire_headers_internal.nim | Given a server that never answers, when the header timeout passes, then the connection is closed
 MCP-SEC-WIRE-17 | tests/external/test_security_wire_headers.nim | Given a redirect within the server, when it is followed, then the connection that gave it is closed
 MCP-SEC-WIRE-17 | tests/external/test_security_wire_headers.nim | Given a redirect to another server, when it is refused, then the connection that gave it is closed
 MCP-SEC-WIRE-17 | tests/external/test_security_wire_headers.nim | Given a redirect to another host name on the same port, when a request is sent, then it is refused and nothing is sent there
 MCP-SEC-WIRE-17 | tests/external/test_security_wire_headers.nim | Given a redirect to the same host and port under another scheme, when a request is sent, then it is refused
 MCP-SEC-WIRE-18 | tests/external/test_security_wire_headers.nim | Given a connect timeout of 0, when a request is sent, then there is no limit and the server is reached
+MCP-SEC-WIRE-18 | tests/external/test_security_wire_headers.nim | Given a head of exactly 65536 bytes still waiting for its blank line, when the blank line arrives, then the response is taken; one byte more is refused
+MCP-SEC-WIRE-18 | tests/external/test_security_wire_headers.nim | Given a chunk size line of 64 bytes and one of 65, when the body is read, then the first is accepted and the second refused
+MCP-SEC-WIRE-18 | tests/external/test_security_wire_headers.nim | Given a last chunk and a trailer line, when the blank line never comes and the connection closes, then the request fails; with the blank line it succeeds
+MCP-SEC-WIRE-18 | tests/external/test_security_wire_headers.nim | Given a chunk size line that arrives before its data, when the data follows, then the message is delivered
+MCP-SEC-WIRE-18 | tests/external/test_security_wire_headers.nim | Given an error answer whose body is cut short, when the stream request fails again and again, then no connection is left open
+MCP-SEC-WIRE-18 | tests/external/test_security_wire_headers.nim | Given an error answer whose body outgrows the limit and goes on, when the stream request is made, then it fails and the client closes the connection
 MCP-SEC-WIRE-18 | tests/internal/test_security_wire_headers_internal.nim | Given a head of exactly the limit before its end arrives, when the end arrives, then it is accepted
 MCP-SEC-WIRE-18 | tests/internal/test_security_wire_headers_internal.nim | Given a head one byte over the limit without its end, when it has arrived, then it is refused as too long
 MCP-SEC-WIRE-18 | tests/internal/test_security_wire_headers_internal.nim | Given a chunk size line of 64 bytes, when the body is read, then it is accepted; of 65, then it is refused
@@ -2133,7 +2145,10 @@ MCP-SEC-WIRE-19 | tests/internal/test_security_wire_headers_internal.nim | Given
 MCP-SEC-WIRE-19 | tests/internal/test_http_wire_internals.nim | Given a response that has been closed, when a read is started, then it ends as interrupted without reading
 MCP-SEC-WIRE-19 | tests/external/test_http_client_streams.nim | Given a request the server has not answered, when the client cancels it, then the connection is closed and sendRequest returns without an error
 MCP-SEC-WIRE-19 | tests/external/test_http_client_streams.nim | Given a request whose event stream is open, when the client cancels it, then the stream ends and no stream-closed error is delivered
+MCP-SEC-WIRE-19 | tests/external/test_security_wire_headers.nim | Given a JSON body without a length that has begun, when the client cancels the request, then sendRequest ends without an error and nothing is reported lost
 MCP-SEC-WIRE-20 | tests/external/test_security_wire_headers.nim | Given a build without -d:ssl, when https URLs are refused again and again, then no connection is left open
+MCP-SEC-WIRE-20 | tests/external/test_security_trusted_ca.nim | Given a certificate for another host, when requests are refused again and again, then no connection is left open
+MCP-SEC-WIRE-20 | tests/external/test_security_trusted_ca.nim | Given a handshake that finishes after the connect timeout, when the request has failed, then the client closes that connection
 MCP-SEC-WIRE-20 | tests/internal/test_security_wire_tls.nim | Given a certificate for another host, when requests are refused again and again, then no connection is left open
 MCP-SEC-WIRE-20 | tests/internal/test_security_wire_tls.nim | Given a handshake that ends after the connect timeout, when it ends, then the connection is closed by the client
 MCP-SEC-WIRE-21 | tests/internal/test_security_address_internal.nim | Given an IPv6 address outside the global unicast block 2000::/3 and in no other class, when classified, then it is reserved
@@ -2308,6 +2323,9 @@ MCP-SEC-WIRE-23 | tests/external/test_security_wire_shapes.nim | Given a chunk s
 MCP-SEC-WIRE-23 | tests/external/test_security_wire_shapes.nim | Given bytes between a chunk's data and its line end, when the answer body is read, then the request fails
 MCP-SEC-WIRE-23 | tests/external/test_security_wire_shapes.nim | Given a well-formed chunked answer, when it is read, then the notification is delivered
 MCP-SEC-WIRE-23 | tests/external/test_security_wire_shapes.nim | Given an item that is not an object, when its icons are read, then it is a shape error
+MCP-SEC-WIRE-23 | tests/external/test_security_wire_headers.nim | Given a status of 100 or of 599, when the head is read, then the request fails with that status
+MCP-SEC-WIRE-23 | tests/external/test_security_wire_headers.nim | Given chunk sizes written with lower case digits, upper case digits and fifteen digits, when the body is read, then the message arrives whole
+MCP-SEC-WIRE-23 | tests/external/test_security_wire_headers.nim | Given one extra byte between a chunk's data and its line end, when the body is read, then the request fails
 MCP-SEC-WIRE-24 | tests/external/test_auth_oauth_basics.nim | Given metadata with an authorization endpoint whose host holds a colon but is no IPv6 address, when parsed, then it is rejected
 MCP-TASKS-7 | tests/external/test_tasks_store.nim | Given a time whose minute or second is out of range, when a task is read, then none is returned
 MCP-TASKS-7 | tests/external/test_tasks_store.nim | Given a time that is not RFC 3339, such as a signed year, when a task is read, then none is returned
