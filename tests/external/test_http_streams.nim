@@ -1074,6 +1074,38 @@ suite "GET stream and session lifetime (mutation review, g2f-hs-b)":
       check parseJson(event.data).methodOf == "notifications/prompts/list_changed"
       resumed.close()
 
+    test "Given events no connection wrote, when a connection resumes after the last of them, then a later connection without Last-Event-ID still gets them":
+      let (transport, url, _) = startRaw(version)
+      let session = initialize(url, version)
+      let first = open(url, HttpGet, "", legacyHeaders(session, version))
+      waitFor transport.sendNotification(
+        newJsonRpcNotification("notifications/a", newJObject()),
+        MessageRoute(session: session))
+      var seen = first.next().get
+      while seen.data.len == 0:
+        seen = first.next().get
+      first.close()
+      waitFor sleepAsync(50)   # the server notices the departure
+      for name in ["notifications/b", "notifications/c"]:
+        waitFor transport.sendNotification(newJsonRpcNotification(name, newJObject()),
+                                           MessageRoute(session: session))
+      # `seen.id` is stream-number; the event after the unwritten two is the number two on.
+      let dash = seen.id.rfind('-')
+      let lastUnwritten = seen.id[0 ..< dash] & "-" & $(parseInt(seen.id[dash + 1 .. ^1]) + 2)
+      let skipping = open(url, HttpGet, "",
+        legacyHeaders(session, version) & @[("Last-Event-ID", lastUnwritten)])
+      check skipping.code == Http200
+      skipping.close()
+      let later = open(url, HttpGet, "", legacyHeaders(session, version))
+      check later.code == Http200
+      var got: seq[string] = @[]
+      while got.len < 2:
+        let event = later.next().get
+        if event.data.len > 0:
+          got.add parseJson(event.data).methodOf
+      check got == @["notifications/b", "notifications/c"]
+      later.close()
+
     test "Given a GET stream that has sent events, when an event id of a stream the session never had is presented, then the answer is 400":
       let (transport, url, _) = startRaw(version)
       let session = initialize(url, version)

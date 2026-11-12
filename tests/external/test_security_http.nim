@@ -532,6 +532,13 @@ suite "The Host header names this server, in its odd forms (mutation review, g2f
     let env = startOpen()
     check sendAs("::1", env.base & "/mcp", HttpPost, rpc(1, "ping")) != Http403
 
+  test "Given allowed hosts naming an IPv6 address, when a request names it bracketed or another address, then the first is served and the second is 403":
+    let env = startOpen()
+    env.transport.allowedHosts = @["2001:db8::1"]
+    check sendAs("[2001:db8::1]:8443", env.base & "/mcp", HttpPost, rpc(1, "ping")) != Http403
+    check sendAs("[2001:db8::1]", env.base & "/mcp", HttpPost, rpc(1, "ping")) != Http403
+    check sendAs("2001:db8::1:8443", env.base & "/mcp", HttpPost, rpc(1, "ping")) == Http403
+
   test "Given a transport bound to loopback, when a request carries no Host header at all, then the answer is 403":
     let env = startOpen()
     let socket = waitFor asyncnet.dial("127.0.0.1", Port(env.transport.port))

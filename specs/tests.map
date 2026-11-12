@@ -463,6 +463,7 @@ MCP-HTTPSTREAM-20 | tests/internal/test_http_streams_internal.nim | Given a clie
 MCP-HTTPSTREAM-20 | tests/internal/test_http_streams_internal.nim | Given events that no connection has written, when one resumes after the last of them, then the stream still reports nothing written
 MCP-HTTPSTREAM-20 | tests/external/test_http_streams.nim | Given a client that asked to keep its connection, when the event stream of its request ends, then the server closes the connection
 MCP-HTTPSTREAM-20 | tests/external/test_http_streams.nim | Given a client that sent a stray byte into its event stream, when it then closes the connection, then the server is told the request was cancelled
+MCP-HTTPSTREAM-20 | tests/external/test_http_streams.nim | Given events no connection wrote, when a connection resumes after the last of them, then a later connection without Last-Event-ID still gets them
 MCP-HTTPSTREAM-21 | tests/external/test_http_client_g0a.nim | Given comment lines before, between and inside events, when the stream is read, then they are ignored and only the two messages arrive
 MCP-HTTPSTREAM-22 | tests/external/test_http_client_g0a.nim | Given a GET stream and two request streams open together, when the server speaks on each, then all three deliver and were open at the same time
 MCP-HTTPSTREAM-23 | tests/external/test_http_client_g0a.nim | Given a session id and a server that redirects the next POST to another origin, when the client sends it, then it raises and the other origin sees nothing
@@ -1965,6 +1966,7 @@ MCP-SEC-HTTP-5 | tests/external/test_security_http.nim | Given a transport bound
 MCP-SEC-HTTP-5 | tests/external/test_security_http.nim | Given allowed hosts, when a request names one of them or another, then the first is served and the second is 403
 MCP-SEC-HTTP-5 | tests/external/test_security_http.nim | Given a transport that listens on every interface and names no hosts, when a request names any host, then it is served
 MCP-SEC-HTTP-5 | tests/external/test_security_http.nim | Given a transport that listens on every interface and names hosts, when a request names another host, then the answer is 403
+MCP-SEC-HTTP-5 | tests/external/test_security_http.nim | Given allowed hosts naming an IPv6 address, when a request names it bracketed or another address, then the first is served and the second is 403
 MCP-SEC-HTTP-7 | tests/internal/test_security_diagnostic_internal.nim | Given text with line breaks and escape characters, when made fit for a log, then none survives
 MCP-SEC-HTTP-7 | tests/internal/test_security_diagnostic_internal.nim | Given plain text including non-ASCII letters, when made fit for a log, then it is unchanged
 MCP-SEC-HTTP-7 | tests/internal/test_security_diagnostic_internal.nim | Given bytes that are not UTF-8, when made fit for a log, then each is shown as an escape
