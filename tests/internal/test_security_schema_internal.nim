@@ -7,6 +7,11 @@ import std/[unittest, json, strutils]
 import jsonschema/json_schema
 import jsonschema/json_schema_regex
 
+proc isMatch(re: Regex, text: string, maxSteps = DefaultMaxRegexSteps): bool =
+  ## One match with a budget of its own.
+  var budget = maxSteps
+  re.isMatch(text, budget)
+
 proc patternSchema(pattern: string): JsonNode =
   result = newJObject()
   result["pattern"] = %pattern

@@ -543,9 +543,3 @@ proc isMatch*(re: Regex, text: string, budget: var int): bool =
     result = run.matchesFrom(0, runes, 0, anchored = false)
   finally:
     budget = run.budget
-
-proc isMatch*(re: Regex, text: string, maxSteps = DefaultMaxRegexSteps): bool =
-  ## Whether the pattern matches anywhere in `text`, spending at most
-  ## `maxSteps` state visits. Raises RegexLimitError beyond that.
-  var budget = maxSteps
-  re.isMatch(text, budget)

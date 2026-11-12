@@ -6,6 +6,11 @@ import std/[unittest, json]
 import jsonschema/json_schema
 import jsonschema/json_schema_regex
 
+proc isMatch(re: Regex, text: string, maxSteps = DefaultMaxRegexSteps): bool =
+  ## One match with a budget of its own.
+  var budget = maxSteps
+  re.isMatch(text, budget)
+
 proc violations(schema, instance: string): seq[SchemaViolation] =
   validate(parseJson(schema), parseJson(instance))
 

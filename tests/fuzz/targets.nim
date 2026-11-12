@@ -77,7 +77,8 @@ proc regex*(input: string): string {.raises: [CatchableError].} =
   try:
     inferred:
       let compiled = compileRegex(parts[0])
-      discard compiled.isMatch(if parts.len > 1: parts[1] else: "", maxSteps = 200_000)
+      var budget = 200_000
+      discard compiled.isMatch(if parts.len > 1: parts[1] else: "", budget)
   except RegexError:
     discard   # malformed, unsupported or over a limit: the documented refusal
   ""
