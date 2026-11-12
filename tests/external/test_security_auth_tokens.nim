@@ -102,10 +102,29 @@ suite "token responses: lifetimes":
   test "Given a negative or non-numeric expires_in, when the response is parsed, then the response is refused":
     when HasChallengeVersion:
       for bad in ["-1", "-9223372036854775808", "-0.5", "\"-5\"", "\"soon\"", "\"\"", "\"1e3\"",
-                  "true", "[3600]", "{}"]:
+                  "\"+3600\"", "\"1_000\"", "true", "[3600]", "{}"]:
         checkpoint bad
         expect OAuthError:
           discard expiryOf(bad, now)
+    else:
+      skip()
+
+  test "Given an expires_in of zero or at the bound, as a number or digits with leading zeros, when the response is parsed, then it counts by its value":
+    when HasChallengeVersion:
+      check expiryOf("0", now) == some(now)
+      check expiryOf("0.0", now) == some(now)
+      check expiryOf($MaxTokenLifetimeSeconds & ".0", now) ==
+        some(now + initDuration(seconds = MaxTokenLifetimeSeconds))
+      check expiryOf("\"000000000000003600\"", now) == some(now + initDuration(seconds = 3600))
+    else:
+      skip()
+
+  test "Given a token response without an access_token or with an empty one, when the response is parsed, then it is refused":
+    when HasChallengeVersion:
+      for body in ["""{"token_type":"Bearer"}""", """{"access_token":"","token_type":"Bearer"}"""]:
+        checkpoint body
+        expect OAuthError:
+          discard expiryAfter(body, now)
     else:
       skip()
 

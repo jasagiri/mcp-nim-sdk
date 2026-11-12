@@ -217,6 +217,35 @@ suite "Canonical resource":
       expect OAuthError: discard newResourceServerAuth(serverConfig("https://mcp.example.com#fragment"))
 
 
+  test "Given the valid examples of the specification, when canonicalized, then they are accepted":
+    # The version of the build without authorization has no client or resource server.
+    if not (DefaultProtocolVersion.has(ftAuthorization)):
+      skip()
+    else:
+      for resource in ["https://mcp.example.com/mcp", "https://mcp.example.com",
+                       "https://mcp.example.com:8443"]:
+        checkpoint resource
+        discard newResourceServerAuth(serverConfig(resource))
+
+  test "Given a bare trailing slash or capital letters in the scheme or host, when canonicalized, then the resource is not canonical":
+    # The version of the build without authorization has no client or resource server.
+    if not (DefaultProtocolVersion.has(ftAuthorization)):
+      skip()
+    else:
+      for resource in ["https://mcp.example.com/", "HTTPS://mcp.example.com/mcp",
+                       "https://MCP.example.com/mcp"]:
+        checkpoint resource
+        expect ValueError: discard newResourceServerAuth(serverConfig(resource))
+
+  test "Given a resource with a query, when canonicalized, then the query is kept":
+    # The version of the build without authorization has no client or resource server.
+    if not (DefaultProtocolVersion.has(ftAuthorization)):
+      skip()
+    else:
+      discard newResourceServerAuth(serverConfig("https://mcp.example.com/mcp?tenant=a"))
+
+
+
 suite "Fetch policy":
   let policy = defaultFetchPolicy()
 
@@ -252,6 +281,16 @@ suite "Fetch policy":
                   "https://user:pw@auth.example.com/x", "/relative"]:
         checkpoint url
         expect OAuthSecurityError: discard waitFor client.challengedWith(url)
+  test "Given the default policy, when a private network address is named, then it is refused":
+    # Before protected resource metadata the client ignores the resource_metadata of a challenge.
+    if not (DefaultProtocolVersion.has(ftProtectedResourceMetadata)):
+      skip()
+    else:
+      var quick = defaultFetchPolicy()
+      quick.timeoutMs = 300
+      let client = clientOf("http://127.0.0.1:1/mcp", fetchPolicy = quick)
+      expect OAuthSecurityError: discard waitFor client.challengedWith("https://10.0.0.1/x")
+
 
 const goodAs = """{"issuer": "https://auth.example.com/tenant1",
   "authorization_endpoint": "https://auth.example.com/authorize",
@@ -361,6 +400,36 @@ suite "Authorization server discovery over a scripted server (mutation review, g
       check outcome.kind == "oauth"
       check (server.origin & oauthPath & ": metadata field token_endpoint is missing") in outcome.msg
 
+  test "Given an issuer whose path ends in a slash, when discovering, then the slash is dropped from every URL tried":
+    # The client probes the well-known URLs without a resource_metadata, and tries the OpenID Connect URLs, only from the version with both.
+    if not (DefaultProtocolVersion.has(ftIncrementalScopeConsent) and DefaultProtocolVersion.has(ftOidcDiscovery)):
+      skip()
+    else:
+      let server = startScripted(proc(origin, line: string): string =
+        if "oauth-protected-resource" in line: jsonReply(200, "OK", prmNaming(origin, origin & "/tenant1/"))
+        else: jsonReply(404, "Not Found", "{}"))
+      defer: server.stop()
+      let outcome = reportedBy(clientOf(server.origin & "/mcp").unchallenged())
+      check outcome.kind == "oauth"
+      check (server.origin & oauthPath & ": HTTP 404") in outcome.msg
+      check (server.origin & oidcPath & ": HTTP 404") in outcome.msg
+      check (server.origin & appendedPath & ": HTTP 404") in outcome.msg
+
+  test "Given an issuer without a path, when discovering, then each of the two candidate URLs is asked once":
+    # The client probes the well-known URLs without a resource_metadata, and tries the OpenID Connect URLs, only from the version with both.
+    if not (DefaultProtocolVersion.has(ftIncrementalScopeConsent) and DefaultProtocolVersion.has(ftOidcDiscovery)):
+      skip()
+    else:
+      let server = startScripted(proc(origin, line: string): string =
+        if "oauth-protected-resource" in line: jsonReply(200, "OK", prmNaming(origin, origin))
+        else: jsonReply(404, "Not Found", "{}"))
+      defer: server.stop()
+      let outcome = reportedBy(clientOf(server.origin & "/mcp").unchallenged())
+      check outcome.kind == "oauth"
+      check server.requestLines.countIt("oauth-authorization-server" in it) == 1
+      check server.requestLines.countIt("openid-configuration" in it) == 1
+
+
 
   test "Given a server URL on plain http to a remote host, when discovering with the 2025-03-26 rules, then the error names the authorization base URL":
     # The build has to speak 2025-03-26 for the client to follow its rules.
@@ -430,6 +499,38 @@ suite "Protected resource metadata over a scripted server (mutation review, g2f-
       check outcome.kind == "security"
       check outcome.msg.startsWith("no usable protected resource metadata: ")
       check "describes https://other.example/mcp, not " & server.origin & "/mcp" in outcome.msg
+  test "Given a document that lists an insecure authorization server after a good one, when fetching, then the document is refused before any authorization server is asked":
+    # Before protected resource metadata the client ignores the resource_metadata of a challenge.
+    if not (DefaultProtocolVersion.has(ftProtectedResourceMetadata)):
+      skip()
+    else:
+      let server = startScripted(proc(origin, line: string): string =
+        jsonReply(200, "OK", $(%*{"resource": origin & "/mcp",
+                                  "authorization_servers": [origin & "/tenant1", "http://auth.example.com"]})))
+      defer: server.stop()
+      var named = defaultFetchPolicy()
+      named.resolver = everyHostIsLoopback()
+      let outcome = reportedBy(clientOf(server.origin & "/mcp", fetchPolicy = named).challengedWith(
+        server.origin & "/.well-known/oauth-protected-resource/mcp"))
+      check outcome.kind == "security"
+      check server.requestLines.len == 1
+
+  test "Given a document whose resource differs from the server's URL only by a bare slash, when fetching, then it is accepted":
+    # Before protected resource metadata the client ignores the resource_metadata of a challenge.
+    if not (DefaultProtocolVersion.has(ftProtectedResourceMetadata)):
+      skip()
+    else:
+      let server = startScripted(proc(origin, line: string): string =
+        if "oauth-protected-resource" in line:
+          jsonReply(200, "OK", $(%*{"resource": origin & "/", "authorization_servers": [origin]}))
+        else: jsonReply(404, "Not Found", "{}"))
+      defer: server.stop()
+      let outcome = reportedBy(clientOf(server.origin).challengedWith(
+        server.origin & "/.well-known/oauth-protected-resource"))
+      # The metadata is taken; what fails is the authorization server it names, which answers 404.
+      check outcome.kind == "oauth"
+      check server.requestLines.anyIt("oauth-authorization-server" in it)
+
 
 suite "Requests of the OAuth client over a scripted server (mutation review, g2f-oauth-a)":
   let policy = defaultFetchPolicy()
@@ -480,6 +581,17 @@ suite "Requests of the OAuth client over a scripted server (mutation review, g2f
       check "timed out after 300 ms" in outcome.msg
       check server.closedWithin(2000)
 
+  test "Given a body-less keep-alive answer, when requested, then the connection is closed afterwards":
+    # Before protected resource metadata the client ignores the resource_metadata of a challenge.
+    if not (DefaultProtocolVersion.has(ftProtectedResourceMetadata)):
+      skip()
+    else:
+      let server = startHolding("HTTP/1.1 204 No Content\c\LConnection: keep-alive\c\L\c\L")
+      let origin = "http://127.0.0.1:" & $server.port
+      let outcome = reportedBy(clientOf(origin & "/mcp").challengedWith(origin & "/x"))
+      check outcome.kind == "oauth"
+      check server.closedWithin(2000)
+
 suite "OAuth parsers and checks (mutation review, g2f-oauth-b)":
   let policy = defaultFetchPolicy()
 
@@ -488,7 +600,7 @@ suite "OAuth parsers and checks (mutation review, g2f-oauth-b)":
     if not (DefaultProtocolVersion.has(ftIncrementalScopeConsent)):
       skip()
     else:
-      for key in ["authorization_endpoint", "registration_endpoint"]:
+      for key in ["authorization_endpoint", "token_endpoint", "registration_endpoint"]:
         checkpoint key
         let authServer = startFakeAs()
         let resourceServer = startFakeRs(authServer)
@@ -500,6 +612,25 @@ suite "OAuth parsers and checks (mutation review, g2f-oauth-b)":
         named.resolver = everyHostIsLoopback()
         expect OAuthSecurityError:
           discard waitFor clientOf(resourceServer.url, fetchPolicy = named).unchallenged()
+        check authServer.registered.len == 0
+
+  test "Given a plain http registration endpoint on a remote host and a client that registers nothing, when parsed, then it is rejected":
+    # The client probes the well-known URLs without a resource_metadata only from the version with incremental scope consent.
+    if not (DefaultProtocolVersion.has(ftIncrementalScopeConsent)):
+      skip()
+    else:
+      let authServer = startFakeAs()
+      let resourceServer = startFakeRs(authServer)
+      defer:
+        resourceServer.stop()
+        authServer.stop()
+      authServer.metadata["registration_endpoint"] = %"http://auth.example.com/endpoint"
+      var named = defaultFetchPolicy()
+      named.resolver = everyHostIsLoopback()
+      var config = configOf(resourceServer.url, fetchPolicy = named)
+      config.preRegistered = some(PreRegisteredClient(clientId: "c", issuer: some(authServer.issuer)))
+      expect OAuthSecurityError:
+        discard waitFor newOAuthClient(config).unchallenged()
 
 
   test "Given metadata with an authorization endpoint whose host holds a colon but is no IPv6 address, when parsed, then it is rejected":
@@ -722,6 +853,14 @@ suite "A Bearer challenge seen through the public entries":
          ", when the client asks the user, then the authorization URL carries the scope whole":
       let header = "Bearer error_description=\"a, \\\"b\\\"\", scope=\"files:read files:write\", resource_metadata=\"{prm}\""
       check scopeAsked(v, header) == "files:read files:write"
+  for v in scopeVersions:
+    test "Given a scope with a space in it and version " & $v &
+         ", when the client asks the user, then the authorization URL writes the space as %20":
+      let consent = consentedFor(v, "Bearer scope=\"files:read files:write\", resource_metadata=\"{prm}\"")
+      check consent.granted
+      check consent.urls.len == 1
+      check "scope=files%3Aread%20files%3Awrite" in consent.urls[0]
+
 
 suite "A Bearer challenge's surroundings seen through the public entries":
 
