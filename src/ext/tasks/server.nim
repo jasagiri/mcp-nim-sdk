@@ -128,8 +128,6 @@ proc detailed(ext: TasksExtension, owner: string,
   of tsCompleted, tsFailed:
     let outcome = await ext.store.awaitOutcome(owner, task.taskId)
     if task.status == tsCompleted:
-      if outcome.result.isNone:
-        raise internalError("task " & task.taskId & " is completed without a result")
       result.result = outcome.result
     else:
       if outcome.error.isNone:

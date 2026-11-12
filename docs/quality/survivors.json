@@ -1577,8 +1577,8 @@
       "mutator": "SDL",
       "original": "newRequestError(ErrInternal, \"Internal error\")",
       "replacement": "discard",
-      "class": "spec_question",
-      "reason": "拡張自身の経路 (`finishWhenDone`) は結果かエラーを必ず持たせるので届かないが、公開の `ext.store` (`TaskStore`) にアプリケーションが `finish(id, TaskOutcome(), toolErrorsFail = false)` (結果の無い completed) や `finish(id, TaskOutcome(result: some(%*{\"isError\": true})))` (エラーの無い failed) を呼ぶと届く。元は `tasks/get` が -32603、変異は nil を raise して落ちる。どの仕様 ID も、アプリケーションが拡張の task を store で直接終わらせる場合を述べていない。問い: 拡張の task をアプリケーションが `TaskStore.finish` で直接終わらせることを認めるか。認めるなら「status が要る結果・エラーを欠く task の `tasks/get` は -32603」を MCP-EXT-TASKS-2 に足して E テストを書く。認めないなら `finish` を公開から外し、`detailed` の 2 つの防御を消す / `finish` の使い手: src 1 か所 (`protocol/task_methods.nim` の `finishWhenDone`)、tests/external 2 ファイル 14 か所 (`test_tasks_store.nim` 13、`test_security_tasks.nim` 1)、tests/internal 0。推奨: 公開から外す (公開 API は絞る、代表の方針 2026-11-11)。ただし `test_tasks_store.nim` の E テストが `finish` を直接呼んでいるので、それらを `runAsTask` 経由に書き直すか内部へ移す作業が付く"
+      "class": "unreached",
+      "reason": "internalError を呼ぶ分岐は「エラーの無い failed」の 1 つだけになった (結果の無い completed の分岐は消した)。task を終わらせる経路は finish と cancel だけで (finish は公開から外し、transition は終端を断る。代表の決定 2026-11-12)、finish は結果もエラーも無い終わり方を -32603 のエラーとして記録する。拡張は toolErrorsFail=false で finish を呼ぶので、拡張の task が failed になるのはエラーがあるときだけ。残る分岐に届くのは、コアと拡張が同じ store を共有し、かつコアの session id が拡張の持ち主の前置き ext-tasks: で始まるときだけで、session id は SDK が作るので公開の入口からは作れない"
     },
     {
       "fingerprint": "src/ext/tasks/server.nim:SDL:93c05b0a9345fd14:0",

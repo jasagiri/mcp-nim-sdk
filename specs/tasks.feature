@@ -62,6 +62,7 @@ Feature: Tasks
     Then the answer comes when the task is terminal, is the result with the related-task metadata, or the same JSON-RPC error
     And a tool result with isError makes the task failed while the result stays a result
     And a cancelled task has no result and the answer is an error
+    And a request that ends with neither a result nor an error makes the task failed with an internal error, code -32603
 
   @spec:MCP-TASKS-9 @feature:ftTasks
   Scenario: Tasks are listed page by page

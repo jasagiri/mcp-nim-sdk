@@ -1549,6 +1549,7 @@ MCP-TASKS-8 | tests/external/test_tasks_client.nim | Given a task whose request 
 MCP-TASKS-8 | tests/external/test_tasks_store.nim | Given a tool result with isError and no text, when finished, then the task failed without a message
 MCP-TASKS-8 | tests/external/test_tasks_store.nim | Given a task with unlimited ttl, when its result is awaited, then the wait ends when the task does
 MCP-TASKS-8 | tests/external/test_tasks_store.nim | Given work that raises, when it ends, then the task failed with a bare internal error and the cause is logged
+MCP-TASKS-8 | tests/external/test_tasks_store.nim | Given work that answers with neither a result nor an error, when it ends, then the task failed with an internal error, whatever toolErrorsFail is
 MCP-TASKS-8 | tests/external/test_tasks_store.nim | Given work that succeeds, when it ends, then nothing is logged
 MCP-TASKS-9 | tests/external/test_tasks_server.nim | Given more tasks than a page, when listed page by page, then every task appears once and the last page has no cursor
 MCP-TASKS-9 | tests/external/test_tasks_server.nim | Given a cursor nobody issued, when listed, then it is Invalid params

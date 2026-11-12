@@ -640,6 +640,19 @@ suite "tasks: running the request a task stands for":
     check log == ""
     check store.get("a", task.taskId).status == tsCompleted
 
+  test "Given work that answers with neither a result nor an error, when it ends, then the task failed with an internal error, whatever toolErrorsFail is":
+    for toolErrorsFail in [true, false]:
+      let store = storeAt(FakeTime())
+      let work = newFuture[JsonRpcResponse]("work")
+      let task = runAsTask(store, "a", none(int64), proc(id: string): TaskWork =
+        (response: work, cancel: nil), toolErrorsFail)
+      work.complete(JsonRpcResponse(jsonrpc: "2.0", id: "1"))
+      settle()
+      check store.get("a", task.taskId).status == tsFailed
+      let outcome = waitFor store.awaitOutcome("a", task.taskId)
+      check outcome.result.isNone
+      check outcome.error.get.code == -32603
+
   test "Given work that raises after its task was cancelled, when it ends, then nothing is logged and the task stays cancelled":
     let store = storeAt(FakeTime())
     let work = newFuture[JsonRpcResponse]("work")

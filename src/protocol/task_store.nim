@@ -475,16 +475,27 @@ proc finish*(store: TaskStore, id: string, outcome: TaskOutcome,
   ## ended in an error or, for a tool call, a result with `isError` (2025-11-25;
   ## the Tasks extension of 2026-07-28 keeps such a result `completed`:
   ## pass `toolErrorsFail = false`). False when the task is gone or already
-  ## terminal (cancelled, say).
+  ## terminal (cancelled, say). An outcome with neither a result nor an
+  ## error is recorded as an internal error, whatever `toolErrorsFail` is.
   discard store.sweep()
   if id notin store.entries:
     return false
   let entry = store.entries[id]
   if entry.task.status.isTerminal:
     return false
-  entry.outcome = some(outcome)
-  if outcome.isFailure(toolErrorsFail):
-    store.change(entry, tsFailed, outcome.failureMessage)
+  # A finished task holds a result or an error: a request that answered with
+  # neither is the receiver's defect, and the requestor is told so.
+  let empty = outcome.result.isNone and outcome.error.isNone
+  if empty:
+    stderr.writeLine("[mcp-tasks] the request of task " & id &
+                     " ended with neither a result nor an error")
+  let recorded =
+    if empty: TaskOutcome(error: some(JsonRpcError(
+      code: InternalErrorCode, message: "Internal error", data: newJNull())))
+    else: outcome
+  entry.outcome = some(recorded)
+  if recorded.isFailure(toolErrorsFail):
+    store.change(entry, tsFailed, recorded.failureMessage)
   else:
     store.change(entry, tsCompleted, none(string))
   true
