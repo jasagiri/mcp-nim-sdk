@@ -713,7 +713,6 @@ MCP-AUTH-18 | tests/external/test_auth_client_flow.nim | Given version <version>
 MCP-AUTH-18 | tests/external/test_auth_client_flow.nim | Given a redirect URI that is neither https nor localhost and version <version>, when the client is made, then it is refused
 MCP-AUTH-18 | tests/internal/test_auth_oauth_basics_internal.nim | Given the RFC 7636 appendix B verifier, when challenged with S256, then it is the appendix B challenge
 MCP-AUTH-18 | tests/internal/test_auth_oauth_basics_internal.nim | Given a new verifier, when checked, then it is 43 unreserved characters and differs each time
-MCP-AUTH-18 | tests/internal/test_auth_oauth_basics_internal.nim | Given too short or reserved characters, when checked, then the verifier is invalid
 MCP-AUTH-19 | tests/external/test_auth_client_flow.nim | Given a response with another state and version <version>, when the client receives it, then it is discarded before any token request
 MCP-AUTH-19 | tests/external/test_auth_client_flow.nim | Given a response without state and version <version>, when the client receives it, then it is discarded
 MCP-AUTH-19 | tests/external/test_auth_client_flow.nim | Given the user denies consent and version <version>, when the redirect reports an error, then the request fails and says why

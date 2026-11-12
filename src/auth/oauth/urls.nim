@@ -147,10 +147,3 @@ func canonicalResource*(url: string): string {.raises: [OAuthError].} =
 func formEncode*(fields: openArray[(string, string)]): string {.raises: [].} =
   ## application/x-www-form-urlencoded with %20 for spaces.
   encodeQuery(fields, usePlus = false)
-
-proc formDecode*(query: string): seq[(string, string)] {.raises: [].} =
-  for (k, v) in decodeQuery(query):
-    result.add (k, v)
-
-proc queryOf*(url: string): seq[(string, string)] {.raises: [].} =
-  formDecode(parseUri(url).query)

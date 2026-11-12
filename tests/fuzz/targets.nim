@@ -117,8 +117,6 @@ proc challenges*(input: string): string {.raises: [CatchableError].} =
   ""
 
 proc urlsAndForms*(input: string): string {.raises: [CatchableError].} =
-  discard formDecode(input)
-  discard queryOf(input)
   discard originOf(input)
   discard isLoopbackHost(input)
   try:

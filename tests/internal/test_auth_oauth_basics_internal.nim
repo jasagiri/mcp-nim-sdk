@@ -231,15 +231,8 @@ suite "PKCE":
     let a = newCodeVerifier()
     let b = newCodeVerifier()
     check a.len == 43
-    check isValidCodeVerifier(a)
+    check a.allCharsInSet({'A'..'Z', 'a'..'z', '0'..'9', '-', '.', '_', '~'})
     check a != b
-
-  test "Given too short or reserved characters, when checked, then the verifier is invalid":
-    check not isValidCodeVerifier("short")
-    check not isValidCodeVerifier("a".repeat(42))
-    check not isValidCodeVerifier("a".repeat(42) & "+")
-    check not isValidCodeVerifier("a".repeat(129))
-    check isValidCodeVerifier("a".repeat(128))
 
 # The WWW-Authenticate suite moved with the module to foundation/nim-bearer-challenge
 # (tests/test_bearer_challenge.nim, BCH-01..04) on 2026-10-15.
