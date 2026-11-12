@@ -1,6 +1,52 @@
 # G2 変異検出: jsonschema ジョブ
 
-測定: `nim-muter`、ジョブ `tests/mutation/jsonschema.json`、本線の 7d32c165 (2026-10-07)。
+## 測り直し (拡張ブランチの b04fcb9c、2026-11-11)
+
+測定: `nim-muter` 0.2.15、ジョブ `tests/mutation/jsonschema.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。状態: 測定済み。
+
+| 全体 | killed | timeout | survived | runError | compileError |
+|---|---|---|---|---|---|
+| 484 | 439 | 8 | 18 | 0 | 19 |
+
+### 生き残りの仕分け
+
+公開の入口は `mcp` が export する `json_schema` (`validate`・`dialectOf` など)。`json_schema_regex` は `RegexLimits`・`DefaultRegexLimits`・`DefaultMaxRegexSteps` だけが外に出ていて、`compileRegex`・`isMatch` は入口から呼べない。
+
+| 指紋 | file:line | 変異 | class | 理由 | 仕様 ID / 足すテストの案 |
+|---|---|---|---|---|---|
+| `src/jsonschema/json_schema.nim:BLR:9a052b729f6de605:0` | json_schema.nim:94 | `($dialect).strip(leading = false, …)` → `leading = true` | equivalent | strip の相手は `SchemaDialect` の 2 つの文字列で、どちらも `http` で始まる。先頭側の `#` を削る指定を足しても何も削られない | - |
+| `src/jsonschema/json_schema.nim:ROR:08a9801389798256:0` | json_schema.nim:149 | `value.fnum >= 9.2e+18` → `>` | accepted | 差が出るのは keyword が丁度 9.2e18 のときの `high(int)` と `int(9.2e18)` だけ。どちらも長さ・件数より大きいので合否は同じで、変わるのは `minContains: 9.2e18` の違反の文面の数字だけ (違反は報告される)。失敗の文面は契約ではない (代表の決定 2026-10-23)。前の記録 (id 14) の「同値」は、この文面の差を見落としていた | - |
+| `src/jsonschema/json_schema.nim:SDL:c98c517123b9f8b4:0` | json_schema.nim:213 | `into.add 'd'` → `discard` | equivalent | 印を落としても数は `;` で終わり、値の位置で数字・`-`・`i`・`na` で始まるのは数だけ (文字列は `s`、鍵は値の位置に来ない。`n` の次に `a` が来る読み方は null には無い)。canonical の文字列は一意に復号でき、異なる値が同じ文字列にならない | - |
+| `src/jsonschema/json_schema.nim:SDL:38007c6819a940bc:0` | json_schema.nim:217 | `into.add 's'` → `discard` | equivalent | 文字列は `長さ:本体` で、値の位置で数字から始まるのは文字列だけ (数は `d` で始まる)。オブジェクトの中は鍵と値が交互で、長さが付いているので区切りも決まる。衝突を作れない | - |
+| `src/jsonschema/json_schema.nim:SDL:ccace1d2ed3ec0ac:0` | json_schema.nim:227 | `into.add '{'` → `discard` | equivalent | 値の位置で数字から始まるのは鍵を持つオブジェクトだけ (文字列は `s`、数は `d`)、`}` から始まるのは空のオブジェクトだけ。値は必ず 1 つ読むので、閉じの `}` と取り違えない。衝突を作れない | - |
+| `src/jsonschema/json_schema.nim:ROR:b8ff8895488b9022:0` | json_schema.nim:253 | `part.len <= 9` → `<` | spec_question | 差が出るのは、先頭が 0 でない丁度 9 桁の添字が配列の中を指すときだけで、schema に 10^8 個以上の要素の配列が要る (それ未満ならどちらも「points at nothing」)。当たる仕様 ID は無い。前の記録 (id 37) は「許容」だが、決めた人が書かれていない | 問い: 9 桁の添字の `$ref` を仕様にするか、前の記録どおり受け入れるか。推奨は受け入れる (10^8 要素の配列を E テストで作るのは見合わない) |
+| `src/jsonschema/json_schema.nim:ROR:bd53d7c28467c010:0` | json_schema.nim:280 | `v.regexBudget < 0` → `<=` | accepted | 残りが丁度 0 のとき、元は直後の `isMatch` の最初の `charge` が RegexLimitError を出し、`matches` が SchemaLimitError に包む。変異はここで SchemaLimitError を出す。`regexFor` の呼び手は `matches` だけなので必ず `isMatch` に進む。型は同じで文面だけが違う。失敗の文面は契約ではない (代表の決定 2026-10-23) | - |
+| `src/jsonschema/json_schema.nim:SDL:50a47ab2dfaec2b6:0` | json_schema.nim:281 | `overLimit("the patterns … too large to compile …")` → `discard` | accepted | 上と同じ道筋。残りが負のまま `isMatch` に進み、最初の `charge` で RegexLimitError、`matches` が SchemaLimitError に包む。断ることと型は保たれ、文面だけが変わる。失敗の文面は契約ではない (代表の決定 2026-10-23) | - |
+| `src/jsonschema/json_schema.nim:ROR:5eecccca34d7adb7:0` | json_schema.nim:328 | `abs(quotient - round(quotient)) > 1e-9 * max(1.0, abs(quotient))` → `>=` | spec_question | 外から見える: `{"multipleOf": 1}` に `1e-9` を入れると商の端数が許容差と丁度等しく、元は適合、変異は違反。許容差の大きさと境目を定める仕様 ID は無い (MCP-SCHEMA-6 は丸め誤差のある小数の倍数が適合することだけ)。前の記録 (id 48) は「許容」だが、決めた人が書かれていない | 問い: multipleOf の許容差 (相対 1e-9、境目は適合) を番号つきの規則にするか、実装の定数として受け入れるか。推奨は受け入れる。規則にするなら MCP-SCHEMA-6 に「`multipleOf: 1` に `1e-9` は適合、`1.1e-9` は違反」を足す |
+| `src/jsonschema/json_schema.nim:ROR:987684071949cfd3:0` | json_schema.nim:335 | `shortest >= 0` → `>` | equivalent | 差は `minLength: 0` のときだけ。長さは 0 未満にならないので、検査の塊を飛ばしても違反は増えも減りもしない (`maxLength` があれば `longest >= 0` で塊に入る) | - |
+| `src/jsonschema/json_schema.nim:ROR:58e94722fd0a2174:0` | json_schema.nim:337 | `shortest >= 0` → `>` | equivalent | `minLength: 0` のとき `length < 0` は成り立たない。検査してもしなくても同じ | - |
+| `src/jsonschema/json_schema.nim:ROR:e045c3c54d1e7eb2:0` | json_schema.nim:348 | `fewest >= 0` → `>` | equivalent | `minItems: 0` のとき `items.len < 0` は成り立たない | - |
+| `src/jsonschema/json_schema.nim:ROR:d341d2bfc0d0eea7:0` | json_schema.nim:404 | `fewest >= 0` → `>` | equivalent | `minProperties: 0` のとき `instance.len < 0` は成り立たない | - |
+| `src/jsonschema/json_schema_regex.nim:ROR:92236ae4b8a53aa9:0` | json_schema_regex.nim:110 | `c <= 0x0000007F` → `<` | accepted | 差は U+007F (DEL) を `'\x7F'` で返すか `'\x80'` で返すかだけ。`ascii`・`asciiAt` の使い先は構文の `case` と比較で、どれも DEL を名指さず `else` に落ちる (文字そのものは `peek` の値を使う)。唯一の差は `\x`・`\u` の桁に DEL があるときの「is not a hex number」の文面の 1 バイトで、どちらも RegexError。失敗の文面は契約ではない (代表の決定 2026-10-23) | - |
+| `src/jsonschema/json_schema_regex.nim:ROR:154e39761a844dde:0` | json_schema_regex.nim:118 | `lo > next` → `>=` | equivalent | `complement` に渡るのは `DigitSet`・`WordSet`・`SpaceSet` だけで、どれも 0 から始まらず、隣り合う範囲も無い。`lo == next` になる回が無い (なっても足されるのは `hi < lo` の空の範囲で、`inRanges` はどの文字も当てない) | - |
+| `src/jsonschema/json_schema_regex.nim:SDL:8e0c2eb4eedb68dc:0` | json_schema_regex.nim:475 | `pending.setLen 0` → `discard` | equivalent | `reach` が `pending` を空にせずに戻るのは `ikMatch` で true を返すときと例外のときだけ。呼び手 `matchesFrom` はどちらの呼び出しでも true ならすぐ戻って `pending` を捨てる。ほかの戻り方は `while pending.len > 0` が空にしている。先読みは自分の `matchesFrom` の `pending` を使う (前の記録 id 456 で残すと判断済み) | - |
+| `src/jsonschema/json_schema_regex.nim:BLR:559268148d6adf9d:0` | json_schema_regex.nim:529 | `else: false` → `true` | unreached | `live`・`next` に入るのは `reach` の `of ikChar, ikAny, ikSet: live.add pc` だけ。`consumed` の `else` に来る命令は無い。`case` の網羅のための枝 (前の記録 id 378 で残すと判断済み) | - |
+| `src/jsonschema/json_schema_regex.nim:SDL:fa0d1877a97157bc:0` | json_schema_regex.nim:551 | `re.isMatch(text, budget)` → `discard` | unreached | `isMatch(re, text, maxSteps)` は `src/` のどこからも呼ばれない (`json_schema.nim` の `matches` は `budget: var int` の版を使う)。`mcp` は `json_schema_regex` の `isMatch` を export しないので、入口から通せない | 公開を絞れば消える: 使われていないこの多重定義を消す (テストだけが使うなら内部テスト側で `var` の版を呼ぶ) |
+
+### 時間切れの 8 件
+
+| 指紋 | file:line | 変異 | 無限ループか |
+|---|---|---|---|
+| `src/jsonschema/json_schema.nim:SDL:a58c7d417bb43498:0` | json_schema.nim:550 | `inc v.checks` → `discard` | 上限を外す変異。maxChecks を確かめるテストの入力 (指数的に増える schema) が止まらなくなる。実質は終わらない |
+| `src/jsonschema/json_schema.nim:SDL:af7e1aabbabd6a3c:0` | json_schema.nim:554 | `overLimit(…maxChecks…)` → `discard` | 同上。上限を超えても続ける |
+| `src/jsonschema/json_schema_regex.nim:SDL:846ec37777f0e42c:6` | json_schema_regex.nim:199 | `inc p.pos` → `discard` | 無限ループ (`parseClass` の `while true` が同じ文字を読み続け、`ranges` が増え続ける) |
+| `src/jsonschema/json_schema_regex.nim:SDL:846ec37777f0e42c:10` | json_schema_regex.nim:217 | `inc p.pos` → `discard` | 無限ループ (`parseNumber` の `while` が同じ数字を読み続ける) |
+| `src/jsonschema/json_schema_regex.nim:SDL:846ec37777f0e42c:15` | json_schema_regex.nim:263 | `inc p.pos` → `discard` | 無限ループ (`parseSequence` が同じ文字の atom を足し続ける) |
+| `src/jsonschema/json_schema_regex.nim:SDL:4905fe92f2383f04:0` | json_schema_regex.nim:308 | `result.children.add p.parseQuantifier(p.parseAtom())` → `discard` | 無限ループ (位置が進まない) |
+| `src/jsonschema/json_schema_regex.nim:SDL:846ec37777f0e42c:18` | json_schema_regex.nim:316 | `inc p.pos` → `discard` | 無限ループ (`\|` の上で `parseAlternation` の `while` が回り続ける) |
+| `src/jsonschema/json_schema_regex.nim:SDL:c7f896b75934631c:0` | json_schema_regex.nim:533 | `inc i` → `discard` | **無限ループではない**。回るたびに `charge` が予算を減らすので、既定の 2 億手 (`DefaultMaxRegexSteps`、約 1 秒) を使い切って RegexLimitError で止まる。先頭で当たらない pattern のテストごとに約 1 秒かかる「遅いだけ」の変異で、待てば SchemaLimitError でテストが落ちるはず。2026-10-11 の記録でも 1 度は検出、1 度は時間切れだった |
+
+ `tests/mutation/jsonschema.json`、本線の 7d32c165 (2026-10-07)。
 2026-10-12 に `json_schema_regex.nim` と `json_schema.nim` を変えた。次の測定で測り直す。
 36a4c8a5 の測定ではこのジョブは 1 件も試せなかった (nim-muter の書き直しが `(inc p.pos; 8'i32)` をコンパイル不能にした。
 その 1 行を直して測り直した)。

@@ -1631,6 +1631,186 @@
       "reason": "同上"
     },
     {
+      "fingerprint": "src/jsonschema/json_schema.nim:BLR:9a052b729f6de605:0",
+      "file": "src/jsonschema/json_schema.nim",
+      "line": 94,
+      "mutator": "BLR",
+      "original": "false",
+      "replacement": "true",
+      "class": "equivalent",
+      "reason": "strip の相手は `SchemaDialect` の 2 つの文字列で、どちらも `http` で始まる。先頭側の `#` を削る指定を足しても何も削られない / -"
+    },
+    {
+      "fingerprint": "src/jsonschema/json_schema.nim:ROR:08a9801389798256:0",
+      "file": "src/jsonschema/json_schema.nim",
+      "line": 149,
+      "mutator": "ROR",
+      "original": "value.fnum >= 9.2e+18",
+      "replacement": "<>= -> >>",
+      "class": "accepted",
+      "reason": "差が出るのは keyword が丁度 9.2e18 のときの `high(int)` と `int(9.2e18)` だけ。どちらも長さ・件数より大きいので合否は同じで、変わるのは `minContains: 9.2e18` の違反の文面の数字だけ (違反は報告される)。失敗の文面は契約ではない (代表の決定 2026-10-23)。前の記録 (id 14) の「同値」は、この文面の差を見落としていた / -"
+    },
+    {
+      "fingerprint": "src/jsonschema/json_schema.nim:SDL:c98c517123b9f8b4:0",
+      "file": "src/jsonschema/json_schema.nim",
+      "line": 213,
+      "mutator": "SDL",
+      "original": "into.add 'd'",
+      "replacement": "discard",
+      "class": "equivalent",
+      "reason": "印を落としても数は `;` で終わり、値の位置で数字・`-`・`i`・`na` で始まるのは数だけ (文字列は `s`、鍵は値の位置に来ない。`n` の次に `a` が来る読み方は null には無い)。canonical の文字列は一意に復号でき、異なる値が同じ文字列にならない / -"
+    },
+    {
+      "fingerprint": "src/jsonschema/json_schema.nim:SDL:38007c6819a940bc:0",
+      "file": "src/jsonschema/json_schema.nim",
+      "line": 217,
+      "mutator": "SDL",
+      "original": "into.add 's'",
+      "replacement": "discard",
+      "class": "equivalent",
+      "reason": "文字列は `長さ:本体` で、値の位置で数字から始まるのは文字列だけ (数は `d` で始まる)。オブジェクトの中は鍵と値が交互で、長さが付いているので区切りも決まる。衝突を作れない / -"
+    },
+    {
+      "fingerprint": "src/jsonschema/json_schema.nim:SDL:ccace1d2ed3ec0ac:0",
+      "file": "src/jsonschema/json_schema.nim",
+      "line": 227,
+      "mutator": "SDL",
+      "original": "into.add '{'",
+      "replacement": "discard",
+      "class": "equivalent",
+      "reason": "値の位置で数字から始まるのは鍵を持つオブジェクトだけ (文字列は `s`、数は `d`)、`}` から始まるのは空のオブジェクトだけ。値は必ず 1 つ読むので、閉じの `}` と取り違えない。衝突を作れない / -"
+    },
+    {
+      "fingerprint": "src/jsonschema/json_schema.nim:ROR:b8ff8895488b9022:0",
+      "file": "src/jsonschema/json_schema.nim",
+      "line": 253,
+      "mutator": "ROR",
+      "original": "part.len <= 9",
+      "replacement": "<<= -> <>",
+      "class": "spec_question",
+      "reason": "差が出るのは、先頭が 0 でない丁度 9 桁の添字が配列の中を指すときだけで、schema に 10^8 個以上の要素の配列が要る (それ未満ならどちらも「points at nothing」)。当たる仕様 ID は無い。前の記録 (id 37) は「許容」だが、決めた人が書かれていない / 問い: 9 桁の添字の `$ref` を仕様にするか、前の記録どおり受け入れるか。推奨は受け入れる (10^8 要素の配列を E テストで作るのは見合わない)"
+    },
+    {
+      "fingerprint": "src/jsonschema/json_schema.nim:ROR:bd53d7c28467c010:0",
+      "file": "src/jsonschema/json_schema.nim",
+      "line": 280,
+      "mutator": "ROR",
+      "original": "v.regexBudget < 0",
+      "replacement": "<< -> <=>",
+      "class": "accepted",
+      "reason": "残りが丁度 0 のとき、元は直後の `isMatch` の最初の `charge` が RegexLimitError を出し、`matches` が SchemaLimitError に包む。変異はここで SchemaLimitError を出す。`regexFor` の呼び手は `matches` だけなので必ず `isMatch` に進む。型は同じで文面だけが違う。失敗の文面は契約ではない (代表の決定 2026-10-23) / -"
+    },
+    {
+      "fingerprint": "src/jsonschema/json_schema.nim:SDL:50a47ab2dfaec2b6:0",
+      "file": "src/jsonschema/json_schema.nim",
+      "line": 281,
+      "mutator": "SDL",
+      "original": "overLimit(\"the patterns of the schema are too large to compile within the limit\")",
+      "replacement": "discard",
+      "class": "accepted",
+      "reason": "上と同じ道筋。残りが負のまま `isMatch` に進み、最初の `charge` で RegexLimitError、`matches` が SchemaLimitError に包む。断ることと型は保たれ、文面だけが変わる。失敗の文面は契約ではない (代表の決定 2026-10-23) / -"
+    },
+    {
+      "fingerprint": "src/jsonschema/json_schema.nim:ROR:5eecccca34d7adb7:0",
+      "file": "src/jsonschema/json_schema.nim",
+      "line": 328,
+      "mutator": "ROR",
+      "original": "abs(quotient - round(quotient)) > 1e-9 * max(1.0, abs(quotient))",
+      "replacement": "<> -> >=>",
+      "class": "spec_question",
+      "reason": "外から見える: `{\"multipleOf\": 1}` に `1e-9` を入れると商の端数が許容差と丁度等しく、元は適合、変異は違反。許容差の大きさと境目を定める仕様 ID は無い (MCP-SCHEMA-6 は丸め誤差のある小数の倍数が適合することだけ)。前の記録 (id 48) は「許容」だが、決めた人が書かれていない / 問い: multipleOf の許容差 (相対 1e-9、境目は適合) を番号つきの規則にするか、実装の定数として受け入れるか。推奨は受け入れる。規則にするなら MCP-SCHEMA-6 に「`multipleOf: 1` に `1e-9` は適合、`1.1e-9` は違反」を足す"
+    },
+    {
+      "fingerprint": "src/jsonschema/json_schema.nim:ROR:987684071949cfd3:0",
+      "file": "src/jsonschema/json_schema.nim",
+      "line": 335,
+      "mutator": "ROR",
+      "original": "shortest >= 0",
+      "replacement": "<>= -> >>",
+      "class": "equivalent",
+      "reason": "差は `minLength: 0` のときだけ。長さは 0 未満にならないので、検査の塊を飛ばしても違反は増えも減りもしない (`maxLength` があれば `longest >= 0` で塊に入る) / -"
+    },
+    {
+      "fingerprint": "src/jsonschema/json_schema.nim:ROR:58e94722fd0a2174:0",
+      "file": "src/jsonschema/json_schema.nim",
+      "line": 337,
+      "mutator": "ROR",
+      "original": "shortest >= 0",
+      "replacement": "<>= -> >>",
+      "class": "equivalent",
+      "reason": "`minLength: 0` のとき `length < 0` は成り立たない。検査してもしなくても同じ / -"
+    },
+    {
+      "fingerprint": "src/jsonschema/json_schema.nim:ROR:e045c3c54d1e7eb2:0",
+      "file": "src/jsonschema/json_schema.nim",
+      "line": 348,
+      "mutator": "ROR",
+      "original": "fewest >= 0",
+      "replacement": "<>= -> >>",
+      "class": "equivalent",
+      "reason": "`minItems: 0` のとき `items.len < 0` は成り立たない / -"
+    },
+    {
+      "fingerprint": "src/jsonschema/json_schema.nim:ROR:d341d2bfc0d0eea7:0",
+      "file": "src/jsonschema/json_schema.nim",
+      "line": 404,
+      "mutator": "ROR",
+      "original": "fewest >= 0",
+      "replacement": "<>= -> >>",
+      "class": "equivalent",
+      "reason": "`minProperties: 0` のとき `instance.len < 0` は成り立たない / -"
+    },
+    {
+      "fingerprint": "src/jsonschema/json_schema_regex.nim:ROR:92236ae4b8a53aa9:0",
+      "file": "src/jsonschema/json_schema_regex.nim",
+      "line": 110,
+      "mutator": "ROR",
+      "original": "c <= 0x0000007F",
+      "replacement": "<<= -> <>",
+      "class": "accepted",
+      "reason": "差は U+007F (DEL) を `'\\x7F'` で返すか `'\\x80'` で返すかだけ。`ascii`・`asciiAt` の使い先は構文の `case` と比較で、どれも DEL を名指さず `else` に落ちる (文字そのものは `peek` の値を使う)。唯一の差は `\\x`・`\\u` の桁に DEL があるときの「is not a hex number」の文面の 1 バイトで、どちらも RegexError。失敗の文面は契約ではない (代表の決定 2026-10-23) / -"
+    },
+    {
+      "fingerprint": "src/jsonschema/json_schema_regex.nim:ROR:154e39761a844dde:0",
+      "file": "src/jsonschema/json_schema_regex.nim",
+      "line": 118,
+      "mutator": "ROR",
+      "original": "lo > next",
+      "replacement": "<> -> >=>",
+      "class": "equivalent",
+      "reason": "`complement` に渡るのは `DigitSet`・`WordSet`・`SpaceSet` だけで、どれも 0 から始まらず、隣り合う範囲も無い。`lo == next` になる回が無い (なっても足されるのは `hi < lo` の空の範囲で、`inRanges` はどの文字も当てない) / -"
+    },
+    {
+      "fingerprint": "src/jsonschema/json_schema_regex.nim:SDL:8e0c2eb4eedb68dc:0",
+      "file": "src/jsonschema/json_schema_regex.nim",
+      "line": 475,
+      "mutator": "SDL",
+      "original": "pending.setLen 0",
+      "replacement": "discard",
+      "class": "equivalent",
+      "reason": "`reach` が `pending` を空にせずに戻るのは `ikMatch` で true を返すときと例外のときだけ。呼び手 `matchesFrom` はどちらの呼び出しでも true ならすぐ戻って `pending` を捨てる。ほかの戻り方は `while pending.len > 0` が空にしている。先読みは自分の `matchesFrom` の `pending` を使う (前の記録 id 456 で残すと判断済み) / -"
+    },
+    {
+      "fingerprint": "src/jsonschema/json_schema_regex.nim:BLR:559268148d6adf9d:0",
+      "file": "src/jsonschema/json_schema_regex.nim",
+      "line": 529,
+      "mutator": "BLR",
+      "original": "false",
+      "replacement": "true",
+      "class": "unreached",
+      "reason": "`live`・`next` に入るのは `reach` の `of ikChar, ikAny, ikSet: live.add pc` だけ。`consumed` の `else` に来る命令は無い。`case` の網羅のための枝 (前の記録 id 378 で残すと判断済み) / -"
+    },
+    {
+      "fingerprint": "src/jsonschema/json_schema_regex.nim:SDL:fa0d1877a97157bc:0",
+      "file": "src/jsonschema/json_schema_regex.nim",
+      "line": 551,
+      "mutator": "SDL",
+      "original": "re.isMatch(text, budget)",
+      "replacement": "discard",
+      "class": "unreached",
+      "reason": "`isMatch(re, text, maxSteps)` は `src/` のどこからも呼ばれない (`json_schema.nim` の `matches` は `budget: var int` の版を使う)。`mcp` は `json_schema_regex` の `isMatch` を export しないので、入口から通せない / 公開を絞れば消える: 使われていないこの多重定義を消す (テストだけが使うなら内部テスト側で `var` の版を呼ぶ)"
+    },
+    {
       "fingerprint": "src/protocol/base64_shape.nim:BLR:9e1445f6b0165a86:0",
       "file": "src/protocol/base64_shape.nim",
       "line": 14,
