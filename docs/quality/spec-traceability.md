@@ -238,3 +238,14 @@ SHOULD の水準 (76 文)、MAY (29 文)、小文字 (8 文) は TSV にある (
 | stdio のサーバーが落ちたら再起動し、購読を張り直す | 2 | 対応しない方針 (自動の再起動は、落ち続ける相手で資源を食い潰し、不正な入力で落ちたプロセスを同じ入力で立ち上げ直す)。表への記載はこれから |
 
 このほか、ページをまたいで `cacheScope` が食い違わないこと (2026-07-28) は、行は `MCP-LIFECYCLE` の Scenario に結んであるが、SDK は確かめていない (サーバーは要求ごとに状態を持たない)。
+
+## 2026-11-14: 2026-11-11 から 11-14 に足した仕様 ID
+
+変異検査の対応で `specs/*.feature` に足された仕様 ID は 6 件 (`MCP-CONTENT-FIELDS-15`、`MCP-ERRORS-3`、`MCP-ERRORS-4`、`MCP-PROGRESS-11`、`MCP-RESOURCES-18`、`MCP-SEC-WIRE-24`)。これ以外に、既にある Scenario の文が変わったのは `MCP-LIFECYCLE-23` (「cacheable な結果」に限る) ほか、`And` の行が足されたもの。規格の文を読み直したのは次の 6 件だけで、`And` が足された既存の Scenario は読み直していない。
+
+- **結んだ**: `MCP-PROGRESS-11` (間隔のあとに、止められていた最後の値が届く)。`MCP-PROGRESS-10` と同じ「Both parties SHOULD implement rate limiting」の 5 行 (TSV の 126、461、881、1478、2348 行目) の仕様 ID に足した。判定は `partial` のまま。
+- **規格の文に結ばれない**: 規格に規範の文が無く、結んでいない。独自の仕様の候補であって、独自だと確かめたものではない (上の「読み方の注意」と同じ)。
+  - `MCP-ERRORS-3`、`MCP-ERRORS-4`: stderr に 1 行で書く。規格は診断の出し先を定めていない。
+  - `MCP-SEC-WIRE-24`: `security.feature` は規格ではなく SDK 自身の安全の要件である。
+  - `MCP-CONTENT-FIELDS-15` (プロンプトの結果の `messages` と `content`)、`MCP-RESOURCES-18` (`contents` の各要素はオブジェクト): 規格はスキーマの型で決めていて、規範の語を含む文が無い。
+- 上の件数 (469 / 556 件、199 件) は 2026-10-13 のままで、数え直していない。
