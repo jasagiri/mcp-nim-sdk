@@ -2441,6 +2441,16 @@
       "reason": "Option の既定値は none で、元の戻り値 none(JsonNode) と同じ値を返す"
     },
     {
+      "fingerprint": "src/protocol/log_level.nim:SDL:a664419c0a0c689c:0",
+      "file": "src/protocol/log_level.nim",
+      "line": 24,
+      "mutator": "SDL",
+      "original": "none(McpLogLevel)",
+      "replacement": "discard",
+      "class": "equivalent",
+      "reason": "`result` の既定値が `Option` の none で、末尾の式を消しても同じ値を返す。"
+    },
+    {
       "fingerprint": "src/protocol/modern.nim:SDL:ac1cdc5394dff63c:0",
       "file": "src/protocol/modern.nim",
       "line": 121,
@@ -3401,6 +3411,16 @@
       "reason": "差が出るのは `v == result.get` のときだけで、そのとき行うのは `result = some(v)`、つまり今と同じ値の代入。`supported` に同じ版が重なっていても返る値は変わらない。`result.isNone` のときは `or` の左で決まり、右は評価されない。 / なし (前の測定の id 9 と同じ判断。行は 83 から 96 に動いた)"
     },
     {
+      "fingerprint": "src/server/completion.nim:LOR:d6c43bcc123b2459:0",
+      "file": "src/server/completion.nim",
+      "line": 24,
+      "mutator": "LOR",
+      "original": "node.isNil or node.kind != JObject",
+      "replacement": "<or -> and>",
+      "class": "equivalent",
+      "reason": "`requiredString` は非公開で、呼び出し元 (`parseCompletionRequest` の `reference`・`argument`) は直前で nil でない JObject だと確かめてから渡す。どちらの式も常に偽。この検査自体が要らない (`node{key}` だけで足りる)。"
+    },
+    {
       "fingerprint": "src/server/elicit.nim:LOR:a8742f6ee65f2793:0",
       "file": "src/server/elicit.nim",
       "line": 20,
@@ -3419,6 +3439,56 @@
       "replacement": "<return default>",
       "class": "equivalent",
       "reason": "`default(Option[JsonNode])` は none。 / —"
+    },
+    {
+      "fingerprint": "src/server/pagination.nim:RVR:534e648d390a1b6f:0",
+      "file": "src/server/pagination.nim",
+      "line": 29,
+      "mutator": "RVR",
+      "original": "return none(int)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "`default(Option[int])` は none。`pageOf` は `isNone` で断るので同じ。"
+    },
+    {
+      "fingerprint": "src/server/pagination.nim:RVR:534e648d390a1b6f:1",
+      "file": "src/server/pagination.nim",
+      "line": 34,
+      "mutator": "RVR",
+      "original": "return none(int)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "同上。"
+    },
+    {
+      "fingerprint": "src/server/pagination.nim:RVR:534e648d390a1b6f:2",
+      "file": "src/server/pagination.nim",
+      "line": 36,
+      "mutator": "RVR",
+      "original": "return none(int)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "同上。"
+    },
+    {
+      "fingerprint": "src/server/pagination.nim:RVR:534e648d390a1b6f:3",
+      "file": "src/server/pagination.nim",
+      "line": 41,
+      "mutator": "RVR",
+      "original": "return none(int)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "同上。"
+    },
+    {
+      "fingerprint": "src/server/pagination.nim:RVR:534e648d390a1b6f:4",
+      "file": "src/server/pagination.nim",
+      "line": 43,
+      "mutator": "RVR",
+      "original": "return none(int)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "同上。"
     },
     {
       "fingerprint": "src/server/rate_limit.nim:ROR:0ca230dd385f2a04:0",
@@ -3569,6 +3639,646 @@
       "replacement": "<return default>",
       "class": "test_owed",
       "reason": "既定値の return で関数を抜け、`(nil, none)` の受け入れになる (期限・メソッド・パラメーター・主体の検査にも進まない)。署名は正しいが本体が `[1]` の状態で起きる。検出していたテストは内部側に移っている。 / MCP-MRTR-10。案 B。鍵で署名した base64url の `[1]` を `verifyRequestState` に渡す → `problem` が some。変異だと none。"
+    },
+    {
+      "fingerprint": "src/server/server.nim:SDL:a83049649b1ae0f4:0",
+      "file": "src/server/server.nim",
+      "line": 549,
+      "mutator": "SDL",
+      "original": "doAssert negotiated.isSome,; \"initialize reached a server that speaks no version with a handshake\"",
+      "replacement": "discard",
+      "class": "unreached",
+      "reason": "`negotiateLegacyVersion` が none を返すのは、サーバーが旧版を 1 つも話さないときだけ。そのサーバーでは `isModernPath` が真になり (`not server.speaksLegacy`)、`initialize` は `handleModernRequest` の先頭の検査が断るので `handleInitialize` に来ない。表明を偽にする入力を公開の入口から作れない"
+    },
+    {
+      "fingerprint": "src/server/server.nim:SDL:932eac12f9b57944:0",
+      "file": "src/server/server.nim",
+      "line": 580,
+      "mutator": "SDL",
+      "original": "stderr.writeLine(\"[mcp-server] initialized notification in state \" &; $session.state &; \" ignored\")",
+      "replacement": "discard",
+      "class": "accepted",
+      "reason": "失敗の文面は契約ではない (代表の決定 2026-10-23)。通知を無視することは保たれ (直後の `return`)、消えるのは stderr の診断の 1 行だけ。この行を定める仕様 ID は無く、プログラムも読まない"
+    },
+    {
+      "fingerprint": "src/server/server.nim:SDL:a0221c45aefc8214:0",
+      "file": "src/server/server.nim",
+      "line": 596,
+      "mutator": "SDL",
+      "original": "stderr.writeLine(\"[mcp-server] notifications/cancelled without a usable requestId ignored\")",
+      "replacement": "discard",
+      "class": "accepted",
+      "reason": "失敗の文面は契約ではない (代表の決定 2026-10-23)。不正な取り消しを無視することは保たれ (MCP-CANCEL-9 が確かめる)、消えるのは stderr の診断の 1 行だけ"
+    },
+    {
+      "fingerprint": "src/server/server.nim:ROR:99ececf14e11d202:0",
+      "file": "src/server/server.nim",
+      "line": 603,
+      "mutator": "ROR",
+      "original": "reason.len > 0",
+      "replacement": "<> -> >=>",
+      "class": "accepted",
+      "reason": "失敗の文面は契約ではない (代表の決定 2026-10-23)。理由の無い取り消しの診断の行の末尾に `: ` が付くだけ。MCP-CANCEL-8 が定めるのは理由つきの取り消しの行で、そちらは変わらない"
+    },
+    {
+      "fingerprint": "src/server/server.nim:RVR:55560fa5ef49175d:0",
+      "file": "src/server/server.nim",
+      "line": 691,
+      "mutator": "RVR",
+      "original": "return none(JsonRpcError)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "`default(Option[JsonRpcError])` は none。返る値が同じ"
+    },
+    {
+      "fingerprint": "src/server/server.nim:SDL:ac1cdc5394dff63c:0",
+      "file": "src/server/server.nim",
+      "line": 702,
+      "mutator": "SDL",
+      "original": "none(JsonRpcError)",
+      "replacement": "discard",
+      "class": "equivalent",
+      "reason": "手続きの最後の式。`discard` にすると `result` の既定値が返り、それは none"
+    },
+    {
+      "fingerprint": "src/server/server.nim:ROR:049ce7071c2450f3:0",
+      "file": "src/server/server.nim",
+      "line": 742,
+      "mutator": "ROR",
+      "original": "perSecond > 0",
+      "replacement": "<> -> >=>",
+      "class": "equivalent",
+      "reason": "違いが出るのは `maxProgressPerSecond == 0` のときだけ (0 で割る)。`progressIntervalMs` を呼ぶのは `progressWanted` と `scheduleProgressFlush` で、どちらも `reportProgress` の `perSecond > 0` (798 行) が真のときにしか呼ばれない。負の値は前後とも偽"
+    },
+    {
+      "fingerprint": "src/server/server.nim:LOR:df64d69160ddee26:0",
+      "file": "src/server/server.nim",
+      "line": 746,
+      "mutator": "LOR",
+      "original": "ctx.progressSentAt == default(MonoTime) or; (now - ctx.progressSentAt).inMilliseconds >= ctx.progressIntervalMs",
+      "replacement": "<or -> and>",
+      "class": "spec_question",
+      "reason": "最初の 1 通は前後とも送る (既定の時刻からの経過は巨大)。2 通目以降は、変異だと間隔が明けていても必ず抑えてタイマー (1 ms 後) か要求の終わりに送る。届く値と数は同じで、変わるのは「`reportProgress` が戻った時点で送り終えているか」と、ほかの通知との順序だけ。MCP-PROGRESS-10 はそこを言っていない / 問い 1 (下)。仕様にするなら: 上限 2/秒、1 を報告、600 ms 待って 2 を報告し、`reportProgress` が戻った直後に通信路が 2 を持つことを見る (変異だとまだ無い)"
+    },
+    {
+      "fingerprint": "src/server/server.nim:ROR:b614b41f99a310c4:0",
+      "file": "src/server/server.nim",
+      "line": 747,
+      "mutator": "ROR",
+      "original": "(now - ctx.progressSentAt).inMilliseconds >= ctx.progressIntervalMs",
+      "replacement": "<>= -> >>",
+      "class": "spec_question",
+      "reason": "上限が 1000 以下なら、違いは経過がちょうど間隔と同じ ms のときだけで、時計を差し替えられないので作れない。上限が 1000 を超えると間隔が 0 ms に丸まり、元は無制限に送り、変異は同じ ms の報告を抑える。1000 を超える上限の意味は、どの仕様 ID も言っていない / 問い 2 (下)"
+    },
+    {
+      "fingerprint": "src/server/server.nim:BLR:d2d47480390fbf49:0",
+      "file": "src/server/server.nim",
+      "line": 765,
+      "mutator": "BLR",
+      "original": "false",
+      "replacement": "true",
+      "class": "spec_question",
+      "reason": "変異だと、1 度タイマーが走った後は 2 度とタイマーを掛けない。抑えた値は次の報告か要求の終わりまで出ない。MCP-PROGRESS-10 が言う「最後の値は応答の前に届く」は 1631 行の `flushProgress` が満たすので、どのテストも落ちない。「ハンドラが走っている間に間隔が明けたら送る」は仕様 ID に無い / 問い 1。仕様にするなら: 上限 2/秒、1・2 を続けて報告、700 ms 待つ、3・4 を続けて報告、700 ms 待つ。ハンドラが戻る前に 4 が届いていること (変異だと届かない)"
+    },
+    {
+      "fingerprint": "src/server/server.nim:SDL:76a93fa5ca3cf1c2:0",
+      "file": "src/server/server.nim",
+      "line": 767,
+      "mutator": "SDL",
+      "original": "await ctx.flushProgress()",
+      "replacement": "discard",
+      "class": "spec_question",
+      "reason": "タイマーが何も送らなくなる。抑えた値は次の報告か要求の終わりに出る。765 行と同じく、間隔が明けた時点で送ることを言う仕様 ID が無い / 問い 1。仕様にするなら: 上限 2/秒、1・2 を続けて報告して 1.5 秒待つ。待っている間に 2 が届いていること"
+    },
+    {
+      "fingerprint": "src/server/server.nim:SDL:fc6dc7040ef9eae0:0",
+      "file": "src/server/server.nim",
+      "line": 769,
+      "mutator": "SDL",
+      "original": "stderr.writeLine(\"[mcp-server] could not send held progress: \" & $e.name & \": \" &; peerText(e.msg))",
+      "replacement": "discard",
+      "class": "accepted",
+      "reason": "失敗の文面は契約ではない (代表の決定 2026-10-23)。変わるのは stderr の 1 行だけで、応答も状態も変わらない。この行を定める仕様 ID は無い"
+    },
+    {
+      "fingerprint": "src/server/server.nim:BLR:d3d9dea44044874b:0",
+      "file": "src/server/server.nim",
+      "line": 775,
+      "mutator": "BLR",
+      "original": "true",
+      "replacement": "false",
+      "class": "spec_question",
+      "reason": "変異だと、抑えるたびにタイマーが増える。どのタイマーも「最後に送った時刻 + 間隔」を狙い、最初の 1 本が抑えた値を空にするので、残りは何もしない。違いが出るのは、2 本のタイマーの発火の間 (1 ms 未満) に新しい報告が挟まったときだけで、テストから作れない。タイマーの仕組みそのものが仕様かどうかに従う / 問い 1。タイマーを仕様にしても、この 1 件は時刻の競合でしか違いが出ないので、そのときは理由を書き直す"
+    },
+    {
+      "fingerprint": "src/server/server.nim:AOR:6c8a3b9884d8c722:0",
+      "file": "src/server/server.nim",
+      "line": 777,
+      "mutator": "AOR",
+      "original": "ctx.progressIntervalMs - sinceMs",
+      "replacement": "<- -> +>",
+      "class": "spec_question",
+      "reason": "タイマーが遅れる (最大で間隔の 2 倍)。届く値は同じで、変わるのは届く時刻だけ / 問い 1。仕様にするなら: 上限 2/秒、1 を報告、400 ms 待って 2 を報告、さらに 500 ms 後 (元は 100 ms 後に届く。変異は 900 ms 後) に 2 が届いていること"
+    },
+    {
+      "fingerprint": "src/server/server.nim:SDL:960dc7cba28a5fd4:0",
+      "file": "src/server/server.nim",
+      "line": 777,
+      "mutator": "SDL",
+      "original": "asyncCheck ctx.flushProgressLater(max(1, ctx.progressIntervalMs - sinceMs))",
+      "replacement": "discard",
+      "class": "spec_question",
+      "reason": "タイマーを掛けない (旗は立ったまま)。767 行と同じ / 問い 1。767 行と同じテスト"
+    },
+    {
+      "fingerprint": "src/server/server.nim:ROR:e470916accc3a50e:0",
+      "file": "src/server/server.nim",
+      "line": 798,
+      "mutator": "ROR",
+      "original": "perSecond > 0",
+      "replacement": "<> -> >=>",
+      "class": "equivalent",
+      "reason": "違いが出るのは 0 のときだけ。そのとき `progressWanted` が呼ばれるが、`progressIntervalMs` は 0 を返し (742 行)、経過 >= 0 は常に真なので抑えない。前後とも 10 通すべて送る"
+    },
+    {
+      "fingerprint": "src/server/server.nim:SDL:b67c640ef3e799a4:0",
+      "file": "src/server/server.nim",
+      "line": 803,
+      "mutator": "SDL",
+      "original": "ctx.scheduleProgressFlush()",
+      "replacement": "discard",
+      "class": "spec_question",
+      "reason": "タイマーを掛けない。767 行と同じ / 問い 1。767 行と同じテスト"
+    },
+    {
+      "fingerprint": "src/server/server.nim:SDL:1dfce068d3c256ff:0",
+      "file": "src/server/server.nim",
+      "line": 882,
+      "mutator": "SDL",
+      "original": "stderr.writeLine(\"[mcp-server] could not cancel timed out \" & methodName & \": \" &; peerText(e.msg))",
+      "replacement": "discard",
+      "class": "accepted",
+      "reason": "失敗の文面は契約ではない (代表の決定 2026-10-23)。時間切れは直後の `McpRequestTimeout` で呼び手に伝わる。消えるのは、取り消しの通知を送れなかったことの stderr の 1 行だけ"
+    },
+    {
+      "fingerprint": "src/server/server.nim:LOR:1ba5c18cfd67e07a:0",
+      "file": "src/server/server.nim",
+      "line": 939,
+      "mutator": "LOR",
+      "original": "version < mpv20251125 or params.isNil",
+      "replacement": "<or -> and>",
+      "class": "test_owed",
+      "reason": "2025-11-25 より前の版のクライアント (sampling.context という capability が無い) に thisServer を尋ねると、変異は断る。元は送る。既存のテストはどれも 2025-11-25 以降だけを回す / MCP-SAMPLING-TOOLS-16 (Scenario に「2025-11-25 より前の版には、宣言が無くても送る」の 1 行が要る)。案: sampling を宣言した 2025-06-18 のクライアントに `server.createMessage` で includeContext thisServer を尋ね、要求が 1 通送られること (変異だと失敗して何も送らない)"
+    },
+    {
+      "fingerprint": "src/server/server.nim:LOR:30db418c2ad7dda5:0",
+      "file": "src/server/server.nim",
+      "line": 939,
+      "mutator": "LOR",
+      "original": "version < mpv20251125 or params.isNil or params.kind != JObject",
+      "replacement": "<or -> and>",
+      "class": "test_owed",
+      "reason": "params が nil のとき、変異は nil の `kind` を読んで落ちる (SIGSEGV)。元は none を返し、次の `createMessageParamsProblems` が断る。nil でない params では前後で同じ / MCP-SAMPLING-TOOLS-9。案: 2025-11-25 以降のクライアントに `server.createMessage(session, nil)` を呼び、future が失敗で終わり、何も送られないこと (変異だとテストのプロセスが落ちる)"
+    },
+    {
+      "fingerprint": "src/server/server.nim:LOR:fedbc6ac5ee3bcb9:0",
+      "file": "src/server/server.nim",
+      "line": 939,
+      "mutator": "LOR",
+      "original": "version < mpv20251125 or params.isNil or params.kind != JObject or; capability.context",
+      "replacement": "<or -> and>",
+      "class": "test_owed",
+      "reason": "sampling.context を宣言したクライアントにも thisServer を断る / MCP-SAMPLING-TOOLS-16。既存の `tests/external/test_sampling_asks_fix.nim` の「Given a client that declared sampling.context, when the server asks with includeContext thisServer or allServers, then the request is sent」が検出するはず。testCommand に足す"
+    },
+    {
+      "fingerprint": "src/server/server.nim:ROR:215d7c788bb4b647:0",
+      "file": "src/server/server.nim",
+      "line": 939,
+      "mutator": "ROR",
+      "original": "params.kind != JObject",
+      "replacement": "<!= -> ==>",
+      "class": "test_owed",
+      "reason": "オブジェクトの params で常に none を返し、thisServer を断らない / MCP-SAMPLING-TOOLS-16。既存の `tests/external/test_sampling_asks_fix.nim` の同じテスト (… then it raises and sends nothing) が検出するはず。testCommand に足す"
+    },
+    {
+      "fingerprint": "src/server/server.nim:ROR:e21ca2205ff1179f:0",
+      "file": "src/server/server.nim",
+      "line": 939,
+      "mutator": "ROR",
+      "original": "version < mpv20251125",
+      "replacement": "<< -> <=>",
+      "class": "test_owed",
+      "reason": "2025-11-25 のクライアントが sampling.context を宣言していなくても、thisServer を断らずに送る / MCP-SAMPLING-TOOLS-16。既存の `tests/external/test_sampling_asks_fix.nim` の「Given a client that declared sampling without context, when the server asks with includeContext thisServer or allServers, then it raises and sends nothing」が検出するはず。testCommand に足す"
+    },
+    {
+      "fingerprint": "src/server/server.nim:RVR:0c511227513989c7:0",
+      "file": "src/server/server.nim",
+      "line": 940,
+      "mutator": "RVR",
+      "original": "return none(string)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "`default(Option[string])` は none。返る値が同じ"
+    },
+    {
+      "fingerprint": "src/server/server.nim:RVR:e76d06edc181a757:0",
+      "file": "src/server/server.nim",
+      "line": 942,
+      "mutator": "RVR",
+      "original": "return some(\"the client did not declare the sampling.context capability\")",
+      "replacement": "<return default>",
+      "class": "test_owed",
+      "reason": "none が返り、`createMessage` が断らずに送る。文面だけの変異ではない (断ること自体が消える) / MCP-SAMPLING-TOOLS-16。既存の `tests/external/test_sampling_asks_fix.nim` の「… then it raises and sends nothing」が検出するはず。testCommand に足す"
+    },
+    {
+      "fingerprint": "src/server/server.nim:SDL:2413a04126052c00:0",
+      "file": "src/server/server.nim",
+      "line": 943,
+      "mutator": "SDL",
+      "original": "none(string)",
+      "replacement": "discard",
+      "class": "equivalent",
+      "reason": "手続きの最後の式。`result` の既定値は none"
+    },
+    {
+      "fingerprint": "src/server/server.nim:SDL:a03926d31f0f6ba8:0",
+      "file": "src/server/server.nim",
+      "line": 962,
+      "mutator": "SDL",
+      "original": "raiseIfAny(\"sampling/createMessage\", samplingToolResultProblems(params))",
+      "replacement": "discard",
+      "class": "test_owed",
+      "reason": "outputSchema に合わない structuredContent を持つ tool_result を、断らずに送る / MCP-SAMPLING-TOOLS-17。既存の `tests/external/test_sampling_asks_fix.nim` の「Given a tool_result whose structuredContent breaks the outputSchema of its tool, when the server asks, then it is refused and nothing is sent」が検出するはず (`{\"temp\": \"hot\"}` はこの検査だけが断る)。testCommand に足す"
+    },
+    {
+      "fingerprint": "src/server/server.nim:LOR:da079c31597359f5:0",
+      "file": "src/server/server.nim",
+      "line": 1061,
+      "mutator": "LOR",
+      "original": "tools.isNil or tools.kind != JArray",
+      "replacement": "<or -> and>",
+      "class": "equivalent",
+      "reason": "呼び出し元は tools/list の 1341 行だけで、渡るのは `listPage` が作った応答。`listPage` は必ず `payload[\"tools\"] = newJArray()` を置くので、`tools` は nil でない配列。前後とも偽で、先へ進む。この早期 return (1058〜1062 行) は届かない防御で、消せばこの変異も無くなる"
+    },
+    {
+      "fingerprint": "src/server/server.nim:SDL:36bdbcdcc4bd7dce:0",
+      "file": "src/server/server.nim",
+      "line": 1067,
+      "mutator": "SDL",
+      "original": "stderr.writeLine(\"[mcp-server] not listing tool \\'\" & tool{\"name\"}.getStr() &; \"\\': \" &; declared.invalid.get)",
+      "replacement": "discard",
+      "class": "spec_question",
+      "reason": "一覧から外すことは保たれる (MCP-HTTP-11 が確かめる)。消えるのは、ハンドラの誤りを知らせる stderr の 1 行。docstring は「The handler's mistake is logged, not hidden」と言うが、仕様 ID が無い。クライアントには何も伝わらないので、この行が誤りの唯一の出口 / 問い 3 (下)。仕様にするなら: x-mcp-header が不正な tool を 1 つ返すサーバーに 2026-07-28 で tools/list を呼び、stderr に tool の名前を含む 1 行が出ること"
+    },
+    {
+      "fingerprint": "src/server/server.nim:SDL:8f8eca04c2e996e4:0",
+      "file": "src/server/server.nim",
+      "line": 1079,
+      "mutator": "SDL",
+      "original": "stderr.writeLine(\"[mcp-server] \" & peerText(methodName) & \": \" & why)",
+      "replacement": "discard",
+      "class": "spec_question",
+      "reason": "ハンドラの欠陥は、クライアントには「Internal error」とだけ返し、原因は stderr に書く。変異だと原因がどこにも残らない。行の文言ではなく、行があることの問い。同じ形の行を仕様にした例がある (MCP-TRANSPORT-3、MCP-SEC-HTTP-8) が、この行には仕様 ID が無い / 問い 3。仕様にするなら: blob が base64 でない resources/read の結果を返すハンドラを呼び、応答が -32603 で、stderr にメソッド名を含む 1 行が出ること"
+    },
+    {
+      "fingerprint": "src/server/server.nim:SDL:88577c9e13b7fdfc:0",
+      "file": "src/server/server.nim",
+      "line": 1083,
+      "mutator": "SDL",
+      "original": "logDefect(methodName, why)",
+      "replacement": "discard",
+      "class": "spec_question",
+      "reason": "1079 行と同じ。`handlerDefect` を通る 3 か所 (resources/read・tools/list・prompts/get) で原因が残らなくなる / 問い 3。1079 行と同じテスト"
+    },
+    {
+      "fingerprint": "src/server/server.nim:RVR:3ac2bd94b4efe6f7:0",
+      "file": "src/server/server.nim",
+      "line": 1111,
+      "mutator": "RVR",
+      "original": "return none(JsonNode)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "`default(Option[JsonNode])` は none。返る値が同じ"
+    },
+    {
+      "fingerprint": "src/server/server.nim:RVR:3ac2bd94b4efe6f7:1",
+      "file": "src/server/server.nim",
+      "line": 1119,
+      "mutator": "RVR",
+      "original": "return none(JsonNode)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "`default(Option[JsonNode])` は none。"
+    },
+    {
+      "fingerprint": "src/server/server.nim:SDL:d1c044ccecdaa480:0",
+      "file": "src/server/server.nim",
+      "line": 1121,
+      "mutator": "SDL",
+      "original": "stderr.writeLine(\"[mcp-server] \" & methodName & \" of this server has more than \" &; $MaxToolListPages &; \" pages; \\'\" &; name &; \"\\' was not found\")",
+      "replacement": "discard",
+      "class": "spec_question",
+      "reason": "問い A。行を消すと、止まらないカーソルを出すハンドラのツールが「一覧に無い」のと区別なく扱われ、原因がどこにも出ない。 / 仕様にするなら: 1001 ページ目もカーソルを返す `toolsList` に `tools/call` し、stderr にメソッド名とツール名が出ることを見る。"
+    },
+    {
+      "fingerprint": "src/server/server.nim:SDL:f85418f42f56ae88:0",
+      "file": "src/server/server.nim",
+      "line": 1123,
+      "mutator": "SDL",
+      "original": "none(JsonNode)",
+      "replacement": "discard",
+      "class": "equivalent",
+      "reason": "`result` の既定値が none。"
+    },
+    {
+      "fingerprint": "src/server/server.nim:RVR:0c511227513989c7:1",
+      "file": "src/server/server.nim",
+      "line": 1134,
+      "mutator": "RVR",
+      "original": "return none(string)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "`default(Option[string])` は none。"
+    },
+    {
+      "fingerprint": "src/server/server.nim:SDL:2413a04126052c00:1",
+      "file": "src/server/server.nim",
+      "line": 1139,
+      "mutator": "SDL",
+      "original": "none(string)",
+      "replacement": "discard",
+      "class": "equivalent",
+      "reason": "`result` の既定値が none。"
+    },
+    {
+      "fingerprint": "src/server/server.nim:RVR:55560fa5ef49175d:1",
+      "file": "src/server/server.nim",
+      "line": 1163,
+      "mutator": "RVR",
+      "original": "return none(JsonRpcError)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "`default(Option[JsonRpcError])` は none。"
+    },
+    {
+      "fingerprint": "src/server/server.nim:RVR:55560fa5ef49175d:2",
+      "file": "src/server/server.nim",
+      "line": 1166,
+      "mutator": "RVR",
+      "original": "return none(JsonRpcError)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "同上。"
+    },
+    {
+      "fingerprint": "src/server/server.nim:RVR:87aa8baa528c4cef:0",
+      "file": "src/server/server.nim",
+      "line": 1175,
+      "mutator": "RVR",
+      "original": "return \"\"",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "文字列のリテラルの置き換え先は `\"\"` で、元と同じ値。"
+    },
+    {
+      "fingerprint": "src/server/server.nim:SDL:54751f1833f11faf:0",
+      "file": "src/server/server.nim",
+      "line": 1179,
+      "mutator": "SDL",
+      "original": "stderr.writeLine(\"[mcp-server] tools/call: the inputSchema of tool \\'\" & name &; \"\\' cannot be checked: \" &; e.msg)",
+      "replacement": "discard",
+      "class": "spec_question",
+      "reason": "問い A。相手には \"Internal error\" だけが返り、どのツールのスキーマがなぜ使えないかはこの行にしか出ない。 / 仕様にするなら: inputSchema が使えないツールへの `tools/call` で、-32603 に加えて stderr にツール名が出ることを見る (tools の入力検査の Scenario に足す)。"
+    },
+    {
+      "fingerprint": "src/server/server.nim:ROR:7e4dba6fe46fb9ea:0",
+      "file": "src/server/server.nim",
+      "line": 1205,
+      "mutator": "ROR",
+      "original": "server.maxListenStreamsPerSession > 0",
+      "replacement": "<> -> >=>",
+      "class": "test_owed",
+      "reason": "上限 0 (制限なし) のとき、変異ではどの `subscriptions/listen` も \"Too many listen streams\" で断られる。既存のテストは名前に「0 means no limit」とあるが、既定値しか見ていない。 / MCP-SEC-SWEEP-7 (0: no limit)。`tests/external/test_security_subscription_limits.nim` に足す: `maxListenStreamsPerSession = 0` で 1 つの session が既定の 16 を超える (たとえば 17 本の) listen を開き、どれも断られず `subscriptionCount` が本数になる。"
+    },
+    {
+      "fingerprint": "src/server/server.nim:ROR:7dcb1e3bc7bd7f72:0",
+      "file": "src/server/server.nim",
+      "line": 1308,
+      "mutator": "ROR",
+      "original": "server.maxSubscriptionsPerSession > 0",
+      "replacement": "<> -> >=>",
+      "class": "test_owed",
+      "reason": "上限 0 のとき、変異では最初の `resources/subscribe` から \"Too many subscriptions\" になる。 / MCP-SEC-SWEEP-7 (0: no limit)。同じテストで `maxSubscriptionsPerSession = 0` とし、`resources/subscribe` がエラーにならないことを見る (1 件で足りる)。"
+    },
+    {
+      "fingerprint": "src/server/server.nim:SDL:4a51256852b1bc32:0",
+      "file": "src/server/server.nim",
+      "line": 1457,
+      "mutator": "SDL",
+      "original": "stderr.writeLine(\"[mcp-server] \" & peerText(request.`method`) & \": \" & why)",
+      "replacement": "discard",
+      "class": "spec_question",
+      "reason": "問い A。input_required を出せないハンドラの誤りは、相手には \"Internal error\" だけで、理由はこの行にしか出ない。 / 仕様にするなら: input_required を許さない版・メソッドで `McpInputRequired` を投げるハンドラを呼び、stderr にメソッド名と理由が出ることを見る。"
+    },
+    {
+      "fingerprint": "src/server/server.nim:ROR:eed3e77b3bbe9689:0",
+      "file": "src/server/server.nim",
+      "line": 1467,
+      "mutator": "ROR",
+      "original": "payloadProblems.len == 0",
+      "replacement": "<== -> !=>",
+      "class": "test_owed",
+      "reason": "変異では、形の正しい inputRequests の tool_result を outputSchema と照らさず、input_required を返してしまう。 / MCP-SAMPLING-TOOLS-17。既存の `tests/external/test_sampling_asks_fix.nim` の「Given a 2026-07-28 handler that asks with a tool_result that breaks the schema, when the request is served, then the answer is an error and not input_required」が検出するはず。testCommand に足す (新しいテストは要らない)。"
+    },
+    {
+      "fingerprint": "src/server/server.nim:ROR:2bc73289de46c34c:0",
+      "file": "src/server/server.nim",
+      "line": 1469,
+      "mutator": "ROR",
+      "original": "entry{\"method\"}.getStr() == SamplingMethod",
+      "replacement": "<== -> !=>",
+      "class": "test_owed",
+      "reason": "変異では sampling の項目だけが照合から外れる。 / MCP-SAMPLING-TOOLS-17。同上の既存のテスト。"
+    },
+    {
+      "fingerprint": "src/server/server.nim:SDL:4e20a99a93ab2350:0",
+      "file": "src/server/server.nim",
+      "line": 1471,
+      "mutator": "SDL",
+      "original": "payloadProblems.add \"inputRequests[\\\"\" & key & \"\\\"]: \" & problem",
+      "replacement": "discard",
+      "class": "test_owed",
+      "reason": "変異では見つけた問題を捨て、input_required を返す。 / MCP-SAMPLING-TOOLS-17。同上の既存のテスト。"
+    },
+    {
+      "fingerprint": "src/server/server.nim:RVR:9bd38dfae0fced9f:0",
+      "file": "src/server/server.nim",
+      "line": 1519,
+      "mutator": "RVR",
+      "original": "return none(JsonRpcResponse)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "`default(Option[JsonRpcResponse])` は none。"
+    },
+    {
+      "fingerprint": "src/server/server.nim:RVR:9bd38dfae0fced9f:1",
+      "file": "src/server/server.nim",
+      "line": 1525,
+      "mutator": "RVR",
+      "original": "return none(JsonRpcResponse)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "同上。"
+    },
+    {
+      "fingerprint": "src/server/server.nim:SDL:9167956a112233e6:1",
+      "file": "src/server/server.nim",
+      "line": 1536,
+      "mutator": "SDL",
+      "original": "none(JsonRpcResponse)",
+      "replacement": "discard",
+      "class": "equivalent",
+      "reason": "`result` の既定値が none。"
+    },
+    {
+      "fingerprint": "src/server/server.nim:SDL:d1b755fb0b7df450:0",
+      "file": "src/server/server.nim",
+      "line": 1581,
+      "mutator": "SDL",
+      "original": "logDefect(request.`method`, hintProblem.get)",
+      "replacement": "discard",
+      "class": "spec_question",
+      "reason": "問い A。使えない cache hint は相手には \"Internal error\" だけで、何が誤りかはこの行にしか出ない。1118 行までの `logDefect` の中の行 (1079・1083) と同じ扱いにそろえる。 / 仕様にするなら: 使えない cache hint を返すハンドラを 2026-07-28 で呼び、stderr にメソッド名と理由が出ることを見る。"
+    },
+    {
+      "fingerprint": "src/server/server.nim:RVR:9bd38dfae0fced9f:2",
+      "file": "src/server/server.nim",
+      "line": 1598,
+      "mutator": "RVR",
+      "original": "return none(JsonRpcResponse)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "`default(Option[JsonRpcResponse])` は none。"
+    },
+    {
+      "fingerprint": "src/server/server.nim:ROR:ac38735bd85e189f:0",
+      "file": "src/server/server.nim",
+      "line": 1602,
+      "mutator": "ROR",
+      "original": "request.peer.len > 0",
+      "replacement": "<> -> >=>",
+      "class": "accepted",
+      "reason": "送り手の鍵が `\"c:\"` から `\"a:\"` に変わるだけで、空でない peer の鍵 (`\"a:\" & peer`) とは重ならず、数え方も断り方も同じ。変わるのは最初の断りの stderr の語 (connection → address) だけ。失敗の文面は契約ではない (代表の決定 2026-10-23)。"
+    },
+    {
+      "fingerprint": "src/server/server.nim:RVR:9bd38dfae0fced9f:3",
+      "file": "src/server/server.nim",
+      "line": 1607,
+      "mutator": "RVR",
+      "original": "return none(JsonRpcResponse)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "`default(Option[JsonRpcResponse])` は none。"
+    },
+    {
+      "fingerprint": "src/server/server.nim:SDL:147247bc28948ef8:0",
+      "file": "src/server/server.nim",
+      "line": 1674,
+      "mutator": "SDL",
+      "original": "handling.addCallback(proc () =; if handling.failed:; stderr.writeLine(\"[mcp-server] cancelled \" & peerText(request.`method`) &; \" ended with \" &; peerText(handling.error.msg)))",
+      "replacement": "discard",
+      "class": "spec_question",
+      "reason": "問い A。取り消した後のハンドラの失敗は、応答を送らないので、この callback の行にしか出ない。callback はほかに何もしない。 / 仕様にするなら: 取り消しの後で例外を投げるハンドラを `processMessages` 経由で走らせ、stderr にハンドラのメッセージが出ることを見る。"
+    },
+    {
+      "fingerprint": "src/server/server.nim:SDL:4ce645a09adf342a:0",
+      "file": "src/server/server.nim",
+      "line": 1676,
+      "mutator": "SDL",
+      "original": "stderr.writeLine(\"[mcp-server] cancelled \" & peerText(request.`method`) &; \" ended with \" &; peerText(handling.error.msg))",
+      "replacement": "discard",
+      "class": "spec_question",
+      "reason": "問い A。上と同じ行。 / 上と同じテスト。"
+    },
+    {
+      "fingerprint": "src/server/server.nim:SDL:217b4855ba87df7f:0",
+      "file": "src/server/server.nim",
+      "line": 1678,
+      "mutator": "SDL",
+      "original": "stderr.writeLine(\"[mcp-server] \" & peerText(request.`method`) & \" \" &; peerText(request.id) &; \" cancelled; no response sent\")",
+      "replacement": "discard",
+      "class": "accepted",
+      "reason": "取り消しは保たれ (応答を送らず、通信路に `requestDropped` で伝える)、失敗を隠す行でもない (取り消しは相手か通信路が起こしたもので、原因はそちらにある)。消えるのは経過の診断だけ。失敗の文面は契約ではない (代表の決定 2026-10-23)。"
+    },
+    {
+      "fingerprint": "src/server/server.nim:SDL:018856cae0ec4679:0",
+      "file": "src/server/server.nim",
+      "line": 1684,
+      "mutator": "SDL",
+      "original": "stderr.writeLine(\"[mcp-server] \" & peerText(request.`method`) & \" failed with \" &; $e.name &; \": \" &; peerText(e.msg))",
+      "replacement": "discard",
+      "class": "spec_question",
+      "reason": "問い A。MCP-ERRORS-1 は相手に \"Internal error\" だけを伝えると決めており、例外の名前とメッセージはこの行にしか出ない。 / 仕様にするなら: 自前のメッセージで失敗するハンドラを `processMessages` 経由で呼び、相手への応答にそのメッセージが無く、stderr に在ることを見る (MCP-ERRORS-1 に足す)。"
+    },
+    {
+      "fingerprint": "src/server/server.nim:SDL:0eec084d1ec55604:0",
+      "file": "src/server/server.nim",
+      "line": 1691,
+      "mutator": "SDL",
+      "original": "server.inFlight.del(key)",
+      "replacement": "discard",
+      "class": "spec_question",
+      "reason": "問い B。残った項目は `finished` なので `cancelRequest` は偽を返し、同じ id の次の要求は上書きする。応答も取り消しも変わらず、変わるのは表の大きさ (要求の数だけ育つ) だけで、公開の入口から見えない。2026-10-07 の「残した」はリードの判断。 / 仕様にするなら: 処理中の要求の件数を返す入口を足し、応答の後に 0 に戻ることを見る。"
+    },
+    {
+      "fingerprint": "src/server/server.nim:SDL:393bb8d0d0b11c7e:0",
+      "file": "src/server/server.nim",
+      "line": 1732,
+      "mutator": "SDL",
+      "original": "server.failPending(none(string), e)",
+      "replacement": "discard",
+      "class": "equivalent",
+      "reason": "直前の `cancelSession` が `server.sessions` の全部の鍵について `failPending(some(session), …)` を呼ぶ。待ちを作る `request` は operational な session にしか作らず、session を表から消すのは `endSession` だけで、それも先に待ちを失敗させる。だからこの行に来たとき待ちは残っていない。この 1 行は消せる。"
+    },
+    {
+      "fingerprint": "src/server/server.nim:SDL:56d3852372d11e8a:0",
+      "file": "src/server/server.nim",
+      "line": 1736,
+      "mutator": "SDL",
+      "original": "stderr.writeLine(\"[mcp-server] transport loop ended with \" & $e.name & \": \" &; peerText(e.msg))",
+      "replacement": "discard",
+      "class": "accepted",
+      "reason": "失敗は `lastTransportError` に残り、待っている要求にも同じ例外で伝わる (MCP-SERVERREQ-6)。消えるのは重ねて書く診断だけ。失敗の文面は契約ではない (代表の決定 2026-10-23)。"
+    },
+    {
+      "fingerprint": "src/server/server.nim:SDL:f3ee4f544648e438:0",
+      "file": "src/server/server.nim",
+      "line": 1774,
+      "mutator": "SDL",
+      "original": "stderr.writeLine(\"[mcp-server] could not send \" & methodName & \" to session \\'\" &; peerText(id) &; \"\\': \" &; peerText(e.msg))",
+      "replacement": "discard",
+      "class": "accepted",
+      "reason": "最初の失敗は全部を試した後に呼び手へ raise される。消えるのは重ねて書く診断だけ。失敗の文面は契約ではない (代表の決定 2026-10-23)。"
+    },
+    {
+      "fingerprint": "src/server/server.nim:SDL:e0eb1207a5ec6a6b:0",
+      "file": "src/server/server.nim",
+      "line": 1794,
+      "mutator": "SDL",
+      "original": "stderr.writeLine(\"[mcp-server] could not send \" & methodName &; \" to subscription \\'\" &; peerText(subscription.requestId) &; \"\\': \" &; peerText(e.msg))",
+      "replacement": "discard",
+      "class": "accepted",
+      "reason": "同上 (最初の失敗は呼び手へ raise される)。失敗の文面は契約ではない (代表の決定 2026-10-23)。"
+    },
+    {
+      "fingerprint": "src/server/server.nim:SDL:c148c02d2dfcb737:0",
+      "file": "src/server/server.nim",
+      "line": 1904,
+      "mutator": "SDL",
+      "original": "stderr.writeLine(\"[mcp-server] could not cancel subscription \\'\" &; peerText(subscription.requestId) &; \"\\': \" &; peerText(e.msg))",
+      "replacement": "discard",
+      "class": "spec_question",
+      "reason": "問い A。stdio で `notifications/cancelled` を送れなかった失敗は捕まえて続けるので、この行を消すと黙って消える。 / 仕様にするなら: 通知の送信が失敗する stdio の通信路で `endSubscriptions` を呼び、listen は結果で終わり、stderr に失敗が出ることを見る。"
     },
     {
       "fingerprint": "src/server/tasks.nim:RVR:3ac2bd94b4efe6f7:0",

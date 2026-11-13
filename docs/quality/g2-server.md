@@ -1,5 +1,134 @@
 # G2 変異検出: server ジョブ
 
+## 測り直し (拡張ブランチの b04fcb9c、2026-11-11)
+
+測定: nim-muter 0.2.15、全 517 変異。killed 414、survived 71、timeout 3、compileError 29。
+生き残りは 2 人で分担して仕分けた (server.nim の 1119 行より前と、それ以降およびほかのファイル)。
+
+### server.nim の 1118 行までの生き残り
+
+状態: 測定済み。32 件を仕分けた (test_owed 7、spec_question 11、equivalent 8、unreached 1、accepted 5、undecided 0)。行番号は測定時 (b04fcb9c) のもの。変異を当てて走らせてはいない (式と呼び出し元を読んだ)。
+
+| 指紋 | 場所 | 変異 | class | 理由 | 仕様 ID / 足すテストの案 |
+|---|---|---|---|---|---|
+| `src/server/server.nim:SDL:a83049649b1ae0f4:0` | server.nim:549 | `doAssert negotiated.isSome, …` → `discard` | unreached | `negotiateLegacyVersion` が none を返すのは、サーバーが旧版を 1 つも話さないときだけ。そのサーバーでは `isModernPath` が真になり (`not server.speaksLegacy`)、`initialize` は `handleModernRequest` の先頭の検査が断るので `handleInitialize` に来ない。表明を偽にする入力を公開の入口から作れない | |
+| `src/server/server.nim:SDL:932eac12f9b57944:0` | server.nim:580 | `stderr.writeLine("… initialized notification in state … ignored")` → `discard` | accepted | 失敗の文面は契約ではない (代表の決定 2026-10-23)。通知を無視することは保たれ (直後の `return`)、消えるのは stderr の診断の 1 行だけ。この行を定める仕様 ID は無く、プログラムも読まない | |
+| `src/server/server.nim:SDL:a0221c45aefc8214:0` | server.nim:596 | `stderr.writeLine("… notifications/cancelled without a usable requestId ignored")` → `discard` | accepted | 失敗の文面は契約ではない (代表の決定 2026-10-23)。不正な取り消しを無視することは保たれ (MCP-CANCEL-9 が確かめる)、消えるのは stderr の診断の 1 行だけ | |
+| `src/server/server.nim:ROR:99ececf14e11d202:0` | server.nim:603 | `reason.len > 0` → `>=` | accepted | 失敗の文面は契約ではない (代表の決定 2026-10-23)。理由の無い取り消しの診断の行の末尾に `: ` が付くだけ。MCP-CANCEL-8 が定めるのは理由つきの取り消しの行で、そちらは変わらない | |
+| `src/server/server.nim:RVR:55560fa5ef49175d:0` | server.nim:691 | `return none(JsonRpcError)` → `<return default>` | equivalent | `default(Option[JsonRpcError])` は none。返る値が同じ | |
+| `src/server/server.nim:SDL:ac1cdc5394dff63c:0` | server.nim:702 | 末尾の `none(JsonRpcError)` → `discard` | equivalent | 手続きの最後の式。`discard` にすると `result` の既定値が返り、それは none | |
+| `src/server/server.nim:ROR:049ce7071c2450f3:0` | server.nim:742 | `perSecond > 0` → `>=` | equivalent | 違いが出るのは `maxProgressPerSecond == 0` のときだけ (0 で割る)。`progressIntervalMs` を呼ぶのは `progressWanted` と `scheduleProgressFlush` で、どちらも `reportProgress` の `perSecond > 0` (798 行) が真のときにしか呼ばれない。負の値は前後とも偽 | |
+| `src/server/server.nim:LOR:df64d69160ddee26:0` | server.nim:746 | `progressSentAt == default(MonoTime) or elapsed >= interval` → `and` | spec_question | 最初の 1 通は前後とも送る (既定の時刻からの経過は巨大)。2 通目以降は、変異だと間隔が明けていても必ず抑えてタイマー (1 ms 後) か要求の終わりに送る。届く値と数は同じで、変わるのは「`reportProgress` が戻った時点で送り終えているか」と、ほかの通知との順序だけ。MCP-PROGRESS-10 はそこを言っていない | 問い 1 (下)。仕様にするなら: 上限 2/秒、1 を報告、600 ms 待って 2 を報告し、`reportProgress` が戻った直後に通信路が 2 を持つことを見る (変異だとまだ無い) |
+| `src/server/server.nim:ROR:b614b41f99a310c4:0` | server.nim:747 | `elapsed >= interval` → `>` | spec_question | 上限が 1000 以下なら、違いは経過がちょうど間隔と同じ ms のときだけで、時計を差し替えられないので作れない。上限が 1000 を超えると間隔が 0 ms に丸まり、元は無制限に送り、変異は同じ ms の報告を抑える。1000 を超える上限の意味は、どの仕様 ID も言っていない | 問い 2 (下) |
+| `src/server/server.nim:BLR:d2d47480390fbf49:0` | server.nim:765 | `ctx.progressFlushScheduled = false` → `true` | spec_question | 変異だと、1 度タイマーが走った後は 2 度とタイマーを掛けない。抑えた値は次の報告か要求の終わりまで出ない。MCP-PROGRESS-10 が言う「最後の値は応答の前に届く」は 1631 行の `flushProgress` が満たすので、どのテストも落ちない。「ハンドラが走っている間に間隔が明けたら送る」は仕様 ID に無い | 問い 1。仕様にするなら: 上限 2/秒、1・2 を続けて報告、700 ms 待つ、3・4 を続けて報告、700 ms 待つ。ハンドラが戻る前に 4 が届いていること (変異だと届かない) |
+| `src/server/server.nim:SDL:76a93fa5ca3cf1c2:0` | server.nim:767 | `await ctx.flushProgress()` → `discard` | spec_question | タイマーが何も送らなくなる。抑えた値は次の報告か要求の終わりに出る。765 行と同じく、間隔が明けた時点で送ることを言う仕様 ID が無い | 問い 1。仕様にするなら: 上限 2/秒、1・2 を続けて報告して 1.5 秒待つ。待っている間に 2 が届いていること |
+| `src/server/server.nim:SDL:fc6dc7040ef9eae0:0` | server.nim:769 | `stderr.writeLine("… could not send held progress: …")` → `discard` | accepted | 失敗の文面は契約ではない (代表の決定 2026-10-23)。変わるのは stderr の 1 行だけで、応答も状態も変わらない。この行を定める仕様 ID は無い | |
+| `src/server/server.nim:BLR:d3d9dea44044874b:0` | server.nim:775 | `ctx.progressFlushScheduled = true` → `false` | spec_question | 変異だと、抑えるたびにタイマーが増える。どのタイマーも「最後に送った時刻 + 間隔」を狙い、最初の 1 本が抑えた値を空にするので、残りは何もしない。違いが出るのは、2 本のタイマーの発火の間 (1 ms 未満) に新しい報告が挟まったときだけで、テストから作れない。タイマーの仕組みそのものが仕様かどうかに従う | 問い 1。タイマーを仕様にしても、この 1 件は時刻の競合でしか違いが出ないので、そのときは理由を書き直す |
+| `src/server/server.nim:SDL:960dc7cba28a5fd4:0` | server.nim:777 | `asyncCheck ctx.flushProgressLater(…)` → `discard` | spec_question | タイマーを掛けない (旗は立ったまま)。767 行と同じ | 問い 1。767 行と同じテスト |
+| `src/server/server.nim:AOR:6c8a3b9884d8c722:0` | server.nim:777 | `ctx.progressIntervalMs - sinceMs` → `+` | spec_question | タイマーが遅れる (最大で間隔の 2 倍)。届く値は同じで、変わるのは届く時刻だけ | 問い 1。仕様にするなら: 上限 2/秒、1 を報告、400 ms 待って 2 を報告、さらに 500 ms 後 (元は 100 ms 後に届く。変異は 900 ms 後) に 2 が届いていること |
+| `src/server/server.nim:ROR:e470916accc3a50e:0` | server.nim:798 | `perSecond > 0` → `>=` | equivalent | 違いが出るのは 0 のときだけ。そのとき `progressWanted` が呼ばれるが、`progressIntervalMs` は 0 を返し (742 行)、経過 >= 0 は常に真なので抑えない。前後とも 10 通すべて送る | |
+| `src/server/server.nim:SDL:b67c640ef3e799a4:0` | server.nim:803 | `ctx.scheduleProgressFlush()` → `discard` | spec_question | タイマーを掛けない。767 行と同じ | 問い 1。767 行と同じテスト |
+| `src/server/server.nim:SDL:1dfce068d3c256ff:0` | server.nim:882 | `stderr.writeLine("… could not cancel timed out …")` → `discard` | accepted | 失敗の文面は契約ではない (代表の決定 2026-10-23)。時間切れは直後の `McpRequestTimeout` で呼び手に伝わる。消えるのは、取り消しの通知を送れなかったことの stderr の 1 行だけ | |
+| `src/server/server.nim:ROR:e21ca2205ff1179f:0` | server.nim:939 | `version < mpv20251125` → `<=` | test_owed | 2025-11-25 のクライアントが sampling.context を宣言していなくても、thisServer を断らずに送る | MCP-SAMPLING-TOOLS-16。既存の `tests/external/test_sampling_asks_fix.nim` の「Given a client that declared sampling without context, when the server asks with includeContext thisServer or allServers, then it raises and sends nothing」が検出するはず。testCommand に足す |
+| `src/server/server.nim:LOR:1ba5c18cfd67e07a:0` | server.nim:939 | `version < mpv20251125 or params.isNil` → `and` | test_owed | 2025-11-25 より前の版のクライアント (sampling.context という capability が無い) に thisServer を尋ねると、変異は断る。元は送る。既存のテストはどれも 2025-11-25 以降だけを回す | MCP-SAMPLING-TOOLS-16 (Scenario に「2025-11-25 より前の版には、宣言が無くても送る」の 1 行が要る)。案: sampling を宣言した 2025-06-18 のクライアントに `server.createMessage` で includeContext thisServer を尋ね、要求が 1 通送られること (変異だと失敗して何も送らない) |
+| `src/server/server.nim:LOR:30db418c2ad7dda5:0` | server.nim:939 | `… or params.isNil or params.kind != JObject` → `and` | test_owed | params が nil のとき、変異は nil の `kind` を読んで落ちる (SIGSEGV)。元は none を返し、次の `createMessageParamsProblems` が断る。nil でない params では前後で同じ | MCP-SAMPLING-TOOLS-9。案: 2025-11-25 以降のクライアントに `server.createMessage(session, nil)` を呼び、future が失敗で終わり、何も送られないこと (変異だとテストのプロセスが落ちる) |
+| `src/server/server.nim:ROR:215d7c788bb4b647:0` | server.nim:939 | `params.kind != JObject` → `==` | test_owed | オブジェクトの params で常に none を返し、thisServer を断らない | MCP-SAMPLING-TOOLS-16。既存の `tests/external/test_sampling_asks_fix.nim` の同じテスト (… then it raises and sends nothing) が検出するはず。testCommand に足す |
+| `src/server/server.nim:LOR:fedbc6ac5ee3bcb9:0` | server.nim:939 | `… or params.kind != JObject or capability.context` → `and` | test_owed | sampling.context を宣言したクライアントにも thisServer を断る | MCP-SAMPLING-TOOLS-16。既存の `tests/external/test_sampling_asks_fix.nim` の「Given a client that declared sampling.context, when the server asks with includeContext thisServer or allServers, then the request is sent」が検出するはず。testCommand に足す |
+| `src/server/server.nim:RVR:0c511227513989c7:0` | server.nim:940 | `return none(string)` → `<return default>` | equivalent | `default(Option[string])` は none。返る値が同じ | |
+| `src/server/server.nim:RVR:e76d06edc181a757:0` | server.nim:942 | `return some("the client did not declare the sampling.context capability")` → `<return default>` | test_owed | none が返り、`createMessage` が断らずに送る。文面だけの変異ではない (断ること自体が消える) | MCP-SAMPLING-TOOLS-16。既存の `tests/external/test_sampling_asks_fix.nim` の「… then it raises and sends nothing」が検出するはず。testCommand に足す |
+| `src/server/server.nim:SDL:2413a04126052c00:0` | server.nim:943 | 末尾の `none(string)` → `discard` | equivalent | 手続きの最後の式。`result` の既定値は none | |
+| `src/server/server.nim:SDL:a03926d31f0f6ba8:0` | server.nim:962 | `raiseIfAny("sampling/createMessage", samplingToolResultProblems(params))` → `discard` | test_owed | outputSchema に合わない structuredContent を持つ tool_result を、断らずに送る | MCP-SAMPLING-TOOLS-17。既存の `tests/external/test_sampling_asks_fix.nim` の「Given a tool_result whose structuredContent breaks the outputSchema of its tool, when the server asks, then it is refused and nothing is sent」が検出するはず (`{"temp": "hot"}` はこの検査だけが断る)。testCommand に足す |
+| `src/server/server.nim:LOR:da079c31597359f5:0` | server.nim:1061 | `tools.isNil or tools.kind != JArray` → `and` | equivalent | 呼び出し元は tools/list の 1341 行だけで、渡るのは `listPage` が作った応答。`listPage` は必ず `payload["tools"] = newJArray()` を置くので、`tools` は nil でない配列。前後とも偽で、先へ進む。この早期 return (1058〜1062 行) は届かない防御で、消せばこの変異も無くなる | |
+| `src/server/server.nim:SDL:36bdbcdcc4bd7dce:0` | server.nim:1067 | `stderr.writeLine("… not listing tool '…': …")` → `discard` | spec_question | 一覧から外すことは保たれる (MCP-HTTP-11 が確かめる)。消えるのは、ハンドラの誤りを知らせる stderr の 1 行。docstring は「The handler's mistake is logged, not hidden」と言うが、仕様 ID が無い。クライアントには何も伝わらないので、この行が誤りの唯一の出口 | 問い 3 (下)。仕様にするなら: x-mcp-header が不正な tool を 1 つ返すサーバーに 2026-07-28 で tools/list を呼び、stderr に tool の名前を含む 1 行が出ること |
+| `src/server/server.nim:SDL:8f8eca04c2e996e4:0` | server.nim:1079 | `stderr.writeLine("[mcp-server] " & peerText(methodName) & ": " & why)` → `discard` (`logDefect` の本体) | spec_question | ハンドラの欠陥は、クライアントには「Internal error」とだけ返し、原因は stderr に書く。変異だと原因がどこにも残らない。行の文言ではなく、行があることの問い。同じ形の行を仕様にした例がある (MCP-TRANSPORT-3、MCP-SEC-HTTP-8) が、この行には仕様 ID が無い | 問い 3。仕様にするなら: blob が base64 でない resources/read の結果を返すハンドラを呼び、応答が -32603 で、stderr にメソッド名を含む 1 行が出ること |
+| `src/server/server.nim:SDL:88577c9e13b7fdfc:0` | server.nim:1083 | `logDefect(methodName, why)` → `discard` (`handlerDefect`) | spec_question | 1079 行と同じ。`handlerDefect` を通る 3 か所 (resources/read・tools/list・prompts/get) で原因が残らなくなる | 問い 3。1079 行と同じテスト |
+| `src/server/server.nim:RVR:3ac2bd94b4efe6f7:0` | server.nim:1111 | `return none(JsonNode)` → `<return default>` | equivalent | `default(Option[JsonNode])` は none。返る値が同じ | |
+
+代表への問い:
+
+- 問い 1 (746・765・767・775・777 の 2 件・803 行、計 7 件): 抑えた進捗を、ハンドラがまだ走っている間に、間隔が明けた時点で送ること (タイマー) を仕様にするか。
+  - 案 A (推奨): 仕様にする。MCP-PROGRESS-10 に足すか MCP-PROGRESS-11 を作り、「抑えた値は、次の報告が無くても間隔が明けたら届く」「間隔が明けた後の報告は、その場で送る」を書いて、表の案のテストを足す。理由: まとめて報告した後に長く黙って働くハンドラでは、タイマーが無いとクライアントが古い進捗を応答まで見続ける。
+  - 案 B: 仕様にしない。`flushProgressLater`・`scheduleProgressFlush`・`progressFlushScheduled` を消し、抑えた値は次の報告か要求の終わりに送るだけにする。7 件は無くなる。
+- 問い 2 (747 行): `maxProgressPerSecond` が 1000 を超えるとき、どう振る舞うか。今は `1000 div perSecond` が 0 になり、制限が掛からない (欠陥の疑い)。
+  - 案 A (推奨): 間隔を 1 ms 以上にする (1000 を超える上限は 1000 と同じ) と決め、MCP-PROGRESS-10 に書く。境界 (ちょうど同じ ms) の違いは時計を差し替えられないので残り、そのときに理由を書く。
+  - 案 B: 「1000 を超える値は制限なし」を仕様にし、上限 2000 で 10 通すべて届くテストを足す (変異は同じ ms の報告を抑えるので落ちる)。
+- 問い 3 (1067・1079・1083 行): ハンドラの誤りでサーバーが内部エラーを返す・tool を一覧から外すとき、原因を stderr に 1 行書くことを仕様にするか。
+  - 案 A (推奨): 仕様にする (MCP-SEC-HTTP-8 と同じ形: 相手には内部の詳細を渡さず、こちら側に 1 行残す)。文言は確かめず、行があることとメソッド名・tool の名前を含むことだけを確かめる。理由: クライアントには原因が伝わらないので、この行が消えるとハンドラを書いた人が原因を知る手段が無い。
+  - 案 B: 「失敗の文面は契約ではない (代表の決定 2026-10-23)」に含めて accepted にする。行の有無まで文面とみなすことになる。
+
+timeout の 3 件 (どれも「ただ遅い」ではなく、来ない合図を待ち続けて止まる。無限ループではない):
+
+- `src/server/server.nim:SDL:c54b6bb249cbda80:0` (server.nim:1216、`server.subscriptions.add subscription` → `discard`): 購読が表に載らないので、通知の配信も `endSubscriptions` もこの購読を見つけない。listen の応答が返らず、それを待つテストが終わらない。
+- `src/server/server.nim:SDL:cba6c56101be01b8:0` (server.nim:1221、`subscription.closed.completesWith(ended)` → `discard`): 購読を終えても `ended` が完了せず、`await ended` が戻らない。listen の応答を待つテストが終わらない。
+- `src/server/server.nim:SDL:9963156d79866778:0` (server.nim:1906、`subscription.closed.complete()` → `discard`): 同じく `ended` が完了しない。サーバーが購読を終えた後の listen の応答を待つテストが終わらない。
+
+### server.nim の 1119 行以降と pagination.nim・completion.nim・log_level.nim の生き残り
+
+状態: 測定済み。39 件 (server.nim 32、pagination.nim 5、completion.nim 1、log_level.nim 1)。
+equivalent 20、test_owed 5、spec_question 9、accepted 5、unreached 0、undecided 0。行番号は測定時 (b04fcb9c) のもの。
+
+spec_question は 2 つの問いにまとまる。
+
+- 問い A (8 件、表の「問い A」): 失敗の原因が stderr の 1 行にしか出ない箇所 (相手には "Internal error" だけを返す、または失敗を捕まえて続ける) で、
+  その行が在ることを仕様にするか。選択肢: (1) 仕様にする。MCP-ERRORS-1 の「a handler that fails ... is told to the peer as "Internal error"」に
+  「原因は stderr の 1 行に出る」を足すか、MCP-TRANSPORT-3・MCP-SEC-HTTP-9 と同じ形の Scenario を 1 つ足し、E テストは SDK の文言ではなく
+  ハンドラ自身のメッセージ・ツール名が stderr に出ることを見る。(2) 「失敗の文面は契約ではない (代表の決定 2026-10-23)」に含めて accepted とする。
+  推奨は (1): 行を消すと失敗が黙って消え、「エラーを握り潰さない」の規則を守っているのがこの行だけだから。行の文言は (2) のまま契約にしない。
+  2026-10-07 の「分類 6 許容」はリードの判断で、代表の決定の記録が無いので根拠にしていない。
+- 問い B (1 件): 終わった要求を処理中の表から消すこと (消さないと表が要求の数だけ育つ) を仕様にするか。選択肢: (1) 外から見える数
+  (`sessionCount`・`subscriptionCount` と同じ形の件数) を足して仕様と E テストにする。(2) 外から見えない資源の後始末として equivalent とする。
+  推奨は (2)。応答も取り消しの結果も変わらず、このためだけに公開 API を足すのは「公開 API を絞る」に反する。メモリの伸びは変異検査ではなく長時間の実測で見る。
+
+| 指紋 | 場所 | 変異 | class | 理由 | 仕様 ID / 足すテストの案 |
+|---|---|---|---|---|---|
+| `src/protocol/log_level.nim:SDL:a664419c0a0c689c:0` | log_level.nim:24 | 末尾の `none(McpLogLevel)` → `discard` | equivalent | `result` の既定値が `Option` の none で、末尾の式を消しても同じ値を返す。 | |
+| `src/server/completion.nim:LOR:d6c43bcc123b2459:0` | completion.nim:24 | `node.isNil or node.kind != JObject` → `and` | equivalent | `requiredString` は非公開で、呼び出し元 (`parseCompletionRequest` の `reference`・`argument`) は直前で nil でない JObject だと確かめてから渡す。どちらの式も常に偽。この検査自体が要らない (`node{key}` だけで足りる)。 | |
+| `src/server/pagination.nim:RVR:534e648d390a1b6f:0` | pagination.nim:29 | `return none(int)` → `return default` | equivalent | `default(Option[int])` は none。`pageOf` は `isNone` で断るので同じ。 | |
+| `src/server/pagination.nim:RVR:534e648d390a1b6f:1` | pagination.nim:34 | `return none(int)` → `return default` | equivalent | 同上。 | |
+| `src/server/pagination.nim:RVR:534e648d390a1b6f:2` | pagination.nim:36 | `return none(int)` → `return default` | equivalent | 同上。 | |
+| `src/server/pagination.nim:RVR:534e648d390a1b6f:3` | pagination.nim:41 | `return none(int)` → `return default` | equivalent | 同上。 | |
+| `src/server/pagination.nim:RVR:534e648d390a1b6f:4` | pagination.nim:43 | `return none(int)` → `return default` | equivalent | 同上。 | |
+| `src/server/server.nim:RVR:3ac2bd94b4efe6f7:1` | server.nim:1119 `listedEntry` | `return none(JsonNode)` → `return default` | equivalent | `default(Option[JsonNode])` は none。 | |
+| `src/server/server.nim:SDL:d1c044ccecdaa480:0` | server.nim:1121 `listedEntry` | 1000 ページを超えた一覧の stderr の行 → `discard` | spec_question | 問い A。行を消すと、止まらないカーソルを出すハンドラのツールが「一覧に無い」のと区別なく扱われ、原因がどこにも出ない。 | 仕様にするなら: 1001 ページ目もカーソルを返す `toolsList` に `tools/call` し、stderr にメソッド名とツール名が出ることを見る。 |
+| `src/server/server.nim:SDL:f85418f42f56ae88:0` | server.nim:1123 `listedEntry` | 末尾の `none(JsonNode)` → `discard` | equivalent | `result` の既定値が none。 | |
+| `src/server/server.nim:RVR:0c511227513989c7:1` | server.nim:1134 `missingPromptArgument` | `return none(string)` → `return default` | equivalent | `default(Option[string])` は none。 | |
+| `src/server/server.nim:SDL:2413a04126052c00:1` | server.nim:1139 `missingPromptArgument` | 末尾の `none(string)` → `discard` | equivalent | `result` の既定値が none。 | |
+| `src/server/server.nim:RVR:55560fa5ef49175d:1` | server.nim:1163 `paramHeaderMismatch` | `return none(JsonRpcError)` → `return default` | equivalent | `default(Option[JsonRpcError])` は none。 | |
+| `src/server/server.nim:RVR:55560fa5ef49175d:2` | server.nim:1166 `paramHeaderMismatch` | `return none(JsonRpcError)` → `return default` | equivalent | 同上。 | |
+| `src/server/server.nim:RVR:87aa8baa528c4cef:0` | server.nim:1175 `inputProblems` | `return ""` → `return default` | equivalent | 文字列のリテラルの置き換え先は `""` で、元と同じ値。 | |
+| `src/server/server.nim:SDL:54751f1833f11faf:0` | server.nim:1179 `inputProblems` | 確かめられない inputSchema の stderr の行 → `discard` | spec_question | 問い A。相手には "Internal error" だけが返り、どのツールのスキーマがなぜ使えないかはこの行にしか出ない。 | 仕様にするなら: inputSchema が使えないツールへの `tools/call` で、-32603 に加えて stderr にツール名が出ることを見る (tools の入力検査の Scenario に足す)。 |
+| `src/server/server.nim:ROR:7e4dba6fe46fb9ea:0` | server.nim:1205 `listen` | `maxListenStreamsPerSession > 0` → `>=` | test_owed | 上限 0 (制限なし) のとき、変異ではどの `subscriptions/listen` も "Too many listen streams" で断られる。既存のテストは名前に「0 means no limit」とあるが、既定値しか見ていない。 | MCP-SEC-SWEEP-7 (0: no limit)。`tests/external/test_security_subscription_limits.nim` に足す: `maxListenStreamsPerSession = 0` で 1 つの session が既定の 16 を超える (たとえば 17 本の) listen を開き、どれも断られず `subscriptionCount` が本数になる。 |
+| `src/server/server.nim:ROR:7dcb1e3bc7bd7f72:0` | server.nim:1308 `resources/subscribe` | `maxSubscriptionsPerSession > 0` → `>=` | test_owed | 上限 0 のとき、変異では最初の `resources/subscribe` から "Too many subscriptions" になる。 | MCP-SEC-SWEEP-7 (0: no limit)。同じテストで `maxSubscriptionsPerSession = 0` とし、`resources/subscribe` がエラーにならないことを見る (1 件で足りる)。 |
+| `src/server/server.nim:SDL:4a51256852b1bc32:0` | server.nim:1457 `inputRequiredResponse` | `defect` の stderr の行 → `discard` | spec_question | 問い A。input_required を出せないハンドラの誤りは、相手には "Internal error" だけで、理由はこの行にしか出ない。 | 仕様にするなら: input_required を許さない版・メソッドで `McpInputRequired` を投げるハンドラを呼び、stderr にメソッド名と理由が出ることを見る。 |
+| `src/server/server.nim:ROR:eed3e77b3bbe9689:0` | server.nim:1467 `inputRequiredResponse` | `payloadProblems.len == 0` → `!=` | test_owed | 変異では、形の正しい inputRequests の tool_result を outputSchema と照らさず、input_required を返してしまう。 | MCP-SAMPLING-TOOLS-17。既存の `tests/external/test_sampling_asks_fix.nim` の「Given a 2026-07-28 handler that asks with a tool_result that breaks the schema, when the request is served, then the answer is an error and not input_required」が検出するはず。testCommand に足す (新しいテストは要らない)。 |
+| `src/server/server.nim:ROR:2bc73289de46c34c:0` | server.nim:1469 `inputRequiredResponse` | `entry{"method"}.getStr() == SamplingMethod` → `!=` | test_owed | 変異では sampling の項目だけが照合から外れる。 | MCP-SAMPLING-TOOLS-17。同上の既存のテスト。 |
+| `src/server/server.nim:SDL:4e20a99a93ab2350:0` | server.nim:1471 `inputRequiredResponse` | `payloadProblems.add …` → `discard` | test_owed | 変異では見つけた問題を捨て、input_required を返す。 | MCP-SAMPLING-TOOLS-17。同上の既存のテスト。 |
+| `src/server/server.nim:RVR:9bd38dfae0fced9f:0` | server.nim:1519 `unusableResultType` | `return none(JsonRpcResponse)` → `return default` | equivalent | `default(Option[JsonRpcResponse])` は none。 | |
+| `src/server/server.nim:RVR:9bd38dfae0fced9f:1` | server.nim:1525 `unusableResultType` | `return none(JsonRpcResponse)` → `return default` | equivalent | 同上。 | |
+| `src/server/server.nim:SDL:9167956a112233e6:1` | server.nim:1536 `unusableResultType` | 末尾の `none(JsonRpcResponse)` → `discard` | equivalent | `result` の既定値が none。 | |
+| `src/server/server.nim:SDL:d1b755fb0b7df450:0` | server.nim:1581 `handleModernRequest` | `logDefect(method, hintProblem.get)` → `discard` | spec_question | 問い A。使えない cache hint は相手には "Internal error" だけで、何が誤りかはこの行にしか出ない。1118 行までの `logDefect` の中の行 (1079・1083) と同じ扱いにそろえる。 | 仕様にするなら: 使えない cache hint を返すハンドラを 2026-07-28 で呼び、stderr にメソッド名と理由が出ることを見る。 |
+| `src/server/server.nim:RVR:9bd38dfae0fced9f:2` | server.nim:1598 `rateLimited` | `return none(JsonRpcResponse)` → `return default` | equivalent | `default(Option[JsonRpcResponse])` は none。 | |
+| `src/server/server.nim:ROR:ac38735bd85e189f:0` | server.nim:1602 `rateLimited` | `request.peer.len > 0` → `>=` | accepted | 送り手の鍵が `"c:"` から `"a:"` に変わるだけで、空でない peer の鍵 (`"a:" & peer`) とは重ならず、数え方も断り方も同じ。変わるのは最初の断りの stderr の語 (connection → address) だけ。失敗の文面は契約ではない (代表の決定 2026-10-23)。 | |
+| `src/server/server.nim:RVR:9bd38dfae0fced9f:3` | server.nim:1607 `rateLimited` | `return none(JsonRpcResponse)` → `return default` | equivalent | `default(Option[JsonRpcResponse])` は none。 | |
+| `src/server/server.nim:SDL:147247bc28948ef8:0` | server.nim:1674 `processRequest` | 取り消された要求のハンドラへの `addCallback` (後から失敗したら stderr に書く) → `discard` | spec_question | 問い A。取り消した後のハンドラの失敗は、応答を送らないので、この callback の行にしか出ない。callback はほかに何もしない。 | 仕様にするなら: 取り消しの後で例外を投げるハンドラを `processMessages` 経由で走らせ、stderr にハンドラのメッセージが出ることを見る。 |
+| `src/server/server.nim:SDL:4ce645a09adf342a:0` | server.nim:1676 `processRequest` | 上の callback の中の stderr の行 → `discard` | spec_question | 問い A。上と同じ行。 | 上と同じテスト。 |
+| `src/server/server.nim:SDL:217b4855ba87df7f:0` | server.nim:1678 `processRequest` | 「cancelled; no response sent」の stderr の行 → `discard` | accepted | 取り消しは保たれ (応答を送らず、通信路に `requestDropped` で伝える)、失敗を隠す行でもない (取り消しは相手か通信路が起こしたもので、原因はそちらにある)。消えるのは経過の診断だけ。失敗の文面は契約ではない (代表の決定 2026-10-23)。 | |
+| `src/server/server.nim:SDL:018856cae0ec4679:0` | server.nim:1684 `processRequest` | ハンドラの失敗の stderr の行 → `discard` | spec_question | 問い A。MCP-ERRORS-1 は相手に "Internal error" だけを伝えると決めており、例外の名前とメッセージはこの行にしか出ない。 | 仕様にするなら: 自前のメッセージで失敗するハンドラを `processMessages` 経由で呼び、相手への応答にそのメッセージが無く、stderr に在ることを見る (MCP-ERRORS-1 に足す)。 |
+| `src/server/server.nim:SDL:0eec084d1ec55604:0` | server.nim:1691 `processRequest` | `server.inFlight.del(key)` → `discard` | spec_question | 問い B。残った項目は `finished` なので `cancelRequest` は偽を返し、同じ id の次の要求は上書きする。応答も取り消しも変わらず、変わるのは表の大きさ (要求の数だけ育つ) だけで、公開の入口から見えない。2026-10-07 の「残した」はリードの判断。 | 仕様にするなら: 処理中の要求の件数を返す入口を足し、応答の後に 0 に戻ることを見る。 |
+| `src/server/server.nim:SDL:393bb8d0d0b11c7e:0` | server.nim:1732 `processMessages` | 閉じた通信路の枝の `server.failPending(none(string), e)` → `discard` | equivalent | 直前の `cancelSession` が `server.sessions` の全部の鍵について `failPending(some(session), …)` を呼ぶ。待ちを作る `request` は operational な session にしか作らず、session を表から消すのは `endSession` だけで、それも先に待ちを失敗させる。だからこの行に来たとき待ちは残っていない。この 1 行は消せる。 | |
+| `src/server/server.nim:SDL:56d3852372d11e8a:0` | server.nim:1736 `processMessages` | 「transport loop ended with」の stderr の行 → `discard` | accepted | 失敗は `lastTransportError` に残り、待っている要求にも同じ例外で伝わる (MCP-SERVERREQ-6)。消えるのは重ねて書く診断だけ。失敗の文面は契約ではない (代表の決定 2026-10-23)。 | |
+| `src/server/server.nim:SDL:f3ee4f544648e438:0` | server.nim:1774 `deliverEach` | 「could not send … to session」の stderr の行 → `discard` | accepted | 最初の失敗は全部を試した後に呼び手へ raise される。消えるのは重ねて書く診断だけ。失敗の文面は契約ではない (代表の決定 2026-10-23)。 | |
+| `src/server/server.nim:SDL:e0eb1207a5ec6a6b:0` | server.nim:1794 `deliverToSubscribers` | 「could not send … to subscription」の stderr の行 → `discard` | accepted | 同上 (最初の失敗は呼び手へ raise される)。失敗の文面は契約ではない (代表の決定 2026-10-23)。 | |
+| `src/server/server.nim:SDL:c148c02d2dfcb737:0` | server.nim:1904 `endSubscriptions` | 「could not cancel subscription」の stderr の行 → `discard` | spec_question | 問い A。stdio で `notifications/cancelled` を送れなかった失敗は捕まえて続けるので、この行を消すと黙って消える。 | 仕様にするなら: 通知の送信が失敗する stdio の通信路で `endSubscriptions` を呼び、listen は結果で終わり、stderr に失敗が出ることを見る。 |
+
+timeout の 3 件 (どれも待ちが終わらなくなる変異で、ただ遅いのではない。測り直しは要らない):
+
+- `src/server/server.nim:SDL:c54b6bb249cbda80:0` (1216、`server.subscriptions.add subscription` を消す): listen が表に載らず、`endSubscriptions` も件数の待ちも届かないので、listen の応答を待つテストが終わらない。
+- `src/server/server.nim:SDL:cba6c56101be01b8:0` (1221、`subscription.closed.completesWith(ended)` を消す): サーバーが購読を終えても `ended` が完了せず、listen の応答が出ない。
+- `src/server/server.nim:SDL:9963156d79866778:0` (1906、`subscription.closed.complete()` を消す): `endSubscriptions` が購読を終わらせず、listen の応答が出ない。
+
+## 最初の測定 (本線の 36a4c8a5、2026-10-07)
+
 測定: `nim-muter`、ジョブ `tests/mutation/server.json`、本線の 36a4c8a5 (2026-10-07)。
 
 | 全変異 | killed | timeout | survived | runError | compileError |
