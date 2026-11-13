@@ -21,6 +21,10 @@ suite "security sweep: what a server sends in a sampling request":
     expect McpProtocolError:
       discard parseSamplingRequest(with("modelPreferences", %*{"costPriority": "high"}))
 
+  test "Given params without maxTokens, when parsed, then it is a protocol error":
+    expect McpProtocolError:
+      discard parseSamplingRequest(%*{"messages": [{"role": "user", "content": {"type": "text", "text": "hi"}}]})
+
   test "Given numbers and nulls, when parsed, then they are read as sent, a null as absent":
     let parsed = parseSamplingRequest(with("temperature", %0.7))
     check parsed.temperature == some(0.7)

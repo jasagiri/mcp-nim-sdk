@@ -4,7 +4,7 @@
 ## does not send the request again: it tells the caller with
 ## McpSessionExpiredError, so a request with side effects is never done twice.
 
-import std/[unittest, asyncdispatch, asyncnet, httpcore, json, options, strutils]
+import std/[unittest, asyncdispatch, asyncnet, httpcore, json, options, os, strutils]
 import mcp
 
 const LegacyHttp = min(DefaultProtocolVersion, mpv20251125)
@@ -66,6 +66,7 @@ type Counts = ref object
   sessionless: int      ## initializes that carried no session id
   lists: int            ## tools/list requests that reached the server
   sessionsOpened: int
+  pingsInNewSession: int  ## pings that reached the server in a session after the first
 
 proc expiringServer(counts: Counts, secondInitializeFails = false): string =
   ## Every request with a session id is answered 404, as if the session had
@@ -94,8 +95,27 @@ proc expiringServer(counts: Counts, secondInitializeFails = false): string =
         await socket.send("HTTP/1.1 404 Not Found\c\LContent-Length: 0\c\L\c\L")
       else:
         await socket.sendJson(%*{"jsonrpc": "2.0", "id": id, "result": {"tools": []}})
+    of "ping":
+      if session == "s-1":
+        await socket.send("HTTP/1.1 404 Not Found\c\LContent-Length: 0\c\L\c\L")
+      else:
+        inc counts.pingsInNewSession
+        await socket.sendJson(%*{"jsonrpc": "2.0", "id": id, "result": {}})
     else:
       await socket.send("HTTP/1.1 202 Accepted\c\LContent-Length: 0\c\L\c\L"))
+
+proc loggedWhile(body: proc()): string =
+  ## Everything the code under test wrote to stderr.
+  let path = getTempDir() / "mcp-session-expiry-" & $getCurrentProcessId() & ".log"
+  let saved = stderr
+  stderr = open(path, fmWrite)
+  try:
+    body()
+  finally:
+    stderr.close()
+    stderr = saved
+  result = readFile(path)
+  removeFile(path)
 
 proc connected(url: string): tuple[client: McpClient, transport: StreamableHttpTransport] =
   let client = newMcpClient(McpClientInfo(name: "c", version: "1"), LegacyHttp)
@@ -128,6 +148,34 @@ suite "a client whose session the server ended (2025-03-26 to 2025-11-25)":
       check transport.sessionId == some("s-2")
       check client.state == mlsOperational
       waitFor client.close()
+
+  test "Given a keepalive ping that gets 404 in an ended session, when it does, then a new session is started and one line holds the address the caller gave":
+    if not SpeaksSessions:
+      skip()
+    else:
+      let counts = Counts()
+      let url = expiringServer(counts)
+      let client = newMcpClient(McpClientInfo(name: "c", version: "1"), LegacyHttp)
+      client.pingIntervalMs = 50
+      let transport = newStreamableHttpTransport(url)
+      transport.listenForServerMessages = false
+      let log = loggedWhile(proc() =
+        waitFor client.connect(transport)
+        # A ping in the new session comes after the failed one was dealt with.
+        var waited = 0
+        while counts.pingsInNewSession < 1 and waited < 20_000:
+          waitFor sleepAsync(10)
+          waited += 10
+        waitFor client.close())
+      check counts.initializes == 2
+      check counts.pingsInNewSession >= 1
+      var named = 0
+      for line in log.splitLines():
+        if url in line:
+          inc named
+          for c in line:
+            check c notin {'\0' .. '\x1f', '\x7f'}
+      check named == 1
 
   test "Given a client that started a new session, when the caller sends the request anew, then it is answered in the new session":
     if not SpeaksSessions:

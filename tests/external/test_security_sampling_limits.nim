@@ -76,6 +76,25 @@ suite "a server cannot keep any number of the client's handlers busy":
     check not peer.responseTo("s4").hasKey("error")
     check calls == 3
 
+  test "Given a limit of 0, when three sampling requests are in progress at once, then none is refused and the handler is called for each":
+    var calls = 0
+    let gate = newFuture[void]("gate")
+    let peer = startPeer(nil)
+    discard peer.connectedClient(mpv20251125, proc(client: McpClient) =
+      client.maxServerRequestsInProgress = 0
+      client.setSamplingHandler(proc(request: McpSamplingRequest): Future[McpSamplingResult] {.async.} =
+        inc calls
+        await gate
+        return McpSamplingResult(role: "assistant", model: "m",
+                                 content: McpContentItem(kind: mckText, text: "ok"))))
+    for id in ["s1", "s2", "s3"]:
+      peer.ask(%id, "sampling/createMessage", request(%10))
+    waitFor sleepAsync(5)
+    check calls == 3
+    gate.complete()
+    for id in ["s1", "s2", "s3"]:
+      check not peer.responseTo(id).hasKey("error")
+
   test "Given no limit given, when the client is made, then 64 requests may be in progress; 0 means no limit":
     check DefaultMaxServerRequestsInProgress == 64
     check newMcpClient(McpClientInfo(name: "c", version: "1")).maxServerRequestsInProgress == 64

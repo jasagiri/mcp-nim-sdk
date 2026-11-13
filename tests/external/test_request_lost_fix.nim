@@ -3,7 +3,7 @@
 ## its code, stays the peer's error (2026-07-28 basic/index: local errors
 ## must not be mistaken for errors received from the peer).
 
-import std/[unittest, asyncdispatch, asyncnet, httpcore, json, os, strutils]
+import std/[unittest, asyncdispatch, asyncnet, httpcore, json, os, strutils, tables]
 import mcp
 
 type
@@ -144,6 +144,28 @@ suite "a request lost with its stream is not a response":
     for attempt in 1 .. 2:
       expect McpRequestLostError:
         discard waitFor c.callMethod("tools/list", newJObject())
+    waitFor c.close()
+
+suite "a loss the client no longer waits for":
+
+  test "Given a request lost with its stream, when the caller was told, then the client holds no request for it any more":
+    let c = connected(lostServer(moStreamEnds))
+    expect McpRequestLostError:
+      discard waitFor c.callMethod("tools/list", newJObject())
+    check c.pendingRequests.len == 0
+    waitFor c.close()
+
+  test "Given a transport that reports the loss of a request nobody waits for, when it does, then the client goes on and answers the next request":
+    let transport = newStreamableHttpTransport(lostServer(moPeerError))
+    let c = newMcpClient(McpClientInfo(name: "c", version: "1"), LegacyHttp)
+    waitFor c.connect(transport)
+    transport.onRequestLost("nobody-waits-for-this", "the stream ended")
+    var code = 0
+    try:
+      discard waitFor c.callMethod("tools/list", newJObject())
+    except client.McpRequestError as e:
+      code = e.code
+    check code == -1000
     waitFor c.close()
 
 suite "a transport tells its client about a loss on its own path":

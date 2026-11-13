@@ -10,6 +10,7 @@ import protocol/types
 import protocol/features
 import protocol/lifecycle
 import ./client_peer
+import ./stuck_transport
 
 proc answeringPings(peer: Peer, message: JsonNode) =
   if message{"method"}.getStr() == "ping":
@@ -26,6 +27,42 @@ proc loggedWhile(body: proc()): string =
     stderr = saved
   result = readFile(path)
   removeFile(path)
+
+proc nonBlankLines(log: string): seq[string] =
+  for line in log.splitLines():
+    if line.strip().len > 0:
+      result.add line
+
+proc raw(log: string): bool =
+  ## Whether the log holds a control character besides its line ends.
+  for c in log:
+    if c in {'\0' .. '\x09', '\x0b' .. '\x1f', '\x7f'}:
+      return true
+
+proc connectedStuck(transport: StuckTransport, version: McpProtocolVersion,
+                    intervalMs, timeoutMs: int): McpClient =
+  ## A client that finished its handshake over a transport that answers
+  ## nothing else.
+  result = newMcpClient(McpClientInfo(name: "c", version: "1"), version)
+  result.pingIntervalMs = intervalMs
+  result.pingTimeoutMs = timeoutMs
+  let connecting = result.connect(transport)
+  var waited = 0
+  while "initialize" notin transport.sentMethods and waited < 20_000:
+    waitFor sleepAsync(10)
+    waited += 10
+  require "initialize" in transport.sentMethods
+  transport.inject(%*{"jsonrpc": "2.0", "id": transport.sentIds[0], "result": {
+    "protocolVersion": $version, "capabilities": {},
+    "serverInfo": {"name": "peer", "version": "0"}}})
+  waitFor connecting
+
+proc untilShutdown(client: McpClient) =
+  ## The failsafe only keeps a broken client from hanging the test.
+  var waited = 0
+  while client.state != mlsShutdown and waited < 20_000:
+    waitFor sleepAsync(10)
+    waited += 10
 
 proc pingsWithin(peer: Peer, atLeast: int, ms: int): int =
   ## Waits until `atLeast` pings arrived or `ms` passed.
@@ -60,6 +97,43 @@ suite "a client pings an idle connection":
       check peer.pingsWithin(3, 3000) >= 3
       check client.state == mlsOperational
       waitFor client.close()
+
+  test "Given traffic half an interval after the connection began, when the idle time is counted, then its ping falls due an interval after that traffic, before the ping of a connection that began half an interval later":
+    ## Both connections are on one loop and ping when their timers fall due,
+    ## so the order of the two pings does not depend on how busy the machine
+    ## is: the first is due at the traffic + interval, the second at its own
+    ## start + interval, which is later.
+    for v in legacyVersions():
+      var order: seq[string]
+      proc recorder(label: string): proc(peer: Peer, message: JsonNode) =
+        result = proc(peer: Peer, message: JsonNode) =
+          case message{"method"}.getStr()
+          of "tools/list":
+            peer.reply(message["id"], %*{"tools": []})
+          of "ping":
+            order.add label
+            peer.reply(message["id"], newJObject())
+          else:
+            discard
+      let first = startPeer(recorder("first"))
+      let second = startPeer(recorder("second"))
+      let a = newMcpClient(McpClientInfo(name: "a", version: "1"), v)
+      a.pingIntervalMs = 400
+      waitFor a.connect(first.pair.client)
+      waitFor sleepAsync(200)
+      discard waitFor a.callMethod("tools/list", newJObject())
+      waitFor sleepAsync(200)
+      let b = newMcpClient(McpClientInfo(name: "b", version: "1"), v)
+      b.pingIntervalMs = 400
+      waitFor b.connect(second.pair.client)
+      var waited = 0
+      while order.len < 2 and waited < 20_000:
+        waitFor sleepAsync(10)
+        waited += 10
+      check order.len >= 2
+      check order[0] == "first"
+      waitFor a.close()
+      waitFor b.close()
 
   test "Given an interval of 0, when time passes, then no ping is sent":
     for v in legacyVersions():
@@ -149,6 +223,49 @@ suite "a ping that fails closes the connection":
       expect McpError:
         discard waitFor client.sendRequest("tools/list", newJObject())
       waitFor client.close()
+
+  test "Given a peer that never answers pings, when one times out, then the transport is closed once":
+    for v in legacyVersions():
+      let transport = newStuckTransport()
+      let client = connectedStuck(transport, v, 30, 60)
+      let log = loggedWhile(proc() = client.untilShutdown())
+      check client.state == mlsShutdown
+      check transport.closeCalls == 1
+      check log.nonBlankLines().len >= 1
+
+  test "Given a peer that never answers pings and a transport that fails to close, when one times out, then the client is closed and one line holds why the closing failed, without control characters":
+    for v in legacyVersions():
+      let transport = newStuckTransport()
+      transport.closeFailure = "CLOSE-BOOM\n\x1b[31mforged line"
+      let client = connectedStuck(transport, v, 30, 60)
+      let log = loggedWhile(proc() = client.untilShutdown())
+      check client.state == mlsShutdown
+      check transport.closeCalls == 1
+      var said = 0
+      for line in log.nonBlankLines():
+        if "CLOSE-BOOM" in line:
+          inc said
+      check said == 1
+      check not log.raw()
+
+  test "Given a peer that answers a ping with an error, when it does, then one line holds what the peer wrote, without its control characters":
+    for v in legacyVersions():
+      let peer = startPeer(proc(peer: Peer, message: JsonNode) =
+        if message{"method"}.getStr() == "ping":
+          peer.replyError(message["id"], -32601, "PEER-WORDS\n\x1b[2Jforged"))
+      let client = newMcpClient(McpClientInfo(name: "c", version: "1"), v)
+      client.pingIntervalMs = 30
+      client.pingTimeoutMs = 60
+      let log = loggedWhile(proc() =
+        waitFor client.connect(peer.pair.client)
+        # The second ping goes out after the first one's answer was dealt with.
+        check peer.pingsWithin(2, 20_000) >= 2
+        waitFor client.close())
+      let lines = log.nonBlankLines()
+      check lines.len >= 1
+      for line in lines:
+        check "PEER-WORDS" in line
+      check not log.raw()
 
   test "Given a peer that answers a ping with an error, when it does, then the connection stays open":
     for v in legacyVersions():

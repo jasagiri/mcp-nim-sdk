@@ -14,6 +14,7 @@ type
     cancelled*: seq[string]  ## the ids passed to cancelRequest
     closeCalls*: int
     holdSend*: string        ## the method whose sending never finishes
+    closeFailure*: string    ## when not empty, close() fails with this message
     inbox: Deque[JsonNode]
     waiters: Deque[Future[JsonNode]]
 
@@ -49,6 +50,8 @@ method receiveMessage*(t: StuckTransport): Future[JsonNode] {.async.} =
 
 method close*(t: StuckTransport): Future[void] {.async.} =
   inc t.closeCalls
+  if t.closeFailure.len > 0:
+    raise newException(McpTransportError, t.closeFailure)
 
 method cancelRequest*(t: StuckTransport, requestId: string) =
   t.cancelled.add requestId

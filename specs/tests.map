@@ -988,6 +988,8 @@ MCP-LIFECYCLE-27 | tests/external/test_client_keepalive_fix.nim | Given an inter
 MCP-LIFECYCLE-27 | tests/external/test_client_keepalive_fix.nim | Given the default interval, when the connection is new, then no ping is sent yet
 MCP-LIFECYCLE-26 | tests/external/test_client_keepalive_fix.nim | Given an idle connection and an interval, when time passes, then the client pings again and again
 MCP-LIFECYCLE-26 | tests/external/test_client_keepalive_fix.nim | Given traffic more often than the interval, when time passes, then no ping is sent
+MCP-LIFECYCLE-26 | tests/external/test_client_keepalive_fix.nim | Given traffic half an interval after the connection began, when the idle time is counted, then its ping falls due an interval after that traffic, before the ping of a connection that began half an interval later
+MCP-LIFECYCLE-26 | tests/external/test_client_keepalive_fix.nim | Given a peer that never answers pings, when one times out, then the transport is closed once
 MCP-LIFECYCLE-26 | tests/external/test_client_keepalive_fix.nim | Given a client that is closed, when time passes, then no more pings are sent
 MCP-LIFECYCLE-26 | tests/external/test_client_keepalive_fix.nim | Given a 2026-07-28 connection, when time passes, then no ping is sent
 MCP-LIFECYCLE-26 | tests/external/test_client_keepalive_fix.nim | Given a peer that never answers pings, when one times out, then the client closes, waiting requests end with McpConnectionClosedError and stderr says why
@@ -1906,6 +1908,8 @@ MCP-HTTP-49 | tests/external/test_request_lost_fix.nim | Given a stream that end
 MCP-HTTP-49 | tests/external/test_request_lost_fix.nim | Given a stream that ends before the response, when a loss is raised, then it is a McpTransportError
 MCP-HTTP-49 | tests/external/test_request_lost_fix.nim | Given a peer that answers with an error of code -1000, when the client sent the request, then it raises McpRequestError with that code
 MCP-HTTP-49 | tests/external/test_request_lost_fix.nim | Given a client that lost a request, when it sends the next, then the connection still works
+MCP-HTTP-49 | tests/external/test_request_lost_fix.nim | Given a request lost with its stream, when the caller was told, then the client holds no request for it any more
+MCP-HTTP-49 | tests/external/test_request_lost_fix.nim | Given a transport that reports the loss of a request nobody waits for, when it does, then the client goes on and answers the next request
 MCP-HTTP-49 | tests/external/test_request_lost_fix.nim | Given a transport whose stream ends before the response, when it has a loss handler, then the handler gets the id and receiveMessage gets nothing
 MCP-HTTP-49 | tests/external/test_request_lost_fix.nim | Given a transport with no loss handler, when a stream ends before the response, then stderr says the request was lost
 MCP-HTTP-49 | tests/external/test_request_lost_fix.nim | Given a peer's error response with code -1000, when a transport reads it, then it is delivered as a message
@@ -2217,6 +2221,7 @@ MCP-SEC-SWEEP-2 | tests/external/test_security_ext_tasks.nim | Given a task that
 MCP-SEC-SWEEP-3 | tests/external/test_security_sampling.nim | Given a temperature that is a string, when parsed, then it is a protocol error and not 0.0
 MCP-SEC-SWEEP-3 | tests/external/test_security_sampling.nim | Given a priority that is a string, when parsed, then it is a protocol error and not 0.0
 MCP-SEC-SWEEP-3 | tests/external/test_security_sampling.nim | Given numbers and nulls, when parsed, then they are read as sent, a null as absent
+MCP-SEC-SWEEP-9 | tests/external/test_security_sampling.nim | Given params without maxTokens, when parsed, then it is a protocol error
 MCP-SEC-SWEEP-5 | tests/external/test_security_pages.nim | Given a server that makes up a new cursor for every page, when all pages are read, then it is a protocol error after the limit
 MCP-SEC-SWEEP-5 | tests/external/test_security_pages.nim | Given a server whose last page is the limit, when all pages are read, then every item is returned
 MCP-SEC-SWEEP-5 | tests/external/test_security_pages.nim | Given the default limit, when a server has 1000 pages, then they are read
@@ -2226,6 +2231,7 @@ MCP-SEC-SWEEP-7 | tests/external/test_security_subscription_limits.nim | Given n
 MCP-SEC-SWEEP-7 | tests/external/test_security_subscription_limits.nim | Given both limits set to 0, when one session opens 17 listen streams and subscribes to resources, then none is refused
 MCP-SEC-SWEEP-8 | tests/external/test_security_sampling_limits.nim | Given a limit of 2 and two sampling requests in progress, when a third arrives, then it is answered with an internal error and the handler is not called for it; after one ends the next is handled
 MCP-SEC-SWEEP-8 | tests/external/test_security_sampling_limits.nim | Given no limit given, when the client is made, then 64 requests may be in progress; 0 means no limit
+MCP-SEC-SWEEP-8 | tests/external/test_security_sampling_limits.nim | Given a limit of 0, when three sampling requests are in progress at once, then none is refused and the handler is called for each
 MCP-SEC-SWEEP-9 | tests/external/test_security_sampling_limits.nim | Given maxTokens missing, not an integer, zero or negative, when the request arrives, then the client answers invalid params and the handler is not called
 MCP-SEC-SWEEP-9 | tests/external/test_security_sampling_limits.nim | Given a positive integer, when the request arrives, then the handler sees it as it was sent
 MCP-SEC-WIRE-9 | tests/internal/test_base64_shape.nim | Given what base64.encode writes, when its shape is checked, then it is padded base64
@@ -2311,6 +2317,9 @@ MCP-ERRORS-3 | tests/external/test_server_failure_log.nim | Given a request the 
 MCP-ERRORS-3 | tests/external/test_server_failure_log.nim | Given a held progress notification that cannot be sent, when the interval passes, then one line names the session
 MCP-ERRORS-3 | tests/external/test_server_failure_log.nim | Given a request of the server that times out and a cancellation that cannot be sent, when the time is up, then the caller is told and one line names the method
 MCP-ERRORS-3 | tests/external/test_server_failure_log.nim | Given a stdio server whose notifications fail, when it ends a subscription, then one line names the request, without its control characters
+MCP-ERRORS-4 | tests/external/test_client_keepalive_fix.nim | Given a peer that answers a ping with an error, when it does, then one line holds what the peer wrote, without its control characters
+MCP-ERRORS-4 | tests/external/test_client_keepalive_fix.nim | Given a peer that never answers pings and a transport that fails to close, when one times out, then the client is closed and one line holds why the closing failed, without control characters
+MCP-ERRORS-4 | tests/external/test_session_expiry_fix.nim | Given a keepalive ping that gets 404 in an ended session, when it does, then a new session is started and one line holds the address the caller gave
 MCP-META-1 | tests/external/test_meta_keys_g0f.nim | Given keys the specification calls valid and invalid, when they are judged, then each is judged as the specification says
 MCP-META-1 | tests/external/test_meta_keys_g0f.nim | Given the keys the SDK defines, when they are judged, then every one is valid
 MCP-META-1 | tests/external/test_meta_keys_g0f.nim | Given a server that answers discovery, a list, a call, a failed call and an unknown method, when its messages are read, then every _meta key in them is valid

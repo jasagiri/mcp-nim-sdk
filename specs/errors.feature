@@ -20,3 +20,10 @@ Feature: JSON-RPC errors
     When the server answers "Internal error" only, leaves the entry out, or goes on
     Then it writes the cause to stderr on one line that names what the caller gave: the message of the handler, the method, the tool or the request id
     And a name or message a peer chose is shown with its control characters as escapes
+
+  @spec:MCP-ERRORS-4
+  Scenario: A failure of the client that no caller is told is written to stderr as one line
+    Given a client that meets a failure in its keepalive that no caller is told: a ping answered with an error, a ping that finds the session ended, or a connection it fails to close after a ping failed
+    When the client goes on or closes the connection
+    Then it writes the cause to stderr on one line that holds what the peer or the caller gave: the message of the peer, the address of the server, the message of the transport
+    And a name or message a peer chose is shown with its control characters as escapes
