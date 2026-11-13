@@ -910,9 +910,15 @@ proc parseServerIdentity(client: McpClient, node: JsonNode,
   except McpShapeError as e:
     raise newException(McpProtocolError, context & ": serverInfo: " & e.msg)
 
-proc initialize*(client: McpClient): Future[McpServerCapabilities] {.async.} =
+proc requireUninitialized(client: McpClient) =
+  ## The one place that refuses a handshake on a client that has had one.
+  ## `connect` asks before it changes anything, so a refusal leaves the
+  ## connection it already has as it was.
   if client.state != mlsUninitialized:
     raise newException(ValueError, "Client already initialized")
+
+proc initialize*(client: McpClient): Future[McpServerCapabilities] {.async.} =
+  client.requireUninitialized()
 
   let supported = spokenVersionsUpTo(client.protocolVersion)
   let offered = latestLegacyVersion(supported)
@@ -1092,6 +1098,7 @@ proc connect*(client: McpClient, transport: McpTransport): Future[void] {.async.
   ## Attach `transport` and establish the connection: with server/discover
   ## when this client speaks 2026-07-28 and the server does too, otherwise
   ## with the initialize handshake.
+  client.requireUninitialized()
   client.transport = transport
   transport.onRequestLost = proc(requestId: string, reason: string) =
     let waiting = client.pendingRequests.getOrDefault(requestId)

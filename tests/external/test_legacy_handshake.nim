@@ -224,6 +224,36 @@ suite "legacy handshake: client":
     waitFor sleepAsync(1)
     check server.state == mlsOperational
 
+  test "Given a connected client, when connect is called again with another transport, then it is refused and the first connection is left as it was":
+    let first = newLoopbackPair()
+    let server = newMcpServer(info())
+    waitFor server.attachTransport(first.server)
+    let client = newMcpClient(clientInfo(), protocolVersion = LegacyDefault)
+    var heard = 0
+    client.registerNotificationHandler("notifications/probe",
+      proc(n: JsonRpcNotification): Future[void] {.async.} = inc heard)
+    waitFor client.connect(first.client)
+    let second = newLoopbackPair()
+    var refused = false
+    try:
+      waitFor client.connect(second.client)
+    except ValueError:
+      refused = true
+    check refused
+    # The first transport still carries the requests and answers.
+    let sentBefore = first.client.sent.len
+    discard waitFor client.sendRequest("ping", newJObject(),
+      McpRequestOptions(timeoutMs: some(1000)))
+    check first.client.sent.len > sentBefore
+    check first.client.sent[sentBefore]["method"].getStr() == "ping"
+    # The second is neither written to nor read.
+    second.client.inject(%*{"jsonrpc": "2.0", "method": "notifications/probe"})
+    second.client.inject(%*{"jsonrpc": "2.0", "id": "peer-1", "method": "ping"})
+    waitFor sleepAsync(50)
+    check second.client.sent.len == 0
+    check heard == 0
+    waitFor client.close()
+
   test "Given a client newer than the server, when it connects, then both settle on the server's version":
     if LegacyDefault > mpv20241105:
       let pair = newLoopbackPair()
