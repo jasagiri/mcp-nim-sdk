@@ -1767,6 +1767,7 @@ MCP-SAMPLING-TOOLS-9 | tests/external/test_sampling_tools_payload.nim | Given a 
 MCP-SAMPLING-TOOLS-9 | tests/external/test_sampling_tools_payload.nim | Given a message that is not an object or has no content, when checked, then that message is the only problem
 MCP-SAMPLING-TOOLS-9 | tests/external/test_sampling_tools_payload.nim | Given an array of content whose entry is not a content block, when checked, then that entry is the only problem
 MCP-SAMPLING-TOOLS-9 | tests/external/test_sampling_tools_payload.nim | Given a tool choice that is not an object, when checked, then it is the only problem
+MCP-SAMPLING-TOOLS-9 | tests/external/test_sampling_asks_fix.nim | Given a client of 2025-11-25 or later that declared sampling, when the server asks with no params at all, then the ask fails and nothing is sent
 MCP-SAMPLING-TOOLS-10 | tests/external/test_sampling_tools_payload.nim | Given a tool_use without an id, with an empty id, without a name or without an input object, when a result holds it, then that field is the only problem
 MCP-SAMPLING-TOOLS-10 | tests/external/test_sampling_tools_payload.nim | Given a tool_result without a toolUseId, when checked, then the field is reported
 MCP-SAMPLING-TOOLS-10 | tests/external/test_sampling_tools_payload.nim | Given a tool_result whose content is missing, not an array or not content blocks, when checked, then that is the only problem
@@ -1795,6 +1796,7 @@ MCP-SAMPLING-TOOLS-15 | tests/external/test_sampling_context_prop.nim | Given an
 MCP-SAMPLING-TOOLS-16 | tests/external/test_sampling_asks_fix.nim | Given a client that declared sampling without context, when the server asks with includeContext thisServer or allServers, then it raises and sends nothing
 MCP-SAMPLING-TOOLS-16 | tests/external/test_sampling_asks_fix.nim | Given the same client, when the server asks with includeContext none or none at all, then the request is sent
 MCP-SAMPLING-TOOLS-16 | tests/external/test_sampling_asks_fix.nim | Given a client that declared sampling.context, when the server asks with includeContext thisServer or allServers, then the request is sent
+MCP-SAMPLING-TOOLS-16 | tests/external/test_sampling_asks_fix.nim | Given a client of a version before 2025-11-25 that declared sampling without context, when the server asks with includeContext thisServer or allServers, then the request is sent
 MCP-SAMPLING-TOOLS-16 | tests/external/test_sampling_asks_fix.nim | Given a handler that asks with includeContext thisServer or allServers of a client without sampling.context, when the tool is called, then the answer is the missing-capability error and not input_required
 MCP-SAMPLING-TOOLS-16 | tests/external/test_sampling_asks_fix.nim | Given a handler that asks with includeContext none, or with thisServer of a client with sampling.context, when the tool is called, then the answer is input_required
 MCP-SAMPLING-TOOLS-17 | tests/external/test_sampling_asks_fix.nim | Given a tool_result whose structuredContent breaks the outputSchema of its tool, when the server asks, then it is refused and nothing is sent
@@ -2217,6 +2219,7 @@ MCP-SEC-SWEEP-5 | tests/external/test_security_pages.nim | Given the default lim
 MCP-SEC-SWEEP-7 | tests/external/test_security_subscription_limits.nim | Given a limit of 2 subscriptions, when a session subscribes to a third resource, then it is refused; again to one it holds, or after giving one up, it is not
 MCP-SEC-SWEEP-7 | tests/external/test_security_subscription_limits.nim | Given a limit of 2 listen streams, when a session opens a third, then it is refused, and another session may open one
 MCP-SEC-SWEEP-7 | tests/external/test_security_subscription_limits.nim | Given no limits given, when the server is made, then 1024 subscriptions and 16 listen streams per session; 0 means no limit
+MCP-SEC-SWEEP-7 | tests/external/test_security_subscription_limits.nim | Given both limits set to 0, when one session opens 17 listen streams and subscribes to resources, then none is refused
 MCP-SEC-SWEEP-8 | tests/external/test_security_sampling_limits.nim | Given a limit of 2 and two sampling requests in progress, when a third arrives, then it is answered with an internal error and the handler is not called for it; after one ends the next is handled
 MCP-SEC-SWEEP-8 | tests/external/test_security_sampling_limits.nim | Given no limit given, when the client is made, then 64 requests may be in progress; 0 means no limit
 MCP-SEC-SWEEP-9 | tests/external/test_security_sampling_limits.nim | Given maxTokens missing, not an integer, zero or negative, when the request arrives, then the client answers invalid params and the handler is not called

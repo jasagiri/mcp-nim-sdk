@@ -67,6 +67,29 @@ suite "includeContext needs sampling.context":
         discard server.createMessage("s", askParams(%*{"includeContext": scope}))
         untilTrue("the request", proc(): bool = t.messagesOf("sampling/createMessage").len == 1)
 
+  test "Given a client of a version before 2025-11-25 that declared sampling without context, when the server asks with includeContext thisServer or allServers, then the request is sent":
+    for v in versionsWith(ftSampling):
+      if v >= mpv20251125 or not v.has(ftServerInitiatedRequests):
+        continue
+      for scope in ["thisServer", "allServers"]:
+        let server = newServer(McpServerCapabilities())
+        let t = server.attach()
+        discard server.connect(t, v, session = "s", clientCapabilities = WithSampling)
+        discard server.createMessage("s", askParams(%*{"includeContext": scope}))
+        untilTrue("the request", proc(): bool = t.messagesOf("sampling/createMessage").len == 1)
+
+  test "Given a client of 2025-11-25 or later that declared sampling, when the server asks with no params at all, then the ask fails and nothing is sent":
+    for v in versionsWith(ftSampling):
+      if v < mpv20251125 or not v.has(ftServerInitiatedRequests):
+        continue
+      let server = newServer(McpServerCapabilities())
+      let t = server.attach()
+      discard server.connect(t, v, session = "s", clientCapabilities = WithSampling)
+      let pending = server.createMessage("s", nil)
+      settle()
+      check pending.failed
+      check t.messagesOf("sampling/createMessage").len == 0
+
   test "Given a handler that asks with includeContext thisServer or allServers of a client without sampling.context, when the tool is called, then the answer is the missing-capability error and not input_required":
     for v in versionsWith(ftMultiRoundTripRequests):
       for scope in ["thisServer", "allServers"]:

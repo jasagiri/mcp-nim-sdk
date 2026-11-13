@@ -61,3 +61,27 @@ suite "one session cannot hold any number of subscriptions or listen streams":
     let server = resourceServer()
     check server.maxSubscriptionsPerSession == 1024
     check server.maxListenStreamsPerSession == 16
+
+  test "Given both limits set to 0, when one session opens 17 listen streams and subscribes to resources, then none is refused":
+    for v in versionsWith(ftSubscriptionsListen):
+      checkpoint $v
+      let server = resourceServer()
+      server.maxListenStreamsPerSession = 0
+      server.maxSubscriptionsPerSession = 0
+      let t = server.attach()
+      let a = server.connect(t, v, session = "a")
+      for n in 1 .. DefaultMaxListenStreamsPerSession + 1:
+        a.send(%("l" & $n), "subscriptions/listen", %*{"notifications": {"toolsListChanged": true}})
+      untilTrue("all the streams", proc(): bool =
+        server.subscriptionCount == DefaultMaxListenStreamsPerSession + 1)
+      for n in 1 .. DefaultMaxListenStreamsPerSession + 1:
+        check not t.answered("l" & $n)
+    for v in versionsWith(ftResourceSubscribe):
+      checkpoint $v
+      let server = resourceServer()
+      server.maxListenStreamsPerSession = 0
+      server.maxSubscriptionsPerSession = 0
+      let t = server.attach()
+      let a = server.connect(t, v, session = "a")
+      for n in 1 .. 3:
+        check not a.ask("resources/subscribe", %*{"uri": "file:///" & $n}).hasKey("error")

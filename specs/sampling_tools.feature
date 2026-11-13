@@ -112,6 +112,7 @@ Feature: Sampling with tools
     When the server asks for a sample with includeContext thisServer or allServers
     Then the ask is refused and nothing is sent, in 2026-07-28 the request being answered with an error and not input_required
     And includeContext none, or none at all, and any includeContext to a client that declared sampling.context, are sent
+    And any includeContext is sent, with or without sampling.context declared, to a client of a version before 2025-11-25
 
   @spec:MCP-SAMPLING-TOOLS-17 @feature:ftSamplingTools
   Scenario: A tool result in a sample request conforms to the outputSchema of its tool
