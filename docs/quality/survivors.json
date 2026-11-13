@@ -841,6 +841,266 @@
       "reason": "114 行と同じ (前の仕分けの id 34) / なし"
     },
     {
+      "fingerprint": "src/client/cancel_token.nim:ROR:bc7d3f515c3dea3a:0",
+      "file": "src/client/cancel_token.nim",
+      "line": 60,
+      "mutator": "ROR",
+      "original": "at >= 0",
+      "replacement": "<>= -> >>",
+      "class": "accepted",
+      "reason": "`unwatchCancellation` に関する生き残りは受け入れる (代表の決定 2026-11-11)。変異だと、先頭の待ち手だけがトークンに残る / —"
+    },
+    {
+      "fingerprint": "src/client/cancel_token.nim:SDL:b8560021a4a528ae:0",
+      "file": "src/client/cancel_token.nim",
+      "line": 61,
+      "mutator": "SDL",
+      "original": "token.waiters.del(at)",
+      "replacement": "discard",
+      "class": "accepted",
+      "reason": "`unwatchCancellation` に関する生き残りは受け入れる (代表の決定 2026-11-11)。変異だと、終わった要求の待ち手がトークンに残る / —"
+    },
+    {
+      "fingerprint": "src/client/client.nim:ROR:ec3dcd4a35d1e675:0",
+      "file": "src/client/client.nim",
+      "line": 278,
+      "mutator": "ROR",
+      "original": "client.maxServerRequestsInProgress > 0",
+      "replacement": "<> -> >=>",
+      "class": "test_owed",
+      "reason": "上限 0 (制限なし) のとき、変異だと `serverRequestsInProgress >= 0` が常に真になり、サーバーの要求をすべて -32603 で断る。仕様は「0: no limit」と書いているが、0 を入れるテストが無い (既定値 64 を確かめるだけ) / MCP-SEC-SWEEP-8。`tests/external/test_security_sampling_limits.nim` に: `maxServerRequestsInProgress = 0` の client に sampling/createMessage を 1 件 (または 3 件を同時に) 送り、どれも error なしで答えられ handler が呼ばれることを見る。変異だと 1 件目が「Too many requests in progress」になる"
+    },
+    {
+      "fingerprint": "src/client/client.nim:ROR:99ececf14e11d202:0",
+      "file": "src/client/client.nim",
+      "line": 533,
+      "mutator": "ROR",
+      "original": "reason.len > 0",
+      "replacement": "<> -> >=>",
+      "class": "accepted",
+      "reason": "失敗の文面は契約ではない (代表の決定 2026-10-23)。理由が空のとき stderr の行の末尾に「: 」が付くだけで、要求を手放すこと・サーバーへの通知は変わらない / —"
+    },
+    {
+      "fingerprint": "src/client/client.nim:SDL:bf1513f4858062ec:0",
+      "file": "src/client/client.nim",
+      "line": 607,
+      "mutator": "SDL",
+      "original": "options.cancel.unwatchCancellation(watching)",
+      "replacement": "discard",
+      "class": "accepted",
+      "reason": "`unwatchCancellation` に関する生き残りは受け入れる (代表の決定 2026-11-11) / —"
+    },
+    {
+      "fingerprint": "src/client/client.nim:ROR:d88c07a69f76d3b8:1",
+      "file": "src/client/client.nim",
+      "line": 608,
+      "mutator": "ROR",
+      "original": "progressKey.len > 0",
+      "replacement": "<> -> >=>",
+      "class": "equivalent",
+      "reason": "`progressKey` が空なのは `onProgress` が nil のときだけで、そのとき 579 行の登録も同じ条件で行われない。`progressCallbacks` はこのモジュールだけが書くので、鍵 `\"\"` は表に無く、`del(\"\")` は何もしない / —"
+    },
+    {
+      "fingerprint": "src/client/client.nim:BLR:ef687d54c37fe225:0",
+      "file": "src/client/client.nim",
+      "line": 858,
+      "mutator": "BLR",
+      "original": "true",
+      "replacement": "false",
+      "class": "spec_question",
+      "reason": "変異だと、セッションを作り直したとき (`renewSession` → `initialize`) に keepalive の周回が 2 本になる。相手が ping に答えていれば 2 本とも同じ `lastActivity` を見るので ping の数は変わらないが、答えない相手には `pingTimeoutMs` の間に ping が 2 つ出る。「keepalive は接続につき 1 本」はどの仕様 ID にも無い / 問い: 「セッションを作り直しても keepalive の周回は 1 本のまま」を仕様にしますか。案 A (推奨): MCP-LIFECYCLE-26 に 1 文足し、HTTP の 404 で作り直したあと ping に答えない相手へ、`pingTimeoutMs` の間に ping が 1 つだけ出ることを E テストで見る。案 B: 仕様にせず、この行を等価に近いものとして受け入れる (代表の決定が要る)"
+    },
+    {
+      "fingerprint": "src/client/client.nim:LOR:8cfb491cc9ed65e8:0",
+      "file": "src/client/client.nim",
+      "line": 860,
+      "mutator": "LOR",
+      "original": "client.state != mlsShutdown and client.transport == transport",
+      "replacement": "<and -> or>",
+      "class": "spec_question",
+      "reason": "変異だと `close()` のあとも周回が終わらない (`state != mlsOperational` の枝で `lastActivity` を進めて眠り続ける)。ping は出ないので「closing the client stops the pings」のテストは通る。外から見える違いは、dispatcher に時計が残り続けること (`hasPendingOperations()` が真のまま) だけで、どの仕様 ID にも無い / 問い: 「閉じた client は dispatcher に仕事を残さない」を仕様にしますか。案 A (推奨): MCP-LIFECYCLE-26 の「closing the client stops the pings」に足し、`close()` のあと `pingIntervalMs` を過ぎたら `hasPendingOperations()` が偽になることを E テストで見る。案 B: 条件の `client.transport == transport` を消す (2 回目の `connect` を入口で断るのと組にする。下の「実装の欠陥の疑い」)。消せばこの LOR は生まれない"
+    },
+    {
+      "fingerprint": "src/client/client.nim:ROR:03dee8ca16c7a195:0",
+      "file": "src/client/client.nim",
+      "line": 862,
+      "mutator": "ROR",
+      "original": "idle < interval",
+      "replacement": "<< -> <=>",
+      "class": "equivalent",
+      "reason": "`idle == interval` のちょうど 1 ミリ秒のときだけ `sleepAsync(0)` を 1 回挟んで次の周で ping を送る。遅れは 1 ミリ秒未満で、外から区別できない / —"
+    },
+    {
+      "fingerprint": "src/client/client.nim:AOR:e836bc7120ccf10e:0",
+      "file": "src/client/client.nim",
+      "line": 863,
+      "mutator": "AOR",
+      "original": "interval - idle",
+      "replacement": "<- -> +>",
+      "class": "test_owed",
+      "reason": "眠っている間に通信があると、変異では次の ping が「最後の通信から `pingIntervalMs`」より遅れる (最大で約 3 倍の間隔)。今のテストは接続の直後 (idle がほぼ 0) からしか測らないので差が出ない / MCP-LIFECYCLE-26 (「When the connection has been idle for pingIntervalMs Then the client sends a ping」)。`tests/external/test_client_keepalive_fix.nim` に: `pingIntervalMs = 300` で接続し、30 ms 後に tools/list を 1 回送り、接続から 600 ms までに ping が 1 つ以上届くことを見る。元は約 330 ms、変異は約 870 ms で届く"
+    },
+    {
+      "fingerprint": "src/client/client.nim:SDL:b64362b1bc15ad75:0",
+      "file": "src/client/client.nim",
+      "line": 873,
+      "mutator": "SDL",
+      "original": "stderr.writeLine(\"[mcp-client] keepalive ping answered with an error: \" &; peerText(e.plainMessage))",
+      "replacement": "discard",
+      "class": "test_owed",
+      "reason": "keepalive は誰にも待たれないので、ping がエラーで答えられたことの原因はこの行にしか残らない。相手に原因を返さない失敗の原因を stderr の 1 行に書く箇所で、2026-11-13 の代表の決定 (server 側 MCP-ERRORS-3 と同じ扱い) に当たる / クライアント側に同じ仕様の文が無い。足す先の提案: `specs/errors.feature` に MCP-ERRORS-4「A failure of the client that no caller is told is written to stderr as one line」(keepalive の ping がエラーで答えられた・セッションが終わっていた・接続を閉じ損ねた)。テスト: `test_client_keepalive_fix.nim` の「Given a peer that answers a ping with an error…」を `loggedWhile` で包み、stderr に「keepalive ping answered with an error」と相手の文面 (Method not found) が 1 行で出ることを見る"
+    },
+    {
+      "fingerprint": "src/client/client.nim:SDL:f45f24d3e99abbdb:0",
+      "file": "src/client/client.nim",
+      "line": 876,
+      "mutator": "SDL",
+      "original": "stderr.writeLine(\"[mcp-client] keepalive ping found the session ended: \" &; peerText(e.plainMessage))",
+      "replacement": "discard",
+      "class": "test_owed",
+      "reason": "同上。keepalive の ping が 404 を受けてセッションの作り直しが走ったことは、この行にしか残らない (呼び手はいない) / 提案の MCP-ERRORS-4。`tests/external/test_session_expiry_fix.nim` の `expiringServer` で、`pingIntervalMs` を短くした client を繋ぎ、ping が 404 を受けたあと stderr に「keepalive ping found the session ended」が出て、`counts.initializes == 2` になることを見る"
+    },
+    {
+      "fingerprint": "src/client/client.nim:SDL:7b8bd1ef2303fbec:0",
+      "file": "src/client/client.nim",
+      "line": 888,
+      "mutator": "SDL",
+      "original": "await transport.close()",
+      "replacement": "discard",
+      "class": "test_owed",
+      "reason": "仕様は「closes the connection」と言うが、今のテストは `client.state == mlsShutdown` と待ちの要求の失敗しか見ず、transport が閉じられたことを見ていない / MCP-LIFECYCLE-26。`tests/external/stuck_transport.nim` (ping に答えない。`closeCalls` を数える) を旧版の client に繋ぎ (initialize の答えは `inject` で渡す)、`pingIntervalMs = 30`・`pingTimeoutMs = 60` で ping が時間切れになったあと `closeCalls == 1` を見る。変異だと 0"
+    },
+    {
+      "fingerprint": "src/client/client.nim:SDL:62b9584ef1b1cd92:0",
+      "file": "src/client/client.nim",
+      "line": 890,
+      "mutator": "SDL",
+      "original": "stderr.writeLine(\"[mcp-client] closing the connection failed: \" &; peerText(closing.plainMessage))",
+      "replacement": "discard",
+      "class": "test_owed",
+      "reason": "ping の失敗のあと接続を閉じ損ねた原因は、この行にしか残らない (呼び手はいない)。2026-11-13 の代表の決定に当たる / 提案の MCP-ERRORS-4。`close()` が例外を投げる transport (stuck_transport に `closeFails` の欄を足す) で ping を時間切れにし、stderr に「closing the connection failed」と例外の文面が 1 行で出ること、`client.state == mlsShutdown` を見る"
+    },
+    {
+      "fingerprint": "src/client/client.nim:SDL:4fb9d814e3c843cb:0",
+      "file": "src/client/client.nim",
+      "line": 894,
+      "mutator": "SDL",
+      "original": "stderr.writeLine(\"[mcp-client] keepalive ended with \" & $e.name & \": \" &; peerText(e.plainMessage))",
+      "replacement": "discard",
+      "class": "unreached",
+      "reason": "外側の `except CatchableError` に届く例外が無い。周回の中で待つのは `sleepAsync` と ping だけで、ping の `CatchableError` は内側の 3 つの `except` がすべて受け、その中の `transport.close()` も自分の `try` で包まれている。`failPending` は終わっていない future を失敗させるだけで投げない / — (この `except` 節ごと消せば生き残りも消える)"
+    },
+    {
+      "fingerprint": "src/client/client.nim:BLR:b8d2df6c5dee987b:0",
+      "file": "src/client/client.nim",
+      "line": 897,
+      "mutator": "BLR",
+      "original": "false",
+      "replacement": "true",
+      "class": "equivalent",
+      "reason": "周回が終わるのは `state == mlsShutdown` か transport が替わったときだけ。`keepAlive` を呼ぶのは `initialize` だけで、shutdown のあとは `renewSession` が何もせず (983 行)、`initialize` は `mlsUninitialized` 以外を断るので、終わったあとにこの旗を読む経路が無い / —"
+    },
+    {
+      "fingerprint": "src/client/client.nim:SDL:835812ed87f5fb7a:0",
+      "file": "src/client/client.nim",
+      "line": 985,
+      "mutator": "SDL",
+      "original": "stderr.writeLine(\"[mcp-client] the server ended the session; starting a new one\")",
+      "replacement": "discard",
+      "class": "accepted",
+      "reason": "失敗の文面は契約ではない (代表の決定 2026-10-23)。呼び手は `McpSessionExpiredError` (`renewed` つき) を受け取るので原因は返っており、消えるのは知らせの行だけ / —"
+    },
+    {
+      "fingerprint": "src/client/client.nim:SDL:9bd5da1ab8ba6a71:0",
+      "file": "src/client/client.nim",
+      "line": 991,
+      "mutator": "SDL",
+      "original": "stderr.writeLine(\"[mcp-client] a new session could not be started: \" & $e.name &; \": \" &; peerText(e.plainMessage))",
+      "replacement": "discard",
+      "class": "accepted",
+      "reason": "失敗の文面は契約ではない (代表の決定 2026-10-23)。呼び手は、作り直しの失敗を親に持ち同じ文面を含む `McpSessionExpiredError` を受け取るので、原因は呼び手に返っている / —"
+    },
+    {
+      "fingerprint": "src/client/client.nim:BLR:7b3b544c7959f2c3:0",
+      "file": "src/client/client.nim",
+      "line": 996,
+      "mutator": "BLR",
+      "original": "true",
+      "replacement": "false",
+      "class": "spec_question",
+      "reason": "作り直しに失敗したとき呼び手が受け取る `McpSessionExpiredError` の公開の欄 `current` が偽になる。SDK の中でこの値を読み直す経路は無い (state が shutdown なので `renewSession` は先に戻る)。MCP-HTTPSTREAM-28 は「failure as parent, renewed false」だけを言い、`current` に触れていない / 問い: 作り直しに失敗したときの `current` を仕様にしますか。案 A (推奨): MCP-HTTPSTREAM-28 の文に「current true」を足し、`test_session_expiry_fix.nim` の「…a server that refuses the new initialize…」に `check expired.current` を 1 行足す (欄の説明は既にそう約束している)。案 B: 仕様にしない (その場合この代入は消せる)"
+    },
+    {
+      "fingerprint": "src/client/client.nim:ROR:080f250a54bf828a:0",
+      "file": "src/client/client.nim",
+      "line": 1016,
+      "mutator": "ROR",
+      "original": "v > result.get",
+      "replacement": "<> -> >=>",
+      "class": "equivalent",
+      "reason": "`v == result.get` のとき `result` に同じ値を入れ直すだけで、戻り値は変わらない / —"
+    },
+    {
+      "fingerprint": "src/client/client.nim:BLR:4a74703e2a2ee211:0",
+      "file": "src/client/client.nim",
+      "line": 1038,
+      "mutator": "BLR",
+      "original": "false",
+      "replacement": "true",
+      "class": "equivalent",
+      "reason": "`answered` は直後の `try` で必ず代入される。代入しない経路 (2 つの `except`) は `raise` か `return` で抜けるので、初期値は読まれない / —"
+    },
+    {
+      "fingerprint": "src/client/client.nim:RVR:40ca21d69a02a055:0",
+      "file": "src/client/client.nim",
+      "line": 1087,
+      "mutator": "RVR",
+      "original": "return pvModern",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "`default(ProbeVerdict)` は最初の列挙子 `pvModern` で、元と同じ値 / —"
+    },
+    {
+      "fingerprint": "src/client/client.nim:SDL:275dad15c7ff65a8:0",
+      "file": "src/client/client.nim",
+      "line": 1089,
+      "mutator": "SDL",
+      "original": "raiseAssert \"server/discover was probed twice without a verdict\"",
+      "replacement": "discard",
+      "class": "unreached",
+      "reason": "`discover` の 2 周目 (`attempt == 1`) は、どの枝も `return` か `raise` で終わる (やり直す `continue` は `attempt == 0` のときだけ)。サーバーが何を答えてもこの行に届かない / —"
+    },
+    {
+      "fingerprint": "src/client/client.nim:LOR:7a1b3980f863ad33:0",
+      "file": "src/client/client.nim",
+      "line": 1098,
+      "mutator": "LOR",
+      "original": "waiting.isNil or waiting.finished",
+      "replacement": "<or -> and>",
+      "class": "test_owed",
+      "reason": "待っている要求が無い id (時間切れで手放した要求など) の喪失を transport が知らせると、変異では nil の `finished` を読んで落ちる。今のテストは待っている要求の喪失しか通さない / MCP-HTTP-49。`tests/external/test_request_lost_fix.nim` に: client を transport に繋ぎ、client が入れた `transport.onRequestLost` を、誰も待っていない id (手放した要求の id) で呼ぶ。client は何も投げず、次の要求が答えられることを見る。変異だとプロセスが落ちる"
+    },
+    {
+      "fingerprint": "src/client/client.nim:SDL:2f756b70317c80ea:0",
+      "file": "src/client/client.nim",
+      "line": 1100,
+      "mutator": "SDL",
+      "original": "client.pendingRequests.del(requestId)",
+      "replacement": "discard",
+      "class": "test_owed",
+      "reason": "失われた要求が待ちの表に残る。同じ id をもう一度使うと「is in flight」で断られる (仕様は「the caller may send it again」) / MCP-HTTP-49。同じファイルに: ストリームが応答の前に終わるサーバーへ `startRequest(…, id = \"r1\")` を送り、`McpRequestLostError` のあと `client.pendingRequests.len == 0` であること、同じ id \"r1\" でもう一度 `startRequest` できる (2026-07-28) ことを見る。変異だと表に 1 件残り、2 回目が `ValueError` になる"
+    },
+    {
+      "fingerprint": "src/client/content.nim:RVR:0b3a908190e4c846:0",
+      "file": "src/client/content.nim",
+      "line": 48,
+      "mutator": "RVR",
+      "original": "return none(string)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "`default(Option[string])` は none で、元の戻り値と同じ / —"
+    },
+    {
       "fingerprint": "src/client/elicitation.nim:SDL:cf63b65dd3d0f435:0",
       "file": "src/client/elicitation.nim",
       "line": 73,
@@ -951,6 +1211,36 @@
       "reason": "サーバーの型が汎用で icon に `mimeType` が無いと `icon.mimeType.get` が UnpackDefect で落ちる。サーバーの型が具体的で icon に `mimeType` があると、サーバーの型ではなく icon の型で照合する。検出していたテスト (「Given a generic Content-Type…」) は `tests/internal/test_icon_fetch_internal.nim` に移っている。 / MCP-ICONS-6 (Scenario の文面は「サーバーの型が無い・汎用のときだけ icon の型を使う」とまでは言っていない。足すなら文面も 1 行足すとよい)。`tests/external/test_security_trusted_ca.nim` に足す。(1) `Content-Type: application/octet-stream` で PNG を返し、`mimeType` の無い icon を `caFile` つきで取ると届く (変異は Defect)。(2) `Content-Type: image/png` で PNG を返し、icon の `mimeType` が `image/jpeg` でも届く (変異は「says it is image/jpeg」で断る)。"
     },
     {
+      "fingerprint": "src/client/sampling.nim:RVR:22bd31688538b11f:0",
+      "file": "src/client/sampling.nim",
+      "line": 69,
+      "mutator": "RVR",
+      "original": "return none(float)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "`default(Option[float])` は none で、元の戻り値と同じ / —"
+    },
+    {
+      "fingerprint": "src/client/sampling.nim:LOR:4e851ee8f751a18c:0",
+      "file": "src/client/sampling.nim",
+      "line": 79,
+      "mutator": "LOR",
+      "original": "maxTokens.isNil or maxTokens.kind != JInt",
+      "replacement": "<or -> and>",
+      "class": "test_owed",
+      "reason": "`maxTokens` の無い params で、変異では nil の `kind` を読んで落ちる (整数でない値は、続く `getBiggestInt() < 1` が 0 を読んで同じ例外になるので区別できない)。handler の経路では手前の `createMessageParamsProblems` が先に断るので届かないが、`parseSamplingRequest` は `mcp` から公開されていて直接呼べる / MCP-SEC-SWEEP-9 (「maxTokens is missing」)。`tests/external/test_security_sampling.nim` に: `maxTokens` の無い object を `parseSamplingRequest` に渡し、`McpProtocolError` を見る。変異だとプロセスが落ちる。別の道: `parseSamplingRequest` を公開から外せば、この変異は unreached になる"
+    },
+    {
+      "fingerprint": "src/client/sampling.nim:RVR:60d8e05cd3878e9c:0",
+      "file": "src/client/sampling.nim",
+      "line": 187,
+      "mutator": "RVR",
+      "original": "return newJsonRpcErrorResponse(request.id, -32603, \"the sampling handler answered with something that does not match the request\")",
+      "replacement": "<return default>",
+      "class": "accepted",
+      "reason": "失敗の文面は契約ではない (代表の決定 2026-10-23)。result も error も無い応答は、transport が -32603「Internal error」として送る (MCP-TRANSPORT-3) ので、断ることと符号 -32603 は保たれ、id は `processRequest` が要求のものを入れる。変わるのは文面だけ / —"
+    },
+    {
       "fingerprint": "src/client/subscriptions.nim:SDL:7b6c11cca30461fe:0",
       "file": "src/client/subscriptions.nim",
       "line": 112,
@@ -969,6 +1259,16 @@
       "replacement": "<return default>",
       "class": "accepted",
       "reason": "失敗の文面は契約ではない (代表の決定 2026-10-23)。ここに届く `McpTaskError` は `create` の上限超過だけで、符号は -32603。結果も誤りも無い応答は `transport.toJson` が -32603 \"Internal error\" にして送るので、断ることと符号は保たれ、変わるのは文面 (\"Too many tasks\" → \"Internal error\") と stderr の 1 行だけ。既存の E テスト (test_tasks_client「Given a store that holds one task at most, ...」) は符号を確かめていて、通る / —"
+    },
+    {
+      "fingerprint": "src/client/tools.nim:RVR:2e352bc38ad16857:0",
+      "file": "src/client/tools.nim",
+      "line": 54,
+      "mutator": "RVR",
+      "original": "return McpToolAnnotations()",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "`McpToolAnnotations()` は全部の欄が未設定の値で、型の既定値と同じ / —"
     },
     {
       "fingerprint": "src/ext/apps/host.nim:RVR:0c511227513989c7:0",

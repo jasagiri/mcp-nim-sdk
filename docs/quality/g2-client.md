@@ -1,5 +1,78 @@
 # G2 変異検出: client ジョブ
 
+## 測り直し (拡張ブランチの b04fcb9c、2026-11-11)
+
+測定: `nim-muter` 0.2.15、ジョブ `tests/mutation/client.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。状態: 測定済み。仕分けは 2026-11-14、テストを書いた社員とは別の担当が、コードと仕様を読んで行った (変異は当てていない)。
+
+| 全体 | killed | timeout | survived | runError | compileError |
+|---|---|---|---|---|---|
+| 398 | 344 | 14 | 30 | 0 | 10 |
+
+仕分けの内訳: test_owed 9、spec_question 3、equivalent 9、unreached 2、accepted 7、undecided 0。
+
+### 生き残りの仕分け
+
+| 指紋 | 場所 | 変異 | class | 理由 | 仕様 ID / 足すテストの案 |
+|---|---|---|---|---|---|
+| `src/client/cancel_token.nim:ROR:bc7d3f515c3dea3a:0` | cancel_token.nim:60 | `at >= 0` → `at > 0` | accepted | `unwatchCancellation` に関する生き残りは受け入れる (代表の決定 2026-11-11)。変異だと、先頭の待ち手だけがトークンに残る | — |
+| `src/client/cancel_token.nim:SDL:b8560021a4a528ae:0` | cancel_token.nim:61 | `token.waiters.del(at)` → `discard` | accepted | `unwatchCancellation` に関する生き残りは受け入れる (代表の決定 2026-11-11)。変異だと、終わった要求の待ち手がトークンに残る | — |
+| `src/client/client.nim:ROR:ec3dcd4a35d1e675:0` | client.nim:278 | `maxServerRequestsInProgress > 0` → `>= 0` | test_owed | 上限 0 (制限なし) のとき、変異だと `serverRequestsInProgress >= 0` が常に真になり、サーバーの要求をすべて -32603 で断る。仕様は「0: no limit」と書いているが、0 を入れるテストが無い (既定値 64 を確かめるだけ) | MCP-SEC-SWEEP-8。`tests/external/test_security_sampling_limits.nim` に: `maxServerRequestsInProgress = 0` の client に sampling/createMessage を 1 件 (または 3 件を同時に) 送り、どれも error なしで答えられ handler が呼ばれることを見る。変異だと 1 件目が「Too many requests in progress」になる |
+| `src/client/client.nim:ROR:99ececf14e11d202:0` | client.nim:533 | `reason.len > 0` → `>= 0` (`abandon` の stderr の行) | accepted | 失敗の文面は契約ではない (代表の決定 2026-10-23)。理由が空のとき stderr の行の末尾に「: 」が付くだけで、要求を手放すこと・サーバーへの通知は変わらない | — |
+| `src/client/client.nim:SDL:bf1513f4858062ec:0` | client.nim:607 | `options.cancel.unwatchCancellation(watching)` → `discard` | accepted | `unwatchCancellation` に関する生き残りは受け入れる (代表の決定 2026-11-11) | — |
+| `src/client/client.nim:ROR:d88c07a69f76d3b8:1` | client.nim:608 | `progressKey.len > 0` → `>= 0` (`finally` の `del`) | equivalent | `progressKey` が空なのは `onProgress` が nil のときだけで、そのとき 579 行の登録も同じ条件で行われない。`progressCallbacks` はこのモジュールだけが書くので、鍵 `""` は表に無く、`del("")` は何もしない | — |
+| `src/client/client.nim:BLR:ef687d54c37fe225:0` | client.nim:858 | `client.keepAliveRunning = true` → `false` | spec_question | 変異だと、セッションを作り直したとき (`renewSession` → `initialize`) に keepalive の周回が 2 本になる。相手が ping に答えていれば 2 本とも同じ `lastActivity` を見るので ping の数は変わらないが、答えない相手には `pingTimeoutMs` の間に ping が 2 つ出る。「keepalive は接続につき 1 本」はどの仕様 ID にも無い | 問い: 「セッションを作り直しても keepalive の周回は 1 本のまま」を仕様にしますか。案 A (推奨): MCP-LIFECYCLE-26 に 1 文足し、HTTP の 404 で作り直したあと ping に答えない相手へ、`pingTimeoutMs` の間に ping が 1 つだけ出ることを E テストで見る。案 B: 仕様にせず、この行を等価に近いものとして受け入れる (代表の決定が要る) |
+| `src/client/client.nim:LOR:8cfb491cc9ed65e8:0` | client.nim:860 | `state != mlsShutdown and client.transport == transport` → `or` | spec_question | 変異だと `close()` のあとも周回が終わらない (`state != mlsOperational` の枝で `lastActivity` を進めて眠り続ける)。ping は出ないので「closing the client stops the pings」のテストは通る。外から見える違いは、dispatcher に時計が残り続けること (`hasPendingOperations()` が真のまま) だけで、どの仕様 ID にも無い | 問い: 「閉じた client は dispatcher に仕事を残さない」を仕様にしますか。案 A (推奨): MCP-LIFECYCLE-26 の「closing the client stops the pings」に足し、`close()` のあと `pingIntervalMs` を過ぎたら `hasPendingOperations()` が偽になることを E テストで見る。案 B: 条件の `client.transport == transport` を消す (2 回目の `connect` を入口で断るのと組にする。下の「実装の欠陥の疑い」)。消せばこの LOR は生まれない |
+| `src/client/client.nim:ROR:03dee8ca16c7a195:0` | client.nim:862 | `idle < interval` → `<=` | equivalent | `idle == interval` のちょうど 1 ミリ秒のときだけ `sleepAsync(0)` を 1 回挟んで次の周で ping を送る。遅れは 1 ミリ秒未満で、外から区別できない | — |
+| `src/client/client.nim:AOR:e836bc7120ccf10e:0` | client.nim:863 | `interval - idle` → `interval + idle` | test_owed | 眠っている間に通信があると、変異では次の ping が「最後の通信から `pingIntervalMs`」より遅れる (最大で約 3 倍の間隔)。今のテストは接続の直後 (idle がほぼ 0) からしか測らないので差が出ない | MCP-LIFECYCLE-26 (「When the connection has been idle for pingIntervalMs Then the client sends a ping」)。`tests/external/test_client_keepalive_fix.nim` に: `pingIntervalMs = 300` で接続し、30 ms 後に tools/list を 1 回送り、接続から 600 ms までに ping が 1 つ以上届くことを見る。元は約 330 ms、変異は約 870 ms で届く |
+| `src/client/client.nim:SDL:b64362b1bc15ad75:0` | client.nim:873 | stderr の行「keepalive ping answered with an error: …」→ `discard` | test_owed | keepalive は誰にも待たれないので、ping がエラーで答えられたことの原因はこの行にしか残らない。相手に原因を返さない失敗の原因を stderr の 1 行に書く箇所で、2026-11-13 の代表の決定 (server 側 MCP-ERRORS-3 と同じ扱い) に当たる | クライアント側に同じ仕様の文が無い。足す先の提案: `specs/errors.feature` に MCP-ERRORS-4「A failure of the client that no caller is told is written to stderr as one line」(keepalive の ping がエラーで答えられた・セッションが終わっていた・接続を閉じ損ねた)。テスト: `test_client_keepalive_fix.nim` の「Given a peer that answers a ping with an error…」を `loggedWhile` で包み、stderr に「keepalive ping answered with an error」と相手の文面 (Method not found) が 1 行で出ることを見る |
+| `src/client/client.nim:SDL:f45f24d3e99abbdb:0` | client.nim:876 | stderr の行「keepalive ping found the session ended: …」→ `discard` | test_owed | 同上。keepalive の ping が 404 を受けてセッションの作り直しが走ったことは、この行にしか残らない (呼び手はいない) | 提案の MCP-ERRORS-4。`tests/external/test_session_expiry_fix.nim` の `expiringServer` で、`pingIntervalMs` を短くした client を繋ぎ、ping が 404 を受けたあと stderr に「keepalive ping found the session ended」が出て、`counts.initializes == 2` になることを見る |
+| `src/client/client.nim:SDL:7b8bd1ef2303fbec:0` | client.nim:888 | `await transport.close()` → `discard` (ping が失敗したあと) | test_owed | 仕様は「closes the connection」と言うが、今のテストは `client.state == mlsShutdown` と待ちの要求の失敗しか見ず、transport が閉じられたことを見ていない | MCP-LIFECYCLE-26。`tests/external/stuck_transport.nim` (ping に答えない。`closeCalls` を数える) を旧版の client に繋ぎ (initialize の答えは `inject` で渡す)、`pingIntervalMs = 30`・`pingTimeoutMs = 60` で ping が時間切れになったあと `closeCalls == 1` を見る。変異だと 0 |
+| `src/client/client.nim:SDL:62b9584ef1b1cd92:0` | client.nim:890 | stderr の行「closing the connection failed: …」→ `discard` | test_owed | ping の失敗のあと接続を閉じ損ねた原因は、この行にしか残らない (呼び手はいない)。2026-11-13 の代表の決定に当たる | 提案の MCP-ERRORS-4。`close()` が例外を投げる transport (stuck_transport に `closeFails` の欄を足す) で ping を時間切れにし、stderr に「closing the connection failed」と例外の文面が 1 行で出ること、`client.state == mlsShutdown` を見る |
+| `src/client/client.nim:SDL:4fb9d814e3c843cb:0` | client.nim:894 | stderr の行「keepalive ended with …」→ `discard` | unreached | 外側の `except CatchableError` に届く例外が無い。周回の中で待つのは `sleepAsync` と ping だけで、ping の `CatchableError` は内側の 3 つの `except` がすべて受け、その中の `transport.close()` も自分の `try` で包まれている。`failPending` は終わっていない future を失敗させるだけで投げない | — (この `except` 節ごと消せば生き残りも消える) |
+| `src/client/client.nim:BLR:b8d2df6c5dee987b:0` | client.nim:897 | `client.keepAliveRunning = false` → `true` (`finally`) | equivalent | 周回が終わるのは `state == mlsShutdown` か transport が替わったときだけ。`keepAlive` を呼ぶのは `initialize` だけで、shutdown のあとは `renewSession` が何もせず (983 行)、`initialize` は `mlsUninitialized` 以外を断るので、終わったあとにこの旗を読む経路が無い | — |
+| `src/client/client.nim:SDL:835812ed87f5fb7a:0` | client.nim:985 | stderr の行「the server ended the session; starting a new one」→ `discard` | accepted | 失敗の文面は契約ではない (代表の決定 2026-10-23)。呼び手は `McpSessionExpiredError` (`renewed` つき) を受け取るので原因は返っており、消えるのは知らせの行だけ | — |
+| `src/client/client.nim:SDL:9bd5da1ab8ba6a71:0` | client.nim:991 | stderr の行「a new session could not be started: …」→ `discard` | accepted | 失敗の文面は契約ではない (代表の決定 2026-10-23)。呼び手は、作り直しの失敗を親に持ち同じ文面を含む `McpSessionExpiredError` を受け取るので、原因は呼び手に返っている | — |
+| `src/client/client.nim:BLR:7b3b544c7959f2c3:0` | client.nim:996 | `failed.current = true` → `false` | spec_question | 作り直しに失敗したとき呼び手が受け取る `McpSessionExpiredError` の公開の欄 `current` が偽になる。SDK の中でこの値を読み直す経路は無い (state が shutdown なので `renewSession` は先に戻る)。MCP-HTTPSTREAM-28 は「failure as parent, renewed false」だけを言い、`current` に触れていない | 問い: 作り直しに失敗したときの `current` を仕様にしますか。案 A (推奨): MCP-HTTPSTREAM-28 の文に「current true」を足し、`test_session_expiry_fix.nim` の「…a server that refuses the new initialize…」に `check expired.current` を 1 行足す (欄の説明は既にそう約束している)。案 B: 仕様にしない (その場合この代入は消せる) |
+| `src/client/client.nim:ROR:080f250a54bf828a:0` | client.nim:1016 | `v > result.get` → `>=` | equivalent | `v == result.get` のとき `result` に同じ値を入れ直すだけで、戻り値は変わらない | — |
+| `src/client/client.nim:BLR:4a74703e2a2ee211:0` | client.nim:1038 | `var answered = false` → `true` | equivalent | `answered` は直後の `try` で必ず代入される。代入しない経路 (2 つの `except`) は `raise` か `return` で抜けるので、初期値は読まれない | — |
+| `src/client/client.nim:RVR:40ca21d69a02a055:0` | client.nim:1087 | `return pvModern` → `<return default>` | equivalent | `default(ProbeVerdict)` は最初の列挙子 `pvModern` で、元と同じ値 | — |
+| `src/client/client.nim:SDL:275dad15c7ff65a8:0` | client.nim:1089 | `raiseAssert "server/discover was probed twice without a verdict"` → `discard` | unreached | `discover` の 2 周目 (`attempt == 1`) は、どの枝も `return` か `raise` で終わる (やり直す `continue` は `attempt == 0` のときだけ)。サーバーが何を答えてもこの行に届かない | — |
+| `src/client/client.nim:LOR:7a1b3980f863ad33:0` | client.nim:1098 | `waiting.isNil or waiting.finished` → `and` | test_owed | 待っている要求が無い id (時間切れで手放した要求など) の喪失を transport が知らせると、変異では nil の `finished` を読んで落ちる。今のテストは待っている要求の喪失しか通さない | MCP-HTTP-49。`tests/external/test_request_lost_fix.nim` に: client を transport に繋ぎ、client が入れた `transport.onRequestLost` を、誰も待っていない id (手放した要求の id) で呼ぶ。client は何も投げず、次の要求が答えられることを見る。変異だとプロセスが落ちる |
+| `src/client/client.nim:SDL:2f756b70317c80ea:0` | client.nim:1100 | `client.pendingRequests.del(requestId)` → `discard` | test_owed | 失われた要求が待ちの表に残る。同じ id をもう一度使うと「is in flight」で断られる (仕様は「the caller may send it again」) | MCP-HTTP-49。同じファイルに: ストリームが応答の前に終わるサーバーへ `startRequest(…, id = "r1")` を送り、`McpRequestLostError` のあと `client.pendingRequests.len == 0` であること、同じ id "r1" でもう一度 `startRequest` できる (2026-07-28) ことを見る。変異だと表に 1 件残り、2 回目が `ValueError` になる |
+| `src/client/content.nim:RVR:0b3a908190e4c846:0` | content.nim:48 | `return none(string)` → `<return default>` | equivalent | `default(Option[string])` は none で、元の戻り値と同じ | — |
+| `src/client/sampling.nim:RVR:22bd31688538b11f:0` | sampling.nim:69 | `return none(float)` → `<return default>` | equivalent | `default(Option[float])` は none で、元の戻り値と同じ | — |
+| `src/client/sampling.nim:LOR:4e851ee8f751a18c:0` | sampling.nim:79 | `maxTokens.isNil or maxTokens.kind != JInt` → `and` | test_owed | `maxTokens` の無い params で、変異では nil の `kind` を読んで落ちる (整数でない値は、続く `getBiggestInt() < 1` が 0 を読んで同じ例外になるので区別できない)。handler の経路では手前の `createMessageParamsProblems` が先に断るので届かないが、`parseSamplingRequest` は `mcp` から公開されていて直接呼べる | MCP-SEC-SWEEP-9 (「maxTokens is missing」)。`tests/external/test_security_sampling.nim` に: `maxTokens` の無い object を `parseSamplingRequest` に渡し、`McpProtocolError` を見る。変異だとプロセスが落ちる。別の道: `parseSamplingRequest` を公開から外せば、この変異は unreached になる |
+| `src/client/sampling.nim:RVR:60d8e05cd3878e9c:0` | sampling.nim:187 | `return newJsonRpcErrorResponse(request.id, -32603, "the sampling handler answered with something that does not match the request")` → `<return default>` | accepted | 失敗の文面は契約ではない (代表の決定 2026-10-23)。result も error も無い応答は、transport が -32603「Internal error」として送る (MCP-TRANSPORT-3) ので、断ることと符号 -32603 は保たれ、id は `processRequest` が要求のものを入れる。変わるのは文面だけ | — |
+| `src/client/tools.nim:RVR:2e352bc38ad16857:0` | tools.nim:54 | `return McpToolAnnotations()` → `<return default>` | equivalent | `McpToolAnnotations()` は全部の欄が未設定の値で、型の既定値と同じ | — |
+
+### timeout
+
+timeout は検出に数える。無限に待つ・回る変異か、ただ遅いだけかを 1 行ずつ書く (コードから読んだ見立てで、当てて確かめてはいない)。
+
+| 指紋 | 場所 | 変異 | 見立て |
+|---|---|---|---|
+| `src/client/client.nim:SDL:097073d7c1c89b5e:0` | client.nim:310 | `subscription.ended.complete()` → `discard` | 待ち続ける。購読の `ended` が完了せず、それを待つテストが止まる |
+| `src/client/client.nim:SDL:71e163352870e7c4:0` | client.nim:404 | `promise.complete(response)` → `discard` | 待ち続ける。どの要求も応答を受け取れず、要求の時間切れ (既定 60 秒) まで待つ |
+| `src/client/client.nim:BLR:441e41b22fd35db0:0` | client.nim:412 | `while true` → `false` | 待ち続ける。受信の周回が回らず、応答が処理されない |
+| `src/client/client.nim:SDL:8f1e478c467bd84e:0` | client.nim:421 | `asyncCheck client.processResponse(response)` → `discard` | 待ち続ける。応答が捨てられる |
+| `src/client/client.nim:BLR:6224b683d15c83d1:0` | client.nim:709 | `toolsListedAgain = true` → `false` | 無限に回る。2 回目の拒否でも tools/list を読み直して送り直し続ける |
+| `src/client/client.nim:SDL:3599c229f44384bc:0` | client.nim:725 | `inc rounds` → `discard` | 無限に回る。`maxInputRounds` に達しない |
+| `src/client/client.nim:ROR:055f590c43452ade:0` | client.nim:856 | `interval <= 0` → `< 0` | 無限に回る見込み。間隔 0 で周回に入り、眠らずに ping を送り続ける。止まらなくても「Given an interval of 0…no ping is sent」が落とすはず |
+| `src/client/client.nim:LOR:38c119cf033b54c7:0` | client.nim:856 | `interval <= 0 or keepAliveRunning` → `and` | 同上 (間隔 0 で周回に入る) |
+| `src/client/client.nim:ROR:16a59f22d90f0c5e:0` | client.nim:865 | `state != mlsOperational` → `==` | ただ遅いだけの見込み。operational の間 ping を送らなくなり、ping を待つテストが上限 (版ごとに 3 秒) まで待ってから `check` で落ちるはず。測り直しの候補 |
+| `src/client/client.nim:ROR:9eb67d6fa934c509:0` | client.nim:939 | `error.code == ErrUnsupportedProtocolVersion` → `!=` | ただ遅いだけの見込み。別の符号の拒否で 2 回目の discover に進み、要求の時間切れ (60 秒) まで待つ。測り直しの候補 |
+| `src/client/client.nim:RVR:42868e292d07ee69:0` | client.nim:1053 | `return pvSilent` → `<return default>` (`pvModern`) | 見立てに確信なし。答えない相手を「確立済み」とみなして initialize を送らず、その後の要求が時間切れまで待つと読める。時間切れの後に落とす `check` があるかは確かめていない。検出できていない疑いがあり、測り直しの候補 |
+| `src/client/client.nim:SDL:6f89b0986d70fae4:0` | client.nim:1105 | `asyncCheck client.processMessages()` → `discard` | 待ち続ける。何も受信せず `connect` が終わらない |
+| `src/client/client.nim:ROR:980cfee04d924e41:0` | client.nim:1121 | `verdict != pvSilent` → `==` | 見立てに確信なし。探りに答えた旧版の相手が initialize をモダンの符号で断ると、もう一度 discover を送って要求の時間切れまで待つと読める。ただ遅いだけなら測り直しの候補 |
+| `src/client/content.nim:SDL:02d0793da7827490:0` | content.nim:160 | `inc pages` → `discard` | 無限に回る。`maxPages` に達せず、終わらない一覧を読み続ける |
+
+### 仕分けの中で気づいたこと
+
+- 実装の欠陥の疑い: `connect` は、既に繋がっている client に呼ばれても、先に `client.transport` を差し替えて受信の周回をもう 1 本起こし、そのあと `initialize` が「Client already initialized」で断る (旧版)。断る前に状態が書き換わっている。
+- 前の記録 (2026-10-07・2026-10-10) の「リードの判断」は、この節の accepted の根拠にしていない。894 行と 1089 行は、今のコードを読んで unreached とした。
+
+## 最初の測定 (本線の 36a4c8a5、2026-10-07)
+
 測定: `nim-muter`、ジョブ `tests/mutation/client.json`、本線の 36a4c8a5 (2026-10-07)。対象は `src/client/` の 8 ファイル。
 
 | 全変異 | killed | timeout | survived | runError | compileError |
