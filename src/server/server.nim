@@ -737,9 +737,10 @@ proc relatedNotification(ctx: McpRequestContext, methodName: string, params: Jso
     result.relatedRequestId = scope.resultStream()
 
 func progressIntervalMs(ctx: McpRequestContext): int =
-  ## The least time between two progress notifications of the request.
+  ## The least time between two progress notifications of the request: a
+  ## millisecond at the least, so a limit above 1000 per second still limits.
   let perSecond = ctx.server.maxProgressPerSecond
-  if perSecond > 0: 1000 div perSecond else: 0
+  if perSecond > 0: max(1, 1000 div perSecond) else: 0
 
 proc progressWanted(ctx: McpRequestContext, now: MonoTime): bool =
   ## Whether the interval since the last notification has passed.
@@ -1119,7 +1120,7 @@ proc listedEntry(server: McpServer, ctx: McpRequestContext, methodName: string,
       return none(JsonNode)
     cursor = page.nextCursor
   stderr.writeLine("[mcp-server] " & methodName & " of this server has more than " &
-                   $MaxToolListPages & " pages; '" & name & "' was not found")
+                   $MaxToolListPages & " pages; '" & peerText(name) & "' was not found")
   none(JsonNode)
 
 proc toolDefinition(server: McpServer, ctx: McpRequestContext,

@@ -143,3 +143,11 @@ Feature: Progress and cancellation
     When the client calls it with a progress token
     Then fewer than ten notifications arrive, in growing order, the last of them for step ten, and before the response
     And with maxProgressPerSecond 0 all ten arrive, and by default (20 per second) the first and the last of five arrive
+    And the least time between two notifications is one millisecond, so a limit above 1000 per second still limits, and does not mean no limit
+
+  @spec:MCP-PROGRESS-11 @feature:ftProgress
+  Scenario: A value the limit held back arrives once the interval has passed, while the handler is still running
+    Given a server that allows one or two progress notifications per second and a handler that reports in bursts and waits after each burst
+    When the interval since the last notification has passed
+    Then the last value of the burst reaches the client before the handler returns, without a further report
+    And a report made after the interval has passed is sent at once, and a report made before it is sent as soon as the interval is over

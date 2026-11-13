@@ -310,6 +310,10 @@ MCP-PROGRESS-10 | tests/external/test_progress_rate_fix.nim | Given a limit of 0
 MCP-PROGRESS-10 | tests/external/test_progress_rate_fix.nim | Given the default limit, when a handler reports five steps at once, then the first and the last arrive
 MCP-PROGRESS-10 | tests/external/test_progress_rate_fix.nim | Given a limit of 2 per second, when the handler stops reporting after the last step, then the last value arrives before the request ends
 MCP-PROGRESS-10 | tests/external/test_progress_rate_fix.nim | Given a limit of 4 per second, when a handler reports steadily over a second, then about four arrive
+MCP-PROGRESS-10 | tests/external/test_progress_rate_fix.nim | Given a limit above 1000 per second, when a handler reports many steps at once, then fewer arrive, the last one among them
+MCP-PROGRESS-11 | tests/external/test_progress_rate_fix.nim | Given a limit of 2 per second and a handler that reports in two bursts and waits after each, when the interval passes, then the last value of each burst arrives before the handler returns
+MCP-PROGRESS-11 | tests/external/test_progress_rate_fix.nim | Given a limit of 2 per second, when a handler reports after the interval has passed, then the value is sent at once
+MCP-PROGRESS-11 | tests/external/test_progress_rate_fix.nim | Given a limit of 1 per second, when a handler reports before the interval is over, then the value arrives soon after the interval is over
 MCP-CANCEL-1 | tests/external/test_server_progress_cancel.nim | Given a request in flight, when the client cancels it, then no response is sent and the handler sees the cancellation
 MCP-CANCEL-1 | tests/external/test_server_progress_cancel.nim | Given a numeric request id, when the client cancels it, then the request is cancelled
 MCP-CANCEL-1 | tests/external/test_server_progress_cancel.nim | Given a handler waiting on whenCancelled, when the client cancels, then the wait ends
@@ -2296,6 +2300,17 @@ MCP-ERRORS-1 | tests/external/test_error_message_prop.nim | Given any request th
 MCP-ERRORS-2 | tests/external/test_client_error_message_fix.nim | Given a handler that fails with an error code of its own, when the server asks, then the message is the handler's alone
 MCP-ERRORS-2 | tests/external/test_client_error_message_fix.nim | Given a handler that raises, when the server asks, then the message is the one the raiser wrote, on one line, without a traceback
 MCP-ERRORS-2 | tests/external/test_client_error_message_fix.nim | Given a roots handler that raises, when the server asks, then the message names no source path
+MCP-ERRORS-3 | tests/external/test_server_failure_log.nim | Given a resource handler that returns a blob that is not base64, when it is read, then the peer gets an internal error and one line names the method
+MCP-ERRORS-3 | tests/external/test_server_failure_log.nim | Given a filter that gives a result a negative ttlMs, when a 2026-07-28 client reads a resource, then the peer gets an internal error and one line names the method
+MCP-ERRORS-3 | tests/external/test_server_failure_log.nim | Given a tool with an invalid x-mcp-header, when a 2026-07-28 client lists tools, then the tool is left out and one line names it
+MCP-ERRORS-3 | tests/external/test_server_failure_log.nim | Given a tool handler that fails with a message of its own, when the tool is called, then the peer gets an internal error and one line holds the message, without its control characters
+MCP-ERRORS-3 | tests/external/test_server_failure_log.nim | Given a tool handler that asks for input in a version that cannot, when the tool is called, then the peer gets an internal error and one line names the method
+MCP-ERRORS-3 | tests/external/test_server_failure_log.nim | Given a tool whose inputSchema cannot be checked, when it is called, then the peer gets an internal error and one line names the tool
+MCP-ERRORS-3 | tests/external/test_server_failure_log.nim | Given a tool list that never ends, when a tool that it does not hold is called, then one line names the tool, without its control characters
+MCP-ERRORS-3 | tests/external/test_server_failure_log.nim | Given a request the client cancelled and a handler that fails afterwards, when it fails, then one line names the method and the request and one line holds its message
+MCP-ERRORS-3 | tests/external/test_server_failure_log.nim | Given a held progress notification that cannot be sent, when the interval passes, then one line names the session
+MCP-ERRORS-3 | tests/external/test_server_failure_log.nim | Given a request of the server that times out and a cancellation that cannot be sent, when the time is up, then the caller is told and one line names the method
+MCP-ERRORS-3 | tests/external/test_server_failure_log.nim | Given a stdio server whose notifications fail, when it ends a subscription, then one line names the request, without its control characters
 MCP-META-1 | tests/external/test_meta_keys_g0f.nim | Given keys the specification calls valid and invalid, when they are judged, then each is judged as the specification says
 MCP-META-1 | tests/external/test_meta_keys_g0f.nim | Given the keys the SDK defines, when they are judged, then every one is valid
 MCP-META-1 | tests/external/test_meta_keys_g0f.nim | Given a server that answers discovery, a list, a call, a failed call and an unknown method, when its messages are read, then every _meta key in them is valid

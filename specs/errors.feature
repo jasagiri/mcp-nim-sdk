@@ -13,3 +13,10 @@ Feature: JSON-RPC errors
     Given a client whose handler for a request of the server fails, by refusing with an error of its own or with any other exception
     When the client answers the server
     Then the message of the JSON-RPC error is the message the handler wrote, on one line, with no trace of where the exception passed
+
+  @spec:MCP-ERRORS-3
+  Scenario: A failure whose cause the peer is not told is written to stderr as one line
+    Given a server that meets a failure it does not tell the peer the cause of: a handler that fails or returns what the specification does not allow, a tool whose inputSchema cannot be checked, a tool listed with invalid x-mcp-header declarations, a request cancelled whose handler then fails, an endless tool list, or a notification the server cannot send
+    When the server answers "Internal error" only, leaves the entry out, or goes on
+    Then it writes the cause to stderr on one line that names what the caller gave: the message of the handler, the method, the tool or the request id
+    And a name or message a peer chose is shown with its control characters as escapes
