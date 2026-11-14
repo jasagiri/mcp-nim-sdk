@@ -1257,8 +1257,8 @@
       "mutator": "RVR",
       "original": "return newJsonRpcErrorResponse(answer.id, ErrInternal, \"Internal error\")",
       "replacement": "<return default>",
-      "class": "accepted",
-      "reason": "失敗の文面は契約ではない (代表の決定 2026-10-23)。この行には公開の入口から届く (既存の E テスト test_ext_tasks「Given a tool whose request in a task ends asking for input the multi round-trip way, ...」が通る)。変異後の空の応答は `finishWhenDone` から `task_store.finish` に渡り、2026-11-12 からの置き換えで、元と同じ誤り (符号 -32603、文面 \"Internal error\"、data は null) として記録される。task は同じく failed、`tasks/get` の `error` も `statusMessage` も同じで、応答の id は outcome に入らない。変わるのは stderr だけ: 元の「use requestInput …」の 1 行 (212 行、変異でも出る) の後に、`finish` の「ended with neither a result nor an error」が 1 行増える。初回の測定 (id 62) でこの変異を殺した理由 (task が completed になる) は、`finish` の置き換えでもう成り立たない。消せるコードか: return ごと消すと `resultType` を外した `input_required` の結果で task が completed になるので消せない / —"
+      "class": "test_owed",
+      "reason": "代表の決定 (2026-11-15): 握った失敗 1 件につき stderr は 1 行 (MCP-ERRORS-3)。変異後は task の結果は同じだが stderr に「neither a result nor an error」の行が余分に出る。input_required の task の既存 E テストに、この行が出ないことの確かめを足して殺す"
     },
     {
       "fingerprint": "src/ext/tasks/server.nim:RVR:9bd38dfae0fced9f:0",
@@ -2147,8 +2147,8 @@
       "mutator": "BLR",
       "original": "false",
       "replacement": "true",
-      "class": "spec_question",
-      "reason": "上の行と同じ変異 (RVR と BLR が同じ結果になる) / 上の行と同じ問い。同じテストで両方殺せる"
+      "class": "test_owed",
+      "reason": "上の行 (RVR f09e9e232af8b35b:2) と同じ変異。代表の決定 (2026-11-15) により同じ E テストで殺す"
     },
     {
       "fingerprint": "src/protocol/task_store.nim:RVR:f09e9e232af8b35b:2",
@@ -2157,8 +2157,8 @@
       "mutator": "RVR",
       "original": "return false",
       "replacement": "<return default>",
-      "class": "spec_question",
-      "reason": "新しい変異 (`finish` を直接呼ぶテストが無くなって残った)。呼び手の `finishWhenDone` は `store.finish(...) and raised.len > 0` で stderr に書くので、期限切れで消えた task の仕事が後から例外で終わると、元は何も書かず、変異は「the request of task … raised …」を 1 行書く。期限切れは `cancelWork` で仕事を止めるので、止められた仕事が例外で終わるたびに出る。取り消しの後は何も書かないことを E テスト (MCP-TASKS-10「Given work that raises after its task was cancelled, ... nothing is logged ...」) が確かめているが、期限切れの後についてはどの Scenario も述べていない (MCP-TASKS-12 は「消える」「止めるよう伝える」まで) / 問い: 期限切れで止められた仕事が後から例外で終わったとき、stderr に何も書かないことを仕様 (MCP-TASKS-12 に 1 文) にするか。推奨: 仕様にする (取り消しの後と同じ扱い。`task_methods.nim` のコメントも「止めるよう言われて止まった仕事は報告する失敗ではない」と書いている)。その場合のテストの案: test_tasks_store の suite「running the request a task stands for」に、`FakeTime` の store で `runAsTask(store, \"a\", some(1_000'i64), ...)`、時刻を 2_000 に進めて `discard store.sweep()`、`loggedWhile` の中で `work.fail(newException(ValueError, \"stopped\"))` と `sleepAsync(20)`、`check log == \"\"`。変異だと「raised stopped」の行が出る"
+      "class": "test_owed",
+      "reason": "代表の決定 (2026-11-15): 期限切れで止められた task の仕事が後から例外で終わっても stderr に何も書かないことを MCP-TASKS-12 に足し、E テストで固定する。元は何も書かず、変異は「the request of task … raised …」を 1 行書く"
     },
     {
       "fingerprint": "src/protocol/task_store.nim:SDL:131324adae4bf5f7:0",
