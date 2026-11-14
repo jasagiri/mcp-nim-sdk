@@ -16,9 +16,9 @@ Feature: JSON-RPC errors
 
   @spec:MCP-ERRORS-3
   Scenario: A failure whose cause the peer is not told is written to stderr as one line
-    Given a server that meets a failure it does not tell the peer the cause of: a handler that fails or returns what the specification does not allow, a tool whose inputSchema cannot be checked, a tool listed with invalid x-mcp-header declarations, a request cancelled whose handler then fails, an endless tool list, or a notification the server cannot send
+    Given a server that meets a failure it does not tell the peer the cause of: a handler that fails or returns what the specification does not allow, a tool whose inputSchema cannot be checked, a tool listed with invalid x-mcp-header declarations, a request cancelled whose handler then fails, a request run as a task that ends with neither a result nor an error, an endless tool list, or a notification the server cannot send
     When the server answers "Internal error" only, leaves the entry out, or goes on
-    Then it writes the cause to stderr on one line that names what the caller gave: the message of the handler, the method, the tool or the request id
+    Then it writes the cause to stderr on one line that names what the caller gave: the message of the handler, the method, the tool, the request id or the id of the task
     And a name or message a peer chose is shown with its control characters as escapes
 
   @spec:MCP-ERRORS-4

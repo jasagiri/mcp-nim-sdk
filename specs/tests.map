@@ -2317,6 +2317,7 @@ MCP-ERRORS-3 | tests/external/test_server_failure_log.nim | Given a tool handler
 MCP-ERRORS-3 | tests/external/test_server_failure_log.nim | Given a tool whose inputSchema cannot be checked, when it is called, then the peer gets an internal error and one line names the tool
 MCP-ERRORS-3 | tests/external/test_server_failure_log.nim | Given a tool list that never ends, when a tool that it does not hold is called, then one line names the tool, without its control characters
 MCP-ERRORS-3 | tests/external/test_server_failure_log.nim | Given a request the client cancelled and a handler that fails afterwards, when it fails, then one line names the method and the request and one line holds its message
+MCP-ERRORS-3 | tests/external/test_tasks_store.nim | Given work that answers with neither a result nor an error, when it ends, then the task failed with an internal error, whatever toolErrorsFail is
 MCP-ERRORS-3 | tests/external/test_server_failure_log.nim | Given a held progress notification that cannot be sent, when the interval passes, then one line names the session
 MCP-ERRORS-3 | tests/external/test_server_failure_log.nim | Given a request of the server that times out and a cancellation that cannot be sent, when the time is up, then the caller is told and one line names the method
 MCP-ERRORS-3 | tests/external/test_server_failure_log.nim | Given a stdio server whose notifications fail, when it ends a subscription, then one line names the request, without its control characters

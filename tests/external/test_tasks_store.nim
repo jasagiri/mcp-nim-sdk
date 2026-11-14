@@ -646,12 +646,17 @@ suite "tasks: running the request a task stands for":
       let work = newFuture[JsonRpcResponse]("work")
       let task = runAsTask(store, "a", none(int64), proc(id: string): TaskWork =
         (response: work, cancel: nil), toolErrorsFail)
-      work.complete(JsonRpcResponse(jsonrpc: "2.0", id: "1"))
-      settle()
+      let log = loggedWhile(proc() =
+        work.complete(JsonRpcResponse(jsonrpc: "2.0", id: "1"))
+        settle())
       check store.get("a", task.taskId).status == tsFailed
       let outcome = waitFor store.awaitOutcome("a", task.taskId)
       check outcome.result.isNone
       check outcome.error.get.code == -32603
+      check log.count('\n') == 1
+      check log.endsWith("\n")
+      check task.taskId in log
+      check not log.strip(leading = false).anyIt(it < ' ')
 
   test "Given work that raises after its task was cancelled, when it ends, then nothing is logged and the task stays cancelled":
     let store = storeAt(FakeTime())
