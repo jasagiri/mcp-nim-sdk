@@ -90,6 +90,7 @@ Feature: Tasks
     Given a task with a ttl
     When the ttl has elapsed, whatever the status
     Then it is gone for tasks/get, tasks/result and tasks/list, and the work still running behind it is told to stop
+    And work that ends after its task is gone, in an exception or not, leaves nothing on stderr: nobody asked for it any more
     And a task with unlimited ttl stays
 
   @spec:MCP-TASKS-13 @feature:ftTasks

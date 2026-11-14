@@ -627,6 +627,7 @@ if isSupported(mpv20260728):
       check state["error"]["code"].getInt() == -32603
       check state["error"]["message"].getStr() == "Internal error"
       check "requestInput" in logged
+      check "neither a result nor an error" notin logged
 
     test "Given a task cancelled while it waits for input, when it is polled, then it is cancelled and the work stopped":
       let f = fixture()

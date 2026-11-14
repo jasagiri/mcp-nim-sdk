@@ -669,6 +669,20 @@ suite "tasks: running the request a task stands for":
     check log == ""
     check store.get("a", task.taskId).status == tsCancelled
 
+  test "Given work that raises after its task expired, when it ends, then nothing is logged and the task stays gone":
+    let time = FakeTime(nowMs: 0)
+    let store = storeAt(time)
+    let work = newFuture[JsonRpcResponse]("work")
+    let task = runAsTask(store, "a", some(1_000'i64), proc(id: string): TaskWork =
+      (response: work, cancel: nil))
+    time.nowMs = 1_000
+    let log = loggedWhile(proc() =
+      work.fail(newException(ValueError, "stopped"))
+      waitFor sleepAsync(20))
+    check log == ""
+    expect McpTaskError:
+      discard store.get("a", task.taskId)
+
   test "Given tasks/list with a cursor that is not a string, when answered, then it is Invalid params":
     let store = storeAt(FakeTime())
     let request = newJsonRpcRequest("1", "tasks/list", %*{"cursor": 5})

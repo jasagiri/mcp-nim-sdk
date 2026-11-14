@@ -1604,6 +1604,7 @@ MCP-TASKS-12 | tests/external/test_tasks_store.nim | Given a result awaited on a
 MCP-TASKS-12 | tests/external/test_tasks_store.nim | Given a result awaited on a task with a short ttl, when the ttl elapses, then the wait fails by itself
 MCP-TASKS-12 | tests/external/test_tasks_store.nim | Given work that cannot be stopped, when its task expires, then the others are swept too and the failure is logged
 MCP-TASKS-12 | tests/external/test_tasks_store.nim | Given an expiry hook that raises, when a task expires, then the sweep goes on and the failure is logged
+MCP-TASKS-12 | tests/external/test_tasks_store.nim | Given work that raises after its task expired, when it ends, then nothing is logged and the task stays gone
 MCP-TASKS-13 | tests/external/test_tasks_server.nim | Given a task of one session, when another session asks for it, then it is not found, whatever the operation
 MCP-TASKS-13 | tests/external/test_tasks_server.nim | Given tasks of two sessions, when each lists, then it sees only its own
 MCP-TASKS-13 | tests/external/test_tasks_store.nim | Given a task of one owner, when another asks for it, then it is not found, as if it did not exist
@@ -2694,6 +2695,7 @@ MCP-EXT-TASKS-11 | tests/external/test_ext_tasks.nim | Given a working task, whe
 MCP-EXT-TASKS-11 | tests/external/test_ext_tasks.nim | Given a key a task used and had answered, when the tool asks again with that key, then it raises ValueError
 MCP-EXT-TASKS-11 | tests/external/test_ext_tasks.nim | Given a task cancelled while its tool runs on, when the tool asks for input afterwards, then the task is no longer one the extension serves
 MCP-EXT-TASKS-11 | tests/external/test_ext_tasks.nim | Given a tool whose request in a task ends asking for input the multi round-trip way, when the task is polled, then it failed with an internal error and the log points to requestInput
+MCP-ERRORS-3 | tests/external/test_ext_tasks.nim | Given a tool whose request in a task ends asking for input the multi round-trip way, when the task is polled, then it failed with an internal error and the log points to requestInput
 MCP-EXT-TASKS-11 | tests/external/test_ext_tasks_client.nim | Given a task that needs input, when the client waits, then it answers from its elicitation handler and the task finishes
 MCP-EXT-TASKS-11 | tests/external/test_ext_tasks_client.nim | Given an input request listed on several polls, when the client waits, then it answers a key once
 MCP-EXT-TASKS-11 | tests/external/test_ext_tasks_client.nim | Given a task that asks for something the client has no handler for, when it waits, then it raises McpUnsupportedError
