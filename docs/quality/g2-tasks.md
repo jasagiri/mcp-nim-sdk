@@ -1,5 +1,34 @@
 # G2 変異検出: tasks ジョブ
 
+## 2 回目の測定 (拡張ブランチの 654cb11a、2026-11-14)
+
+測定: `nim-muter` 0.2.15、ジョブ `tests/mutation/tasks.json`。状態: 測定済み。全体 300、killed 238、timeout 12、survived 28、runError 0、compileError 22。
+
+ここに書くのは、台帳にまだ無い指紋 18 件 (すべて `src/protocol/task_store.nim`)。store のコードが `src/protocol/tasks.nim` から `task_store.nim` に移り、`protocol/tasks` は公開する名前だけを export する形になった (`finish`・`setResultStream`・`onResultStream=` は公開から外れた)。仕分けは式と呼び出し元を読んで行った (変異を当てて流してはいない)。「引き継ぎ」は、下の節「測り直し (拡張ブランチの b04fcb9c、2026-11-11)」の同じ変異の判定を、今のコードで理由が成り立つことを確かめて引いたもの。
+
+件数: equivalent 14、accepted 1、test_owed 1、spec_question 2。
+
+| 指紋 | 場所 | 変異 | class | 理由 | 仕様 ID / 足すテストの案 |
+|---|---|---|---|---|---|
+| `src/protocol/task_store.nim:RVR:115a88da64ad7c9b:0` | task_store.nim:168 | `return none(int64)` → 既定値 | equivalent | 引き継ぎ。`Option[int64]` の既定値は none | — |
+| `src/protocol/task_store.nim:ROR:b6ebb744f6bc2d02:0` | task_store.nim:172 | `dot >= 0` → `>` | equivalent | 引き継ぎ。違いが出るのは文字列が `.` で始まるときだけ。直前の `isDateTime` (`rfc3339.nim`) が先頭 10 文字に日付の形を求めるので、そこを通った文字列の先頭は数字 | — |
+| `src/protocol/task_store.nim:ROR:b901314701bfd0a5:0` | task_store.nim:174 | `stop < base.len` → `<=` | equivalent | 引き継ぎ。違いが出るのは小数部の数字が文字列の末尾まで続くときだけ。`isDateTime` が小数部の後ろに `Z` か時差を求めるので、循環は数字でない文字で止まり `stop == base.len` にならない | — |
+| `src/protocol/task_store.nim:RVR:115a88da64ad7c9b:1` | task_store.nim:178 | `return none(int64)` → 既定値 | equivalent | 引き継ぎ。`Option[int64]` の既定値は none | — |
+| `src/protocol/task_store.nim:RVR:b667109c9117097f:0` | task_store.nim:193 | `return none(McpTask)` → 既定値 | equivalent | 引き継ぎ。`Option[McpTask]` の既定値は none | — |
+| `src/protocol/task_store.nim:RVR:b667109c9117097f:1` | task_store.nim:199 | 同上 | equivalent | 引き継ぎ。同上 | — |
+| `src/protocol/task_store.nim:RVR:b667109c9117097f:2` | task_store.nim:210 | 同上 | equivalent | 引き継ぎ。同上 | — |
+| `src/protocol/task_store.nim:RVR:de4a76bc9ca7094b:0` | task_store.nim:252 | `return none(Option[int64])` → 既定値 | equivalent | 引き継ぎ。`Option[Option[int64]]` の既定値は none | — |
+| `src/protocol/task_store.nim:ROR:394635f51fa4c60e:0` | task_store.nim:272 | `value >= 9.223372036854775807e18` → `>` | accepted | 引き継ぎ (下の節の「x86-64 での確かめ (2026-11-12)」、代表の決定 2026-11-12)。違いが出るのはちょうど 2^63 の ttl だけで、測定機 (arm64) では変換が飽和して同値、Linux x86_64 では既存の E テスト (test_tasks_store「Given a ttl of 2^63 milliseconds, ...」、ジョブに入っている) が落ちることを実測済み。機種による差 | — |
+| `src/protocol/task_store.nim:ROR:68c9d096fcb44c25:0` | task_store.nim:314 | `ttl > 0` → `>=` | equivalent | 引き継ぎ。違いが出るのは `ttl == 0` だけで、そのとき右の項 `createdAtMs > int64.high - 0` は int64 のどの値でも偽 | — |
+| `src/protocol/task_store.nim:ROR:69f45c6ba00f7bdd:0` | task_store.nim:314 | `createdAtMs > int64.high - ttl` → `>=` | equivalent | 引き継ぎ。等しいとき、飽和の値 `int64.high` と飽和しない和 `createdAtMs + ttl` は同じ値で、和は溢れない | — |
+| `src/protocol/task_store.nim:ROR:35b5daa1003aca56:0` | task_store.nim:383 | `ttl.get > store.maxTtlMs.get` → `>=` | equivalent | 引き継ぎ。等しいとき、代入される `maxTtlMs` は今の `ttl` と同じ値 | — |
+| `src/protocol/task_store.nim:ROR:dcfa67284c51d5fe:0` | task_store.nim:419 | `setResultStream` の `requestId.len > 0` → `>=` | equivalent | 判定し直し (前は `ROR:bad777869457471a:0` として spec_question)。前の問いの答えで `setResultStream` と `onResultStream=` が公開から外れ、呼ぶのは `task_methods.nim` の `tasks/result` (結ぶ・解く) だけ、hook を置くのは `server/tasks.nim` の `enableTasks` だけになった。変異で増えるのは、解くとき (`""`) の hook の呼び出し。解くのは `awaitOutcome` が返った後 (task は終端で、`onStatusChange` が `held` からその task を消し終えている) か、例外の後 (期限切れで項目が消えていて `setResultStream` は何もしない) なので、hook の `taskId in held` が偽で何も送られない。client 側の store には hook が無い。なお、使い手が `enableTasks` の後で公開の欄 `onStatusChange` を置き換えると `held` が消えず違いが出るが、その構成は元のコードでも保留の掃除 (MCP-TASKS-23) が働かない | — |
+| `src/protocol/task_store.nim:SDL:2413a04126052c00:0` | task_store.nim:467 | `failureMessage` の末尾の `none(string)` → `discard` | equivalent | 引き継ぎ。`result` は `Option[string]` で、代入しなければ none | — |
+| `src/protocol/task_store.nim:BLR:bad2a67f8198d0aa:0` | task_store.nim:473 | `finish` の引数の既定値 `toolErrorsFail = true` → `false` | equivalent | 新しい変異。`finish` は `protocol/tasks` が export しておらず、呼ぶのは `task_methods.nim` の `finishWhenDone` だけで、`toolErrorsFail` を必ず渡す。`tests/external/` に `task_store` を import するファイルは無い。既定値はどこからも使われない | — |
+| `src/protocol/task_store.nim:RVR:f09e9e232af8b35b:2` | task_store.nim:482 | `finish` の、task がもう無いときの `return false` → `return true` | spec_question | 新しい変異 (`finish` を直接呼ぶテストが無くなって残った)。呼び手の `finishWhenDone` は `store.finish(...) and raised.len > 0` で stderr に書くので、期限切れで消えた task の仕事が後から例外で終わると、元は何も書かず、変異は「the request of task … raised …」を 1 行書く。期限切れは `cancelWork` で仕事を止めるので、止められた仕事が例外で終わるたびに出る。取り消しの後は何も書かないことを E テスト (MCP-TASKS-10「Given work that raises after its task was cancelled, ... nothing is logged ...」) が確かめているが、期限切れの後についてはどの Scenario も述べていない (MCP-TASKS-12 は「消える」「止めるよう伝える」まで) | 問い: 期限切れで止められた仕事が後から例外で終わったとき、stderr に何も書かないことを仕様 (MCP-TASKS-12 に 1 文) にするか。推奨: 仕様にする (取り消しの後と同じ扱い。`task_methods.nim` のコメントも「止めるよう言われて止まった仕事は報告する失敗ではない」と書いている)。その場合のテストの案: test_tasks_store の suite「running the request a task stands for」に、`FakeTime` の store で `runAsTask(store, "a", some(1_000'i64), ...)`、時刻を 2_000 に進めて `discard store.sweep()`、`loggedWhile` の中で `work.fail(newException(ValueError, "stopped"))` と `sleepAsync(20)`、`check log == ""`。変異だと「raised stopped」の行が出る |
+| `src/protocol/task_store.nim:BLR:6ec2d660335697fb:2` | task_store.nim:482 | 同じ行の `false` → `true` | spec_question | 上の行と同じ変異 (RVR と BLR が同じ結果になる) | 上の行と同じ問い。同じテストで両方殺せる |
+| `src/protocol/task_store.nim:SDL:131324adae4bf5f7:0` | task_store.nim:490 | `stderr.writeLine("[mcp-tasks] the request of task " & id & " ended with neither a result nor an error")` → `discard` | test_owed | 新しいコード (2026-11-12 に足した置き換え)。結果も誤りも無い outcome を内部エラーに置き換えるとき、相手には「Internal error」としか伝えないので、原因はこの 1 行にしか残らない。握った失敗の原因を stderr の 1 行に書くことは仕様 (代表の決定 2026-11-13、MCP-ERRORS-3)。既存の E テストは状態と符号だけを確かめ、stderr を見ていない | MCP-ERRORS-3 (置き換えそのものは MCP-TASKS-8)。既存の test_tasks_store「Given work that answers with neither a result nor an error, when it ends, then the task failed with an internal error, whatever toolErrorsFail is」の `work.complete(...)` と `settle()` を `loggedWhile` で包み、`check "the request of task " & task.taskId & " ended with neither a result nor an error" in log` を足す。変異だと log が空で落ちる。MCP-ERRORS-3 の Given の列挙に task のこの場合は名指されていないので、tests.map に結ぶときに Scenario へ 1 句足すかは司会の判断 |
+
 ## 測り直し (拡張ブランチの b04fcb9c、2026-11-11)
 
 測定: `nim-muter` 0.2.15、ジョブ `tests/mutation/tasks.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。状態: 測定済み。

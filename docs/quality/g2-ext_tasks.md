@@ -1,5 +1,19 @@
 # G2 変異検出: ext_tasks ジョブ
 
+## 2 回目の測定 (拡張ブランチの 654cb11a、2026-11-14)
+
+測定: `nim-muter` 0.2.15、ジョブ `tests/mutation/ext_tasks.json`。状態: 測定済み。全体 149、killed 127、timeout 2、survived 8、runError 0、compileError 12。
+
+ここに書くのは、台帳にまだ無い指紋 1 件。仕分けはコードと呼び出し元を読んで行った (変異を当てて流してはいない)。
+
+214 行は `asTaskOutcome` の中で、task の中の要求が `resultType` が `complete` でない結果 (multi round-trip の `input_required` など) で終わったときに、内部エラーの応答に置き換える return である。「failed なのに error が無い」ときの守りは `detailed` の 133〜134 行 (`internalError`) で、この変異の行ではない。
+
+件数: accepted 1。
+
+| 指紋 | 場所 | 変異 | class | 理由 | 仕様 ID / 足すテストの案 |
+|---|---|---|---|---|---|
+| `src/ext/tasks/server.nim:RVR:4aaabad6f446154f:0` | server.nim:214 | `return newJsonRpcErrorResponse(answer.id, ErrInternal, "Internal error")` → 既定値 (結果も誤りも無い `JsonRpcResponse`) | accepted | 失敗の文面は契約ではない (代表の決定 2026-10-23)。この行には公開の入口から届く (既存の E テスト test_ext_tasks「Given a tool whose request in a task ends asking for input the multi round-trip way, ...」が通る)。変異後の空の応答は `finishWhenDone` から `task_store.finish` に渡り、2026-11-12 からの置き換えで、元と同じ誤り (符号 -32603、文面 "Internal error"、data は null) として記録される。task は同じく failed、`tasks/get` の `error` も `statusMessage` も同じで、応答の id は outcome に入らない。変わるのは stderr だけ: 元の「use requestInput …」の 1 行 (212 行、変異でも出る) の後に、`finish` の「ended with neither a result nor an error」が 1 行増える。初回の測定 (id 62) でこの変異を殺した理由 (task が completed になる) は、`finish` の置き換えでもう成り立たない。消せるコードか: return ごと消すと `resultType` を外した `input_required` の結果で task が completed になるので消せない | — |
+
 ## 測り直し (拡張ブランチの b04fcb9c、2026-11-11)
 
 測定: `nim-muter` 0.2.15、ジョブ `tests/mutation/ext_tasks.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。

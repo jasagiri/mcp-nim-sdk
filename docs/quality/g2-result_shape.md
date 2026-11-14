@@ -1,5 +1,18 @@
 # G2 変異検出: result_shape ジョブ
 
+## 2 回目の測定 (拡張ブランチの 654cb11a、2026-11-14)
+
+測定: `nim-muter` 0.2.15、ジョブ `tests/mutation/result_shape.json`。状態: 測定済み。全体 96、killed 82、timeout 0、survived 13、runError 0、compileError 1。
+
+ここに書くのは、台帳にまだ無い指紋 2 件。どちらも `promptResultProblems` の先頭の検査で、b04fcb9c の後に書き換えられた行: b04fcb9c では 63 行の 1 つの条件 (`prompt.isNil or prompt.kind != JObject or prompt{"messages"}.isNil or prompt{"messages"}.kind != JArray`) が黙って return していたが、今は「オブジェクトでない」(64〜65 行) と「messages が配列でない」(67〜68 行) に分かれ、それぞれ問題を返す (下の節の問い 1 に「断る」と答えた直し)。仕分けはコードと呼び出し元を読んで行った。
+
+件数: unreached 2。
+
+| 指紋 | 場所 | 変異 | class | 理由 | 仕様 ID / 足すテストの案 |
+|---|---|---|---|---|---|
+| `src/protocol/result_shape.nim:LOR:b60a86afd6d1925a:0` | result_shape.nim:64 | `prompt.isNil or prompt.kind != JObject` → `and` | unreached | 引き継ぎ (下の節の `LOR:f8616f8766c1b134:0` と同じ `or`)。変わるのは `prompt` が nil かオブジェクトでないときだけ。`result_shape` を import するのは `src/server/server.nim` だけで (`tests/external/` には無い)、`promptResultProblems` を呼ぶのは prompts/get の 1 か所。そこは直前の `requireObjectResult` が nil とオブジェクトでない結果を -32603 で断って return する | — |
+| `src/protocol/result_shape.nim:RVR:ebd714d04ec0b081:0` | result_shape.nim:65 | `return @["the result is not an object"]` → 既定値 (空の seq) | unreached | 新しい行。この return に入るのは `prompt` が nil かオブジェクトでないときだけで、上の行と同じく `requireObjectResult` が先に断る。消せるコード: 64〜65 行を消しても、`prompt{"messages"}` は nil とオブジェクトでない節点に nil を返すので、67〜68 行が「messages is not an array」で断る (断ることは保たれ、変わるのは stderr の文面だけ)。消すかどうかは実装側の判断 | — |
+
 ## 測り直し (拡張ブランチの b04fcb9c、2026-11-11)
 
 測定: `nim-muter` 0.2.15、ジョブ `tests/mutation/result_shape.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。

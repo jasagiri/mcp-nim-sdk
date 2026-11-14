@@ -31,16 +31,6 @@
       "reason": "同上。 / -"
     },
     {
-      "fingerprint": "src/auth/client.nim:ROR:9e5043ed0cbe5649:0",
-      "file": "src/auth/client.nim",
-      "line": 149,
-      "mutator": "ROR",
-      "original": "creds.get.issuer != tokens.issuer",
-      "replacement": "<!= -> ==>",
-      "class": "test_owed",
-      "reason": "変異後は、資格情報の発行者がトークンの発行者と同じ (通常) のとき更新せずに none を返し、違うときに更新トークンと資格情報を送る。通常の流れでは、見出し無しの要求に 401 が返って `handleChallenge` が更新するので、既存の「refreshed without the user」は通ってしまう。前に検出していた `Given credentials whose issuer is not the one that issued the token …` は内部に移った。 / MCP-AUTH-29。`tests/external/test_auth_client_flow.nim` の「when a stored token cannot be refreshed」の suite に足す。(a) 認可を済ませ、`env.config.credentialStore` の `env.authServer.issuer` の項の `issuer` を別の値に書き換えて保存し、時計を 5 分進めて `client.authorizationHeader()` を呼ぶ: none で、`env.tokenRequests` が増えない (変異だと更新の要求が 1 つ増える)。(b) 書き換えずに同じことをすると some で、`/token` への要求が 1 つ増える (変異だと none)。どちらか 1 つで検出できる。補助は同ファイルの `start`・`transportFor`・`ping`・`tokenRequests`。"
-    },
-    {
       "fingerprint": "src/auth/client.nim:RVR:0c511227513989c7:3",
       "file": "src/auth/client.nim",
       "line": 150,
@@ -49,16 +39,6 @@
       "replacement": "<return default>",
       "class": "equivalent",
       "reason": "同上 (`Option[string]` の既定値は none)。 / -"
-    },
-    {
-      "fingerprint": "src/auth/client.nim:SDL:d1c59a1b624273ac:0",
-      "file": "src/auth/client.nim",
-      "line": 161,
-      "mutator": "SDL",
-      "original": "c.config.tokenStore.remove(c.tokenKey)",
-      "replacement": "discard",
-      "class": "test_owed",
-      "reason": "`authorizationHeader` で更新が断られたとき、使えないトークンが保存に残る。次に見出しを求めるたびに、断られた更新トークンをまた送る。通信路を通すと次の 401 で `handleChallenge` の側 (330 行) が消すので、既存のテストでは見えない。前に検出していた `… then there is none and the spent token is forgotten` は内部に移った。 / MCP-AUTH-29。同じ suite に足す。認可を済ませ (`accessTokenLifetime = 60`)、`env.authServer.refreshTokens.clear()`、時計を 5 分進め、`client.authorizationHeader()` を 2 回呼ぶ: どちらも none で、`env.tokenRequests` の増え方が 1 (変異だと 2)。または `env.config.tokenStore.remove` を記録する閉包に替え、呼ばれたことを見る (`Store` の欄は公開)。"
     },
     {
       "fingerprint": "src/auth/client.nim:RVR:0c511227513989c7:4",
@@ -71,46 +51,6 @@
       "reason": "同上 (`Option[string]` の既定値は none)。 / -"
     },
     {
-      "fingerprint": "src/auth/client.nim:SDL:d28df79362e7c028:0",
-      "file": "src/auth/client.nim",
-      "line": 163,
-      "mutator": "SDL",
-      "original": "c.config.tokenStore.save(c.tokenKey, tokens)",
-      "replacement": "discard",
-      "class": "test_owed",
-      "reason": "更新したトークンが保存されず、その要求には新しいトークンが付くが、次の要求で期限切れの古いトークンからもう一度更新する。既存の「refreshed without the user」は更新のあと 1 回しか要求しないので見えない。前に検出していた `Given a refresh that succeeded … is not refreshed again` は内部に移った。 / MCP-AUTH-29 (「保存したものを先に出す」)。「refreshing」の suite に足す。`accessTokenLifetime = 3600` で認可し、時計を 2 時間進め、`ping` を 2 回: `env.tokenRequests == 2` (code の交換と更新 1 回。変異だと 3 回目の要求でまた `/token` に行く)。加えて最後の `/mcp` の `bearerOf` が、その前の要求のものと同じ。保存の中身まで見るなら `tests/external/test_auth_client_g0f.nim` の `recordingStore` と同じ形の保存を渡す。"
-    },
-    {
-      "fingerprint": "src/auth/client.nim:ROR:a9ee5c4b6705b698:0",
-      "file": "src/auth/client.nim",
-      "line": 205,
-      "mutator": "ROR",
-      "original": "parseUri(url).scheme.toLowerAscii() != \"https\"",
-      "replacement": "<!= -> ==>",
-      "class": "test_owed",
-      "reason": "変異後は https の Client ID Metadata Document の URL がすべて断られる (http は直前の `checkFetchUrl` が、ループバックを許さない方針で先に断るので、元の式のこの半分は常に偽)。外部のテストは断られる場合 (経路なし・http・ループバック) だけを見ていて、正しい URL が使われる場合を見るテストは内部に移った (`Given an authorization server that supports Client ID Metadata Documents, when the client has such a URL, then it uses it and does not register`)。 / MCP-AUTH-26 (「it uses it as its client_id and does not register」)。`tests/external/test_auth_client_flow.nim` の「client registration」の suite に足す。2025-11-25 で `env.authServer.metadata[\"client_id_metadata_document_supported\"] = %true`、`clientIdMetadataUrl = some(\"https://app.example.com/oauth/client-metadata.json\")`、`authorizerFor(env.authServer, seen)` で認可: `ping` が通り、`seen[][0].queryValue(\"client_id\")` がその URL で、`/register` への要求が 0 (変異だと `OAuthSecurityError` で `ping` が失敗する)。内部のテストは `auth/client` と `auth_fixtures` しか使っておらず、同じ内容で書ける。"
-    },
-    {
-      "fingerprint": "src/auth/client.nim:RVR:069257ddf8f1c04f:0",
-      "file": "src/auth/client.nim",
-      "line": 240,
-      "mutator": "RVR",
-      "original": "return ClientCredentials(issuer: issuer,; clientId: c.config.clientIdMetadataUrl.get,; authMethod: \"none\",; redirectUris: @[c.config.redirectUri])",
-      "replacement": "<return default>",
-      "class": "test_owed",
-      "reason": "構築子を返すので `default(ClientCredentials)` になり、`client_id` が空のまま認可の要求が出る (登録はしないまま)。偽の認可サーバーはどの `client_id` にも code を出すので、流れは最後まで通る。`client_id` を見るテストは内部に移った (上の行と同じテスト)。 / MCP-AUTH-26。上の行と同じ 1 本 (`client_id` が URL に等しい、の検査が検出する)。"
-    },
-    {
-      "fingerprint": "src/auth/client.nim:SDL:d1c59a1b624273ac:1",
-      "file": "src/auth/client.nim",
-      "line": 330,
-      "mutator": "SDL",
-      "original": "c.config.tokenStore.remove(c.tokenKey)",
-      "replacement": "discard",
-      "class": "test_owed",
-      "reason": "`handleChallenge` で更新が断られたあと、認可が成功すれば 346 行の `save` が上書きするので違いは出ない。認可が失敗する (利用者が拒む) と、取り消されたトークンが保存に残り、次の要求でまた出される。前に検出していた `Given a refresh token the server rejects and a user who then refuses …` は内部に移った。 / MCP-AUTH-29。「when a stored token cannot be refreshed」の suite に足す。認可を済ませ、`env.authServer.refreshTokens.clear()`、`authorize` を `denyingAuthorizer()` に替えた設定 (保存は共有) の client で `handleChallenge(401, env.resourceChallenge)` が例外。そのあと `newOAuthClient(env.config).authorizationHeader()` が none (変異だと、残った古いトークンの `Bearer …` が返る)。補助 `denyingAuthorizer`・`resourceChallenge` は外部のファイルに既にある。"
-    },
-    {
       "fingerprint": "src/auth/oauth/authcode.nim:SDL:601869ee54bd0b5e:0",
       "file": "src/auth/oauth/authcode.nim",
       "line": 54,
@@ -121,46 +61,6 @@
       "reason": "src の唯一の呼び手 `client.handleChallenge` は `c.config.redirectUri` を渡す。この値は `newOAuthClient` が同じ `checkRedirectUri` で先に断っており (client.nim:120)、`OAuthClient.config` は非公開で後から書き換えられない。`newAuthorizationRequest` は入口から export されていないので、検査を通っていない redirect URI をここへ運ぶ入力を作れない"
     },
     {
-      "fingerprint": "src/auth/oauth/authcode.nim:LOR:784a5bea41348592:0",
-      "file": "src/auth/oauth/authcode.nim",
-      "line": 149,
-      "mutator": "LOR",
-      "original": "access.isNone or access.get.len == 0",
-      "replacement": "<or -> and>",
-      "class": "test_owed",
-      "reason": "トークンの応答に `access_token` が無いとき、元は OAuthError で断り、変異は none の `get` で UnpackDefect になる。空文字列の `access_token` は、変異では受け入れて保存する。前のテストは内部側に移った / MCP-AUTH-41。T に 1 本: `expiryAfter` の形で、token endpoint が `{\"token_type\":\"Bearer\"}` と `{\"access_token\":\"\",\"token_type\":\"Bearer\"}` を返す → どちらも `expect OAuthError`。変異では前者が Defect、後者は受け入れて返る"
-    },
-    {
-      "fingerprint": "src/auth/oauth/discovery.nim:AOR:ee00ff16360a1b81:0",
-      "file": "src/auth/oauth/discovery.nim",
-      "line": 26,
-      "mutator": "AOR",
-      "original": "path.len - 1",
-      "replacement": "<- -> +>",
-      "class": "test_owed",
-      "reason": "同じ入力で、変異は `/` を落とす代わりに NUL を足し、3 つ目の候補が `…/tenant1/\\0/.well-known/openid-configuration` になる / MCP-AUTH-35。上と同じ 1 本 (3 つ目の URL の文面が合わない)"
-    },
-    {
-      "fingerprint": "src/auth/oauth/discovery.nim:SDL:2f25dd78a30f397e:0",
-      "file": "src/auth/oauth/discovery.nim",
-      "line": 26,
-      "mutator": "SDL",
-      "original": "path.setLen(path.len - 1)",
-      "replacement": "discard",
-      "class": "test_owed",
-      "reason": "`/` で終わるパスを持つ issuer を OpenID Connect も試す版 (2025-11-25 以降) で探すと、変異は末尾の `/` を減らせずループが終わらない。このジョブの外部テストの issuer はどれも `/` で終わらない (前のテストは内部側) / MCP-AUTH-35 (「the candidate URLs of an issuer path that ends in a slash have the slash dropped」)。B の suite「Authorization server discovery over a scripted server」に 1 本: resource metadata が issuer `origin & \"/tenant1/\"` を名指し、ほかは 404 → 失敗の文面に `origin & \"/.well-known/oauth-authorization-server/tenant1: HTTP 404\"`・`…/.well-known/openid-configuration/tenant1: HTTP 404`・`origin & \"/tenant1/.well-known/openid-configuration: HTTP 404\"` がある。変異では終わらない (timeout)。下の 1 件と `urls.nim:122` の 2 件も同じ 1 本"
-    },
-    {
-      "fingerprint": "src/auth/oauth/discovery.nim:ROR:9d9b07680550bfcd:0",
-      "file": "src/auth/oauth/discovery.nim",
-      "line": 27,
-      "mutator": "ROR",
-      "original": "path.len > 0",
-      "replacement": "<> -> >=>",
-      "class": "test_owed",
-      "reason": "パスの無い issuer で、変異は 3 つ目の候補 `origin & \"/.well-known/openid-configuration\"` を足す。2 つ目と同じ URL なので、見つからないとき同じ URL を 2 回取りに行く / MCP-AUTH-14 (「an issuer without a path has two candidates」)。B の同じ suite に 1 本: resource metadata が issuer `origin` (パス無し) を名指し、ほかは 404 → `server.requestLines` のうち `openid-configuration` を含むものが 1 件、`oauth-authorization-server` が 1 件。変異では前者が 2 件"
-    },
-    {
       "fingerprint": "src/auth/oauth/discovery.nim:SDL:f969742c2a719768:0",
       "file": "src/auth/oauth/discovery.nim",
       "line": 87,
@@ -169,16 +69,6 @@
       "replacement": "discard",
       "class": "unreached",
       "reason": "src の呼び手は 3 か所で、どれも同じ issuer を同じか狭い policy で先に断っている: `client.discover` と `ext/auth_shared` は resource metadata の `authorization_servers` から選び、その全件を `parseProtectedResourceMetadata` (metadata.nim:92) が確かめる。`ext/auth_enterprise_managed` は `config.idpIssuer` を作るときに確かめる (同 168 行)。`discoverAuthorizationServer` は入口から export されていないので、確かめていない issuer をここへ運べない。MCP-AUTH-35 の「fragment のある issuer は要求の前に断る」は、入口からは metadata.nim:92 が担う (下の行)"
-    },
-    {
-      "fingerprint": "src/auth/oauth/fetch.nim:SDL:e5514a7ef98b6a22:0",
-      "file": "src/auth/oauth/fetch.nim",
-      "line": 37,
-      "mutator": "SDL",
-      "original": "response.close()",
-      "replacement": "discard",
-      "class": "test_owed",
-      "reason": "本文のある答えは配線が読み終えたときに閉じるので、本文の無い keep-alive の答え (204) でだけ、変異は接続を開いたままにする。前のテストは内部側に移った / MCP-AUTH-36 (「a body-less keep-alive answer … the connection is closed afterwards」)。B の suite「Requests of the OAuth client over a scripted server」に 1 本: `startHolding(\"HTTP/1.1 204 No Content\\c\\LConnection: keep-alive\\c\\L\\c\\L\")` を resource metadata の URL として `challengedWith` → `outcome.kind == \"oauth\"`、`server.closedWithin(2000)`。変異では閉じない (`startHolding` は B に既にある)"
     },
     {
       "fingerprint": "src/auth/oauth/fetch.nim:SDL:b33038c87cdbb7b6:0",
@@ -201,36 +91,6 @@
       "reason": "失敗の文面は契約ではない (代表の決定 2026-10-23)。上と同じ stderr の診断の 1 行で、時間切れの報告と接続を閉じることは保たれる"
     },
     {
-      "fingerprint": "src/auth/oauth/grants.nim:ROR:0d63f1f293da3ba0:0",
-      "file": "src/auth/oauth/grants.nim",
-      "line": 103,
-      "mutator": "ROR",
-      "original": "auth.lifetime > DurationZero",
-      "replacement": "<> -> >=>",
-      "class": "test_owed",
-      "reason": "寿命 0 の `private_key_jwt` で、元は 1 分の assertion、変異は `exp` = `iat` の assertion を送る。入口からは `ClientCredentialsConfig.assertionLifetime = DurationZero` で届く / MCP-EXT-AUTH-7。C: 署名の鍵を持つ config の `assertionLifetime` を `DurationZero` にして ping。served になり、`client_assertion` を fixtures で読むと `exp - iat == 60`。変異では fake の認可サーバーが `exp <= now` で invalid_client を返し、要求が失敗する (内部側に同じ主旨のテスト「... without a lifetime ... lives one minute」がある)"
-    },
-    {
-      "fingerprint": "src/auth/oauth/grants.nim:ROR:e173a3002d324a19:0",
-      "file": "src/auth/oauth/grants.nim",
-      "line": 118,
-      "mutator": "ROR",
-      "original": "scopes.len > 0",
-      "replacement": "<> -> >=>",
-      "class": "test_owed",
-      "reason": "scope が 1 つも無いとき、変異は空の `scope=` をトークンの要求に載せる (RFC 6749 3.3 の scope は 1 つ以上の語)。fake は `.get(\"\")` で読むので今は見えない / MCP-EXT-AUTH-7。C の「Given a 401 and a client secret, ...」に `check r.field(\"scope\").isNone` を足す。変異では `some(\"\")`"
-    },
-    {
-      "fingerprint": "src/auth/oauth/grants.nim:ROR:e173a3002d324a19:1",
-      "file": "src/auth/oauth/grants.nim",
-      "line": 130,
-      "mutator": "ROR",
-      "original": "scopes.len > 0",
-      "replacement": "<> -> >=>",
-      "class": "test_owed",
-      "reason": "拡張は `jwtBearerGrant` に常に `@[]` を渡すので、変異は ID-JAG を出す要求のすべてに空の `scope=` を載せる / MCP-EXT-AUTH-7。E の流れのテスト (例「Given a stored token, ...」) に `check env.rasRequests[][0].field(\"scope\").isNone` を足す。変異では `some(\"\")`"
-    },
-    {
       "fingerprint": "src/auth/oauth/grants.nim:SDL:44f009e404fffc90:1",
       "file": "src/auth/oauth/grants.nim",
       "line": 131,
@@ -241,36 +101,6 @@
       "reason": "この行は `scopes.len > 0` のときだけ走る。src の唯一の呼び手 `auth_enterprise_managed.acquire` は `@[]` を渡し、`jwtBearerGrant` は入口から export されていないので、入口から scope を渡す入力を作れない。`scopes` の引数そのものが入口からは使われていない (引数を消せば 130 行の分岐も消える。司会への申し送り)"
     },
     {
-      "fingerprint": "src/auth/oauth/grants.nim:LOR:a275f817c5d87c0d:0",
-      "file": "src/auth/oauth/grants.nim",
-      "line": 147,
-      "mutator": "LOR",
-      "original": "token.isNone or token.get.len == 0",
-      "replacement": "<or -> and>",
-      "class": "test_owed",
-      "reason": "IdP の応答に `access_token` が無いとき、元は OAuthError で断り、変異は none の `get` で UnpackDefect になる (空文字列の `access_token` は、変異でも後段の `decodeJwtUnverified` が断るので文面だけの差) / MCP-EXT-AUTH-11。E: fake の IdP が `access_token` の無い 200 を返す → `failureOf` が McpTransportError を返し、`rasRequests.len == 0`。変異では Defect でテストが落ちる。下の 2 件と同じ 1 本 (欠ける欄を 3 通り)"
-    },
-    {
-      "fingerprint": "src/auth/oauth/grants.nim:LOR:192daf3ac80ad8b2:0",
-      "file": "src/auth/oauth/grants.nim",
-      "line": 150,
-      "mutator": "LOR",
-      "original": "issued.isNone or issued.get.len == 0",
-      "replacement": "<or -> and>",
-      "class": "test_owed",
-      "reason": "`issued_token_type` が無い応答で、元は OAuthError、変異は UnpackDefect (空文字列は後段の `issuedTokenType != TokenTypeIdJag` が断る) / MCP-EXT-AUTH-11。上と同じ 1 本 (`issued_token_type` を欠く応答)"
-    },
-    {
-      "fingerprint": "src/auth/oauth/grants.nim:LOR:ebd4fe332f70f857:0",
-      "file": "src/auth/oauth/grants.nim",
-      "line": 153,
-      "mutator": "LOR",
-      "original": "tokenType.isNone or tokenType.get.len == 0",
-      "replacement": "<or -> and>",
-      "class": "test_owed",
-      "reason": "`token_type` が無い応答で、元は OAuthError、変異は UnpackDefect (空文字列は後段の `N_A` との比較が断る) / MCP-EXT-AUTH-11。上と同じ 1 本 (`token_type` を欠く応答)"
-    },
-    {
       "fingerprint": "src/auth/oauth/grants.nim:LOR:6002bd0c01bdc0ce:0",
       "file": "src/auth/oauth/grants.nim",
       "line": 168,
@@ -279,16 +109,6 @@
       "replacement": "<or -> and>",
       "class": "unreached",
       "reason": "src の唯一の呼び手 `auth_enterprise_managed.obtainGrant` が、`assertion.token.len == 0` を先に OAuthError で断り、`subjectTokenType(kind)` は列挙からの全域の関数で空を返さない。`exchangeToken` は入口から export されていないので、どちらの項も真にする入力を作れない"
-    },
-    {
-      "fingerprint": "src/auth/oauth/grants.nim:ROR:249ccad8aa6a1ac3:0",
-      "file": "src/auth/oauth/grants.nim",
-      "line": 179,
-      "mutator": "ROR",
-      "original": "request.scopes.len > 0",
-      "replacement": "<> -> >=>",
-      "class": "test_owed",
-      "reason": "scope が 1 つも無いとき、変異は IdP への交換の要求に空の `scope=` を載せる。fake は `.get(\"\")` で読むので今は見えない / MCP-EXT-AUTH-7。E の scope を持たない流れのテストに `check env.idpRequests[][0].field(\"scope\").isNone` を足す (130 行のものと同じテストに並べられる)。変異では `some(\"\")`"
     },
     {
       "fingerprint": "src/auth/oauth/jsonfield.nim:RVR:0c511227513989c7:0",
@@ -311,36 +131,6 @@
       "reason": "同上"
     },
     {
-      "fingerprint": "src/auth/oauth/jwt.nim:LOR:5bb02e615676ccd7:0",
-      "file": "src/auth/oauth/jwt.nim",
-      "line": 57,
-      "mutator": "LOR",
-      "original": "signer.sign.isNil or signer.alg.len == 0",
-      "replacement": "<or -> and>",
-      "class": "test_owed",
-      "reason": "`JwtSigner` は欄が公開の object で、入口から `JwtSigner(alg: \"HS256\")` (署名の関数が nil) を `newJwtSigner` を通さずに作れる。元は OAuthError「not set up」、変異は nil の関数を呼んで落ちる / MCP-EXT-AUTH-7。C: `config.signer = some(JwtSigner(alg: \"HS256\"))` で ping → McpTransportError、`env.requests[].len == 0`。変異では SIGSEGV (内部側に同じ主旨のテストがある)。申し送り: `JwtSigner` の欄を非公開にすれば `newJwtSigner` だけが作り手になり、この検査は届かなくなる"
-    },
-    {
-      "fingerprint": "src/auth/oauth/jwt.nim:LOR:a7266fa08d380786:0",
-      "file": "src/auth/oauth/jwt.nim",
-      "line": 76,
-      "mutator": "LOR",
-      "original": "segment.len == 0 or; not segment.allCharsInSet({'A' .. 'Z', 'a' .. 'z', '0' .. '9', '-', '_'})",
-      "replacement": "<or -> and>",
-      "class": "test_owed",
-      "reason": "変異では検査が常に偽になり、空の署名部と、`+`・`/`・`=` を含む断片 (`base64.decode` は受ける) が通る。公開の `checkIdentityAssertionGrant` から届く / MCP-EXT-AUTH-11 (内部側の同じ主旨のテストは MCP-EXT-AUTH-7)。E の suite「checkIdentityAssertionGrant」: 正しい ID-JAG の署名部を空にしたものと `+` を混ぜたもの → `expect OAuthError`。変異では受け入れて返る"
-    },
-    {
-      "fingerprint": "src/auth/oauth/jwt.nim:ROR:0b468e35d2c0ed63:0",
-      "file": "src/auth/oauth/jwt.nim",
-      "line": 88,
-      "mutator": "ROR",
-      "original": "token.len > MaxJwtLength",
-      "replacement": "<> -> >=>",
-      "class": "test_owed",
-      "reason": "ちょうど 16384 バイトの JWT を、元は読み、変異は断る。`checkIdentityAssertionGrant` から届く。上限の値は Scenario の文面には無いが、`specs/tests.map` が内部側の境界のテストを MCP-EXT-AUTH-7 に結んでいる / MCP-EXT-AUTH-7。E: claim を詰めて長さをちょうど 16384 にした ID-JAG は通り、1 バイト長いものは OAuthError。変異では前者も断る。`MaxJwtLength` は入口から export されていないので、テストは 16 * 1024 を数で書く"
-    },
-    {
       "fingerprint": "src/auth/oauth/jwt.nim:LOR:b6c740b163c9d862:0",
       "file": "src/auth/oauth/jwt.nim",
       "line": 101,
@@ -349,26 +139,6 @@
       "replacement": "<or -> and>",
       "class": "accepted",
       "reason": "失敗の文面は契約ではない (代表の決定 2026-10-23)。本文がオブジェクトでない ID-JAG は変異後も断られ、変わるのは文面と例外の種類 (OAuthError か、その子の OAuthSecurityError か) だけ。この 2 つを見分けて動く箇所は SDK に無く、例外の種類で見分けられることは仕様にしない (代表の決定 2026-11-12)"
-    },
-    {
-      "fingerprint": "src/auth/oauth/jwt.nim:LOR:73513c8ac17bdc3a:0",
-      "file": "src/auth/oauth/jwt.nim",
-      "line": 103,
-      "mutator": "LOR",
-      "original": "header{\"alg\"}.isNil or header{\"alg\"}.kind != JString or; header{\"alg\"}.getStr().len == 0",
-      "replacement": "<or -> and>",
-      "class": "test_owed",
-      "reason": "`alg` が空文字列の見出しを、元は断り、変異は受け入れる (無い・文字列でない `alg` は変異でも断る) / MCP-EXT-AUTH-11 (内部側は MCP-EXT-AUTH-7)。上と同じ 1 本に `\"alg\": \"\"` の見出しを足す → `expect OAuthError`。変異では受け入れて返る"
-    },
-    {
-      "fingerprint": "src/auth/oauth/jwt.nim:LOR:b3a5663ab0317565:0",
-      "file": "src/auth/oauth/jwt.nim",
-      "line": 103,
-      "mutator": "LOR",
-      "original": "header{\"alg\"}.isNil or header{\"alg\"}.kind != JString",
-      "replacement": "<or -> and>",
-      "class": "test_owed",
-      "reason": "`alg` の無い見出しで、元は OAuthError、変異は nil の `kind` を読んで落ちる。`checkIdentityAssertionGrant` から届く / MCP-EXT-AUTH-11 (内部側は MCP-EXT-AUTH-7)。E の suite「checkIdentityAssertionGrant」: 見出しが `{\"typ\": \"oauth-id-jag+jwt\"}` だけの JWT を手で組む → `expect OAuthError`。変異では SIGSEGV。下の 1 件と同じ 1 本"
     },
     {
       "fingerprint": "src/auth/oauth/jwt.nim:LOR:455f7b00bd1871aa:0",
@@ -401,146 +171,6 @@
       "reason": "`default(Option[seq[string]])` は none で同じ値"
     },
     {
-      "fingerprint": "src/auth/oauth/metadata.nim:SDL:76dd24052a2caacc:0",
-      "file": "src/auth/oauth/metadata.nim",
-      "line": 92,
-      "mutator": "SDL",
-      "original": "checkFetchUrl(server, policy, \"authorization server\")",
-      "replacement": "discard",
-      "class": "test_owed",
-      "reason": "選ばれた認可サーバーは、変異でも `discoverAuthorizationServer` の検査 (discovery.nim:87) が同じ OAuthSecurityError で断る。差が出るのは、選ばれないほうに安全でない URL がある文書: 元は文書ごと断り、変異は受け入れて先頭の認可サーバーへ進む / MCP-AUTH-12 (「…or with an insecure one」)。B の suite「Protected resource metadata over a scripted server」に 1 本: `authorization_servers` が `[origin & \"/tenant1\", \"http://auth.example.com\"]` の文書を `challengedWith` → `outcome.kind == \"security\"`、文面に `authorization server must be https`、認可サーバーの well-known への要求が 0 件。変異では `oauth` (認可サーバーの metadata が 404) になり、要求が出る"
-    },
-    {
-      "fingerprint": "src/auth/oauth/metadata.nim:SDL:cef5f9937b0e64a2:0",
-      "file": "src/auth/oauth/metadata.nim",
-      "line": 112,
-      "mutator": "SDL",
-      "original": "checkFetchUrl(result.tokenEndpoint, policy, \"token endpoint\")",
-      "replacement": "discard",
-      "class": "test_owed",
-      "reason": "遠隔ホストへの平文 http の `token_endpoint` を持つ metadata を、元は読んだ時点で断る。変異は受け入れ、登録をし、利用者を認可の画面へ送ってから、トークンの要求の `httpExchange` で初めて断る / MCP-AUTH-14 (「a plain http token endpoint on a remote host are refused」)。B の既存の「Given metadata with a plain http authorization or registration endpoint on a remote host, …」の `key` の並びに `\"token_endpoint\"` を足す (`idleAuthorizer` は利用者が呼ばれると表明で落ちる)。加えて `authServer.registered.len == 0` を見る。変異では登録が 1 件出て、表明で落ちる"
-    },
-    {
-      "fingerprint": "src/auth/oauth/metadata.nim:SDL:38782c08a525ac9c:0",
-      "file": "src/auth/oauth/metadata.nim",
-      "line": 115,
-      "mutator": "SDL",
-      "original": "checkFetchUrl(result.registrationEndpoint.get, policy, \"registration endpoint\")",
-      "replacement": "discard",
-      "class": "test_owed",
-      "reason": "既存の B のテストは動的登録をする client で確かめるので、変異でも `registerClient` の `httpExchange` が同じ OAuthSecurityError で断り、見分けられない。登録を使わない client (事前登録・Client ID Metadata Document) では、元は文書を断り、変異は受け入れて利用者を認可の画面へ送る / MCP-AUTH-38 (「registration_endpoint is plain http to a remote host … the document is rejected」)。B に 1 本 (上の行のテストの隣): `config.preRegistered = some(PreRegisteredClient(clientId: \"c\", issuer: some(authServer.issuer)))` の client で、`registration_endpoint` が `http://auth.example.com/endpoint` → `expect OAuthSecurityError`。変異では `idleAuthorizer` の表明で落ちる"
-    },
-    {
-      "fingerprint": "src/auth/oauth/pkce.nim:LOR:7d5d03782a94b768:0",
-      "file": "src/auth/oauth/pkce.nim",
-      "line": 24,
-      "mutator": "LOR",
-      "original": "verifier.len < 43 or verifier.len > 128",
-      "replacement": "<or -> and>",
-      "class": "spec_question",
-      "reason": "同上 (`isValidCodeVerifier` の中。src に使い手が無い) / 上と同じ問い・同じ推奨"
-    },
-    {
-      "fingerprint": "src/auth/oauth/pkce.nim:ROR:2473df8ad5ad9ee1:0",
-      "file": "src/auth/oauth/pkce.nim",
-      "line": 24,
-      "mutator": "ROR",
-      "original": "verifier.len < 43",
-      "replacement": "<< -> <=>",
-      "class": "spec_question",
-      "reason": "`isValidCodeVerifier` は src に使い手が無い (0 か所)。入口から export もされず、公開の入口からは届かない。使い手は tests/internal の `test_auth_oauth_basics_internal.nim` の 2 本 (7 か所) だけで、tests/external と tests/fuzz には無い。`specs/tests.map` はその 2 本を MCP-AUTH-18 (「a verifier is 43 unreserved characters」) に結ぶが、SDK が作る verifier は `newCodeVerifier` で、この関数を通らない。問い: src に使い手の無い `isValidCodeVerifier` を src から消すか、RFC 7636 4.1 の verifier の検査として入口から届くようにするか / 推奨: 消す。受け取った verifier を確かめるのは認可サーバーの仕事で、クライアントの SDK に使い手は生まれない。内部テストが要るなら、同じ検査をテストの補助として持つ。MCP-AUTH-18 の「43 unreserved characters」は、`tests/external/test_auth_client_flow.nim` の「…when the token request is sent, then it carries the verifier of this request」に `code_verifier` の長さと文字種の check を足せば入口から確かめられる。「公開から外して役割のモジュールに分ける」は要らない (どの入口も export していない)"
-    },
-    {
-      "fingerprint": "src/auth/oauth/pkce.nim:ROR:7c02551d0baca4f6:0",
-      "file": "src/auth/oauth/pkce.nim",
-      "line": 24,
-      "mutator": "ROR",
-      "original": "verifier.len > 128",
-      "replacement": "<> -> >=>",
-      "class": "spec_question",
-      "reason": "同上 / 上と同じ問い・同じ推奨"
-    },
-    {
-      "fingerprint": "src/auth/oauth/pkce.nim:BLR:6ec2d660335697fb:0",
-      "file": "src/auth/oauth/pkce.nim",
-      "line": 25,
-      "mutator": "BLR",
-      "original": "false",
-      "replacement": "true",
-      "class": "spec_question",
-      "reason": "同上 / 上と同じ問い・同じ推奨"
-    },
-    {
-      "fingerprint": "src/auth/oauth/pkce.nim:RVR:f09e9e232af8b35b:0",
-      "file": "src/auth/oauth/pkce.nim",
-      "line": 25,
-      "mutator": "RVR",
-      "original": "return false",
-      "replacement": "<return default>",
-      "class": "spec_question",
-      "reason": "同上 / 上と同じ問い・同じ推奨"
-    },
-    {
-      "fingerprint": "src/auth/oauth/pkce.nim:BLR:6ec2d660335697fb:1",
-      "file": "src/auth/oauth/pkce.nim",
-      "line": 28,
-      "mutator": "BLR",
-      "original": "false",
-      "replacement": "true",
-      "class": "spec_question",
-      "reason": "同上 / 上と同じ問い・同じ推奨"
-    },
-    {
-      "fingerprint": "src/auth/oauth/pkce.nim:RVR:f09e9e232af8b35b:1",
-      "file": "src/auth/oauth/pkce.nim",
-      "line": 28,
-      "mutator": "RVR",
-      "original": "return false",
-      "replacement": "<return default>",
-      "class": "spec_question",
-      "reason": "同上 / 上と同じ問い・同じ推奨"
-    },
-    {
-      "fingerprint": "src/auth/oauth/pkce.nim:BLR:b8309a95375a2001:0",
-      "file": "src/auth/oauth/pkce.nim",
-      "line": 29,
-      "mutator": "BLR",
-      "original": "true",
-      "replacement": "false",
-      "class": "spec_question",
-      "reason": "同上 / 上と同じ問い・同じ推奨"
-    },
-    {
-      "fingerprint": "src/auth/oauth/sha256.nim:SDL:5a90bc8d750f0eec:0",
-      "file": "src/auth/oauth/sha256.nim",
-      "line": 19,
-      "mutator": "SDL",
-      "original": "result.add digits[b shr 4]",
-      "replacement": "discard",
-      "class": "test_owed",
-      "reason": "`toHex` は認可の流れでは使われず (PKCE は `base64UrlNoPad`)、使い手は `ext/skills/model.nim` の `digestOf` と `server/request_state.nim` の 2 か所。このジョブの testCommand のテストはどれも `toHex` を走らせない。変異は 16 進の上位の桁を落とし、ダイジェストが 32 文字になる / MCP-EXT-SKILLS-5。新しいテストは要らない: 既存の `tests/external/test_ext_skills_model.nim` の「Given the files of the specification's example, when digested, then the digests match the published ones」が検出するはず (公表された 64 文字の 16 進と比べる)。testCommand に足す。申し送り: `sha256.nim` をこのジョブの `sources` から外し、使い手のテストを持つジョブ (`ext_skills`) へ移すほうが測定と置き場が合う"
-    },
-    {
-      "fingerprint": "src/auth/oauth/sha256.nim:LOR:8ac18ff5938e8f6e:0",
-      "file": "src/auth/oauth/sha256.nim",
-      "line": 20,
-      "mutator": "LOR",
-      "original": "b and 0x0000000F",
-      "replacement": "<and -> or>",
-      "class": "test_owed",
-      "reason": "同上。変異は 16 以上のバイトで `digits` の範囲の外を引き IndexDefect になる (生き残ったのは、このジョブのテストが `toHex` を一度も走らせないため) / MCP-EXT-SKILLS-5。上と同じ既存のテストが検出するはず。testCommand に足す"
-    },
-    {
-      "fingerprint": "src/auth/oauth/sha256.nim:SDL:24fbfd09d8f0ef89:0",
-      "file": "src/auth/oauth/sha256.nim",
-      "line": 20,
-      "mutator": "SDL",
-      "original": "result.add digits[b and 0x0000000F]",
-      "replacement": "discard",
-      "class": "test_owed",
-      "reason": "同上。変異は下位の桁を落とす / MCP-EXT-SKILLS-5。上と同じ既存のテストが検出するはず。testCommand に足す"
-    },
-    {
       "fingerprint": "src/auth/oauth/tokens.nim:RVR:ee6041eafe65551f:0",
       "file": "src/auth/oauth/tokens.nim",
       "line": 76,
@@ -559,36 +189,6 @@
       "replacement": "<return default>",
       "class": "equivalent",
       "reason": "同上"
-    },
-    {
-      "fingerprint": "src/auth/oauth/tokens.nim:ROR:fdd08ff0ed2d8133:0",
-      "file": "src/auth/oauth/tokens.nim",
-      "line": 83,
-      "mutator": "ROR",
-      "original": "value.getBiggestInt() < 0",
-      "replacement": "<< -> <=>",
-      "class": "test_owed",
-      "reason": "`expires_in` が整数の 0 (すぐ切れる) の応答を、元は「今切れる」と読み、変異は「負」として断る。前のテストは内部側に移った / MCP-AUTH-41 (「an expires_in of zero」)。T の suite「token responses: lifetimes」に 1 本 (境界の寿命): `expiryOf(\"0\", now) == some(now)`。変異では OAuthError。下の 90・92・107 行と同じ 1 本"
-    },
-    {
-      "fingerprint": "src/auth/oauth/tokens.nim:ROR:745c54c47eab48a2:0",
-      "file": "src/auth/oauth/tokens.nim",
-      "line": 90,
-      "mutator": "ROR",
-      "original": "f < 0.0",
-      "replacement": "<< -> <=>",
-      "class": "test_owed",
-      "reason": "小数の `0.0` について同上 / MCP-AUTH-41。上と同じ 1 本に `expiryOf(\"0.0\", now) == some(now)`"
-    },
-    {
-      "fingerprint": "src/auth/oauth/tokens.nim:ROR:5dbe1f28efd2daf1:0",
-      "file": "src/auth/oauth/tokens.nim",
-      "line": 92,
-      "mutator": "ROR",
-      "original": "f > float(MaxTokenLifetimeSeconds)",
-      "replacement": "<> -> >=>",
-      "class": "test_owed",
-      "reason": "上限ちょうどの小数 (`315360000.0`) を、元は上限の寿命として読み、変異は「期限不明」にする。既存の T の「at the largest lifetime」は整数だけ / MCP-AUTH-41 (「at the bound」)。上と同じ 1 本に `expiryOf($MaxTokenLifetimeSeconds & \".0\", now) == some(now + initDuration(seconds = MaxTokenLifetimeSeconds))`。変異では none"
     },
     {
       "fingerprint": "src/auth/oauth/tokens.nim:RVR:ee6041eafe65551f:2",
@@ -611,26 +211,6 @@
       "reason": "失敗の文面は契約ではない (代表の決定 2026-10-23)。差が出るのは文字列 `\"-\"` だけで、元は「is not a number of seconds」、変異は「is negative」で、どちらも同じ OAuthError で応答を断る。プログラムがこの 2 つの文面を見分ける箇所は無い (前の記録の id 122 は文面で見分けるテストを足していたが、決定の後は契約ではない)"
     },
     {
-      "fingerprint": "src/auth/oauth/tokens.nim:LOR:fcc11c90151f0b4e:0",
-      "file": "src/auth/oauth/tokens.nim",
-      "line": 105,
-      "mutator": "LOR",
-      "original": "text.len == 0 or not text.allCharsInSet(Digits)",
-      "replacement": "<or -> and>",
-      "class": "test_owed",
-      "reason": "変異では検査が常に偽になり、`parseBiggestInt` が読める数字以外の綴り (`\"+3600\"`、`\"1_000\"`) を寿命として受け入れる。既存の T の断られる値 (`\"soon\"`・`\"\"`・`\"1e3\"`) は `parseBiggestInt` も ValueError で断るので見分けられない / MCP-AUTH-41 (「not made of digits」)。T の既存の「Given a negative or non-numeric expires_in, …」の並びに `\"\\\"+3600\\\"\"` と `\"\\\"1_000\\\"\"` を足す。変異では受け入れて返り、`expect OAuthError` が落ちる"
-    },
-    {
-      "fingerprint": "src/auth/oauth/tokens.nim:ROR:9d692cd88d1a1c5d:0",
-      "file": "src/auth/oauth/tokens.nim",
-      "line": 107,
-      "mutator": "ROR",
-      "original": "text.len > 18",
-      "replacement": "<> -> >=>",
-      "class": "test_owed",
-      "reason": "18 文字の数字列 (`\"000000000000003600\"`) を、元は値 (3600 秒) で読み、変異は「期限不明」にする / MCP-AUTH-41 (「as digits with leading zeros」)。83 行と同じ 1 本に `expiryOf(\"\\\"000000000000003600\\\"\", now) == some(now + initDuration(seconds = 3600))`。変異では none"
-    },
-    {
       "fingerprint": "src/auth/oauth/tokens.nim:RVR:ee6041eafe65551f:3",
       "file": "src/auth/oauth/tokens.nim",
       "line": 108,
@@ -649,16 +229,6 @@
       "replacement": "<return default>",
       "class": "equivalent",
       "reason": "同上"
-    },
-    {
-      "fingerprint": "src/auth/oauth/urls.nim:BLR:f59fa086407fb368:0",
-      "file": "src/auth/oauth/urls.nim",
-      "line": 40,
-      "mutator": "BLR",
-      "original": "false",
-      "replacement": "true",
-      "class": "test_owed",
-      "reason": "既定の policy が私設網の番地を通すようになる。このジョブの私設網のテスト (`test_security_address.nim` の `publicOnly`) は `allowPrivateNetworks = false` を自分で入れ直すので、既定値は見ていない / MCP-AUTH-30 (「private ranges are refused unless allowed」)。B の suite「Fetch policy」に 1 本: 既定の policy (`timeoutMs` だけ短くする) の client に `challengedWith(\"https://10.0.0.1/x\")` → `expect OAuthSecurityError`。変異では検査を通って接続を試み、時間切れの OAuthError になる"
     },
     {
       "fingerprint": "src/auth/oauth/urls.nim:ROR:82a2571577ffe944:0",
@@ -681,46 +251,6 @@
       "reason": "文字列のリテラルの return は `\"\"` に替わる。元と同じ値"
     },
     {
-      "fingerprint": "src/auth/oauth/urls.nim:ROR:38263dfd8c488dd6:0",
-      "file": "src/auth/oauth/urls.nim",
-      "line": 116,
-      "mutator": "ROR",
-      "original": "uri.port.len > 0",
-      "replacement": "<> -> >=>",
-      "class": "test_owed",
-      "reason": "ポートを書かない URL の origin が `https://host:` になり、正規の resource が `https://mcp.example.com:/mcp` になる。このジョブのテストの URL はどれもポートつき (`127.0.0.1:<port>`) で、ポートの無い正しい resource を通すものが無い / MCP-AUTH-21 (「the valid examples of the specification」)。B の suite「Canonical resource」に 1 本: `newResourceServerAuth(serverConfig(r))` が `https://mcp.example.com/mcp`・`https://mcp.example.com`・`https://mcp.example.com:8443`・`https://mcp.example.com/mcp?tenant=a` で例外なしに返り、`https://mcp.example.com/` と `HTTPS://MCP.example.com/mcp` は `expect ValueError` (正規の形でない)。変異では 1 つ目が ValueError。下の 142・144・145 行も同じ 1 本"
-    },
-    {
-      "fingerprint": "src/auth/oauth/urls.nim:AOR:e1fc70d51262bafd:0",
-      "file": "src/auth/oauth/urls.nim",
-      "line": 122,
-      "mutator": "AOR",
-      "original": "result.len - 1",
-      "replacement": "<- -> +>",
-      "class": "test_owed",
-      "reason": "同じ入力で、変異は `/` を落とす代わりに NUL を足し、well-known の URL が `…/oauth-authorization-server/tenant1/\\0` になる / MCP-AUTH-35 / MCP-AUTH-14。`discovery.nim:26` と同じ 1 本 (1 つ目と 2 つ目の URL の文面が合わない)"
-    },
-    {
-      "fingerprint": "src/auth/oauth/urls.nim:SDL:0c937999c23513de:0",
-      "file": "src/auth/oauth/urls.nim",
-      "line": 122,
-      "mutator": "SDL",
-      "original": "result.setLen(result.len - 1)",
-      "replacement": "discard",
-      "class": "test_owed",
-      "reason": "`/` で終わるパスの issuer か resource で、変異は well-known の URL を作るループが終わらない / MCP-AUTH-35 / MCP-AUTH-14 (「a trailing slash is removed first」)。`discovery.nim:26` と同じ 1 本 (issuer `origin & \"/tenant1/\"`)。変異では終わらない (timeout)"
-    },
-    {
-      "fingerprint": "src/auth/oauth/urls.nim:LOR:76f8556f3ba71a6a:0",
-      "file": "src/auth/oauth/urls.nim",
-      "line": 142,
-      "mutator": "LOR",
-      "original": "uri.path.len > 0 and uri.path != \"/\"",
-      "replacement": "<and -> or>",
-      "class": "test_owed",
-      "reason": "パスが `/` だけの resource で、元は `/` を落とし、変異は残す。resource metadata の `resource` が client の URL と `/` だけ違うとき、変異は別の resource として断る。resource server は `https://mcp.example.com/` を正規の形として受け入れてしまう / MCP-AUTH-21 (「no bare trailing slash」)。`urls.nim:116` と同じ 1 本 (`https://mcp.example.com/` が `expect ValueError`)。変異では受け入れて返る。client の側 (MCP-AUTH-12「a resource that differs only by … a bare slash is accepted」) も内部側にしか無いので、B の「Protected resource metadata over a scripted server」に、server の URL が `origin`、文書の `resource` が `origin & \"/\"` で受け入れられる 1 本を足すとよい"
-    },
-    {
       "fingerprint": "src/auth/oauth/urls.nim:ROR:821a66dd2db19a47:0",
       "file": "src/auth/oauth/urls.nim",
       "line": 142,
@@ -729,76 +259,6 @@
       "replacement": "<> -> >=>",
       "class": "equivalent",
       "reason": "パスが空のとき、右の `uri.path != \"/\"` は真で、足されるのは空文字列。結果は変わらない (前の記録の id 229 と同じ判断)"
-    },
-    {
-      "fingerprint": "src/auth/oauth/urls.nim:ROR:212865059112dc58:0",
-      "file": "src/auth/oauth/urls.nim",
-      "line": 144,
-      "mutator": "ROR",
-      "original": "uri.query.len > 0",
-      "replacement": "<> -> >=>",
-      "class": "test_owed",
-      "reason": "問い合わせの無い resource の正規の形に `?` が付く。resource server はどの正しい `resource` も「正規の形でない」と断るようになる / MCP-AUTH-21。`urls.nim:116` と同じ 1 本 (正しい例が ValueError になる)。なお `tests/external/test_auth_resource_server.nim` のどのテストも検出するはず (正しい config で `newResourceServerAuth` を呼ぶ) だが、このジョブの testCommand には無い"
-    },
-    {
-      "fingerprint": "src/auth/oauth/urls.nim:SDL:a178fbf446f0500c:0",
-      "file": "src/auth/oauth/urls.nim",
-      "line": 145,
-      "mutator": "SDL",
-      "original": "result.add \"?\" & uri.query",
-      "replacement": "discard",
-      "class": "test_owed",
-      "reason": "問い合わせを持つ resource の正規の形から問い合わせが落ちる。前のテストは内部側に移った / MCP-AUTH-37 (「a canonical resource keeps its query」)。`urls.nim:116` と同じ 1 本 (`https://mcp.example.com/mcp?tenant=a` が例外なしに返る)。変異では ValueError"
-    },
-    {
-      "fingerprint": "src/auth/oauth/urls.nim:BLR:9cfbc9aab75c9fd9:0",
-      "file": "src/auth/oauth/urls.nim",
-      "line": 149,
-      "mutator": "BLR",
-      "original": "false",
-      "replacement": "true",
-      "class": "test_owed",
-      "reason": "認可の URL とトークンの要求の本文で、空白が `%20` ではなく `+` になる。外部テストはどれも `decodeQuery` で読むので、どちらの綴りも同じ値になり見えない / MCP-AUTH-37 (「a form field with a space is encoded as %20」)。B の suite「A Bearer challenge seen through the public entries」に 1 本: `consentedFor(v, \"Bearer scope=\\\"files:read files:write\\\", resource_metadata=\\\"{prm}\\\"\")` の `urls[0]` を復号せずに見て、`\"scope=files%3Aread%20files%3Awrite\" in url`。変異では `files%3Aread+files%3Awrite`"
-    },
-    {
-      "fingerprint": "src/auth/oauth/urls.nim:SDL:f3884ee08630e876:0",
-      "file": "src/auth/oauth/urls.nim",
-      "line": 153,
-      "mutator": "SDL",
-      "original": "result.add (k, v)",
-      "replacement": "discard",
-      "class": "spec_question",
-      "reason": "`formDecode` と `queryOf` は src に使い手が無い (`queryOf` が `formDecode` を呼ぶだけ)。入口から export もされない。tests/external は自前の同名の補助 (`auth_fixtures.nim`・`ext_auth_fixtures.nim`) を使い、tests/internal に使い手は無く、呼ぶのは `tests/fuzz/targets.nim` の 2 行だけ。どの仕様 ID にも当たらない。問い: src に使い手の無い `formDecode`・`queryOf` を消すか、仕様を持つ公開の関数にするか / 推奨: 消す (fuzz の 2 行も一緒に)。認可の応答の読み取りは `UserAuthorizer` が返す対の列で受け取るので、SDK の中に問い合わせを復号する場面が無い。「公開から外して役割のモジュールに分ける」は要らない (どの入口も export していない)"
-    },
-    {
-      "fingerprint": "src/auth/oauth/urls.nim:SDL:5335507b217f25ce:0",
-      "file": "src/auth/oauth/urls.nim",
-      "line": 156,
-      "mutator": "SDL",
-      "original": "formDecode(parseUri(url).query)",
-      "replacement": "discard",
-      "class": "spec_question",
-      "reason": "同上 (`queryOf` は src にも tests/external・tests/internal にも使い手が無い) / 上と同じ問い・同じ推奨"
-    },
-    {
-      "fingerprint": "src/auth/resource_server.nim:ROR:dedcfbcc643201d9:0",
-      "file": "src/auth/resource_server.nim",
-      "line": 100,
-      "mutator": "ROR",
-      "original": "error.len > 0",
-      "replacement": "<> -> >=>",
-      "class": "test_owed",
-      "reason": "トークンの無い要求への 401 は、変異後 `error=\"\"` を持つ。ヘッダーの文字列は HTTP の応答として外から見える。外部のテストは `resource_metadata` と `scope` しか見ていない / MCP-AUTH-32 (「a request without a token gets a challenge with no error code」)。`tests/external/test_auth_resource_server.nim` に足す: 認可のある各版で、トークン無しで POST し、`reply.wwwAuthenticate[0]` に `error` が含まれないこと (同じファイルの `bearerOf(...).get.error.isNone` でもよい。SDK の読み手は使わない)。変異だと `error=\"\"` が載り、落ちる"
-    },
-    {
-      "fingerprint": "src/auth/resource_server.nim:SDL:304537b826ebd5d2:0",
-      "file": "src/auth/resource_server.nim",
-      "line": 103,
-      "mutator": "SDL",
-      "original": "params.add (\"error_description\", description)",
-      "replacement": "discard",
-      "class": "test_owed",
-      "reason": "検証器が拒んだトークンへの 401 `invalid_token` から `error_description` が消える。外部のテストは `error` の値だけを見ている / MCP-AUTH-32 (「a rejected token gets invalid_token with a description」)。同じファイルに足す: 各版で `Authorization: Bearer bogus` を POST し、同じファイルの `bearerParam(reply.wwwAuthenticate[0], \"error_description\")` が some で空でないこと (文面そのものは比べない)。変異だと none になり、落ちる"
     },
     {
       "fingerprint": "src/auth/resource_server.nim:RVR:0c511227513989c7:0",
@@ -1161,56 +621,6 @@
       "reason": "`sniffIcon` の戻り値は `Option[IconType]` で、`result` の既定値が none。末尾の式を捨てても同じ値が返る。 / -"
     },
     {
-      "fingerprint": "src/client/icons.nim:ROR:0a9e8b7201a2946a:0",
-      "file": "src/client/icons.nim",
-      "line": 106,
-      "mutator": "ROR",
-      "original": "src.len > options.maxBytes * 2 + 128",
-      "replacement": "<> -> >=>",
-      "class": "test_owed",
-      "reason": "The representative decided the rule on 2026-11-11; it now has a specification line and an E test (MCP-SEC-WIRE-5, -13, -24, MCP-ICONS-8). To be confirmed by the next run."
-    },
-    {
-      "fingerprint": "src/client/icons.nim:BLR:7a096473f5c56e36:0",
-      "file": "src/client/icons.nim",
-      "line": 136,
-      "mutator": "BLR",
-      "original": "true",
-      "replacement": "false",
-      "class": "test_owed",
-      "reason": "既定の取得の経路で、同じ origin への redirect を追わなくなる (302 がそのまま返り「the icon was answered with 302」で失敗する)。検出していたテスト (「Given a redirect inside the origin…」) は `tests/internal/test_icon_fetch_internal.nim` に移っていて、しかも `options.get` を差し替えるので `guardedGet` を通らない。前の記録 (id 33) の許容の理由「`IconFetchOptions` に `caFile` が無い」は、`caFile` が足された今は成り立たない。 / MCP-ICONS-6 (redirect は origin の中で追う)。`tests/external/test_security_trusted_ca.nim` に足す。既存の `startTlsServer(cert, key, answerFor)` で、`GET /hop` には `302` と `Location: /icon.png`、ほかには PNG を返す。`fetchIcon(McpIcon(src: origin & \"/hop\"), origin, IconFetchOptions(caFile: caFile))` の `bytes == Png` と `server.requests == 2` を見る。変異だと McpIconError になる。"
-    },
-    {
-      "fingerprint": "src/client/icons.nim:SDL:6f3fb3ba120cea62:0",
-      "file": "src/client/icons.nim",
-      "line": 168,
-      "mutator": "SDL",
-      "original": "asked.addCallback(proc () =; if asked.failed:; discard asked.readError(); else:; asked.read().close())",
-      "replacement": "discard",
-      "class": "test_owed",
-      "reason": "時間切れの後に届いた応答の接続を閉じなくなる。既存の E テスト (`test_security_trusted_ca.nim` の「Given an answer that comes after the timeout…」) が検出しないのは、`guardedGet` が `headerTimeoutMs = timeoutMs` を渡していて、400 ms 後の応答より先に `http_wire` 自身のヘッダの時間切れが接続を閉じるから。この callback が働くのは、応答の頭が「取得の時間切れ (最初から timeoutMs)」より後、「ヘッダの時間切れ (接続が済んでから timeoutMs)」より前に届くときだけ (幅は接続と TLS の握手にかかった時間)。内部のテスト (`tests/internal/test_security_icons_internal.nim`) は `options.get` に `wire.request` を渡して検出していたが、`WireResponse` を公開の入口から作れないので E テストでは使えない。 / MCP-SEC-WIRE-7。`tests/external/test_security_trusted_ca.nim` に足す。`startTlsServer` に握手の前の待ち (例: 最初の `recv` の前に 200 ms) を足し、`timeoutMs: 300`、応答は要求の頭から 200 ms 後 (届くのは約 400 ms、ヘッダの時間切れは約 500 ms)。`\"no answer within\"` の後に `waitUntil` で `server.peerClosed` を見る。変異だと応答は届くが誰も閉じず、`peerClosed` が false のまま。時刻に頼るテストになるので、安定して窓に入れられないと分かったら「この callback を残すか、ヘッダの時間切れに任せて消すか」の問いに回す。"
-    },
-    {
-      "fingerprint": "src/client/icons.nim:SDL:b8da7b0f36fbff3c:0",
-      "file": "src/client/icons.nim",
-      "line": 172,
-      "mutator": "SDL",
-      "original": "asked.read().close()",
-      "replacement": "discard",
-      "class": "test_owed",
-      "reason": "上の行と同じ箇所の成功の側。時間切れの後に届いた応答を閉じなくなる。 / MCP-SEC-WIRE-7。上の行と同じ 1 本で検出できる。"
-    },
-    {
-      "fingerprint": "src/client/icons.nim:LOR:d0758cf5bf3869b1:0",
-      "file": "src/client/icons.nim",
-      "line": 193,
-      "mutator": "LOR",
-      "original": "normalizedMime(declared).isGeneric and icon.mimeType.isSome",
-      "replacement": "<and -> or>",
-      "class": "test_owed",
-      "reason": "サーバーの型が汎用で icon に `mimeType` が無いと `icon.mimeType.get` が UnpackDefect で落ちる。サーバーの型が具体的で icon に `mimeType` があると、サーバーの型ではなく icon の型で照合する。検出していたテスト (「Given a generic Content-Type…」) は `tests/internal/test_icon_fetch_internal.nim` に移っている。 / MCP-ICONS-6 (Scenario の文面は「サーバーの型が無い・汎用のときだけ icon の型を使う」とまでは言っていない。足すなら文面も 1 行足すとよい)。`tests/external/test_security_trusted_ca.nim` に足す。(1) `Content-Type: application/octet-stream` で PNG を返し、`mimeType` の無い icon を `caFile` つきで取ると届く (変異は Defect)。(2) `Content-Type: image/png` で PNG を返し、icon の `mimeType` が `image/jpeg` でも届く (変異は「says it is image/jpeg」で断る)。"
-    },
-    {
       "fingerprint": "src/client/sampling.nim:RVR:22bd31688538b11f:0",
       "file": "src/client/sampling.nim",
       "line": 69,
@@ -1253,7 +663,7 @@
     {
       "fingerprint": "src/client/tasks.nim:RVR:0676a9310a0c6761:1",
       "file": "src/client/tasks.nim",
-      "line": 220,
+      "line": 221,
       "mutator": "RVR",
       "original": "return newJsonRpcErrorResponse(request.id, e.code, e.msg)",
       "replacement": "<return default>",
@@ -1269,6 +679,46 @@
       "replacement": "<return default>",
       "class": "equivalent",
       "reason": "`McpToolAnnotations()` は全部の欄が未設定の値で、型の既定値と同じ / —"
+    },
+    {
+      "fingerprint": "src/compat/utf8.nim:ROR:b273926411ebde1d:0",
+      "file": "src/compat/utf8.nim",
+      "line": 16,
+      "mutator": "ROR",
+      "original": "at >= text.len",
+      "replacement": "<>= -> >>",
+      "class": "unreached",
+      "reason": "差が出るのは `at == text.len` で呼ばれたときだけ。呼び手は `isUtf8` と `diagnostic.nim` の 2 つで、どちらも `i < text.len` の輪の中から呼ぶ。モジュールは SDK の内部で、公開の入口から `at` を選べない / —"
+    },
+    {
+      "fingerprint": "src/compat/utf8.nim:RVR:7018026ff64ed67b:0",
+      "file": "src/compat/utf8.nim",
+      "line": 17,
+      "mutator": "RVR",
+      "original": "return 0",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "`int` の既定値は 0 / —"
+    },
+    {
+      "fingerprint": "src/compat/utf8.nim:AOR:da3355fa56ef9180:0",
+      "file": "src/compat/utf8.nim",
+      "line": 33,
+      "mutator": "AOR",
+      "original": "at + width",
+      "replacement": "<+ -> ->",
+      "class": "test_owed",
+      "reason": "輪が空になり、3 バイト目・4 バイト目が継続バイトかを確かめなくなる。既存の入力は 2 バイト目までで断られるものだけだった / MCP-STDIO-9・MCP-HTTP-43。`NotUtf8` に 3 バイト目・4 バイト目が継続バイトでない並びを足した (変異を手で当てて、テストが落ちることを確かめた)"
+    },
+    {
+      "fingerprint": "src/compat/utf8.nim:RVR:7018026ff64ed67b:2",
+      "file": "src/compat/utf8.nim",
+      "line": 35,
+      "mutator": "RVR",
+      "original": "return 0",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "`int` の既定値は 0 / —"
     },
     {
       "fingerprint": "src/ext/apps/host.nim:RVR:0c511227513989c7:0",
@@ -1421,16 +871,6 @@
       "reason": "`default(Option[UiClientCapability])` は none。`hostSupportsApps` は `isSome` を見るので、宣言の無い相手はどちらでも偽 / なし"
     },
     {
-      "fingerprint": "src/ext/auth_client_credentials.nim:ROR:a1a5a51b51b89aa6:0",
-      "file": "src/ext/auth_client_credentials.nim",
-      "line": 162,
-      "mutator": "ROR",
-      "original": "c.config.assertionAudience == aaIssuer",
-      "replacement": "<== -> !=>",
-      "class": "test_owed",
-      "reason": "既定 (`aaIssuer`) で assertion の `aud` が token endpoint になり、`aaTokenEndpoint` で issuer になる。C の fake は `registry.audiences` に両方を入れているので見えない / MCP-EXT-AUTH-1。C: `env.registry.audiences = @[issuer]` にして既定の config で served、`@[token_endpoint]` にして `assertionAudience = aaTokenEndpoint` で served。変異ではどちらも invalid_client (内部側に同じ主旨の 2 本がある)"
-    },
-    {
       "fingerprint": "src/ext/auth_client_credentials.nim:RVR:0c511227513989c7:0",
       "file": "src/ext/auth_client_credentials.nim",
       "line": 188,
@@ -1471,86 +911,6 @@
       "reason": "`default(Option[seq[string]])` は none で、`none(seq[string])` と同じ値"
     },
     {
-      "fingerprint": "src/ext/auth_enterprise_managed.nim:LOR:fd8d1984114a44f0:0",
-      "file": "src/ext/auth_enterprise_managed.nim",
-      "line": 226,
-      "mutator": "LOR",
-      "original": "header{\"typ\"}.isNil or header{\"typ\"}.kind != JString",
-      "replacement": "<or -> and>",
-      "class": "test_owed",
-      "reason": "`typ` の無い ID-JAG で、元は OAuthSecurityError、変異は nil の `kind` を読んで落ちる (文字列でない `typ` は変異でも断る) / MCP-EXT-AUTH-11。E の suite「checkIdentityAssertionGrant」: `typ` を付けずに署名した ID-JAG → `expect OAuthSecurityError`。変異では SIGSEGV"
-    },
-    {
-      "fingerprint": "src/ext/auth_enterprise_managed.nim:LOR:158eacccce0cde09:0",
-      "file": "src/ext/auth_enterprise_managed.nim",
-      "line": 230,
-      "mutator": "LOR",
-      "original": "claims{\"iss\"}.isNil or claims{\"iss\"}.kind != JString",
-      "replacement": "<or -> and>",
-      "class": "test_owed",
-      "reason": "`iss` の無い ID-JAG で、元は OAuthSecurityError、変異は nil の `kind` を読んで落ちる / MCP-EXT-AUTH-11。E の「Given an ID-JAG without sub, jti, iat or exp, ...」と同じ形で `behavior.drop = @[\"iss\"]` と `@[\"client_id\"]` → `refusedGrant` (`rasRequests.len == 0`)。変異では SIGSEGV。下の 1 件と同じ 1 本 (内部側に同じ主旨のテストがある)"
-    },
-    {
-      "fingerprint": "src/ext/auth_enterprise_managed.nim:LOR:18d9809e7aae3e6b:0",
-      "file": "src/ext/auth_enterprise_managed.nim",
-      "line": 236,
-      "mutator": "LOR",
-      "original": "claims{\"client_id\"}.isNil or claims{\"client_id\"}.kind != JString",
-      "replacement": "<or -> and>",
-      "class": "test_owed",
-      "reason": "`client_id` の無い ID-JAG で、元は OAuthSecurityError、変異は nil の `kind` を読んで落ちる / MCP-EXT-AUTH-11。上と同じ 1 本 (`client_id` を落とす)"
-    },
-    {
-      "fingerprint": "src/ext/auth_enterprise_managed.nim:LOR:e83d4a1bf996e377:0",
-      "file": "src/ext/auth_enterprise_managed.nim",
-      "line": 241,
-      "mutator": "LOR",
-      "original": "claims{required}.isNil or claims{required}.kind != JString or; claims{required}.getStr().len == 0",
-      "replacement": "<or -> and>",
-      "class": "test_owed",
-      "reason": "`sub` か `jti` が空文字列の ID-JAG を、元は断り、変異は受け入れる (無い・文字列でないものは変異でも断る) / MCP-EXT-AUTH-11。E の suite「checkIdentityAssertionGrant」: `good` の `sub` を `\"\"` にしたものと `jti` を `\"\"` にしたもの → `expect OAuthError`。変異では受け入れて返る"
-    },
-    {
-      "fingerprint": "src/ext/auth_enterprise_managed.nim:ROR:5367ba632762c479:0",
-      "file": "src/ext/auth_enterprise_managed.nim",
-      "line": 246,
-      "mutator": "ROR",
-      "original": "exp <= float(now.toUnix)",
-      "replacement": "<<= -> <>",
-      "class": "test_owed",
-      "reason": "`exp` がちょうど今の ID-JAG を、元は期限切れとして断り、変異は認可サーバーへ送る / MCP-EXT-AUTH-11。E: `env.behavior.lifetime = 0` → `check \"expired\" in env.refusedGrant()` (`rasRequests.len == 0`)。変異では認可サーバーに 1 回届く (内部側に同じ主旨のテスト「expires at this very second」がある)"
-    },
-    {
-      "fingerprint": "src/ext/auth_enterprise_managed.nim:ROR:0d3faeea190b21d6:0",
-      "file": "src/ext/auth_enterprise_managed.nim",
-      "line": 248,
-      "mutator": "ROR",
-      "original": "exp > float(now.toUnix) + float(MaxTokenLifetimeSeconds)",
-      "replacement": "<> -> >=>",
-      "class": "test_owed",
-      "reason": "`exp` がちょうど今 + 10 年の ID-JAG を、元は受け、変異は断る / MCP-SEC-AUTH-6。S の suite「numbers in an ID-JAG ...」(`grantChecked` の補助だけが残っている): `exp = now + MaxTokenLifetimeSeconds` は通り、1 秒先は OAuthError。変異では前者も断る。`MaxTokenLifetimeSeconds` は入口 `auth/client` が `tokens` ごと export している (内部側に同じ主旨のテストがある)"
-    },
-    {
-      "fingerprint": "src/ext/auth_enterprise_managed.nim:LOR:b34755d00d89735f:0",
-      "file": "src/ext/auth_enterprise_managed.nim",
-      "line": 283,
-      "mutator": "LOR",
-      "original": "grantTypes.isNone or GrantTypeJwtBearer notin grantTypes.get",
-      "replacement": "<or -> and>",
-      "class": "test_owed",
-      "reason": "プロファイルは載せるが `grant_types_supported` に jwt-bearer が無い認可サーバーに、変異は ID-JAG を取りに行って送る (欄ごと無いときは変異は UnpackDefect) / MCP-EXT-AUTH-10。E: `startEnv(rasGrantTypes = @[\"authorization_code\"])` → `refusedBeforeAnyExchange` (`providerCalls`・`idpRequests`・`rasRequests` が 0)。変異では IdP に交換が届く (内部側に同じ主旨のテストがある)"
-    },
-    {
-      "fingerprint": "src/ext/auth_enterprise_managed.nim:ROR:4729d8b6ab5a6378:0",
-      "file": "src/ext/auth_enterprise_managed.nim",
-      "line": 343,
-      "mutator": "ROR",
-      "original": "issued.scopes.len == 0",
-      "replacement": "<== -> !=>",
-      "class": "test_owed",
-      "reason": "保存されるトークンの scope が入れ替わる: 認可サーバーが狭い scope を答えたとき求めたもので上書きし、答えに scope が無いとき空のままにする。見えるのは `config.tokenStore` (公開の欄。`TokenStore` は入口 `auth/client` が export) / MCP-EXT-AUTH-9。E: `config.tokenStore` に自前の `newMemoryStore[TokenSet]()` を渡し、ping の後に `load` した `scopes` を見る。狭い scope の答え (`behavior.grantScope`) なら答えのもの、scope の無い答えなら求めたもの。変異では逆 (内部側に同じ主旨の 2 本がある)"
-    },
-    {
       "fingerprint": "src/ext/auth_enterprise_managed.nim:RVR:0c511227513989c7:0",
       "file": "src/ext/auth_enterprise_managed.nim",
       "line": 355,
@@ -1583,7 +943,7 @@
     {
       "fingerprint": "src/ext/skills/catalog.nim:AOR:0a5dc4f793c7bd6f:0",
       "file": "src/ext/skills/catalog.nim",
-      "line": 208,
+      "line": 209,
       "mutator": "AOR",
       "original": "files.len + 1",
       "replacement": "<+ -> ->",
@@ -1593,7 +953,7 @@
     {
       "fingerprint": "src/ext/skills/catalog.nim:RVR:889329807e98c6bf:0",
       "file": "src/ext/skills/catalog.nim",
-      "line": 249,
+      "line": 250,
       "mutator": "RVR",
       "original": "return none(Found)",
       "replacement": "<return default>",
@@ -1603,7 +963,7 @@
     {
       "fingerprint": "src/ext/skills/catalog.nim:RVR:889329807e98c6bf:1",
       "file": "src/ext/skills/catalog.nim",
-      "line": 259,
+      "line": 260,
       "mutator": "RVR",
       "original": "return none(Found)",
       "replacement": "<return default>",
@@ -1613,7 +973,7 @@
     {
       "fingerprint": "src/ext/skills/catalog.nim:SDL:1dd49b7e6c82055c:0",
       "file": "src/ext/skills/catalog.nim",
-      "line": 260,
+      "line": 261,
       "mutator": "SDL",
       "original": "none(Found)",
       "replacement": "discard",
@@ -1623,7 +983,7 @@
     {
       "fingerprint": "src/ext/skills/catalog.nim:ROR:048f9da66bbc8bda:0",
       "file": "src/ext/skills/catalog.nim",
-      "line": 287,
+      "line": 288,
       "mutator": "ROR",
       "original": "slash < 0",
       "replacement": "<< -> <=>",
@@ -1633,7 +993,7 @@
     {
       "fingerprint": "src/ext/skills/catalog.nim:RVR:9bd38dfae0fced9f:0",
       "file": "src/ext/skills/catalog.nim",
-      "line": 387,
+      "line": 388,
       "mutator": "RVR",
       "original": "return none(JsonRpcResponse)",
       "replacement": "<return default>",
@@ -1643,7 +1003,7 @@
     {
       "fingerprint": "src/ext/skills/catalog.nim:RVR:9bd38dfae0fced9f:1",
       "file": "src/ext/skills/catalog.nim",
-      "line": 390,
+      "line": 391,
       "mutator": "RVR",
       "original": "return none(JsonRpcResponse)",
       "replacement": "<return default>",
@@ -1653,7 +1013,7 @@
     {
       "fingerprint": "src/ext/skills/catalog.nim:RVR:9bd38dfae0fced9f:2",
       "file": "src/ext/skills/catalog.nim",
-      "line": 393,
+      "line": 394,
       "mutator": "RVR",
       "original": "return none(JsonRpcResponse)",
       "replacement": "<return default>",
@@ -1863,7 +1223,7 @@
     {
       "fingerprint": "src/ext/tasks/server.nim:SDL:8a17cc5c9a298608:0",
       "file": "src/ext/tasks/server.nim",
-      "line": 112,
+      "line": 113,
       "mutator": "SDL",
       "original": "stderr.writeLine(\"[mcp-tasks] \" & what)",
       "replacement": "discard",
@@ -1873,7 +1233,7 @@
     {
       "fingerprint": "src/ext/tasks/server.nim:SDL:7a97a8f794ddcf54:0",
       "file": "src/ext/tasks/server.nim",
-      "line": 113,
+      "line": 114,
       "mutator": "SDL",
       "original": "newRequestError(ErrInternal, \"Internal error\")",
       "replacement": "discard",
@@ -1883,7 +1243,7 @@
     {
       "fingerprint": "src/ext/tasks/server.nim:SDL:93c05b0a9345fd14:0",
       "file": "src/ext/tasks/server.nim",
-      "line": 199,
+      "line": 198,
       "mutator": "SDL",
       "original": "inputs.pending.del(issued)",
       "replacement": "discard",
@@ -1891,9 +1251,19 @@
       "reason": "待ちが取り消しで終わるのは、`serveDetached` の `cancel` が呼ばれたときだけで、呼ぶのは `TaskStore.cancel` と `sweep` の `cancelWork` だけ (この ctx は `inFlight` に載らないので `notifications/cancelled` では止まらない)。どちらも同じ同期の呼び出しの中で、`statusChanged` か `onExpire` が `ext.inputs.del(taskId)` で `TaskInputs` ごと外す。`pending` を読む `detailed`・`fulfil`・次の `requestInput` はどれも `ext.inputs` を引いてから読むので、残った項目は誰にも読まれない。代表の決定「終端・期限切れの task がその後に出す質問は、送らずにその場で断る」(2026-11-12) が当たるのは `scope.taskId notin ext.inputs` の検査のほうで、この行ではない"
     },
     {
+      "fingerprint": "src/ext/tasks/server.nim:RVR:4aaabad6f446154f:0",
+      "file": "src/ext/tasks/server.nim",
+      "line": 214,
+      "mutator": "RVR",
+      "original": "return newJsonRpcErrorResponse(answer.id, ErrInternal, \"Internal error\")",
+      "replacement": "<return default>",
+      "class": "accepted",
+      "reason": "失敗の文面は契約ではない (代表の決定 2026-10-23)。この行には公開の入口から届く (既存の E テスト test_ext_tasks「Given a tool whose request in a task ends asking for input the multi round-trip way, ...」が通る)。変異後の空の応答は `finishWhenDone` から `task_store.finish` に渡り、2026-11-12 からの置き換えで、元と同じ誤り (符号 -32603、文面 \"Internal error\"、data は null) として記録される。task は同じく failed、`tasks/get` の `error` も `statusMessage` も同じで、応答の id は outcome に入らない。変わるのは stderr だけ: 元の「use requestInput …」の 1 行 (212 行、変異でも出る) の後に、`finish` の「ended with neither a result nor an error」が 1 行増える。初回の測定 (id 62) でこの変異を殺した理由 (task が completed になる) は、`finish` の置き換えでもう成り立たない。消せるコードか: return ごと消すと `resultType` を外した `input_required` の結果で task が completed になるので消せない / —"
+    },
+    {
       "fingerprint": "src/ext/tasks/server.nim:RVR:9bd38dfae0fced9f:0",
       "file": "src/ext/tasks/server.nim",
-      "line": 353,
+      "line": 352,
       "mutator": "RVR",
       "original": "return none(JsonRpcResponse)",
       "replacement": "<return default>",
@@ -1903,7 +1273,7 @@
     {
       "fingerprint": "src/ext/tasks/server.nim:RVR:4e102445986c6351:0",
       "file": "src/ext/tasks/server.nim",
-      "line": 356,
+      "line": 355,
       "mutator": "RVR",
       "original": "return none(JsonRpcResponse)",
       "replacement": "<return default>",
@@ -1913,7 +1283,7 @@
     {
       "fingerprint": "src/ext/tasks/server.nim:RVR:9bd38dfae0fced9f:1",
       "file": "src/ext/tasks/server.nim",
-      "line": 361,
+      "line": 360,
       "mutator": "RVR",
       "original": "return none(JsonRpcResponse)",
       "replacement": "<return default>",
@@ -1923,7 +1293,7 @@
     {
       "fingerprint": "src/ext/tasks/server.nim:RVR:9bd38dfae0fced9f:2",
       "file": "src/ext/tasks/server.nim",
-      "line": 364,
+      "line": 363,
       "mutator": "RVR",
       "original": "return none(JsonRpcResponse)",
       "replacement": "<return default>",
@@ -2101,46 +1471,6 @@
       "reason": "`live`・`next` に入るのは `reach` の `of ikChar, ikAny, ikSet: live.add pc` だけ。`consumed` の `else` に来る命令は無い。`case` の網羅のための枝 (前の記録 id 378 で残すと判断済み) / -"
     },
     {
-      "fingerprint": "src/jsonschema/json_schema_regex.nim:SDL:fa0d1877a97157bc:0",
-      "file": "src/jsonschema/json_schema_regex.nim",
-      "line": 551,
-      "mutator": "SDL",
-      "original": "re.isMatch(text, budget)",
-      "replacement": "discard",
-      "class": "unreached",
-      "reason": "`isMatch(re, text, maxSteps)` は `src/` のどこからも呼ばれない (`json_schema.nim` の `matches` は `budget: var int` の版を使う)。`mcp` は `json_schema_regex` の `isMatch` を export しないので、入口から通せない / 公開を絞れば消える: 使われていないこの多重定義を消す (テストだけが使うなら内部テスト側で `var` の版を呼ぶ)"
-    },
-    {
-      "fingerprint": "src/protocol/base64_shape.nim:BLR:9e1445f6b0165a86:0",
-      "file": "src/protocol/base64_shape.nim",
-      "line": 14,
-      "mutator": "BLR",
-      "original": "false",
-      "replacement": "true",
-      "class": "test_owed",
-      "reason": "先頭の = を落とすと isPaddedBase64(\"=QUE\") が真になる。cursor とヘッダは後ろの復号が ValueError で断るが、資源の blob (result_shape) は形だけで決めるので通ってしまう (MCP-RESOURCES-17、MCP-SEC-WIRE-9)。test_handler_results_fix.nim の blob の表に \"=QUE\" を足し、ジョブの testCommand にこのファイルを足した。測り直しで消えることを確かめる"
-    },
-    {
-      "fingerprint": "src/protocol/base64_shape.nim:LOR:b20c24dfb3c73560:0",
-      "file": "src/protocol/base64_shape.nim",
-      "line": 31,
-      "mutator": "LOR",
-      "original": "text.len - body.len <= 2 and body.allCharsInSet(Base64Alphabet)",
-      "replacement": "<and -> or>",
-      "class": "test_owed",
-      "reason": "pad が 3 つの data URI が復号まで進み、アイコンとして受け取られる。test_icon_fetch.nim に「pad が 3 つなら断る」を足した (MCP-SEC-WIRE-9)。アルファベット外の文字は後ろの復号が ValueError で断るので、この変異で変わるのは pad の数だけ。測り直しで消えることを確かめる"
-    },
-    {
-      "fingerprint": "src/protocol/base64_shape.nim:ROR:67fea339bf507896:0",
-      "file": "src/protocol/base64_shape.nim",
-      "line": 31,
-      "mutator": "ROR",
-      "original": "text.len - body.len <= 2",
-      "replacement": "<<= -> <>",
-      "class": "test_owed",
-      "reason": "pad が 2 つの data URI が断られる。殺すテストは内部側 (test_icon_fetch_internal.nim) にしか無かった。test_icon_fetch.nim に「pad が 2 つ・1 つ・無しのどれでも読む」を足した (MCP-ICONS-6、MCP-SEC-WIRE-9)。測り直しで消えることを確かめる"
-    },
-    {
       "fingerprint": "src/protocol/content.nim:RVR:d8d2d1fd991dcb3b:0",
       "file": "src/protocol/content.nim",
       "line": 51,
@@ -2151,324 +1481,14 @@
       "reason": "リテラルではないので `default(Option[T])` になり、それは `none(T)` (`T` は `string` か `bool`)。無い項目が none になる、は変わらない。前の記録の id 76 と同じ判断。 / -"
     },
     {
-      "fingerprint": "src/protocol/diagnostic.nim:LOR:70124a7496d6cde1:0",
-      "file": "src/protocol/diagnostic.nim",
-      "line": 17,
-      "mutator": "LOR",
-      "original": "c < 0x00000020 or c in 0x0000007F .. 0x0000009F or c in 0x00002028 .. 0x00002029 or; c in 0x0000202A .. 0x0000202E",
-      "replacement": "<or -> and>",
-      "class": "test_owed",
-      "reason": "C1・行区切り・双方向の上書き (U+202A〜U+202E) が生のまま出る。 / MCP-SEC-HTTP-7。T-A。"
-    },
-    {
-      "fingerprint": "src/protocol/diagnostic.nim:LOR:fa4e730b52ed8737:0",
-      "file": "src/protocol/diagnostic.nim",
-      "line": 17,
-      "mutator": "LOR",
-      "original": "c < 0x00000020 or c in 0x0000007F .. 0x0000009F or c in 0x00002028 .. 0x00002029",
-      "replacement": "<or -> and>",
-      "class": "test_owed",
-      "reason": "C1 と行区切り (U+2028・U+2029) が生のまま出る。 / MCP-SEC-HTTP-7。T-A。"
-    },
-    {
-      "fingerprint": "src/protocol/diagnostic.nim:LOR:fcb0f213fea5eeda:0",
-      "file": "src/protocol/diagnostic.nim",
-      "line": 17,
-      "mutator": "LOR",
-      "original": "c < 0x00000020 or c in 0x0000007F .. 0x0000009F",
-      "replacement": "<or -> and>",
-      "class": "test_owed",
-      "reason": "C1 の制御文字 (U+0080〜U+009F) が危険と判定されなくなり、生のまま出る。 / MCP-SEC-HTTP-7。T-A。"
-    },
-    {
       "fingerprint": "src/protocol/diagnostic.nim:ROR:f62a603f6f9989e5:0",
       "file": "src/protocol/diagnostic.nim",
-      "line": 17,
+      "line": 18,
       "mutator": "ROR",
       "original": "c < 0x00000020",
       "replacement": "<< -> <=>",
       "class": "equivalent",
       "reason": "isUnsafe に届くのは 2 バイト以上の整った UTF-8 の文字だけで、その符号位置は U+0080 以上。c < 0x20 と c <= 0x20 はどちらも偽になる。b04fcb9c では validateUtf8 が 3・4 バイトの過剰な符号化 (E0 80 A0 = U+0020) を通したので違いが出たが、compat/utf8 の utf8Width が RFC 3629 どおりに断るようにした後は届かない (仕分け担当の指摘。test_security_diagnostic.nim の「surrogate, a code point above U+10FFFF or an overlong form」が確かめる)"
-    },
-    {
-      "fingerprint": "src/protocol/diagnostic.nim:LOR:1875a78402bde8c6:0",
-      "file": "src/protocol/diagnostic.nim",
-      "line": 18,
-      "mutator": "LOR",
-      "original": "c < 0x00000020 or c in 0x0000007F .. 0x0000009F or c in 0x00002028 .. 0x00002029 or; c in 0x0000202A .. 0x0000202E or; c in 0x00002066 .. 0x00002069",
-      "replacement": "<or -> and>",
-      "class": "test_owed",
-      "reason": "上に加えて双方向の分離 (U+2066〜U+2069) が生のまま出る。 / MCP-SEC-HTTP-7。T-A。"
-    },
-    {
-      "fingerprint": "src/protocol/diagnostic.nim:LOR:4a79c915cd9887d5:0",
-      "file": "src/protocol/diagnostic.nim",
-      "line": 18,
-      "mutator": "LOR",
-      "original": "c < 0x00000020 or c in 0x0000007F .. 0x0000009F or c in 0x00002028 .. 0x00002029 or; c in 0x0000202A .. 0x0000202E or; c in 0x00002066 .. 0x00002069 or; c in 0x0000200E .. 0x0000200F or; c == 0x0000061C",
-      "replacement": "<or -> and>",
-      "class": "test_owed",
-      "reason": "`isUnsafe` が常に偽になり、危険な符号位置がどれも生のまま出る。 / MCP-SEC-HTTP-7。T-A。"
-    },
-    {
-      "fingerprint": "src/protocol/diagnostic.nim:LOR:4db97eab93bd210d:0",
-      "file": "src/protocol/diagnostic.nim",
-      "line": 18,
-      "mutator": "LOR",
-      "original": "c < 0x00000020 or c in 0x0000007F .. 0x0000009F or c in 0x00002028 .. 0x00002029 or; c in 0x0000202A .. 0x0000202E or; c in 0x00002066 .. 0x00002069 or; c in 0x0000200E .. 0x0000200F",
-      "replacement": "<or -> and>",
-      "class": "test_owed",
-      "reason": "上に加えて方向の印 (U+200E・U+200F) が生のまま出る。 / MCP-SEC-HTTP-7。T-A。"
-    },
-    {
-      "fingerprint": "src/protocol/diagnostic.nim:ROR:e517dd59b589c0bd:0",
-      "file": "src/protocol/diagnostic.nim",
-      "line": 19,
-      "mutator": "ROR",
-      "original": "c == 0x0000061C",
-      "replacement": "<== -> !=>",
-      "class": "test_owed",
-      "reason": "U+061C が生のまま出て、ほかの ASCII でない文字 (日本語など) がすべて `\\u{…}` になる。 / MCP-SEC-HTTP-7。T-A (U+061C) と T-B のどちらでも落ちる。"
-    },
-    {
-      "fingerprint": "src/protocol/diagnostic.nim:ROR:0b5bb378a98ab5b1:0",
-      "file": "src/protocol/diagnostic.nim",
-      "line": 28,
-      "mutator": "ROR",
-      "original": "result.len >= maxLen",
-      "replacement": "<>= -> >>",
-      "class": "test_owed",
-      "reason": "201 バイトの id で、元は 200 バイトと `...(1 more bytes)`、変異後は 201 バイトを出して印が付かない。 / MCP-SEC-HTTP-7 (3 つ目の Then)。T-E。"
-    },
-    {
-      "fingerprint": "src/protocol/diagnostic.nim:AOR:6b522035e597db10:0",
-      "file": "src/protocol/diagnostic.nim",
-      "line": 29,
-      "mutator": "AOR",
-      "original": "text.len - i",
-      "replacement": "<- -> +>",
-      "class": "test_owed",
-      "reason": "省いたバイト数が誤る (201 バイトで 1 が 401 になる)。 / MCP-SEC-HTTP-7 (3 つ目の Then)。T-E (数を厳密に比べる)。"
-    },
-    {
-      "fingerprint": "src/protocol/diagnostic.nim:SDL:bedba8565d355504:0",
-      "file": "src/protocol/diagnostic.nim",
-      "line": 29,
-      "mutator": "SDL",
-      "original": "result.add \"...(\" & $(text.len - i) & \" more bytes)\"",
-      "replacement": "discard",
-      "class": "test_owed",
-      "reason": "切られるが、省いたバイト数が出ない。仕様が「省いたバイト数を添える」と定めている。 / MCP-SEC-HTTP-7 (3 つ目の Then)。T-E。"
-    },
-    {
-      "fingerprint": "src/protocol/diagnostic.nim:ROR:48b5b1e65fb8be17:0",
-      "file": "src/protocol/diagnostic.nim",
-      "line": 32,
-      "mutator": "ROR",
-      "original": "byte < 0x00000080",
-      "replacement": "<< -> <=>",
-      "class": "test_owed",
-      "reason": "単独の 0x80 が ASCII の枝に入り、生のバイトのまま出る (元は `\\x80`)。 / MCP-SEC-HTTP-7 (2 つ目の Then)。T-C。"
-    },
-    {
-      "fingerprint": "src/protocol/diagnostic.nim:SDL:43108caf3797537b:0",
-      "file": "src/protocol/diagnostic.nim",
-      "line": 35,
-      "mutator": "SDL",
-      "original": "result.add \"\\\\r\"",
-      "replacement": "discard",
-      "class": "test_owed",
-      "reason": "CR が `\\r` と出ずに消える。 / MCP-SEC-HTTP-7 (1 つ目の Then)。T-D。"
-    },
-    {
-      "fingerprint": "src/protocol/diagnostic.nim:SDL:05907b3a8a88873d:0",
-      "file": "src/protocol/diagnostic.nim",
-      "line": 36,
-      "mutator": "SDL",
-      "original": "result.add \"\\\\t\"",
-      "replacement": "discard",
-      "class": "test_owed",
-      "reason": "タブが `\\t` と出ずに消える。 / MCP-SEC-HTTP-7 (1 つ目の Then)。T-D。"
-    },
-    {
-      "fingerprint": "src/protocol/diagnostic.nim:SDL:040de086e4543697:0",
-      "file": "src/protocol/diagnostic.nim",
-      "line": 37,
-      "mutator": "SDL",
-      "original": "result.add \"\\\\\\\\\"",
-      "replacement": "discard",
-      "class": "test_owed",
-      "reason": "打たれた `\\` が消え、相手が書いた文字が黙って欠ける。Scenario の文は `\\` を名指していないが、`\\` を重ねないと「エスケープで示す」が読み分けられない (打たれた `\\n` と本物の改行)。`specs/tests.map` も内部側の `Given tab and backslash …` をこの ID に結んでいる。 / MCP-SEC-HTTP-7。T-D。"
-    },
-    {
-      "fingerprint": "src/protocol/diagnostic.nim:ROR:28550222ab53f681:0",
-      "file": "src/protocol/diagnostic.nim",
-      "line": 44,
-      "mutator": "ROR",
-      "original": "byte >= 0x000000C0",
-      "replacement": "<>= -> >>",
-      "class": "equivalent",
-      "reason": "違うのは先頭が 0xC0 のときだけ。元は幅 2 を取るが、末尾なら長さの検査で、そうでなければ `validateUtf8` (0xC2 未満の先頭を断る) で断られ、変異後は幅 0 で断られる。どちらも `\\xc0` を出して 1 バイト進む。 / —"
-    },
-    {
-      "fingerprint": "src/protocol/diagnostic.nim:ROR:7bb30c62fcdcda1c:0",
-      "file": "src/protocol/diagnostic.nim",
-      "line": 44,
-      "mutator": "ROR",
-      "original": "byte >= 0x000000F0",
-      "replacement": "<>= -> >>",
-      "class": "test_owed",
-      "reason": "0xF0 で始まる 4 バイトの文字 (絵文字など) が幅 3 と読まれ、正しい文字が `\\xf0\\x9f\\x98\\x80` に崩れる。 / MCP-SEC-HTTP-7。T-B。"
-    },
-    {
-      "fingerprint": "src/protocol/diagnostic.nim:ROR:dbf4729dd5d1e62b:0",
-      "file": "src/protocol/diagnostic.nim",
-      "line": 44,
-      "mutator": "ROR",
-      "original": "byte >= 0x000000E0",
-      "replacement": "<>= -> >>",
-      "class": "test_owed",
-      "reason": "0xE0 で始まる 3 バイトの文字 (U+0800〜U+0FFF) が幅 2 と読まれ、`\\xNN` に崩れる。 / MCP-SEC-HTTP-7。T-B。"
-    },
-    {
-      "fingerprint": "src/protocol/diagnostic.nim:AOR:fdd68f222fb279b6:0",
-      "file": "src/protocol/diagnostic.nim",
-      "line": 45,
-      "mutator": "AOR",
-      "original": "i + width",
-      "replacement": "<+ -> ->",
-      "class": "test_owed",
-      "reason": "長さの検査が常に偽になり、末尾で切れた文字 (`\\xe3\\x81`) で `text[i ..< i + width]` が範囲外になって IndexDefect で落ちる (元は `\\xe3\\x81` と出す)。 / MCP-SEC-HTTP-7 (2 つ目の Then)。T-C (末尾を切れた文字にする)。"
-    },
-    {
-      "fingerprint": "src/protocol/diagnostic.nim:LOR:a2ccf15b9a50e7b7:0",
-      "file": "src/protocol/diagnostic.nim",
-      "line": 45,
-      "mutator": "LOR",
-      "original": "width == 0 or i + width > text.len or validateUtf8(text[i ..< i + width]) != -1",
-      "replacement": "<or -> and>",
-      "class": "test_owed",
-      "reason": "長さが足りていて中身が不正な列 (`\\xc3` の後が ASCII) が断られず生のまま出る。単独の 0x80 は `\\u{0080}` の繰り返しになる。 / MCP-SEC-HTTP-7 (2 つ目の Then)。T-C。"
-    },
-    {
-      "fingerprint": "src/protocol/diagnostic.nim:LOR:de6a8860a5052e97:0",
-      "file": "src/protocol/diagnostic.nim",
-      "line": 45,
-      "mutator": "LOR",
-      "original": "width == 0 or i + width > text.len",
-      "replacement": "<or -> and>",
-      "class": "test_owed",
-      "reason": "幅 0 のバイトが断られなくなる: 単独の 0x80 は `\\x80` ではなく `\\u{0080}` の繰り返しになる。末尾で切れた文字は範囲外の切り出しで IndexDefect になる。 / MCP-SEC-HTTP-7 (2 つ目の Then)。T-C。"
-    },
-    {
-      "fingerprint": "src/protocol/diagnostic.nim:ROR:128914bf1f19073b:0",
-      "file": "src/protocol/diagnostic.nim",
-      "line": 45,
-      "mutator": "ROR",
-      "original": "i + width > text.len",
-      "replacement": "<> -> >=>",
-      "class": "test_owed",
-      "reason": "文字列の最後にある正しい文字が `\\xNN` に崩れる。 / MCP-SEC-HTTP-7。T-B (id の最後を ASCII でない文字にする)。"
-    },
-    {
-      "fingerprint": "src/protocol/diagnostic.nim:ROR:8799fc3d224eccb1:0",
-      "file": "src/protocol/diagnostic.nim",
-      "line": 45,
-      "mutator": "ROR",
-      "original": "width == 0",
-      "replacement": "<== -> !=>",
-      "class": "test_owed",
-      "reason": "幅のある先頭バイトがすべて `\\xNN` になり、正しい文字が崩れる。続きのバイトは断られずに先へ進み、`i` が進まない (0x80〜0x9F は `\\u{…}` を上限まで繰り返す。0xA0〜0xBF は止まらない)。 / MCP-SEC-HTTP-7。T-B (変異後は止まらないので時間切れで落ちる)。"
-    },
-    {
-      "fingerprint": "src/protocol/diagnostic.nim:AOR:1382231a9c1cfae9:0",
-      "file": "src/protocol/diagnostic.nim",
-      "line": 46,
-      "mutator": "AOR",
-      "original": "i + width",
-      "replacement": "<+ -> ->",
-      "class": "test_owed",
-      "reason": "検査に渡す切り出しの長さが負になる。検査つきのビルドでは正しい文字でも RangeDefect で落ち、落ちない設定では空文字列が常に「正しい」となって不正な列が生のまま出る。 / MCP-SEC-HTTP-7。T-B と T-C (どちらの設定でも片方が落ちる)。"
-    },
-    {
-      "fingerprint": "src/protocol/diagnostic.nim:ROR:027dbfbca2e39cc2:0",
-      "file": "src/protocol/diagnostic.nim",
-      "line": 46,
-      "mutator": "ROR",
-      "original": "validateUtf8(text[i ..< i + width]) != -1",
-      "replacement": "<!= -> ==>",
-      "class": "test_owed",
-      "reason": "正しい文字が `\\xNN` に崩れ、不正な列が生のまま出る。 / MCP-SEC-HTTP-7。T-B と T-C のどちらでも落ちる。"
-    },
-    {
-      "fingerprint": "src/protocol/diagnostic.nim:SDL:4013ad9dd59379cc:1",
-      "file": "src/protocol/diagnostic.nim",
-      "line": 47,
-      "mutator": "SDL",
-      "original": "result.add \"\\\\x\" & toHex(byte, 2).toLowerAscii()",
-      "replacement": "discard",
-      "class": "test_owed",
-      "reason": "不正なバイトがエスケープで示されずに消える。 / MCP-SEC-HTTP-7 (2 つ目の Then)。T-C。"
-    },
-    {
-      "fingerprint": "src/protocol/diagnostic.nim:SDL:c7f896b75934631c:1",
-      "file": "src/protocol/diagnostic.nim",
-      "line": 48,
-      "mutator": "SDL",
-      "original": "inc i",
-      "replacement": "discard",
-      "class": "test_owed",
-      "reason": "不正なバイトで `i` が進まず、同じ `\\xNN` を上限まで繰り返して切れる (止まる。無限ループではない)。 / MCP-SEC-HTTP-7 (2 つ目の Then)。T-C。"
-    },
-    {
-      "fingerprint": "src/protocol/diagnostic.nim:BLR:250308d303f8b8b0:0",
-      "file": "src/protocol/diagnostic.nim",
-      "line": 51,
-      "mutator": "BLR",
-      "original": "false",
-      "replacement": "true",
-      "class": "test_owed",
-      "reason": "`i` が 2 回進み、文字を 1 つおきに飛ばす (次の文字を出すか、範囲外で IndexDefect)。 / MCP-SEC-HTTP-7。T-B (ASCII でない文字を 2 つ以上続ける)。"
-    },
-    {
-      "fingerprint": "src/protocol/diagnostic.nim:SDL:82106f2368aa9ccc:0",
-      "file": "src/protocol/diagnostic.nim",
-      "line": 51,
-      "mutator": "SDL",
-      "original": "fastRuneAt(text, i, r, doInc = false)",
-      "replacement": "discard",
-      "class": "test_owed",
-      "reason": "`r` が 0 のままで `isUnsafe` が常に真になり、正しい文字がすべて `\\u{0000}` と出る。 / MCP-SEC-HTTP-7。T-B。"
-    },
-    {
-      "fingerprint": "src/protocol/diagnostic.nim:SDL:22125ada0be2b99c:0",
-      "file": "src/protocol/diagnostic.nim",
-      "line": 53,
-      "mutator": "SDL",
-      "original": "result.add \"\\\\u{\" & toHex(r.int, 4).toLowerAscii() & \"}\"",
-      "replacement": "discard",
-      "class": "test_owed",
-      "reason": "危険な符号位置が `\\u{…}` で示されずに消える。仕様は「エスケープで示す」。 / MCP-SEC-HTTP-7 (1 つ目の Then)。T-A。"
-    },
-    {
-      "fingerprint": "src/protocol/diagnostic.nim:AOR:bdd8bd961580b77e:0",
-      "file": "src/protocol/diagnostic.nim",
-      "line": 55,
-      "mutator": "AOR",
-      "original": "i + width",
-      "replacement": "<+ -> ->",
-      "class": "test_owed",
-      "reason": "出す切り出しの長さが負になり、正しい文字が出ない (検査つきのビルドでは RangeDefect で落ちる)。 / MCP-SEC-HTTP-7。T-B。"
-    },
-    {
-      "fingerprint": "src/protocol/diagnostic.nim:SDL:6e2e25fc43b76a80:0",
-      "file": "src/protocol/diagnostic.nim",
-      "line": 55,
-      "mutator": "SDL",
-      "original": "result.add text[i ..< i + width]",
-      "replacement": "discard",
-      "class": "test_owed",
-      "reason": "正しい ASCII でない文字がすべて消える。 / MCP-SEC-HTTP-7。T-B。"
     },
     {
       "fingerprint": "src/protocol/elicitation.nim:BLR:559268148d6adf9d:0",
@@ -2521,16 +1541,6 @@
       "reason": "同上 (前の記録の id 284)"
     },
     {
-      "fingerprint": "src/protocol/elicitation.nim:LOR:b47c5833fd3e23b2:1",
-      "file": "src/protocol/elicitation.nim",
-      "line": 372,
-      "mutator": "LOR",
-      "original": "properties.isNil or properties.kind != JObject",
-      "replacement": "<or -> and>",
-      "class": "test_owed",
-      "reason": "MCP-ELICIT-7 (検査していない params でも落ちずに返る、代表の決定 2026-11-12)。tests/external/test_elicitation_payload.nim の「Given params that were not checked, when an answer is checked against them, then it returns without raising」を足した。手で当てて落ちることを確認、測り直しで確かめる"
-    },
-    {
       "fingerprint": "src/protocol/extensions.nim:ROR:048f9da66bbc8bda:0",
       "file": "src/protocol/extensions.nim",
       "line": 56,
@@ -2559,86 +1569,6 @@
       "replacement": "<return default>",
       "class": "equivalent",
       "reason": "`settingsOf` の戻り値の型は `Option[JsonNode]` で、既定値は `none(JsonNode)` (前の仕分けの id 64) / なし"
-    },
-    {
-      "fingerprint": "src/protocol/features.nim:BLR:fd541d232acef4ff:0",
-      "file": "src/protocol/features.nim",
-      "line": 104,
-      "mutator": "BLR",
-      "original": "false",
-      "replacement": "true",
-      "class": "test_owed",
-      "reason": "`until` が「在る、版は既定値の 2024-11-05」になり、`version < 2024-11-05` はどの版でも偽なので、終わりの無い機能 (`ftTools`・`ftSamplingTools`・`ftElicitation` など) がすべての版で「無い」になる。例: `ftSamplingTools` が 2025-11-25 と 2026-07-28 で無くなる。 / MCP-SAMPLING-TOOLS-1。既存の `tests/external/test_sampling_tools_payload.nim` の `Given tools and a tool choice, when the request is checked in 2025-11-25 and later, then there is nothing to report` が検出するはず (変異だと `tools` が問題として報告され `len == 0` が落ちる)。testCommand に足す。"
-    },
-    {
-      "fingerprint": "src/protocol/features.nim:BLR:c7f595570f3a2986:0",
-      "file": "src/protocol/features.nim",
-      "line": 107,
-      "mutator": "BLR",
-      "original": "true",
-      "replacement": "false",
-      "class": "test_owed",
-      "reason": "終わりのある機能が終わらなくなる。例: `ftTasks` が 2026-07-28 で、`ftJsonRpcBatch`・`ftAuthDefaultEndpoints` が 2025-06-18 以降で、`ftHttpSessions`・`ftPing` が 2026-07-28 で「在る」になる。 / MCP-TASKS-2。既存の `tests/external/test_tasks_server.nim` の `Given a 2026-07-28 request, when the server describes itself, then tasks are not declared` が検出するはず (変異だと `server/discover` の capabilities に `tasks` が残る)。同じ suite の `…when it calls tasks/get, tasks/result, tasks/list or tasks/cancel, then the method is unknown` も落ちるはず。既定の版が 2026-07-28 のビルドでだけ走る suite。testCommand に足す。"
-    },
-    {
-      "fingerprint": "src/protocol/features.nim:LOR:56840ae9a1303474:0",
-      "file": "src/protocol/features.nim",
-      "line": 158,
-      "mutator": "LOR",
-      "original": "version >= s.since and (not s.until.present or version < s.until.version)",
-      "replacement": "<and -> or>",
-      "class": "test_owed",
-      "reason": "終わりの無い機能は、始まる前の版でも「在る」になる (右辺が常に真)。終わりのある機能は、始まる前の版と終わった後の版で「在る」になる。例: `ftSamplingTools` が 2025-06-18 以前で、`ftTasks` が 2025-06-18 以前と 2026-07-28 で在ることになる。 / MCP-SAMPLING-TOOLS-2。既存の `tests/external/test_sampling_tools_payload.nim` の `Given tools or a tool choice, when checked in 2025-06-18, then the field is reported` が検出するはず (変異だと 2025-06-18 で `tools` が報告されない)。MCP-TASKS-2 の `test_tasks_server.nim` の `Given a client of an older version, when it calls tasks/get, then the method is unknown` (2025-06-18 を定数で使う) も落ちるはず。testCommand に足す。"
-    },
-    {
-      "fingerprint": "src/protocol/features.nim:LOR:6c550e70d3915cd6:0",
-      "file": "src/protocol/features.nim",
-      "line": 158,
-      "mutator": "LOR",
-      "original": "not s.until.present or version < s.until.version",
-      "replacement": "<or -> and>",
-      "class": "test_owed",
-      "reason": "終わりのある機能は `not present` が偽で、終わりの無い機能は `version < 2024-11-05` (既定値) が偽なので、`has` がどの機能・どの版でも偽を返す。例: `ftSamplingTools` が 2025-11-25 で、`ftTasks` が 2025-11-25 で無くなる。 / MCP-SAMPLING-TOOLS-1。既存の `tests/external/test_sampling_tools_payload.nim` の `Given tools and a tool choice, when the request is checked in 2025-11-25 and later, then there is nothing to report` が検出するはず。testCommand に足す。"
-    },
-    {
-      "fingerprint": "src/protocol/features.nim:ROR:12ca2a82fc644ed8:0",
-      "file": "src/protocol/features.nim",
-      "line": 158,
-      "mutator": "ROR",
-      "original": "version >= s.since",
-      "replacement": "<>= -> >>",
-      "class": "test_owed",
-      "reason": "機能が始まった版ちょうどで「無い」になる。例: `ftSamplingTools` と `ftTasks` が 2025-11-25 で、`ftElicitation` が 2025-06-18 で、`ftAuthorization` が 2025-03-26 で無くなる。 / MCP-SAMPLING-TOOLS-1。既存の `tests/external/test_sampling_tools_payload.nim` の `Given tools and a tool choice, when the request is checked in 2025-11-25 and later, then there is nothing to report` が検出するはず (`WithTools` は始まった版ちょうどの `mpv20251125` を定数で含む)。MCP-TASKS-1 の `test_tasks_server.nim` の `Given tasks enabled, when a 2025-11-25 client handshakes, then the server declares list, cancel and tools/call` も落ちるはず。testCommand に足す。"
-    },
-    {
-      "fingerprint": "src/protocol/features.nim:ROR:818cc11b5bfbb09f:0",
-      "file": "src/protocol/features.nim",
-      "line": 158,
-      "mutator": "ROR",
-      "original": "version < s.until.version",
-      "replacement": "<< -> <=>",
-      "class": "test_owed",
-      "reason": "機能が終わった版ちょうどで「在る」になる。例: `ftTasks`・`ftHttpSessions`・`ftPing`・`ftResourceSubscribe` が 2026-07-28 で、`ftJsonRpcBatch`・`ftAuthDefaultEndpoints` が 2025-06-18 で在ることになる。 / MCP-TASKS-2。既存の `tests/external/test_tasks_server.nim` の `Given a 2026-07-28 request, when the server describes itself, then tasks are not declared` が検出するはず (`ftTasks` が終わる版ちょうどの `mpv20260728` を定数で使う)。既定の版が 2026-07-28 のビルドでだけ走る。testCommand に足す。"
-    },
-    {
-      "fingerprint": "src/protocol/features.nim:SDL:ec5c33aa9b5418dc:0",
-      "file": "src/protocol/features.nim",
-      "line": 163,
-      "mutator": "SDL",
-      "original": "result.add feature",
-      "replacement": "discard",
-      "class": "spec_question",
-      "reason": "`featuresOf` が常に空の列を返す。`mcp` が `features` を丸ごと export するので公開の入口から違いは見えるが、`src/` の中に呼び手は無く、使うのは `tools/gen_docs.nim` (文書の生成) と `tests/internal/test_features.nim` だけ。`specs/*.feature` にこの関数の振る舞いを定める仕様 ID は無い。 / 代表への問い: `featuresOf` を公開 API の仕様にして仕様 ID と E テストを足しますか、それとも文書を作る道具の部品として `tools/` の側へ移し (2026-10-13 に `implementation_status.nim` を対象から外したのと同じ扱い)、ジョブの対象から外しますか。"
-    },
-    {
-      "fingerprint": "src/protocol/features.nim:ROR:b4abacca4aebefdf:0",
-      "file": "src/protocol/features.nim",
-      "line": 237,
-      "mutator": "ROR",
-      "original": "version >= mpv20260728",
-      "replacement": "<>= -> >>",
-      "class": "spec_question",
-      "reason": "2026-07-28 が最新の版なので `modern` が常に偽になり、`specPage(ftStdio, mpv20260728)` が `basic/transports/stdio` ではなく `basic/transports` を返すなど、2026-07-28 のページが旧版のページになる。公開の入口から違いは見えるが、`src/` の中に呼び手は無く、使うのは `tools/gen_docs.nim` と `tests/internal/test_features.nim` だけ。仕様 ID は無い。 / 代表への問い: `specPage` (仕様書のページの対応) を公開 API の仕様にして仕様 ID と E テストを足しますか、それとも `featuresOf` と一緒に文書を作る道具の側へ移してジョブの対象から外しますか。"
     },
     {
       "fingerprint": "src/protocol/hmac.nim:RVR:79d7670ba0e6d1dd:0",
@@ -2671,16 +1601,6 @@
       "reason": "メンバーの間のカンマが消えても、次のメンバーは必ず引用符つきのキーで始まり、値 (文字列・数・リテラル・括弧つきの入れ子) の終わりは一意に決まるので、違うオブジェクトは違う文面のまま。受け入れ・拒否は変わらない (配列の側の同じ変異は数が繋がるので別の行で穴とした)。 / —"
     },
     {
-      "fingerprint": "src/protocol/hmac.nim:SDL:ae5a8451540aa71c:0",
-      "file": "src/protocol/hmac.nim",
-      "line": 29,
-      "mutator": "SDL",
-      "original": "result.add '}'",
-      "replacement": "discard",
-      "class": "test_owed",
-      "reason": "閉じ括弧が無いと入れ子の深さが文面から消え、`{\"a\":{\"b\":1},\"c\":2}` と `{\"a\":{\"b\":1,\"c\":2}}` がどちらも `{\"a\":{\"b\":1,\"c\":2` になる。前者で封印した状態が後者の要求で受け入れられる。 / MCP-MRTR-10。`tests/external/test_mrtr.nim` の「sealed request state」に足す (下の案 A)。salient `{\"a\":{\"b\":1},\"c\":2}` で封印し `{\"a\":{\"b\":1,\"c\":2}}` で `verifyRequestState` → `problem` が some。変異だと none。"
-    },
-    {
       "fingerprint": "src/protocol/hmac.nim:ROR:20951720b0e24994:1",
       "file": "src/protocol/hmac.nim",
       "line": 33,
@@ -2689,36 +1609,6 @@
       "replacement": "<> -> >=>",
       "class": "equivalent",
       "reason": "空でない配列の文面が `[,` で始まるだけで、単射のまま。オブジェクトの側の同じ変異と同じ理由。 / —"
-    },
-    {
-      "fingerprint": "src/protocol/hmac.nim:SDL:a49fa4a3b3e69741:1",
-      "file": "src/protocol/hmac.nim",
-      "line": 33,
-      "mutator": "SDL",
-      "original": "result.add ','",
-      "replacement": "discard",
-      "class": "test_owed",
-      "reason": "要素の間のカンマが消えると数が繋がり、`[1,2]` と `[12]` がどちらも `[12]` になる。`{\"arguments\":[1,2]}` で封印した状態が `{\"arguments\":[12]}` の要求で受け入れられる。 / MCP-MRTR-10。案 A。salient `{\"a\":[1,2]}` で封印し `{\"a\":[12]}` で検証 → `problem` が some。変異だと none。"
-    },
-    {
-      "fingerprint": "src/protocol/hmac.nim:SDL:7ae20fde9ed62b34:0",
-      "file": "src/protocol/hmac.nim",
-      "line": 34,
-      "mutator": "SDL",
-      "original": "result.add canonicalJson(item)",
-      "replacement": "discard",
-      "class": "test_owed",
-      "reason": "配列の要素が文面に入らず、同じ長さの配列がすべて同じダイジェストになる (`[1,2]` も `[3,4]` も `[,]`)。配列の引数だけが違う要求に状態を使い回せる。既存のテストの salient は配列を含まない。 / MCP-MRTR-10。案 A。salient `{\"a\":[1,2]}` で封印し `{\"a\":[3,4]}` で検証 → `problem` が some。変異だと none。"
-    },
-    {
-      "fingerprint": "src/protocol/hmac.nim:SDL:a162f0b4e9cd425c:0",
-      "file": "src/protocol/hmac.nim",
-      "line": 35,
-      "mutator": "SDL",
-      "original": "result.add ']'",
-      "replacement": "discard",
-      "class": "test_owed",
-      "reason": "配列の閉じ括弧が無いと入れ子の深さが消え、`[[1],2]` と `[[1,2]]` がどちらも `[[1,2` になる。 / MCP-MRTR-10。案 A。salient `{\"a\":[[1],2]}` で封印し `{\"a\":[[1,2]]}` で検証 → `problem` が some。変異だと none。"
     },
     {
       "fingerprint": "src/protocol/lifecycle.nim:RVR:a94ce88da5074921:0",
@@ -2841,16 +1731,6 @@
       "reason": "構築子を返す return は `default(Option[JsonNode])` になり、それは none。 / —"
     },
     {
-      "fingerprint": "src/protocol/mrtr.nim:LOR:126924bca3024ea2:0",
-      "file": "src/protocol/mrtr.nim",
-      "line": 147,
-      "mutator": "LOR",
-      "original": "not params.isNil and params.kind == JObject",
-      "replacement": "<and -> or>",
-      "class": "test_owed",
-      "reason": "params が nil でないときは、非オブジェクトでも `params{\"includeContext\"}` が nil を返して既定の `\"none\"` になるので結果は同じ。params が nil のときだけ、変異は `params.kind` で nil を読んで落ちる (元は「足りないものは無い」)。`missingCapabilities` は公開で、`params` の無い sampling の入力要求は `client/client.nim` の `missingCapabilities(%*{key: entry}, declared)` にもサーバーの結果から届く。既存のテストの sampling の要求はどれも params を持つ。 / MCP-MRTR-17 (該当する文面は MCP-SAMPLING-TOOLS-15 の「includeContext が無ければ sampling を宣言したどのクライアントにも送れる」)。案 C。`missingCapabilities(%*{\"q\": {\"method\": \"sampling/createMessage\"}}, %*{\"sampling\": {}}).len == 0`。変異だと nil の参照で落ちる。"
-    },
-    {
       "fingerprint": "src/protocol/mrtr.nim:SDL:f85418f42f56ae88:0",
       "file": "src/protocol/mrtr.nim",
       "line": 155,
@@ -2941,26 +1821,6 @@
       "reason": "Option[JsonRpcError] の既定値は none で、最後の式 none(JsonRpcError) を消しても返る値が同じ"
     },
     {
-      "fingerprint": "src/protocol/result_shape.nim:LOR:91553fbb72296b13:0",
-      "file": "src/protocol/result_shape.nim",
-      "line": 30,
-      "mutator": "LOR",
-      "original": "content.isNil or content.kind != JObject",
-      "replacement": "<or -> and>",
-      "class": "test_owed",
-      "reason": "呼び出し元が nil を先に除くので、変わるのは `resource` がオブジェクトでないとき。元は「is not an object」で -32603。変異は先へ進み、`content.hasKey(\"text\")` の assert で落ちる (-32603 の応答にならない)。 / MCP-CONTENT-FIELDS-14。新しいテスト A: prompts/get のハンドラが `{\"type\":\"resource\",\"resource\":\"x\"}` (文字列・数・配列) を返す → 応答は -32603 で result を持たない。変異では応答が返らずテストが落ちる。"
-    },
-    {
-      "fingerprint": "src/protocol/result_shape.nim:RVR:ad49d89213d96909:0",
-      "file": "src/protocol/result_shape.nim",
-      "line": 31,
-      "mutator": "RVR",
-      "original": "return @[subject & \" is not an object\"]",
-      "replacement": "<return default>",
-      "class": "test_owed",
-      "reason": "空の seq は「問題なし」なので、オブジェクトでない `resource` がそのままクライアントへ送られる。断ること自体が消えるので、文面だけの変異ではない。 / MCP-CONTENT-FIELDS-14。テスト A と同じ。変異では result が返る。"
-    },
-    {
       "fingerprint": "src/protocol/result_shape.nim:LOR:bf4104476e4dfefd:0",
       "file": "src/protocol/result_shape.nim",
       "line": 43,
@@ -2971,49 +1831,29 @@
       "reason": "nil でない `blk` では、オブジェクトでなければ `blk{\"type\"}` が nil、`getStr()` が `\"\"` で `else: discard` に落ち、元の早い return と同じく問題なしを返す。nil の `blk` は、`content` が nil でないことを 66 行が確かめた後にしか渡らず、配列の要素が nil の結果は元でも送る前の直列化で落ちる。 / —"
     },
     {
-      "fingerprint": "src/protocol/result_shape.nim:LOR:6ca8aa899c472f13:0",
+      "fingerprint": "src/protocol/result_shape.nim:LOR:b60a86afd6d1925a:0",
       "file": "src/protocol/result_shape.nim",
-      "line": 63,
-      "mutator": "LOR",
-      "original": "prompt.isNil or prompt.kind != JObject or prompt{\"messages\"}.isNil",
-      "replacement": "<or -> and>",
-      "class": "test_owed",
-      "reason": "The representative decided the rule on 2026-11-11 and it now has a specification line and an E test (MCP-CONTENT-FIELDS-15, MCP-RESOURCES-18, MCP-SAMPLING-TOOLS-17, MCP-LIFECYCLE-23); to be confirmed by the next run."
-    },
-    {
-      "fingerprint": "src/protocol/result_shape.nim:LOR:d0db8732f61789e9:0",
-      "file": "src/protocol/result_shape.nim",
-      "line": 63,
-      "mutator": "LOR",
-      "original": "prompt.isNil or prompt.kind != JObject or prompt{\"messages\"}.isNil or; prompt{\"messages\"}.kind != JArray",
-      "replacement": "<or -> and>",
-      "class": "test_owed",
-      "reason": "The representative decided the rule on 2026-11-11 and it now has a specification line and an E test (MCP-CONTENT-FIELDS-15, MCP-RESOURCES-18, MCP-SAMPLING-TOOLS-17, MCP-LIFECYCLE-23); to be confirmed by the next run."
-    },
-    {
-      "fingerprint": "src/protocol/result_shape.nim:LOR:f8616f8766c1b134:0",
-      "file": "src/protocol/result_shape.nim",
-      "line": 63,
+      "line": 64,
       "mutator": "LOR",
       "original": "prompt.isNil or prompt.kind != JObject",
       "replacement": "<or -> and>",
       "class": "unreached",
-      "reason": "変わるのは `prompt` が nil かオブジェクトでないときだけ。`server.nim` の prompts/get は `requireObjectResult` で先に断ってから `promptResultProblems` を呼ぶ。 / —"
+      "reason": "引き継ぎ (下の節の `LOR:f8616f8766c1b134:0` と同じ `or`)。変わるのは `prompt` が nil かオブジェクトでないときだけ。`result_shape` を import するのは `src/server/server.nim` だけで (`tests/external/` には無い)、`promptResultProblems` を呼ぶのは prompts/get の 1 か所。そこは直前の `requireObjectResult` が nil とオブジェクトでない結果を -32603 で断って return する / —"
     },
     {
-      "fingerprint": "src/protocol/result_shape.nim:LOR:2dac7e649ada9fd2:0",
+      "fingerprint": "src/protocol/result_shape.nim:RVR:ebd714d04ec0b081:0",
       "file": "src/protocol/result_shape.nim",
-      "line": 66,
-      "mutator": "LOR",
-      "original": "message.isNil or message.kind != JObject or message{\"content\"}.isNil",
-      "replacement": "<or -> and>",
-      "class": "test_owed",
-      "reason": "The representative decided the rule on 2026-11-11 and it now has a specification line and an E test (MCP-CONTENT-FIELDS-15, MCP-RESOURCES-18, MCP-SAMPLING-TOOLS-17, MCP-LIFECYCLE-23); to be confirmed by the next run."
+      "line": 65,
+      "mutator": "RVR",
+      "original": "return @[\"the result is not an object\"]",
+      "replacement": "<return default>",
+      "class": "unreached",
+      "reason": "新しい行。この return に入るのは `prompt` が nil かオブジェクトでないときだけで、上の行と同じく `requireObjectResult` が先に断る。消せるコード: 64〜65 行を消しても、`prompt{\"messages\"}` は nil とオブジェクトでない節点に nil を返すので、67〜68 行が「messages is not an array」で断る (断ることは保たれ、変わるのは stderr の文面だけ)。消すかどうかは実装側の判断 / —"
     },
     {
       "fingerprint": "src/protocol/result_shape.nim:LOR:3b313fedc2f3b260:0",
       "file": "src/protocol/result_shape.nim",
-      "line": 66,
+      "line": 71,
       "mutator": "LOR",
       "original": "message.isNil or message.kind != JObject",
       "replacement": "<or -> and>",
@@ -3021,39 +1861,9 @@
       "reason": "nil でない `message` がオブジェクトでなければ `message{\"content\"}` が nil で、3 つ目の条件で同じく `continue` する。要素が nil の配列は元でも送る前の直列化で落ちる。 / —"
     },
     {
-      "fingerprint": "src/protocol/result_shape.nim:SDL:8473d89b2312104c:0",
-      "file": "src/protocol/result_shape.nim",
-      "line": 72,
-      "mutator": "SDL",
-      "original": "result.add contentBlockProblems(subject & \"[\" & $j & \"]\", blk)",
-      "replacement": "discard",
-      "class": "test_owed",
-      "reason": "メッセージの `content` がブロックの配列のとき、中の画像・埋め込みリソースの検査が消え、base64 でない画像がそのまま送られる。既存のテストは `content` が 1 つのブロックの場合だけ。 / MCP-CONTENT-FIELDS-13・MCP-CONTENT-FIELDS-14。新しいテスト B: prompts/get のハンドラが `content` を `[{\"type\":\"image\",\"data\":\"not base64!!\",\"mimeType\":\"image/png\"}]` (と、uri の無い埋め込みリソースの配列) で返す → -32603。変異では result が返る。"
-    },
-    {
-      "fingerprint": "src/protocol/result_shape.nim:LOR:557f714df25ff177:0",
-      "file": "src/protocol/result_shape.nim",
-      "line": 80,
-      "mutator": "LOR",
-      "original": "not content.isNil and content.kind == JObject",
-      "replacement": "<and -> or>",
-      "class": "test_owed",
-      "reason": "The representative decided the rule on 2026-11-11 and it now has a specification line and an E test (MCP-CONTENT-FIELDS-15, MCP-RESOURCES-18, MCP-SAMPLING-TOOLS-17, MCP-LIFECYCLE-23); to be confirmed by the next run."
-    },
-    {
-      "fingerprint": "src/protocol/result_shape.nim:LOR:8a39b698f28f7543:0",
-      "file": "src/protocol/result_shape.nim",
-      "line": 88,
-      "mutator": "LOR",
-      "original": "tool.isNil or tool.kind != JObject or tool{\"inputSchema\"}.isNil",
-      "replacement": "<or -> and>",
-      "class": "test_owed",
-      "reason": "`inputSchema` の無いツールを 2025-11-25 以降で一覧すると、元はそのまま載せる。変異は 92 行の `schema.kind` で落ちる。 / MCP-PAGINATION-1・MCP-PAGINATION-3。既存の `tests/external/test_server_pagination.nim` の「Given a paged list, when a client follows nextCursor, …」「Given a handler of its own cursors, …」が、`inputSchema` の無いツールを全バージョンで一覧するので検出するはず。testCommand に `tests/external/test_server_pagination.nim` を足す。"
-    },
-    {
       "fingerprint": "src/protocol/result_shape.nim:LOR:cbc4a50e8a807d06:0",
       "file": "src/protocol/result_shape.nim",
-      "line": 88,
+      "line": 97,
       "mutator": "LOR",
       "original": "tool.isNil or tool.kind != JObject",
       "replacement": "<or -> and>",
@@ -3061,19 +1871,9 @@
       "reason": "nil でない `tool` がオブジェクトでなければ `tool{\"inputSchema\"}` が nil で、3 つ目の条件で同じく return する。要素が nil の一覧は元でも送る前の直列化で落ちる。 / —"
     },
     {
-      "fingerprint": "src/protocol/result_shape.nim:LOR:34ea2e808d40463b:0",
-      "file": "src/protocol/result_shape.nim",
-      "line": 102,
-      "mutator": "LOR",
-      "original": "not isCacheable(methodName) or resultKind(payload) != rkComplete",
-      "replacement": "<or -> and>",
-      "class": "test_owed",
-      "reason": "The representative decided the rule on 2026-11-11 and it now has a specification line and an E test (MCP-CONTENT-FIELDS-15, MCP-RESOURCES-18, MCP-SAMPLING-TOOLS-17, MCP-LIFECYCLE-23); to be confirmed by the next run."
-    },
-    {
       "fingerprint": "src/protocol/result_shape.nim:RVR:0c511227513989c7:0",
       "file": "src/protocol/result_shape.nim",
-      "line": 103,
+      "line": 112,
       "mutator": "RVR",
       "original": "return none(string)",
       "replacement": "<return default>",
@@ -3083,7 +1883,7 @@
     {
       "fingerprint": "src/protocol/result_shape.nim:SDL:2413a04126052c00:0",
       "file": "src/protocol/result_shape.nim",
-      "line": 110,
+      "line": 119,
       "mutator": "SDL",
       "original": "none(string)",
       "replacement": "discard",
@@ -3091,19 +1891,9 @@
       "reason": "暗黙の `result` は `Option[string]` の既定値 none のままで、同じ値を返す。 / —"
     },
     {
-      "fingerprint": "src/protocol/result_shape.nim:ROR:57f7ba58c0763ede:0",
-      "file": "src/protocol/result_shape.nim",
-      "line": 113,
-      "mutator": "ROR",
-      "original": "content.kind == JArray",
-      "replacement": "<== -> !=>",
-      "class": "test_owed",
-      "reason": "配列の `content` が 1 つのブロックとして扱われ、tool_use も tool_result も見つからず、outputSchema に反する structuredContent が送られる。 / MCP-SAMPLING-TOOLS-17。既存の `tests/external/test_sampling_asks_fix.nim` の「Given a tool_result whose structuredContent breaks the outputSchema of its tool, when the server asks, then it is refused and nothing is sent」と「Given a 2026-07-28 handler that asks with a tool_result that breaks the schema, …」(以下、この 2 本を「反するものを断るテスト」と書く) が検出するはず。testCommand に `tests/external/test_sampling_asks_fix.nim` を足す。"
-    },
-    {
       "fingerprint": "src/protocol/result_shape.nim:LOR:0ba360819992e96c:0",
       "file": "src/protocol/result_shape.nim",
-      "line": 122,
+      "line": 131,
       "mutator": "LOR",
       "original": "params.isNil or params.kind != JObject or params{\"messages\"}.isNil",
       "replacement": "<or -> and>",
@@ -3113,7 +1903,7 @@
     {
       "fingerprint": "src/protocol/result_shape.nim:LOR:15636f78c22e162f:0",
       "file": "src/protocol/result_shape.nim",
-      "line": 122,
+      "line": 131,
       "mutator": "LOR",
       "original": "params.isNil or params.kind != JObject",
       "replacement": "<or -> and>",
@@ -3121,19 +1911,9 @@
       "reason": "変わるのは `params` が nil のときだけ (オブジェクトでない値は `params{\"messages\"}` が nil で同じく return)。`createMessage` は直前の `createMessageParamsProblems` が「params is not an object」で断り、`inputRequiredResponse` は `inputRequestProblems` が同じ検査で問題を出したら呼ばない。 / —"
     },
     {
-      "fingerprint": "src/protocol/result_shape.nim:ROR:afe6f9372b229f7f:0",
-      "file": "src/protocol/result_shape.nim",
-      "line": 122,
-      "mutator": "ROR",
-      "original": "params.kind != JObject",
-      "replacement": "<!= -> ==>",
-      "class": "test_owed",
-      "reason": "オブジェクトの `params` でいつも早く return し、検査が丸ごと消える。 / MCP-SAMPLING-TOOLS-17。既存の `tests/external/test_sampling_asks_fix.nim` の反するものを断るテストが検出するはず。testCommand に足す。"
-    },
-    {
       "fingerprint": "src/protocol/result_shape.nim:LOR:9bfc6cd028b47025:0",
       "file": "src/protocol/result_shape.nim",
-      "line": 123,
+      "line": 132,
       "mutator": "LOR",
       "original": "params.isNil or params.kind != JObject or params{\"messages\"}.isNil or; params{\"messages\"}.kind != JArray",
       "replacement": "<or -> and>",
@@ -3141,49 +1921,9 @@
       "reason": "変わるのは `messages` が無いか配列でないときだけ。上と同じく `createMessageParamsProblems` が先に断る。 / —"
     },
     {
-      "fingerprint": "src/protocol/result_shape.nim:LOR:f5dc05f1a9425226:0",
-      "file": "src/protocol/result_shape.nim",
-      "line": 123,
-      "mutator": "LOR",
-      "original": "params.isNil or params.kind != JObject or params{\"messages\"}.isNil or; params{\"messages\"}.kind != JArray or; params{\"tools\"}.isNil",
-      "replacement": "<or -> and>",
-      "class": "test_owed",
-      "reason": "`tools` の無いふつうの依頼で、元は早く return する。変異は次の `params{\"tools\"}.kind` が nil で落ちる。 / MCP-SAMPLING-TOOLS-15。既存の `tests/external/test_sampling_asks_fix.nim` の「Given the same client, when the server asks with includeContext none or none at all, then the request is sent」(tools の無い依頼) が検出するはず。testCommand に足す。"
-    },
-    {
-      "fingerprint": "src/protocol/result_shape.nim:ROR:78173d37f43397f6:0",
-      "file": "src/protocol/result_shape.nim",
-      "line": 123,
-      "mutator": "ROR",
-      "original": "params{\"messages\"}.kind != JArray",
-      "replacement": "<!= -> ==>",
-      "class": "test_owed",
-      "reason": "配列の `messages` でいつも早く return し、検査が消える。 / MCP-SAMPLING-TOOLS-17。既存の `tests/external/test_sampling_asks_fix.nim` の反するものを断るテストが検出するはず。testCommand に足す。"
-    },
-    {
-      "fingerprint": "src/protocol/result_shape.nim:LOR:40e56c5b13b9b71e:0",
-      "file": "src/protocol/result_shape.nim",
-      "line": 124,
-      "mutator": "LOR",
-      "original": "params.isNil or params.kind != JObject or params{\"messages\"}.isNil or; params{\"messages\"}.kind != JArray or; params{\"tools\"}.isNil or; params{\"tools\"}.kind != JArray",
-      "replacement": "<or -> and>",
-      "class": "test_owed",
-      "reason": "`tools` の無い依頼で、`params{\"tools\"}.isNil` が真になったあと `and` の右の `.kind` が nil で落ちる。 / MCP-SAMPLING-TOOLS-15。上の行と同じ既存のテストが検出するはず。testCommand に `tests/external/test_sampling_asks_fix.nim` を足す。"
-    },
-    {
-      "fingerprint": "src/protocol/result_shape.nim:ROR:e9af2aac47bfe3de:0",
-      "file": "src/protocol/result_shape.nim",
-      "line": 124,
-      "mutator": "ROR",
-      "original": "params{\"tools\"}.kind != JArray",
-      "replacement": "<!= -> ==>",
-      "class": "test_owed",
-      "reason": "配列の `tools` でいつも早く return し、検査が消える。 / MCP-SAMPLING-TOOLS-17。既存の `tests/external/test_sampling_asks_fix.nim` の反するものを断るテストが検出するはず。testCommand に足す。"
-    },
-    {
       "fingerprint": "src/protocol/result_shape.nim:LOR:3e094e446209faf6:0",
       "file": "src/protocol/result_shape.nim",
-      "line": 128,
+      "line": 137,
       "mutator": "LOR",
       "original": "message.kind == JObject and not message{\"content\"}.isNil",
       "replacement": "<and -> or>",
@@ -3191,49 +1931,9 @@
       "reason": "変わるのは、オブジェクトで `content` の無いメッセージのときだけ (オブジェクトでないメッセージは `{\"content\"}` が nil で同じく飛ぶ)。先に `createMessageParamsProblems` (`messageProblems`) が「content is not a content block…」で断る。 / —"
     },
     {
-      "fingerprint": "src/protocol/result_shape.nim:ROR:4d1022e5b234bab4:0",
-      "file": "src/protocol/result_shape.nim",
-      "line": 128,
-      "mutator": "ROR",
-      "original": "message.kind == JObject",
-      "replacement": "<== -> !=>",
-      "class": "test_owed",
-      "reason": "オブジェクトのメッセージを 1 周目で飛ばすので tool_use の名前が集まらず、どのツールとも照らされない。 / MCP-SAMPLING-TOOLS-17。既存の `tests/external/test_sampling_asks_fix.nim` の反するものを断るテストが検出するはず。testCommand に足す。"
-    },
-    {
-      "fingerprint": "src/protocol/result_shape.nim:LOR:45dd75f1b011757a:0",
-      "file": "src/protocol/result_shape.nim",
-      "line": 130,
-      "mutator": "LOR",
-      "original": "blk.kind == JObject and blk{\"type\"}.getStr() == \"tool_use\"",
-      "replacement": "<and -> or>",
-      "class": "test_owed",
-      "reason": "tool_use でないブロックの `id`・`name` も対応表に入る。後ろのブロックが tool_use と同じ `id` と別の `name` を持つと、照らすツールが入れ替わり、反する structuredContent が送られる。既存のテストにその形の入力は無い。 / MCP-SAMPLING-TOOLS-17。新しいテスト C: tools は `weather` (outputSchema あり) と `plain` (無し)。tool_use `u1` は `weather`、その tool_result の structuredContent は `{\"temp\":\"hot\"}`。後ろのメッセージに `{\"type\":\"text\",\"text\":\"x\",\"id\":\"u1\",\"name\":\"plain\"}` を置く → 断られ、何も送られない。変異では送られる。"
-    },
-    {
-      "fingerprint": "src/protocol/result_shape.nim:ROR:501e0e44df91c5d0:0",
-      "file": "src/protocol/result_shape.nim",
-      "line": 130,
-      "mutator": "ROR",
-      "original": "blk{\"type\"}.getStr() == \"tool_use\"",
-      "replacement": "<== -> !=>",
-      "class": "test_owed",
-      "reason": "tool_use だけが対応表から外れ、tool_result のツール名が `\"\"` になって照らされない。 / MCP-SAMPLING-TOOLS-17。既存の `tests/external/test_sampling_asks_fix.nim` の反するものを断るテストが検出するはず。testCommand に足す。"
-    },
-    {
-      "fingerprint": "src/protocol/result_shape.nim:ROR:be6aeffd9b47213a:0",
-      "file": "src/protocol/result_shape.nim",
-      "line": 130,
-      "mutator": "ROR",
-      "original": "blk.kind == JObject",
-      "replacement": "<== -> !=>",
-      "class": "test_owed",
-      "reason": "オブジェクトのブロックを飛ばすので tool_use の名前が集まらない。 / MCP-SAMPLING-TOOLS-17。既存の `tests/external/test_sampling_asks_fix.nim` の反するものを断るテストが検出するはず。testCommand に足す。"
-    },
-    {
       "fingerprint": "src/protocol/result_shape.nim:LOR:6768b7197575ff0b:0",
       "file": "src/protocol/result_shape.nim",
-      "line": 133,
+      "line": 142,
       "mutator": "LOR",
       "original": "message.kind != JObject or message{\"content\"}.isNil",
       "replacement": "<or -> and>",
@@ -3241,144 +1941,14 @@
       "reason": "変わるのは、オブジェクトで `content` の無いメッセージのときだけ。128 行と同じく `createMessageParamsProblems` が先に断る。 / —"
     },
     {
-      "fingerprint": "src/protocol/result_shape.nim:ROR:aaedc238f839614f:0",
-      "file": "src/protocol/result_shape.nim",
-      "line": 133,
-      "mutator": "ROR",
-      "original": "message.kind != JObject",
-      "replacement": "<!= -> ==>",
-      "class": "test_owed",
-      "reason": "オブジェクトのメッセージを 2 周目で飛ばすので、tool_result が 1 つも検査されない。 / MCP-SAMPLING-TOOLS-17。既存の `tests/external/test_sampling_asks_fix.nim` の反するものを断るテストが検出するはず。testCommand に足す。"
-    },
-    {
-      "fingerprint": "src/protocol/result_shape.nim:LOR:620182e876bff30a:0",
-      "file": "src/protocol/result_shape.nim",
-      "line": 136,
-      "mutator": "LOR",
-      "original": "blk.kind != JObject or blk{\"type\"}.getStr() != \"tool_result\"",
-      "replacement": "<or -> and>",
-      "class": "test_owed",
-      "reason": "tool_result でないブロックも、`structuredContent` を持てば検査の対象になる。tool_result がどれもスキーマに合う依頼を、元は送り、変異は断る。既存のテストにその形の入力は無い。 / MCP-SAMPLING-TOOLS-17 (「a structuredContent that conforms is sent」)。新しいテスト D: tool_result `u1` の structuredContent は `{\"temp\":21}` で合う。別のメッセージに `{\"type\":\"text\",\"text\":\"x\",\"toolUseId\":\"u1\",\"structuredContent\":{\"temp\":\"hot\"}}` を置く → 依頼は送られる。変異では断られる。"
-    },
-    {
-      "fingerprint": "src/protocol/result_shape.nim:LOR:a483fe0a26f93c0c:0",
-      "file": "src/protocol/result_shape.nim",
-      "line": 136,
-      "mutator": "LOR",
-      "original": "blk.kind != JObject or blk{\"type\"}.getStr() != \"tool_result\" or; blk{\"structuredContent\"}.isNil",
-      "replacement": "<or -> and>",
-      "class": "test_owed",
-      "reason": "The representative decided the rule on 2026-11-11 and it now has a specification line and an E test (MCP-CONTENT-FIELDS-15, MCP-RESOURCES-18, MCP-SAMPLING-TOOLS-17, MCP-LIFECYCLE-23); to be confirmed by the next run."
-    },
-    {
-      "fingerprint": "src/protocol/result_shape.nim:ROR:7c578a4d4baee544:0",
-      "file": "src/protocol/result_shape.nim",
-      "line": 136,
-      "mutator": "ROR",
-      "original": "blk{\"type\"}.getStr() != \"tool_result\"",
-      "replacement": "<!= -> ==>",
-      "class": "test_owed",
-      "reason": "tool_result だけを飛ばすので検査が消える。 / MCP-SAMPLING-TOOLS-17。既存の `tests/external/test_sampling_asks_fix.nim` の反するものを断るテストが検出するはず。testCommand に足す。"
-    },
-    {
-      "fingerprint": "src/protocol/result_shape.nim:ROR:fe56eb896cc972e5:0",
-      "file": "src/protocol/result_shape.nim",
-      "line": 136,
-      "mutator": "ROR",
-      "original": "blk.kind != JObject",
-      "replacement": "<!= -> ==>",
-      "class": "test_owed",
-      "reason": "オブジェクトのブロックを飛ばすので、tool_result が 1 つも検査されない。 / MCP-SAMPLING-TOOLS-17。既存の `tests/external/test_sampling_asks_fix.nim` の反するものを断るテストが検出するはず。testCommand に足す。"
-    },
-    {
-      "fingerprint": "src/protocol/result_shape.nim:LOR:8c8acd25f490d67e:0",
-      "file": "src/protocol/result_shape.nim",
-      "line": 141,
-      "mutator": "LOR",
-      "original": "tool.kind != JObject or tool{\"name\"}.getStr() != name",
-      "replacement": "<or -> and>",
-      "class": "test_owed",
-      "reason": "名前の合わないツールの outputSchema にも照らすようになる。既存のテストはツールが 1 つだけなので差が出ない。 / MCP-SAMPLING-TOOLS-17 (「the outputSchema of its tool」)。新しいテスト E: tools は `weather` (`temp` が number で必須) と `clock` (`time` が string で必須)。tool_use `u1` は `weather`、tool_result の structuredContent は `{\"temp\":21}` → 依頼は送られる。変異では `clock` のスキーマに反するとして断られる。"
-    },
-    {
-      "fingerprint": "src/protocol/result_shape.nim:LOR:da235ef79f08bdd3:0",
-      "file": "src/protocol/result_shape.nim",
-      "line": 141,
-      "mutator": "LOR",
-      "original": "tool.kind != JObject or tool{\"name\"}.getStr() != name or; tool{\"outputSchema\"}.isNil",
-      "replacement": "<or -> and>",
-      "class": "test_owed",
-      "reason": "名前の合うツールに outputSchema が無いとき、元は飛ばす。変異は次の `tool{\"outputSchema\"}.kind` が nil で落ちる。 / MCP-SAMPLING-TOOLS-17。既存の `tests/external/test_sampling_asks_fix.nim` の「Given a tool_result that conforms, or whose tool lists no outputSchema, when the server asks, then the request is sent」(outputSchema の無いツールの場合) が検出するはず。testCommand に足す。テスト E でも検出できる。"
-    },
-    {
-      "fingerprint": "src/protocol/result_shape.nim:ROR:358fbf06ac30c1f4:0",
-      "file": "src/protocol/result_shape.nim",
-      "line": 141,
-      "mutator": "ROR",
-      "original": "tool{\"name\"}.getStr() != name",
-      "replacement": "<!= -> ==>",
-      "class": "test_owed",
-      "reason": "名前の合うツールを飛ばすので、自分のスキーマと照らされない。 / MCP-SAMPLING-TOOLS-17。既存の `tests/external/test_sampling_asks_fix.nim` の反するものを断るテストが検出するはず。testCommand に足す。"
-    },
-    {
-      "fingerprint": "src/protocol/result_shape.nim:ROR:385d1ec143f2e79c:0",
-      "file": "src/protocol/result_shape.nim",
-      "line": 141,
-      "mutator": "ROR",
-      "original": "tool.kind != JObject",
-      "replacement": "<!= -> ==>",
-      "class": "test_owed",
-      "reason": "オブジェクトのツールを飛ばすので、どのスキーマとも照らされない。 / MCP-SAMPLING-TOOLS-17。既存の `tests/external/test_sampling_asks_fix.nim` の反するものを断るテストが検出するはず。testCommand に足す。"
-    },
-    {
-      "fingerprint": "src/protocol/result_shape.nim:LOR:451d76b5624a1484:0",
-      "file": "src/protocol/result_shape.nim",
-      "line": 142,
-      "mutator": "LOR",
-      "original": "tool.kind != JObject or tool{\"name\"}.getStr() != name or; tool{\"outputSchema\"}.isNil or; tool{\"outputSchema\"}.kind != JObject",
-      "replacement": "<or -> and>",
-      "class": "test_owed",
-      "reason": "名前の合うツールに outputSchema が無いとき、`isNil` が真になったあと `and` の右の `.kind` が nil で落ちる。 / MCP-SAMPLING-TOOLS-17。上の行と同じ既存のテストが検出するはず。testCommand に `tests/external/test_sampling_asks_fix.nim` を足す。"
-    },
-    {
-      "fingerprint": "src/protocol/result_shape.nim:ROR:f01fc84d8413c50b:0",
-      "file": "src/protocol/result_shape.nim",
-      "line": 142,
-      "mutator": "ROR",
-      "original": "tool{\"outputSchema\"}.kind != JObject",
-      "replacement": "<!= -> ==>",
-      "class": "test_owed",
-      "reason": "オブジェクトの outputSchema を持つツールを飛ばすので検査が消える。 / MCP-SAMPLING-TOOLS-17。既存の `tests/external/test_sampling_asks_fix.nim` の反するものを断るテストが検出するはず。testCommand に足す。"
-    },
-    {
-      "fingerprint": "src/protocol/result_shape.nim:SDL:6eded62ffa2ad91f:0",
-      "file": "src/protocol/result_shape.nim",
-      "line": 148,
-      "mutator": "SDL",
-      "original": "result.add subject & \" breaks its outputSchema: \" &; (; if violation.path.len == 0:; \"\"; else:; violation.path & \": \"; ) &; violation.message",
-      "replacement": "discard",
-      "class": "test_owed",
-      "reason": "違反を見つけても問題に数えないので、反する structuredContent が送られる。 / MCP-SAMPLING-TOOLS-17。既存の `tests/external/test_sampling_asks_fix.nim` の反するものを断るテストが検出するはず。testCommand に足す。"
-    },
-    {
       "fingerprint": "src/protocol/result_shape.nim:ROR:75cf7291c99396e3:0",
       "file": "src/protocol/result_shape.nim",
-      "line": 149,
+      "line": 158,
       "mutator": "ROR",
       "original": "violation.path.len == 0",
       "replacement": "<== -> !=>",
       "class": "accepted",
       "reason": "変わるのは問題の文面に違反の場所を入れるかどうかだけで、断ることは保たれる。失敗の文面は契約ではない (代表の決定 2026-10-23)。この文面は `McpPayloadError` の msg と stderr に出るだけで、読んで動作を変える箇所は無い。 / —"
-    },
-    {
-      "fingerprint": "src/protocol/result_shape.nim:SDL:7b7cf9ff46ce4cbc:0",
-      "file": "src/protocol/result_shape.nim",
-      "line": 151,
-      "mutator": "SDL",
-      "original": "result.add subject & \": the outputSchema cannot be checked: \" & e.msg",
-      "replacement": "discard",
-      "class": "test_owed",
-      "reason": "The representative decided the rule on 2026-11-11 and it now has a specification line and an E test (MCP-CONTENT-FIELDS-15, MCP-RESOURCES-18, MCP-SAMPLING-TOOLS-17, MCP-LIFECYCLE-23); to be confirmed by the next run."
     },
     {
       "fingerprint": "src/protocol/sampling_tools.nim:RVR:0c511227513989c7:0",
@@ -3421,24 +1991,184 @@
       "reason": "同上 (前の仕分けの id 82) / なし"
     },
     {
-      "fingerprint": "src/protocol/task_methods.nim:ROR:3bea8587e57fcb1d:0",
-      "file": "src/protocol/task_methods.nim",
-      "line": 48,
-      "mutator": "ROR",
-      "original": "store.resultStream(id) == request.id",
-      "replacement": "<== -> !=>",
-      "class": "test_owed",
-      "reason": "MCP-TASKS-23。tests/external/test_tasks_server.nim の「Given a tasks/result that waits on a task, when the task ends, then the task no longer names that request as its stream」を足した。手で当てて落ちることを確認、測り直しで確かめる"
+      "fingerprint": "src/protocol/task_store.nim:RVR:115a88da64ad7c9b:0",
+      "file": "src/protocol/task_store.nim",
+      "line": 168,
+      "mutator": "RVR",
+      "original": "return none(int64)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "引き継ぎ。`Option[int64]` の既定値は none / —"
     },
     {
-      "fingerprint": "src/protocol/task_methods.nim:SDL:6567f7aacb4bbabc:0",
-      "file": "src/protocol/task_methods.nim",
-      "line": 49,
+      "fingerprint": "src/protocol/task_store.nim:ROR:b6ebb744f6bc2d02:0",
+      "file": "src/protocol/task_store.nim",
+      "line": 172,
+      "mutator": "ROR",
+      "original": "dot >= 0",
+      "replacement": "<>= -> >>",
+      "class": "equivalent",
+      "reason": "引き継ぎ。違いが出るのは文字列が `.` で始まるときだけ。直前の `isDateTime` (`rfc3339.nim`) が先頭 10 文字に日付の形を求めるので、そこを通った文字列の先頭は数字 / —"
+    },
+    {
+      "fingerprint": "src/protocol/task_store.nim:ROR:b901314701bfd0a5:0",
+      "file": "src/protocol/task_store.nim",
+      "line": 174,
+      "mutator": "ROR",
+      "original": "stop < base.len",
+      "replacement": "<< -> <=>",
+      "class": "equivalent",
+      "reason": "引き継ぎ。違いが出るのは小数部の数字が文字列の末尾まで続くときだけ。`isDateTime` が小数部の後ろに `Z` か時差を求めるので、循環は数字でない文字で止まり `stop == base.len` にならない / —"
+    },
+    {
+      "fingerprint": "src/protocol/task_store.nim:RVR:115a88da64ad7c9b:1",
+      "file": "src/protocol/task_store.nim",
+      "line": 178,
+      "mutator": "RVR",
+      "original": "return none(int64)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "引き継ぎ。`Option[int64]` の既定値は none / —"
+    },
+    {
+      "fingerprint": "src/protocol/task_store.nim:RVR:b667109c9117097f:0",
+      "file": "src/protocol/task_store.nim",
+      "line": 193,
+      "mutator": "RVR",
+      "original": "return none(McpTask)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "引き継ぎ。`Option[McpTask]` の既定値は none / —"
+    },
+    {
+      "fingerprint": "src/protocol/task_store.nim:RVR:b667109c9117097f:1",
+      "file": "src/protocol/task_store.nim",
+      "line": 199,
+      "mutator": "RVR",
+      "original": "return none(McpTask)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "引き継ぎ。同上 / —"
+    },
+    {
+      "fingerprint": "src/protocol/task_store.nim:RVR:b667109c9117097f:2",
+      "file": "src/protocol/task_store.nim",
+      "line": 210,
+      "mutator": "RVR",
+      "original": "return none(McpTask)",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "引き継ぎ。同上 / —"
+    },
+    {
+      "fingerprint": "src/protocol/task_store.nim:RVR:de4a76bc9ca7094b:0",
+      "file": "src/protocol/task_store.nim",
+      "line": 252,
+      "mutator": "RVR",
+      "original": "return none(Option[int64])",
+      "replacement": "<return default>",
+      "class": "equivalent",
+      "reason": "引き継ぎ。`Option[Option[int64]]` の既定値は none / —"
+    },
+    {
+      "fingerprint": "src/protocol/task_store.nim:ROR:394635f51fa4c60e:0",
+      "file": "src/protocol/task_store.nim",
+      "line": 272,
+      "mutator": "ROR",
+      "original": "value >= 9.223372036854776e+18",
+      "replacement": "<>= -> >>",
+      "class": "accepted",
+      "reason": "引き継ぎ (下の節の「x86-64 での確かめ (2026-11-12)」、代表の決定 2026-11-12)。違いが出るのはちょうど 2^63 の ttl だけで、測定機 (arm64) では変換が飽和して同値、Linux x86_64 では既存の E テスト (test_tasks_store「Given a ttl of 2^63 milliseconds, ...」、ジョブに入っている) が落ちることを実測済み。機種による差 / —"
+    },
+    {
+      "fingerprint": "src/protocol/task_store.nim:ROR:68c9d096fcb44c25:0",
+      "file": "src/protocol/task_store.nim",
+      "line": 314,
+      "mutator": "ROR",
+      "original": "ttl > 0",
+      "replacement": "<> -> >=>",
+      "class": "equivalent",
+      "reason": "引き継ぎ。違いが出るのは `ttl == 0` だけで、そのとき右の項 `createdAtMs > int64.high - 0` は int64 のどの値でも偽 / —"
+    },
+    {
+      "fingerprint": "src/protocol/task_store.nim:ROR:69f45c6ba00f7bdd:0",
+      "file": "src/protocol/task_store.nim",
+      "line": 314,
+      "mutator": "ROR",
+      "original": "entry.task.createdAtMs > int64.high - ttl",
+      "replacement": "<> -> >=>",
+      "class": "equivalent",
+      "reason": "引き継ぎ。等しいとき、飽和の値 `int64.high` と飽和しない和 `createdAtMs + ttl` は同じ値で、和は溢れない / —"
+    },
+    {
+      "fingerprint": "src/protocol/task_store.nim:ROR:35b5daa1003aca56:0",
+      "file": "src/protocol/task_store.nim",
+      "line": 383,
+      "mutator": "ROR",
+      "original": "ttl.get > store.maxTtlMs.get",
+      "replacement": "<> -> >=>",
+      "class": "equivalent",
+      "reason": "引き継ぎ。等しいとき、代入される `maxTtlMs` は今の `ttl` と同じ値 / —"
+    },
+    {
+      "fingerprint": "src/protocol/task_store.nim:ROR:dcfa67284c51d5fe:0",
+      "file": "src/protocol/task_store.nim",
+      "line": 419,
+      "mutator": "ROR",
+      "original": "requestId.len > 0",
+      "replacement": "<> -> >=>",
+      "class": "equivalent",
+      "reason": "判定し直し (前は `ROR:bad777869457471a:0` として spec_question)。前の問いの答えで `setResultStream` と `onResultStream=` が公開から外れ、呼ぶのは `task_methods.nim` の `tasks/result` (結ぶ・解く) だけ、hook を置くのは `server/tasks.nim` の `enableTasks` だけになった。変異で増えるのは、解くとき (`\"\"`) の hook の呼び出し。解くのは `awaitOutcome` が返った後 (task は終端で、`onStatusChange` が `held` からその task を消し終えている) か、例外の後 (期限切れで項目が消えていて `setResultStream` は何もしない) なので、hook の `taskId in held` が偽で何も送られない。client 側の store には hook が無い。なお、使い手が `enableTasks` の後で公開の欄 `onStatusChange` を置き換えると `held` が消えず違いが出るが、その構成は元のコードでも保留の掃除 (MCP-TASKS-23) が働かない / —"
+    },
+    {
+      "fingerprint": "src/protocol/task_store.nim:SDL:2413a04126052c00:0",
+      "file": "src/protocol/task_store.nim",
+      "line": 467,
       "mutator": "SDL",
-      "original": "store.setResultStream(id, \"\")",
+      "original": "none(string)",
+      "replacement": "discard",
+      "class": "equivalent",
+      "reason": "引き継ぎ。`result` は `Option[string]` で、代入しなければ none / —"
+    },
+    {
+      "fingerprint": "src/protocol/task_store.nim:BLR:bad2a67f8198d0aa:0",
+      "file": "src/protocol/task_store.nim",
+      "line": 473,
+      "mutator": "BLR",
+      "original": "true",
+      "replacement": "false",
+      "class": "equivalent",
+      "reason": "新しい変異。`finish` は `protocol/tasks` が export しておらず、呼ぶのは `task_methods.nim` の `finishWhenDone` だけで、`toolErrorsFail` を必ず渡す。`tests/external/` に `task_store` を import するファイルは無い。既定値はどこからも使われない / —"
+    },
+    {
+      "fingerprint": "src/protocol/task_store.nim:BLR:6ec2d660335697fb:2",
+      "file": "src/protocol/task_store.nim",
+      "line": 482,
+      "mutator": "BLR",
+      "original": "false",
+      "replacement": "true",
+      "class": "spec_question",
+      "reason": "上の行と同じ変異 (RVR と BLR が同じ結果になる) / 上の行と同じ問い。同じテストで両方殺せる"
+    },
+    {
+      "fingerprint": "src/protocol/task_store.nim:RVR:f09e9e232af8b35b:2",
+      "file": "src/protocol/task_store.nim",
+      "line": 482,
+      "mutator": "RVR",
+      "original": "return false",
+      "replacement": "<return default>",
+      "class": "spec_question",
+      "reason": "新しい変異 (`finish` を直接呼ぶテストが無くなって残った)。呼び手の `finishWhenDone` は `store.finish(...) and raised.len > 0` で stderr に書くので、期限切れで消えた task の仕事が後から例外で終わると、元は何も書かず、変異は「the request of task … raised …」を 1 行書く。期限切れは `cancelWork` で仕事を止めるので、止められた仕事が例外で終わるたびに出る。取り消しの後は何も書かないことを E テスト (MCP-TASKS-10「Given work that raises after its task was cancelled, ... nothing is logged ...」) が確かめているが、期限切れの後についてはどの Scenario も述べていない (MCP-TASKS-12 は「消える」「止めるよう伝える」まで) / 問い: 期限切れで止められた仕事が後から例外で終わったとき、stderr に何も書かないことを仕様 (MCP-TASKS-12 に 1 文) にするか。推奨: 仕様にする (取り消しの後と同じ扱い。`task_methods.nim` のコメントも「止めるよう言われて止まった仕事は報告する失敗ではない」と書いている)。その場合のテストの案: test_tasks_store の suite「running the request a task stands for」に、`FakeTime` の store で `runAsTask(store, \"a\", some(1_000'i64), ...)`、時刻を 2_000 に進めて `discard store.sweep()`、`loggedWhile` の中で `work.fail(newException(ValueError, \"stopped\"))` と `sleepAsync(20)`、`check log == \"\"`。変異だと「raised stopped」の行が出る"
+    },
+    {
+      "fingerprint": "src/protocol/task_store.nim:SDL:131324adae4bf5f7:0",
+      "file": "src/protocol/task_store.nim",
+      "line": 490,
+      "mutator": "SDL",
+      "original": "stderr.writeLine(\"[mcp-tasks] the request of task \" & id &; \" ended with neither a result nor an error\")",
       "replacement": "discard",
       "class": "test_owed",
-      "reason": "MCP-TASKS-23。同じ E テスト (tasks/result が答えた後は resultStream が空に戻る) が検出する。手で当てて落ちることを確認、測り直しで確かめる"
+      "reason": "新しいコード (2026-11-12 に足した置き換え)。結果も誤りも無い outcome を内部エラーに置き換えるとき、相手には「Internal error」としか伝えないので、原因はこの 1 行にしか残らない。握った失敗の原因を stderr の 1 行に書くことは仕様 (代表の決定 2026-11-13、MCP-ERRORS-3)。既存の E テストは状態と符号だけを確かめ、stderr を見ていない / MCP-ERRORS-3 (置き換えそのものは MCP-TASKS-8)。既存の test_tasks_store「Given work that answers with neither a result nor an error, when it ends, then the task failed with an internal error, whatever toolErrorsFail is」の `work.complete(...)` と `settle()` を `loggedWhile` で包み、`check \"the request of task \" & task.taskId & \" ended with neither a result nor an error\" in log` を足す。変異だと log が空で落ちる。MCP-ERRORS-3 の Given の列挙に task のこの場合は名指されていないので、tests.map に結ぶときに Scenario へ 1 句足すかは司会の判断"
     },
     {
       "fingerprint": "src/protocol/tasks.nim:RVR:115a88da64ad7c9b:0",
@@ -3721,16 +2451,6 @@
       "reason": "`requiredString` は非公開で、呼び出し元 (`parseCompletionRequest` の `reference`・`argument`) は直前で nil でない JObject だと確かめてから渡す。どちらの式も常に偽。この検査自体が要らない (`node{key}` だけで足りる)。"
     },
     {
-      "fingerprint": "src/server/elicit.nim:LOR:a8742f6ee65f2793:0",
-      "file": "src/server/elicit.nim",
-      "line": 20,
-      "mutator": "LOR",
-      "original": "known.state != mlsOperational or known.negotiatedVersion.isNone",
-      "replacement": "<or -> and>",
-      "class": "test_owed",
-      "reason": "MCP-ELICIT-URL-2 (initialized の前のクライアントには完了の通知も送らない、代表の決定 2026-11-12)。tests/external/test_server_elicitation.nim の「Given a client that has not sent initialized, when the server notifies a completion, then it raises and sends nothing」を足した。手で当てて落ちることを確認、測り直しで確かめる"
-    },
-    {
       "fingerprint": "src/server/mrtr.nim:RVR:3ac2bd94b4efe6f7:0",
       "file": "src/server/mrtr.nim",
       "line": 53,
@@ -3791,46 +2511,6 @@
       "reason": "同上。"
     },
     {
-      "fingerprint": "src/server/rate_limit.nim:ROR:0ca230dd385f2a04:0",
-      "file": "src/server/rate_limit.nim",
-      "line": 48,
-      "mutator": "ROR",
-      "original": "bucket.filled(now, perSecond) >= perSecond.float",
-      "replacement": "<>= -> >>",
-      "class": "test_owed",
-      "reason": "The representative decided on 2026-11-11 that a sender that is full again is forgotten before one that is used up; MCP-RATE-3 says so now and an E test tells it. To be confirmed by the next run."
-    },
-    {
-      "fingerprint": "src/server/rate_limit.nim:SDL:9e5c2f527dddabee:0",
-      "file": "src/server/rate_limit.nim",
-      "line": 49,
-      "mutator": "SDL",
-      "original": "quiet.add key",
-      "replacement": "discard",
-      "class": "test_owed",
-      "reason": "The representative decided on 2026-11-11 that a sender that is full again is forgotten before one that is used up; MCP-RATE-3 says so now and an E test tells it. To be confirmed by the next run."
-    },
-    {
-      "fingerprint": "src/server/rate_limit.nim:SDL:36c078446e02eae4:0",
-      "file": "src/server/rate_limit.nim",
-      "line": 51,
-      "mutator": "SDL",
-      "original": "limiter.buckets.del(key)",
-      "replacement": "discard",
-      "class": "test_owed",
-      "reason": "The representative decided on 2026-11-11 that a sender that is full again is forgotten before one that is used up; MCP-RATE-3 says so now and an E test tells it. To be confirmed by the next run."
-    },
-    {
-      "fingerprint": "src/server/rate_limit.nim:LOR:ab81a607d669deb3:0",
-      "file": "src/server/rate_limit.nim",
-      "line": 56,
-      "mutator": "LOR",
-      "original": "oldest.len == 0 or bucket.stamp < oldestStamp",
-      "replacement": "<or -> and>",
-      "class": "test_owed",
-      "reason": "変異後は、表を回る順で最初に出会った「印が今より前」の送り手を選び、そこで止まる (2 件目からは `oldest.len == 0` が偽)。最も長く静かな送り手ではなく、ハッシュ表の並びで先に来る送り手が忘れられる。今のテストは alice が最古で、かつ表の並びでも alice が先に来るので通ってしまう (生き残ったことからの推論)。 / MCP-RATE-3。案: 既存の `Given a limit of 2 senders, when a third sender speaks, …` と同じ形で、alice と bob の役を入れ替えた 1 本を足す (毎秒 1・送り手 2。bob が 2 回で 2 回目は断られ、次に alice が 1 回、carol が 1 回、そのあと bob がもう一度通ること。併せて、忘れられていない alice の 2 回目が断られることも見る)。表の並びは鍵で決まり話した順に依らないので、変異だと 2 本のどちらかで「最古でない方」が忘れられ、最古の送り手が断られたままになって落ちる"
-    },
-    {
       "fingerprint": "src/server/rate_limit.nim:ROR:4df609b56b2ba6c1:0",
       "file": "src/server/rate_limit.nim",
       "line": 56,
@@ -3881,36 +2561,6 @@
       "reason": "この表明が落ちる入力は公開の入口から作れない。`server.nim` の `rateLimited` が `if perSecond <= 0: return none(…)` で先に返り (MCP-RATE-4 の「0 は制限なし」)、`maxSenders` には `max(1, server.maxRateLimitedSenders)` を渡す。`take` の呼び手はここだけで、`rate_limit` は export されていない。 / なし"
     },
     {
-      "fingerprint": "src/server/rate_limit.nim:AOR:0066a8bb1ed0649e:0",
-      "file": "src/server/rate_limit.nim",
-      "line": 86,
-      "mutator": "AOR",
-      "original": "int((1.0 - bucket.tokens) / perSecond.float * 1000.0) + 1",
-      "replacement": "<+ -> ->",
-      "class": "unreached",
-      "reason": "retryAfterMs falls below 1 only when the shortfall is under 1 ms, which needs a limit of 1000 or more per second and a client refused at that rate; through the public entry a request takes about 10 ms, and 3000 pings at 10000 per second were never refused (measured 2026-11-11). A test would fail only by chance."
-    },
-    {
-      "fingerprint": "src/server/rate_limit.nim:AOR:53d668ef4efecbc3:0",
-      "file": "src/server/rate_limit.nim",
-      "line": 86,
-      "mutator": "AOR",
-      "original": "(1.0 - bucket.tokens) / perSecond.float * 1000.0",
-      "replacement": "<* -> />",
-      "class": "test_owed",
-      "reason": "秒からミリ秒への換算が逆になり、`int(…)` が 0 になって `retryAfterMs` が常に 1 になる。今のテストは 0 より大きく 1000 以下としか見ていないので通る。言われたとおり 1 ms 待っても、まだ断られる。 / MCP-RATE-1 (`data.retryAfterMs`)、MCP-RATE-2 (待てばまた答えが来る)。案: 毎秒 1 で 2 回続けて送り、断られた 2 回目の `retryAfterMs` が「1000 − 2 回を送るのにかかった ms」以上であること (かかった時間は外で測るので、中の経過時間より長く、下限として安全)。変異だと 1 で落ちる。振る舞いで見るなら、`retryAfterMs` だけ待って送ると通ること"
-    },
-    {
-      "fingerprint": "src/server/rate_limit.nim:AOR:7c64e14a3577099a:0",
-      "file": "src/server/rate_limit.nim",
-      "line": 86,
-      "mutator": "AOR",
-      "original": "(1.0 - bucket.tokens) / perSecond.float",
-      "replacement": "</ -> *>",
-      "class": "test_owed",
-      "reason": "`retryAfterMs` が「不足分 ÷ 毎秒の数」ではなく「不足分 × 毎秒の数」になる。毎秒 1 では同じ値で、今のテスト (`Given a refused request, then the error says how long to wait`) は毎秒 1 でしか見ていないので通る。毎秒 2 以上では待ち時間が毎秒の数の 2 乗倍になる (毎秒 4 で最大 251 ms のはずが最大 4001 ms)。 / MCP-RATE-1 (`data.retryAfterMs`)。案: 毎秒 4 で 5 回続けて送り、断られた 5 回目の `retryAfterMs` が 1 以上 251 以下 (1 回分が戻る時間 1000 ÷ 4 に切り上げの 1) であること。変異だと 1000 を超えて落ちる"
-    },
-    {
       "fingerprint": "src/server/request_state.nim:ROR:d470e6c5a86b4fd8:0",
       "file": "src/server/request_state.nim",
       "line": 60,
@@ -3919,26 +2569,6 @@
       "replacement": "<<= -> <>",
       "class": "accepted",
       "reason": "失敗の文面は契約ではない (代表の決定 2026-10-23)。`.abc` のように本体が空の状態は、変異でも断られる: 署名が合わなければ「signature does not verify」、鍵の持ち主が空の本体に署名していても `parseJson(\"\")` が失敗して「malformed」。変わるのは理由の文面だけで、その文面は `openRequestState` が stderr に書くだけで動作を分けない。 / — (前の記録の id 80 は文面を比べるテストで検出していた。そのテストは内部側に移っている)"
-    },
-    {
-      "fingerprint": "src/server/request_state.nim:RVR:2d1e0d0ec0050a35:1",
-      "file": "src/server/request_state.nim",
-      "line": 69,
-      "mutator": "RVR",
-      "original": "return failure(\"malformed\")",
-      "replacement": "<return default>",
-      "class": "test_owed",
-      "reason": "既定値は `(nil, none)` で、断らずに「受け入れ、payload は nil」になる。文面ではなく受け入れ・拒否が変わる。署名は正しいが本体が base64 や JSON でない状態で起きる (鍵の持ち主だけが作れる)。検出していたテストは `tests/internal/test_mrtr_internal.nim` に移っている。 / MCP-MRTR-10。案 B。鍵で署名した本体 `@@@@` と base64url の `not json` を `verifyRequestState` に渡す → `problem` が some。変異だと none。"
-    },
-    {
-      "fingerprint": "src/server/request_state.nim:RVR:2d1e0d0ec0050a35:2",
-      "file": "src/server/request_state.nim",
-      "line": 71,
-      "mutator": "RVR",
-      "original": "return failure(\"malformed\")",
-      "replacement": "<return default>",
-      "class": "test_owed",
-      "reason": "既定値の return で関数を抜け、`(nil, none)` の受け入れになる (期限・メソッド・パラメーター・主体の検査にも進まない)。署名は正しいが本体が `[1]` の状態で起きる。検出していたテストは内部側に移っている。 / MCP-MRTR-10。案 B。鍵で署名した base64url の `[1]` を `verifyRequestState` に渡す → `problem` が some。変異だと none。"
     },
     {
       "fingerprint": "src/server/server.nim:SDL:a83049649b1ae0f4:0",
@@ -4583,7 +3213,7 @@
     {
       "fingerprint": "src/server/tasks.nim:RVR:3ac2bd94b4efe6f7:0",
       "file": "src/server/tasks.nim",
-      "line": 50,
+      "line": 52,
       "mutator": "RVR",
       "original": "return none(JsonNode)",
       "replacement": "<return default>",
@@ -4593,7 +3223,7 @@
     {
       "fingerprint": "src/server/tasks.nim:RVR:3ac2bd94b4efe6f7:1",
       "file": "src/server/tasks.nim",
-      "line": 57,
+      "line": 59,
       "mutator": "RVR",
       "original": "return none(JsonNode)",
       "replacement": "<return default>",
@@ -4603,7 +3233,7 @@
     {
       "fingerprint": "src/server/tasks.nim:SDL:fb532cd7a80e0870:0",
       "file": "src/server/tasks.nim",
-      "line": 118,
+      "line": 127,
       "mutator": "SDL",
       "original": "sessionOf.del(task.taskId)",
       "replacement": "discard",
@@ -4611,19 +3241,9 @@
       "reason": "`sessionOf` を読むのは `onStatusChange` だけで、終端の後はその task に状態の変化が起きない (`transition`・`finish`・`cancel` が終端を先に断る)。残った項目は読まれず、差はメモリだけ (表は `enableTasks` の局所変数で、外から数えられない) / —"
     },
     {
-      "fingerprint": "src/server/tasks.nim:SDL:178b5575b6d128b0:0",
-      "file": "src/server/tasks.nim",
-      "line": 124,
-      "mutator": "SDL",
-      "original": "held.del(task.taskId)",
-      "replacement": "discard",
-      "class": "test_owed",
-      "reason": "MCP-TASKS-23 (終端・期限切れの task の質問はその場で断る、代表の決定 2026-11-12)。tests/external/test_tasks_server.nim の「Given a task that expired, when its tool asks the client afterwards, then the question is refused at once and never sent」を足した。手で当てて落ちることを確認、測り直しで確かめる"
-    },
-    {
       "fingerprint": "src/server/tasks.nim:SDL:fb532cd7a80e0870:1",
       "file": "src/server/tasks.nim",
-      "line": 125,
+      "line": 134,
       "mutator": "SDL",
       "original": "sessionOf.del(task.taskId)",
       "replacement": "discard",
@@ -4633,7 +3253,7 @@
     {
       "fingerprint": "src/server/tasks.nim:RVR:9bd38dfae0fced9f:0",
       "file": "src/server/tasks.nim",
-      "line": 130,
+      "line": 139,
       "mutator": "RVR",
       "original": "return none(JsonRpcResponse)",
       "replacement": "<return default>",
@@ -4643,7 +3263,7 @@
     {
       "fingerprint": "src/server/tasks.nim:RVR:9bd38dfae0fced9f:1",
       "file": "src/server/tasks.nim",
-      "line": 135,
+      "line": 144,
       "mutator": "RVR",
       "original": "return none(JsonRpcResponse)",
       "replacement": "<return default>",
@@ -4653,7 +3273,7 @@
     {
       "fingerprint": "src/server/tasks.nim:RVR:4e102445986c6351:0",
       "file": "src/server/tasks.nim",
-      "line": 138,
+      "line": 147,
       "mutator": "RVR",
       "original": "return none(JsonRpcResponse)",
       "replacement": "<return default>",
@@ -4663,7 +3283,7 @@
     {
       "fingerprint": "src/server/tasks.nim:RVR:9bd38dfae0fced9f:2",
       "file": "src/server/tasks.nim",
-      "line": 146,
+      "line": 155,
       "mutator": "RVR",
       "original": "return none(JsonRpcResponse)",
       "replacement": "<return default>",
@@ -4673,52 +3293,12 @@
     {
       "fingerprint": "src/server/tasks.nim:RVR:9bd38dfae0fced9f:3",
       "file": "src/server/tasks.nim",
-      "line": 152,
+      "line": 161,
       "mutator": "RVR",
       "original": "return none(JsonRpcResponse)",
       "replacement": "<return default>",
       "class": "equivalent",
       "reason": "同上 / —"
-    },
-    {
-      "fingerprint": "src/server/tasks.nim:RVR:686aca932944807c:0",
-      "file": "src/server/tasks.nim",
-      "line": 242,
-      "mutator": "RVR",
-      "original": "return taskOf(resultOf(await server.request(session, \"tasks/cancel\",; %*{\"taskId\": taskId}), \"tasks/cancel\"), \"tasks/cancel\")",
-      "replacement": "<return default>",
-      "class": "test_owed",
-      "reason": "変異後は `tasks/cancel` を送らず、空の `McpTask` (id が空、`working`) を返す。E テストは capability が無くて断る場合しか確かめていない / MCP-TASKS-18 (隣の `listClientTasks` のテストと同じ置き場。取り消しそのものは MCP-TASKS-10)。test_tasks_server の「as the requestor」の suite に: `samplingTasks` (cancel を宣言) の client に `fx.server.cancelClientTask(peer.session, \"c-1\")` を呼び、`fx.answerNext(\"\", \"tasks/cancel\", 0, clientTask(\"c-1\", \"cancelled\"))` で答え、送った要求の `params.taskId == \"c-1\"` と、返った task の `taskId == \"c-1\"`・`status == tsCancelled` を確かめる。変異だと要求が出ず (`answerNext` の待ちが尽きる)、返る task も空"
-    },
-    {
-      "fingerprint": "src/server/tools.nim:ROR:8fbebf3b833c6500:0",
-      "file": "src/server/tools.nim",
-      "line": 72,
-      "mutator": "ROR",
-      "original": "description.len > 0",
-      "replacement": "<> -> >=>",
-      "class": "test_owed",
-      "reason": "`createResourceLinkToolContent` に description を渡さないと、`\"description\": \"\"` が付いて送られる (受けた client は `linkDescription` を none ではなく `some(\"\")` と読む)。確かめるテスト `Given the builder, when a resource link is made, then only the fields that were given are sent` は内部に移った。 / MCP-RESLINK-1 (`specs/tests.map` の結び。文面は上の注を参照)。`tests/external/test_tool_builders.nim` (`import mcp` だけ。testCommand に既に入っている) に 1 本足す: `createResourceLinkToolContent(\"file:///a\", \"a\")` が `{\"type\": \"resource_link\", \"uri\": \"file:///a\", \"name\": \"a\"}` にちょうど等しく、全部を渡したときは 4 つの項目が入る。変異だと 1 つ目の比較に `\"description\": \"\"` が混じって落ちる。内部のテストと同じ内容で書ける。"
-    },
-    {
-      "fingerprint": "src/server/tools.nim:ROR:d35dd38b3204ef21:0",
-      "file": "src/server/tools.nim",
-      "line": 73,
-      "mutator": "ROR",
-      "original": "mimeType.len > 0",
-      "replacement": "<> -> >=>",
-      "class": "test_owed",
-      "reason": "同上で、`\"mimeType\": \"\"` が付く。 / MCP-RESLINK-1。上の行と同じ 1 本。"
-    },
-    {
-      "fingerprint": "src/server/tools.nim:ROR:3b8a9a3f639026de:0",
-      "file": "src/server/tools.nim",
-      "line": 74,
-      "mutator": "ROR",
-      "original": "title.len > 0",
-      "replacement": "<> -> >=>",
-      "class": "test_owed",
-      "reason": "同上で、`\"title\": \"\"` が付く。 / MCP-RESLINK-1。上の行と同じ 1 本。"
     },
     {
       "fingerprint": "src/transport/address_policy.nim:ROR:6963caab8a732d3a:0",
@@ -4771,16 +3351,6 @@
       "reason": "`isGloballyRoutable` を呼ぶコードが `src/` に無く、公開の入口のどれも export していない (`rg isGloballyRoutable` で当たるのは定義と `tests/internal/test_security_address_internal.nim` だけ)。公開の入口からこの行を通る入力は作れない。 / - (下の「気づいたこと」2)"
     },
     {
-      "fingerprint": "src/transport/address_policy.nim:ROR:6085680557716233:0",
-      "file": "src/transport/address_policy.nim",
-      "line": 159,
-      "mutator": "ROR",
-      "original": "text.len > 16",
-      "replacement": "<> -> >=>",
-      "class": "test_owed",
-      "reason": "The representative decided the rule on 2026-11-11; it now has a specification line and an E test (MCP-SEC-WIRE-5, -13, -24, MCP-ICONS-8). To be confirmed by the next run."
-    },
-    {
       "fingerprint": "src/transport/address_policy.nim:RVR:189e39fef5ff9821:0",
       "file": "src/transport/address_policy.nim",
       "line": 160,
@@ -4789,26 +3359,6 @@
       "replacement": "<return default>",
       "class": "equivalent",
       "reason": "戻り値は `Option[uint64]`。`default` は none で、`none(uint64)` と同じ値。 / -"
-    },
-    {
-      "fingerprint": "src/transport/address_policy.nim:AOR:712096cfdabf46b5:0",
-      "file": "src/transport/address_policy.nim",
-      "line": 165,
-      "mutator": "AOR",
-      "original": "ord(c) - ord('a')",
-      "replacement": "<- -> +>",
-      "class": "test_owed",
-      "reason": "小文字の `a`〜`f` が 16 以上の値になり、その部分が読めず、ホストが名前になる。既存の E テストで小文字の 16 進を含むのは `0x7f.1` などを「断られること」だけ見る 1 本 (名前になっても OS の解決の結果で断られるので落ちない) で、`seenHost` で見ているのは大文字だけ。検出していた `classifyHost` のテストは `tests/internal/test_security_address_internal.nim` に移っている。 / MCP-SEC-WIRE-13 (hex in either case)。`tests/external/test_security_address.nim` の「the notations of an IPv4 literal…」に足す。既存の `seenHost` で `seenHost(\"0x7f.1\") == \"loopback\"`、`seenHost(\"0xa9fea9fe\") == \"link-local\"`、`seenHost(\"0x7f.0xbc.0xd.1\") == \"loopback\"` (a〜f を全部通す。public になるリテラルは実際に接続しに行くので使わない)。変異だと \"name\"。"
-    },
-    {
-      "fingerprint": "src/transport/address_policy.nim:AOR:a39c4a8f03967ecf:0",
-      "file": "src/transport/address_policy.nim",
-      "line": 165,
-      "mutator": "AOR",
-      "original": "ord(c) - ord('a') + 10",
-      "replacement": "<+ -> ->",
-      "class": "test_owed",
-      "reason": "小文字の `a`〜`f` が負の数になり、`uint64` への変換で巨大な値になって基数以上として断られ、ホストが名前になる。 / MCP-SEC-WIRE-13。上の行と同じ 1 本で検出できる。"
     },
     {
       "fingerprint": "src/transport/address_policy.nim:RVR:837f93a5a6a3cef7:0",
@@ -4931,16 +3481,6 @@
       "reason": "同上。 / -"
     },
     {
-      "fingerprint": "src/transport/address_policy.nim:ROR:5f70ca975cb2f940:0",
-      "file": "src/transport/address_policy.nim",
-      "line": 201,
-      "mutator": "ROR",
-      "original": "numbers[i] > 255",
-      "replacement": "<> -> >=>",
-      "class": "test_owed",
-      "reason": "最後でない部分がちょうど 255 のリテラル (例: `10.255.0.1`) が、元はアドレス (private)、変異は名前になる。既存の E テストは、最後の部分の端 (`10.2.3.255` と `10.2.3.256`) しか見ていない。 / MCP-SEC-WIRE-13 (最後でない部分は 1 バイト)。端の内側 `10.255.0.1`、外側 `10.256.0.1`。`tests/external/test_security_address.nim` の「the notations of an IPv4 literal…」に、既存の `seenHost` で `seenHost(\"10.255.0.1\") == \"private\"`、`seenHost(\"10.256.0.1\") == \"name\"` を足す。変異だと 1 つ目が \"name\"。"
-    },
-    {
       "fingerprint": "src/transport/address_policy.nim:RVR:cd25a55c955dff67:4",
       "file": "src/transport/address_policy.nim",
       "line": 202,
@@ -4961,16 +3501,6 @@
       "reason": "同上。 / -"
     },
     {
-      "fingerprint": "src/transport/address_policy.nim:RVR:7d1eedc761f25d37:0",
-      "file": "src/transport/address_policy.nim",
-      "line": 231,
-      "mutator": "RVR",
-      "original": "return some(acReserved)",
-      "replacement": "<return default>",
-      "class": "test_owed",
-      "reason": "The representative decided the rule on 2026-11-11; it now has a specification line and an E test (MCP-SEC-WIRE-5, -13, -24, MCP-ICONS-8). To be confirmed by the next run."
-    },
-    {
       "fingerprint": "src/transport/address_policy.nim:SDL:ad636063358436a8:0",
       "file": "src/transport/address_policy.nim",
       "line": 232,
@@ -4981,16 +3511,6 @@
       "reason": "`classifyHost` の `result` の既定値が none。末尾の式を捨てても同じ値が返る。 / -"
     },
     {
-      "fingerprint": "src/transport/address_policy.nim:SDL:1d7d0c7158c7c7b0:0",
-      "file": "src/transport/address_policy.nim",
-      "line": 254,
-      "mutator": "SDL",
-      "original": "result.add text",
-      "replacement": "discard",
-      "class": "test_owed",
-      "reason": "The representative decided the rule on 2026-11-11; it now has a specification line and an E test (MCP-SEC-WIRE-5, -13, -24, MCP-ICONS-8). To be confirmed by the next run."
-    },
-    {
       "fingerprint": "src/transport/address_policy.nim:SDL:587af74a67c0104c:0",
       "file": "src/transport/address_policy.nim",
       "line": 257,
@@ -4999,36 +3519,6 @@
       "replacement": "discard",
       "class": "accepted",
       "reason": "Only a leak of the addrinfo list changes. Outside what E tests tell; a leak check guards it (代表の決定 2026-11-11)."
-    },
-    {
-      "fingerprint": "src/transport/address_policy.nim:ROR:22cf8d6f11883448:0",
-      "file": "src/transport/address_policy.nim",
-      "line": 258,
-      "mutator": "ROR",
-      "original": "result.len == 0",
-      "replacement": "<== -> !=>",
-      "class": "test_owed",
-      "reason": "The representative decided the rule on 2026-11-11; it now has a specification line and an E test (MCP-SEC-WIRE-5, -13, -24, MCP-ICONS-8). To be confirmed by the next run."
-    },
-    {
-      "fingerprint": "src/transport/address_policy.nim:SDL:a49b63d6c5610a7a:0",
-      "file": "src/transport/address_policy.nim",
-      "line": 266,
-      "mutator": "SDL",
-      "original": "result.add parseIpAddress(text)",
-      "replacement": "discard",
-      "class": "test_owed",
-      "reason": "The representative decided the rule on 2026-11-11; it now has a specification line and an E test (MCP-SEC-WIRE-5, -13, -24, MCP-ICONS-8). To be confirmed by the next run."
-    },
-    {
-      "fingerprint": "src/transport/address_policy.nim:ROR:22cf8d6f11883448:1",
-      "file": "src/transport/address_policy.nim",
-      "line": 269,
-      "mutator": "ROR",
-      "original": "result.len == 0",
-      "replacement": "<== -> !=>",
-      "class": "test_owed",
-      "reason": "The representative decided the rule on 2026-11-11; it now has a specification line and an E test (MCP-SEC-WIRE-5, -13, -24, MCP-ICONS-8). To be confirmed by the next run."
     },
     {
       "fingerprint": "src/transport/event_stream.nim:ROR:40a8f14bb3a39089:0",
@@ -5253,7 +3743,7 @@
     {
       "fingerprint": "src/transport/http_server.nim:LOR:098b466bdedd5d25:0",
       "file": "src/transport/http_server.nim",
-      "line": 303,
+      "line": 308,
       "mutator": "LOR",
       "original": "body.isNil or body.kind != JObject",
       "replacement": "<or -> and>",
@@ -5263,7 +3753,7 @@
     {
       "fingerprint": "src/transport/http_server.nim:LOR:becbdc05a26c9e55:0",
       "file": "src/transport/http_server.nim",
-      "line": 303,
+      "line": 308,
       "mutator": "LOR",
       "original": "body.isNil or body.kind != JObject or clientId.isNil",
       "replacement": "<or -> and>",
@@ -5273,7 +3763,7 @@
     {
       "fingerprint": "src/transport/http_server.nim:ROR:9b77def2f96bc83b:0",
       "file": "src/transport/http_server.nim",
-      "line": 474,
+      "line": 479,
       "mutator": "ROR",
       "original": "(now - session.lastActive) * 1000 >= t.sessionIdleTimeoutMs.float",
       "replacement": "<>= -> >>",
@@ -5283,7 +3773,7 @@
     {
       "fingerprint": "src/transport/http_server.nim:ROR:b954d4dbaf3b2860:0",
       "file": "src/transport/http_server.nim",
-      "line": 526,
+      "line": 531,
       "mutator": "ROR",
       "original": "close < 0",
       "replacement": "<< -> <=>",
@@ -5291,29 +3781,9 @@
       "reason": "`value.startsWith(\"[\")` の後なので 0 番は `[` で、`find(']')` は -1 か 1 以上。0 は出ない"
     },
     {
-      "fingerprint": "src/transport/http_server.nim:RVR:c309449461795c77:0",
-      "file": "src/transport/http_server.nim",
-      "line": 526,
-      "mutator": "RVR",
-      "original": "return if close < 0:; value; else:; value[1 ..< close]",
-      "replacement": "<return default>",
-      "class": "test_owed",
-      "reason": "角括弧つきの Host の名前が空になる。loopback は `full` で決まるので既存の `[::1]:port` のテストは通るが、`allowedHosts` に IPv6 の番地を載せたとき `[番地]:port` が 403 になる (元は通す) / MCP-SEC-HTTP-5 (「the listed hosts are served」)。`tests/external/test_security_http.nim`: `allowedHosts = @[\"2001:db8::1\"]` の transport に `sendAs(\"[2001:db8::1]:8443\", …/mcp, HttpPost, ping)` と `sendAs(\"[2001:db8::1]\", …)` を送り、403 でないことを見る。変異だと 403"
-    },
-    {
-      "fingerprint": "src/transport/http_server.nim:LOR:6446cd08fe02427a:0",
-      "file": "src/transport/http_server.nim",
-      "line": 528,
-      "mutator": "LOR",
-      "original": "colon >= 0 and value.count(':') == 1",
-      "replacement": "<and -> or>",
-      "class": "test_owed",
-      "reason": "角括弧の無い、`:` が 2 つ以上の Host (裸の IPv6) が最後の `:` で切られる。loopback は `full` で決まるようになったので、既存の `::1` のテスト (MCP-HTTPSTREAM-18) はこの変異を見分けない。`allowedHosts = @[\"2001:db8::1\"]` のとき、別の番地である `2001:db8::1:8443` が変異では通る (元は 403) / MCP-SEC-HTTP-5 / MCP-HTTPSTREAM-18 (「judged as the sender wrote it」)。上の 526 行と同じテストに `sendAs(\"2001:db8::1:8443\", …) == Http403` を足す。変異だと 403 にならない"
-    },
-    {
       "fingerprint": "src/transport/http_server.nim:ROR:0f037721df479561:0",
       "file": "src/transport/http_server.nim",
-      "line": 528,
+      "line": 533,
       "mutator": "ROR",
       "original": "colon >= 0",
       "replacement": "<>= -> >>",
@@ -5323,7 +3793,7 @@
     {
       "fingerprint": "src/transport/http_server.nim:SDL:2413a04126052c00:0",
       "file": "src/transport/http_server.nim",
-      "line": 606,
+      "line": 611,
       "mutator": "SDL",
       "original": "none(string)",
       "replacement": "discard",
@@ -5333,7 +3803,7 @@
     {
       "fingerprint": "src/transport/http_server.nim:ROR:97b629f387fc2d90:0",
       "file": "src/transport/http_server.nim",
-      "line": 648,
+      "line": 653,
       "mutator": "ROR",
       "original": "session.created < oldestAt",
       "replacement": "<< -> <=>",
@@ -5343,7 +3813,7 @@
     {
       "fingerprint": "src/transport/http_server.nim:BLR:ec9050dbd4339b51:0",
       "file": "src/transport/http_server.nim",
-      "line": 696,
+      "line": 701,
       "mutator": "BLR",
       "original": "true",
       "replacement": "false",
@@ -5353,7 +3823,7 @@
     {
       "fingerprint": "src/transport/http_server.nim:RVR:55560fa5ef49175d:0",
       "file": "src/transport/http_server.nim",
-      "line": 707,
+      "line": 712,
       "mutator": "RVR",
       "original": "return none(JsonRpcError)",
       "replacement": "<return default>",
@@ -5363,7 +3833,7 @@
     {
       "fingerprint": "src/transport/http_server.nim:RVR:55560fa5ef49175d:1",
       "file": "src/transport/http_server.nim",
-      "line": 710,
+      "line": 715,
       "mutator": "RVR",
       "original": "return none(JsonRpcError)",
       "replacement": "<return default>",
@@ -5373,7 +3843,7 @@
     {
       "fingerprint": "src/transport/http_server.nim:SDL:ac1cdc5394dff63c:0",
       "file": "src/transport/http_server.nim",
-      "line": 715,
+      "line": 720,
       "mutator": "SDL",
       "original": "none(JsonRpcError)",
       "replacement": "discard",
@@ -5383,7 +3853,7 @@
     {
       "fingerprint": "src/transport/http_server.nim:SDL:fc9c7696c04a0178:0",
       "file": "src/transport/http_server.nim",
-      "line": 992,
+      "line": 998,
       "mutator": "SDL",
       "original": "req.client.close()",
       "replacement": "discard",
@@ -5393,7 +3863,7 @@
     {
       "fingerprint": "src/transport/http_server.nim:ROR:ec6f999e329551a1:0",
       "file": "src/transport/http_server.nim",
-      "line": 1004,
+      "line": 1010,
       "mutator": "ROR",
       "original": "group.pending > 0",
       "replacement": "<> -> >=>",
@@ -5401,19 +3871,9 @@
       "reason": "`pending == 0` なら全ての応答で `sendResponse` が `t.exchanges.del` を済ませているので、`cancel` は呼ぶ相手 (`onRequestCancelled`) を見つけない。変わるのは `group.abandoned` だけで、それを読む応答と通知はもうそのグループに来ない"
     },
     {
-      "fingerprint": "src/transport/http_server.nim:SDL:ba5f3d9a3fc84eac:0",
-      "file": "src/transport/http_server.nim",
-      "line": 1077,
-      "mutator": "SDL",
-      "original": "stderr.writeLine(\"[mcp-http] authorization hook failed: \" & $e.name)",
-      "replacement": "discard",
-      "class": "test_owed",
-      "reason": "認可フックの失敗は記録に 1 行残る、を MCP-SEC-HTTP-9 に足す (代表の決定 2026-11-12)。E テストで stderr を確かめる"
-    },
-    {
       "fingerprint": "src/transport/http_server.nim:SDL:fc9c7696c04a0178:2",
       "file": "src/transport/http_server.nim",
-      "line": 1178,
+      "line": 1185,
       "mutator": "SDL",
       "original": "req.client.close()",
       "replacement": "discard",
@@ -5423,7 +3883,7 @@
     {
       "fingerprint": "src/transport/http_server.nim:SDL:fc9c7696c04a0178:3",
       "file": "src/transport/http_server.nim",
-      "line": 1185,
+      "line": 1192,
       "mutator": "SDL",
       "original": "req.client.close()",
       "replacement": "discard",
@@ -5433,7 +3893,7 @@
     {
       "fingerprint": "src/transport/http_server.nim:SDL:9a1b2e84b3078684:0",
       "file": "src/transport/http_server.nim",
-      "line": 1213,
+      "line": 1220,
       "mutator": "SDL",
       "original": "await sleepAsync(50)",
       "replacement": "discard",
@@ -6041,46 +4501,6 @@
       "reason": "変異が違うのは event を 1 つも持たないストリームに `canResumeAfter` を尋ねたときだけ (`events[0]` で落ちる)。`handleGet` がそこへ行くには `Last-Event-ID` がそのストリームの id を名指す必要があるが、id は乱数で、event の `id:` 欄でしか client に渡らない。event を出したストリームは (`maxStreamEvents` が 1 以上なら) 空に戻らず、0 以下なら event が書かれないので id も渡らない"
     },
     {
-      "fingerprint": "src/transport/sse_stream.nim:SDL:bab0d2220e6ff25c:0",
-      "file": "src/transport/sse_stream.nim",
-      "line": 169,
-      "mutator": "SDL",
-      "original": "bell.watch(idle)",
-      "replacement": "discard",
-      "class": "test_owed",
-      "reason": "何も起きないストリームで、最初の keep-alive のコメントが出ない (ほかの理由で起きるまで `idle` を見ない)。keep-alive を見るテストは内部側 (`serveStream` を直接呼び、短い周期を渡す) にしか無い / MCP-HTTPSTREAM-20 (「a keep-alive comment goes out and the stream stays open」)。`tests/external/test_http_streams.nim`: セッションの GET ストリームを開いて何も送らず、15 秒 (`DefaultKeepAliveMs`) 過ぎに `: keep-alive` のコメントが届き、ストリームが開いたままであることを見る。変異だとコメントが来ない。**周期を縮める公開の口が無いので、1 本で 15 秒以上かかる**"
-    },
-    {
-      "fingerprint": "src/transport/sse_stream.nim:ROR:e7951a920652ef89:0",
-      "file": "src/transport/sse_stream.nim",
-      "line": 186,
-      "mutator": "ROR",
-      "original": "batch.len > 0",
-      "replacement": "<> -> >=>",
-      "class": "test_owed",
-      "reason": "何も書かなかった接続が `written` を `afterSeq` まで進める。GET ストリームで、どの接続も書いていない event の id を `Last-Event-ID` に名指して再開すると、その後に `Last-Event-ID` なしで開いた接続 (`writtenUpTo` の次から始まる) が、書かれていない event を受け取れなくなる / MCP-HTTPSTREAM-20 (「events that no connection wrote are not reported as written」)。`tests/external/test_http_streams.nim`: GET で通知 1 を受けて id を控えて切る → サーバーが通知 2・3 を送る → 同じストリームの 3 番を名指す `Last-Event-ID` で GET して切る → `Last-Event-ID` なしで GET し、通知 2・3 が届くことを見る。変異だと届かない"
-    },
-    {
-      "fingerprint": "src/transport/sse_stream.nim:SDL:bab0d2220e6ff25c:1",
-      "file": "src/transport/sse_stream.nim",
-      "line": 206,
-      "mutator": "SDL",
-      "original": "bell.watch(idle)",
-      "replacement": "discard",
-      "class": "test_owed",
-      "reason": "keep-alive のコメントが 1 回しか出ない (2 回目以降の時計を見ない) / MCP-HTTPSTREAM-20。上の 169 行のテストを 2 周期 (30 秒余り) 待ち、コメントが 2 回届くことを見る。変異だと 1 回"
-    },
-    {
-      "fingerprint": "src/transport/sse_stream.nim:SDL:82dd9d5f40b493f4:0",
-      "file": "src/transport/sse_stream.nim",
-      "line": 208,
-      "mutator": "SDL",
-      "original": "await req.client.send(formatSseComment(\"keep-alive\"))",
-      "replacement": "discard",
-      "class": "test_owed",
-      "reason": "keep-alive のコメントが 1 回も出ない / MCP-HTTPSTREAM-20。169 行と同じテスト。変異だとコメントが来ない"
-    },
-    {
       "fingerprint": "src/transport/stdio.nim:RVR:0c511227513989c7:0",
       "file": "src/transport/stdio.nim",
       "line": 52,
@@ -6121,16 +4541,6 @@
       "reason": "上の 52 行と同じ。`default(Option[string])` は none。 / 無し"
     },
     {
-      "fingerprint": "src/transport/stdio.nim:LOR:8fbf38d7885b9d32:0",
-      "file": "src/transport/stdio.nim",
-      "line": 134,
-      "mutator": "LOR",
-      "original": "existsEnv(name) and not value.startsWith(\"()\")",
-      "replacement": "<and -> or>",
-      "class": "test_owed",
-      "reason": "変異だと、この過程に無い基本の変数 (例: `TERM` を消した状態) が空の値で表に入り、サーバーに空の変数として渡る。`()` で始まる値 (シェル関数) も渡る。既存の `tests/external/test_stdio.nim` の「only the basic variables pass」は、在る変数 (`PATH`・`HOME`) と基本でない変数しか見ていない。 / MCP-STDIO-13。`tests/external/test_stdio.nim` に 1 件: 基本の変数の 1 つ (例: `TERM`) を `delEnv` で消してから `defaultServerEnvironment()` を作り、`not env.hasKey(\"TERM\")` を見る (後で元の値に戻す)。変異だと `env[\"TERM\"] == \"\"` が入るので落ちる。補足: 「シェル関数は渡さない」は実装の doc コメントにだけあり、MCP-STDIO-13 の文には無い。仕様に足すなら、`putEnv(\"TERM\", \"() { :; }\")` で `not env.hasKey(\"TERM\")` を見る 1 件も同じ変異を殺す。"
-    },
-    {
       "fingerprint": "src/transport/stdio.nim:ROR:eaeea1ba334380e3:0",
       "file": "src/transport/stdio.nim",
       "line": 211,
@@ -6141,174 +4551,14 @@
       "reason": "The grace a child gets to exit becomes 2020 ms instead of 2000; order and outcome are the same. The length of the grace is outside the specification (代表の決定 2026-11-11)."
     },
     {
-      "fingerprint": "src/transport/transport.nim:BLR:6ec2d660335697fb:0",
-      "file": "src/transport/transport.nim",
-      "line": 153,
-      "mutator": "BLR",
-      "original": "false",
-      "replacement": "true",
-      "class": "undecided",
-      "reason": ""
-    },
-    {
-      "fingerprint": "src/transport/transport.nim:RVR:f09e9e232af8b35b:0",
-      "file": "src/transport/transport.nim",
-      "line": 153,
-      "mutator": "RVR",
-      "original": "return false",
-      "replacement": "<return default>",
-      "class": "undecided",
-      "reason": ""
-    },
-    {
-      "fingerprint": "src/transport/transport.nim:AOR:7a64b52a5aa837a4:0",
-      "file": "src/transport/transport.nim",
-      "line": 155,
-      "mutator": "AOR",
-      "original": "i + 1",
-      "replacement": "<+ -> ->",
-      "class": "undecided",
-      "reason": ""
-    },
-    {
-      "fingerprint": "src/transport/transport.nim:ROR:238bd2eca17c095f:0",
-      "file": "src/transport/transport.nim",
-      "line": 155,
-      "mutator": "ROR",
-      "original": "text[i + 1] >= '\\xA0'",
-      "replacement": "<>= -> >>",
-      "class": "undecided",
-      "reason": ""
-    },
-    {
-      "fingerprint": "src/transport/transport.nim:BLR:6ec2d660335697fb:1",
-      "file": "src/transport/transport.nim",
-      "line": 156,
-      "mutator": "BLR",
-      "original": "false",
-      "replacement": "true",
-      "class": "undecided",
-      "reason": ""
-    },
-    {
-      "fingerprint": "src/transport/transport.nim:RVR:f09e9e232af8b35b:1",
-      "file": "src/transport/transport.nim",
-      "line": 156,
-      "mutator": "RVR",
-      "original": "return false",
-      "replacement": "<return default>",
-      "class": "undecided",
-      "reason": ""
-    },
-    {
       "fingerprint": "src/transport/transport.nim:RVR:87aa8baa528c4cef:0",
       "file": "src/transport/transport.nim",
-      "line": 163,
+      "line": 154,
       "mutator": "RVR",
       "original": "return \"\"",
       "replacement": "<return default>",
       "class": "equivalent",
       "reason": "文字列のリテラルの RVR は `\"\"` で、`string` の既定値も `\"\"`。変異の前後で返る値が同じ / —"
-    },
-    {
-      "fingerprint": "src/transport/transport.nim:RVR:a2dd9206bd48cfc4:0",
-      "file": "src/transport/transport.nim",
-      "line": 166,
-      "mutator": "RVR",
-      "original": "return at",
-      "replacement": "<return default>",
-      "class": "test_owed",
-      "reason": "UTF-8 でない文字列の値が「問題なし」になり、要求・通知がそのまま書かれ、応答は内部エラーに差し替わらない / MCP-STDIO-9、MCP-HTTP-43。既存の `tests/external/test_utf8_refused_fix.nim` の `Given a string that is not UTF-8, when a request or a notification holds it as a value or as a member name, then it is not sent and nothing is written` が検出するはず (`{\"text\": text}` の通知が断られなくなる)。testCommand に足す"
-    },
-    {
-      "fingerprint": "src/transport/transport.nim:ROR:02b067559cb29e3c:0",
-      "file": "src/transport/transport.nim",
-      "line": 171,
-      "mutator": "ROR",
-      "original": "found.len > 0",
-      "replacement": "<> -> >=>",
-      "class": "test_owed",
-      "reason": "配列の最初の要素だけを見て返る。最初の要素が正しければ、後ろの要素の UTF-8 でない文字列が見逃される / MCP-STDIO-9。同じテストが検出するはず (`{\"list\": [1, {\"deep\": text}]}` の要求は、最初の要素 `1` で `\"\"` が返り、断られなくなる)。testCommand に足す"
-    },
-    {
-      "fingerprint": "src/transport/transport.nim:RVR:ceab9c9546dcaee1:0",
-      "file": "src/transport/transport.nim",
-      "line": 171,
-      "mutator": "RVR",
-      "original": "return found",
-      "replacement": "<return default>",
-      "class": "test_owed",
-      "reason": "配列の中の UTF-8 でない文字列が、どの位置でも見逃される / MCP-STDIO-9。同じテストが検出するはず (`{\"list\": [1, {\"deep\": text}]}` の要求が断られなくなる)。testCommand に足す"
-    },
-    {
-      "fingerprint": "src/transport/transport.nim:RVR:8db25eed5f4242b0:0",
-      "file": "src/transport/transport.nim",
-      "line": 174,
-      "mutator": "RVR",
-      "original": "return at & \": a member name\"",
-      "replacement": "<return default>",
-      "class": "test_owed",
-      "reason": "UTF-8 でないメンバー名が「問題なし」になり、メッセージがそのまま書かれる / MCP-STDIO-9。同じテストが検出するはず (`named[text] = %1` を params にした通知が断られなくなる)。testCommand に足す"
-    },
-    {
-      "fingerprint": "src/transport/transport.nim:ROR:02b067559cb29e3c:1",
-      "file": "src/transport/transport.nim",
-      "line": 176,
-      "mutator": "ROR",
-      "original": "found.len > 0",
-      "replacement": "<> -> >=>",
-      "class": "test_owed",
-      "reason": "オブジェクトの最初のメンバーだけを見て返る。メッセージの最初のメンバーは `jsonrpc` なので、params の中は一切見られなくなる / MCP-STDIO-9、MCP-HTTP-43。同じテストが検出するはず (3 つの送信がどれも断られなくなる)。testCommand に足す"
-    },
-    {
-      "fingerprint": "src/transport/transport.nim:RVR:ceab9c9546dcaee1:1",
-      "file": "src/transport/transport.nim",
-      "line": 176,
-      "mutator": "RVR",
-      "original": "return found",
-      "replacement": "<return default>",
-      "class": "test_owed",
-      "reason": "オブジェクトのメンバーの値にある UTF-8 でない文字列が見逃される (メッセージ自体がオブジェクトなので、値の検査がすべて効かなくなる) / MCP-STDIO-9、MCP-HTTP-43。同じテストが検出するはず (`{\"text\": text}` の通知が断られなくなる)。testCommand に足す"
-    },
-    {
-      "fingerprint": "src/transport/transport.nim:SDL:5dfcc871d9e1c8fc:0",
-      "file": "src/transport/transport.nim",
-      "line": 199,
-      "mutator": "SDL",
-      "original": "requireUtf8(result, \"request \" & request.`method`)",
-      "replacement": "discard",
-      "class": "test_owed",
-      "reason": "要求が UTF-8 かを確かめずに書かれる / MCP-STDIO-9、MCP-HTTP-43。同じテストの `sendRequest` の行と、`Given a string that is not UTF-8, when a client posts a request that holds it, then the request is refused and nothing is posted` が検出するはず。testCommand に足す"
-    },
-    {
-      "fingerprint": "src/transport/transport.nim:SDL:d89e230832afd22c:0",
-      "file": "src/transport/transport.nim",
-      "line": 208,
-      "mutator": "SDL",
-      "original": "requireUtf8(result, \"notification \" & notification.`method`)",
-      "replacement": "discard",
-      "class": "test_owed",
-      "reason": "通知が UTF-8 かを確かめずに書かれる / MCP-STDIO-9。同じテストの `sendNotification` の行が検出するはず (断られず、`output.data == \"\"` も崩れる)。testCommand に足す"
-    },
-    {
-      "fingerprint": "src/transport/transport.nim:SDL:23e974a338100fa4:0",
-      "file": "src/transport/transport.nim",
-      "line": 234,
-      "mutator": "SDL",
-      "original": "stderr.writeLine(\"[mcp-transport] response \" & peerText(response.id) &; \" holds a string that is not UTF-8 (\" &; peerText(where) &; \"); sent as an internal error\")",
-      "replacement": "discard",
-      "class": "test_owed",
-      "reason": "The representative decided on 2026-11-11 that the line is logged; MCP-STDIO-9 says so now and an E test reads stderr. To be confirmed by the next run."
-    },
-    {
-      "fingerprint": "src/transport/transport.nim:ROR:70f734de428b7829:0",
-      "file": "src/transport/transport.nim",
-      "line": 239,
-      "mutator": "ROR",
-      "original": "notUtf8(id, \"\").len > 0",
-      "replacement": "<> -> >=>",
-      "class": "test_owed",
-      "reason": "常に真になり、差し替えた内部エラーの id が、元の id が正しくても null になる / MCP-STDIO-9。既存の `tests/external/test_utf8_refused_fix.nim` の `Given a result that holds a string that is not UTF-8, when the response is sent, then the peer gets an internal error under the same id and what is written is UTF-8` が検出するはず (`written[\"id\"].getStr() == \"r7\"` が落ちる)。testCommand に足す"
     }
   ]
 }
