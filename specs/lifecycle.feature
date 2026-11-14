@@ -201,6 +201,8 @@ Feature: Starting a conversation
     And a ping that gets no answer within pingTimeoutMs, or whose sending fails, closes the connection: waiting requests end with McpConnectionClosedError and stderr says the keepalive ping failed
     And a server that answers the ping with an error is alive and the connection stays open
     And closing the client stops the pings, and a 2026-07-28 connection has none
+    And a client that starts a new session keeps one check of the connection, not two, so an unanswered ping is sent once per interval
+    And a closed client's check of the connection ends, so once the timeouts of the requests it already made are over, nothing of it is left for the event loop
 
   @spec:MCP-LIFECYCLE-27 @feature:ftPing
   Scenario: How often a client pings is configurable

@@ -204,6 +204,7 @@ suite "a client whose session the server ended (2025-03-26 to 2025-11-25)":
         expired = e
       check not expired.isNil
       check not expired.renewed
+      check expired.current
       check not expired.parent.isNil
       check counts.initializes == 2
       expect McpError:

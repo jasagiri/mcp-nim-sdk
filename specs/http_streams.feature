@@ -302,7 +302,7 @@ Feature: Event streams over Streamable HTTP
     When the client sends a request or a notification that carries the session id and gets 404
     Then the transport drops the id, the client sends one initialize without a session id and holds the new session with its negotiated version and capabilities
     And the request is not sent again: the caller gets McpSessionExpiredError, whose renewed field says the new session was started
-    And when that initialize fails too, no further attempt is made, the caller gets McpSessionExpiredError (with the failure as parent, renewed false) and the client is closed to requests
+    And when that initialize fails too, no further attempt is made, the caller gets McpSessionExpiredError (with the failure as parent, renewed false, current true) and the client is closed to requests
     And requests in flight in the same ended session start one new session between them
     And a 404 for a request that carried no session id is an ordinary HTTP error
 

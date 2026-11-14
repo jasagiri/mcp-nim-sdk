@@ -4,11 +4,12 @@
 ## SHOULD be logged). pingIntervalMs says how often (0: never), pingTimeoutMs
 ## how long to wait for the answer.
 
-import std/[unittest, asyncdispatch, json, options, os, strutils]
+import std/[unittest, asyncdispatch, json, options, os, strutils, sequtils]
 import client/client
 import protocol/types
 import protocol/features
 import protocol/lifecycle
+from mcp import McpSessionExpiredError, mtkStdio
 import ./client_peer
 import ./stuck_transport
 
@@ -190,6 +191,65 @@ suite "a client pings an idle connection":
       waitFor client.connect(peer.pair.client)
       waitFor sleepAsync(200)
       check peer.requestsFor("ping").len == 0
+      waitFor client.close()
+
+proc lastInitialize(transport: StuckTransport): int =
+  for n, name in transport.sentMethods:
+    if name == "initialize":
+      result = n
+
+type ExpiringTransport = ref object of StuckTransport
+  ## A transport whose session the server ends on the first tools/list.
+  expiredOnce: bool
+
+method sendRequest*(t: ExpiringTransport, request: JsonRpcRequest): Future[void] {.async.} =
+  t.sentMethods.add request.`method`
+  t.sentIds.add request.id
+  if request.`method` == "tools/list" and not t.expiredOnce:
+    t.expiredOnce = true
+    var expired = newException(McpSessionExpiredError, "the server ended the session")
+    expired.code = 404
+    expired.current = true
+    raise expired
+
+suite "a client that starts a new session":
+
+  test "Given a session that ended and a peer that never answers pings, when a new session is started, then one ping is sent for the interval":
+    for v in legacyVersions():
+      let transport = ExpiringTransport(kind: mtkStdio)
+      let client = newMcpClient(McpClientInfo(name: "c", version: "1"), v)
+      client.pingIntervalMs = 100
+      client.pingTimeoutMs = 600_000
+      let connecting = client.connect(transport)
+      proc answerInitialize(count: int) =
+        var waited = 0
+        while transport.sentMethods.count("initialize") < count and waited < 20_000:
+          waitFor sleepAsync(10)
+          waited += 10
+        require transport.sentMethods.count("initialize") == count
+        transport.inject(%*{"jsonrpc": "2.0",
+          "id": transport.sentIds[lastInitialize(transport)],
+          "result": {"protocolVersion": $v, "capabilities": {},
+                     "serverInfo": {"name": "peer", "version": "0"}}})
+      answerInitialize(1)
+      waitFor connecting
+      let listing = client.sendRequest("tools/list", newJObject())
+      answerInitialize(2)
+      var expired: ref McpSessionExpiredError
+      try:
+        discard waitFor listing
+      except McpSessionExpiredError as e:
+        expired = e
+      require not expired.isNil
+      check expired.renewed
+      var waited = 0
+      while transport.sentMethods.count("ping") < 1 and waited < 20_000:
+        waitFor sleepAsync(10)
+        waited += 10
+      # A second check of the connection would ping once more an interval
+      # after the first ping; three intervals leave no doubt.
+      waitFor sleepAsync(300)
+      check transport.sentMethods.count("ping") == 1
       waitFor client.close()
 
 suite "a ping that fails closes the connection":
