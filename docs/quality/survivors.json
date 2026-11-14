@@ -907,8 +907,8 @@
       "mutator": "BLR",
       "original": "true",
       "replacement": "false",
-      "class": "spec_question",
-      "reason": "変異だと、セッションを作り直したとき (`renewSession` → `initialize`) に keepalive の周回が 2 本になる。相手が ping に答えていれば 2 本とも同じ `lastActivity` を見るので ping の数は変わらないが、答えない相手には `pingTimeoutMs` の間に ping が 2 つ出る。「keepalive は接続につき 1 本」はどの仕様 ID にも無い / 問い: 「セッションを作り直しても keepalive の周回は 1 本のまま」を仕様にしますか。案 A (推奨): MCP-LIFECYCLE-26 に 1 文足し、HTTP の 404 で作り直したあと ping に答えない相手へ、`pingTimeoutMs` の間に ping が 1 つだけ出ることを E テストで見る。案 B: 仕様にせず、この行を等価に近いものとして受け入れる (代表の決定が要る)"
+      "class": "test_owed",
+      "reason": "keep-alive の周回は作り直しても 1 本・閉じたクライアントはイベントループに仕事を残さない・作り直しに失敗したセッションの current は true、を仕様に足す (代表の決定 2026-11-14)。E テストで確かめる"
     },
     {
       "fingerprint": "src/client/client.nim:LOR:8cfb491cc9ed65e8:0",
@@ -917,8 +917,8 @@
       "mutator": "LOR",
       "original": "client.state != mlsShutdown and client.transport == transport",
       "replacement": "<and -> or>",
-      "class": "spec_question",
-      "reason": "変異だと `close()` のあとも周回が終わらない (`state != mlsOperational` の枝で `lastActivity` を進めて眠り続ける)。ping は出ないので「closing the client stops the pings」のテストは通る。外から見える違いは、dispatcher に時計が残り続けること (`hasPendingOperations()` が真のまま) だけで、どの仕様 ID にも無い / 問い: 「閉じた client は dispatcher に仕事を残さない」を仕様にしますか。案 A (推奨): MCP-LIFECYCLE-26 の「closing the client stops the pings」に足し、`close()` のあと `pingIntervalMs` を過ぎたら `hasPendingOperations()` が偽になることを E テストで見る。案 B: 条件の `client.transport == transport` を消す (2 回目の `connect` を入口で断るのと組にする。下の「実装の欠陥の疑い」)。消せばこの LOR は生まれない"
+      "class": "test_owed",
+      "reason": "keep-alive の周回は作り直しても 1 本・閉じたクライアントはイベントループに仕事を残さない・作り直しに失敗したセッションの current は true、を仕様に足す (代表の決定 2026-11-14)。E テストで確かめる"
     },
     {
       "fingerprint": "src/client/client.nim:ROR:03dee8ca16c7a195:0",
@@ -1027,8 +1027,8 @@
       "mutator": "BLR",
       "original": "true",
       "replacement": "false",
-      "class": "spec_question",
-      "reason": "作り直しに失敗したとき呼び手が受け取る `McpSessionExpiredError` の公開の欄 `current` が偽になる。SDK の中でこの値を読み直す経路は無い (state が shutdown なので `renewSession` は先に戻る)。MCP-HTTPSTREAM-28 は「failure as parent, renewed false」だけを言い、`current` に触れていない / 問い: 作り直しに失敗したときの `current` を仕様にしますか。案 A (推奨): MCP-HTTPSTREAM-28 の文に「current true」を足し、`test_session_expiry_fix.nim` の「…a server that refuses the new initialize…」に `check expired.current` を 1 行足す (欄の説明は既にそう約束している)。案 B: 仕様にしない (その場合この代入は消せる)"
+      "class": "test_owed",
+      "reason": "keep-alive の周回は作り直しても 1 本・閉じたクライアントはイベントループに仕事を残さない・作り直しに失敗したセッションの current は true、を仕様に足す (代表の決定 2026-11-14)。E テストで確かめる"
     },
     {
       "fingerprint": "src/client/client.nim:ROR:080f250a54bf828a:0",
