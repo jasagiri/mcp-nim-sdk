@@ -565,3 +565,14 @@ id 33 は分類 4 の確認として変異を当て、全件が通ることを�
 - 前回は検出だった 8 件 (`http.nim:246`、`http_wire.nim:190` の 3 件、`http_wire.nim:269`、`http_wire.nim:273`、`sse_legacy.nim:150`、`sse_legacy.nim:168`)。どのテストで止まっているかは調べていない。`http_server` の測り直しで見たのと同じく、前回のあとに足したテストが上限なしで待っている可能性がある (未確認)。
 
 時間切れは「テストが通らなかった」側の結果で、生き残りの判定には影響しない。
+
+## 2 回目の測定 (拡張ブランチの 654cb11a、2026-11-16)
+
+417 件のうち 317 件を検出、生き残り 35 件、時間切れ 42 件。1 回目に「テストが要る」とした 43 件のうち 40 件は検出されるようになった。残った 3 件と新しい 4 件:
+
+| 場所 | 変異 | 分類 | 理由 |
+|---|---|---|---|
+| `src/transport/http_wire.nim:440` `:455` `:476` `:491` | SDL `r.close()` → `discard` | 4 | 呼び手がどれも失敗のあと自分で閉じる。1 回目に記述子が残るとした旧 SSE の `connect` は `readPrefix` と `finally` の `close` に直したので、ここの `close` は冗長な守りになった |
+| `src/transport/http_wire.nim:483` | BLR `while true` → `while false` (`readPrefix`) | 6 | 本文は失敗の文面に添えるだけで、判断は状態コード |
+| `src/transport/http_wire.nim:490` | ROR `> limit` → `>= limit` | 1 | 返る文字列も接続の扱いも同じ |
+| `src/transport/http_wire.nim:492` | SDL `result.setLen(limit)` → `discard` | 6 | 失敗の文面が長くなるだけ |
