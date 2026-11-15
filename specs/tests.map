@@ -315,6 +315,9 @@ MCP-PROGRESS-10 | tests/external/test_progress_rate_fix.nim | Given a limit abov
 MCP-PROGRESS-11 | tests/external/test_progress_rate_fix.nim | Given a limit of 2 per second and a handler that reports in two bursts and waits after each, when the interval passes, then the last value of each burst arrives before the handler returns
 MCP-PROGRESS-11 | tests/external/test_progress_rate_fix.nim | Given a limit of 2 per second, when a handler reports after the interval has passed, then the value is sent at once
 MCP-PROGRESS-11 | tests/external/test_progress_rate_fix.nim | Given a limit of 1 per second, when a handler reports before the interval is over, then the value arrives soon after the interval is over
+MCP-PROGRESS-11 | tests/external/test_progress_rate_fix.nim | Given a limit of 1 per second and a clock that stands exactly one interval after the last notification, when a handler reports, then the value is sent at once
+MCP-PROGRESS-11 | tests/external/test_progress_rate_fix.nim | Given a limit of 1 per second and a clock one millisecond short of the interval, when a handler reports, then the value is held back
+MCP-PROGRESS-11 | tests/external/test_progress_rate_fix.nim | Given a value held back with a full interval to wait, when a later value is held back near the end of the interval by the clock, then the first wait still stands and nothing is sent early
 MCP-CANCEL-1 | tests/external/test_server_progress_cancel.nim | Given a request in flight, when the client cancels it, then no response is sent and the handler sees the cancellation
 MCP-CANCEL-1 | tests/external/test_server_progress_cancel.nim | Given a numeric request id, when the client cancels it, then the request is cancelled
 MCP-CANCEL-1 | tests/external/test_server_progress_cancel.nim | Given a handler waiting on whenCancelled, when the client cancels, then the wait ends

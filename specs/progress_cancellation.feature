@@ -151,3 +151,5 @@ Feature: Progress and cancellation
     When the interval since the last notification has passed
     Then the last value of the burst reaches the client before the handler returns, without a further report
     And a report made after the interval has passed is sent at once, and a report made before it is sent as soon as the interval is over
+    And the interval is read from the server's progressClock (the clock of the process unless another is given): a report exactly one interval after the last notification is sent at once, and one a millisecond sooner is held back
+    And one wait is running for a request at a time: a later value held back replaces the one waiting and starts no wait of its own

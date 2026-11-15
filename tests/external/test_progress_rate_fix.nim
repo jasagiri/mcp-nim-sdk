@@ -179,3 +179,57 @@ suite "the progress notifications of one request":
       check seen.len >= 1
       check seen.len < 3000
       check seen[^1] == 3000.0
+
+  test "Given a limit of 1 per second and a clock that stands exactly one interval after the last notification, when a handler reports, then the value is sent at once":
+    for v in eras():
+      let t = newSessionedTransport()
+      var nowMs = 5_000'i64
+      var arrivedAtOnce = false
+      let server = scriptedServer(1, proc(ctx: McpRequestContext): Future[void] {.async.} =
+        await ctx.reportProgress(1.0)
+        nowMs += 1_000
+        await ctx.reportProgress(2.0)
+        arrivedAtOnce = 2.0 in t.progressOf())
+      server.progressClock = proc(): int64 = nowMs
+      waitFor server.attachTransport(t)
+      let peer = server.connect(t, v)
+      check peer.ask("tools/call", %*{"name": "t"}, meta = %*{"progressToken": "p1"}).hasKey("result")
+      check arrivedAtOnce
+
+  test "Given a limit of 1 per second and a clock one millisecond short of the interval, when a handler reports, then the value is held back":
+    for v in eras():
+      let t = newSessionedTransport()
+      var nowMs = 5_000'i64
+      var heldBack = false
+      let server = scriptedServer(1, proc(ctx: McpRequestContext): Future[void] {.async.} =
+        await ctx.reportProgress(1.0)
+        nowMs += 999
+        await ctx.reportProgress(2.0)
+        heldBack = 2.0 notin t.progressOf())
+      server.progressClock = proc(): int64 = nowMs
+      waitFor server.attachTransport(t)
+      let peer = server.connect(t, v)
+      check peer.ask("tools/call", %*{"name": "t"}, meta = %*{"progressToken": "p1"}).hasKey("result")
+      check heldBack
+      check t.progressOf() == @[1.0, 2.0]
+
+  test "Given a value held back with a full interval to wait, when a later value is held back near the end of the interval by the clock, then the first wait still stands and nothing is sent early":
+    for v in eras():
+      let t = newSessionedTransport()
+      var nowMs = 5_000'i64
+      var sentEarly = true
+      let server = scriptedServer(1, proc(ctx: McpRequestContext): Future[void] {.async.} =
+        await ctx.reportProgress(1.0)
+        await ctx.reportProgress(2.0)
+        # The clock alone moves: a second wait, were one started, would be
+        # over in 10 ms, while the first one has a second to go.
+        nowMs += 990
+        await ctx.reportProgress(3.0)
+        await sleepAsync(150)
+        sentEarly = t.progressOf() != @[1.0])
+      server.progressClock = proc(): int64 = nowMs
+      waitFor server.attachTransport(t)
+      let peer = server.connect(t, v)
+      check peer.ask("tools/call", %*{"name": "t"}, meta = %*{"progressToken": "p1"}).hasKey("result")
+      check not sentEarly
+      check t.progressOf() == @[1.0, 3.0]

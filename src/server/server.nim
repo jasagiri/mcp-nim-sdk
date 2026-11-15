@@ -1,6 +1,6 @@
 ## MCP server implementation
 
-import std/[asyncdispatch, json, monotimes, options, sequtils, sets, strutils, tables, times]
+import std/[asyncdispatch, json, monotimes, options, sequtils, sets, strutils, tables]
 import ../protocol/types
 import ../protocol/diagnostic
 import ../protocol/lifecycle
@@ -86,7 +86,9 @@ type
       ## carries it too.
     lastProgress: float
     progressSent: bool
-    progressSentAt: MonoTime
+    progressSentAt: Option[int64]
+      ## What the server's `progressClock` read when the last progress
+      ## notification of the request went out; none before the first.
     heldProgress: JsonNode
       ## The newest progress notification that the rate limit kept back, sent
       ## when the interval has passed or the request ends; nil when none.
@@ -204,6 +206,10 @@ type
       ## How many progress notifications `reportProgress` sends per second for
       ## one request; the ones in between are dropped and the last one is
       ## always sent. 0: all are sent.
+    progressClock*: proc(): int64 {.closure.}
+      ## The clock the limit on progress notifications reads: milliseconds on
+      ## a scale that never goes back, of which only differences count. The
+      ## clock of the process unless another is given (a test gives its own).
     maxRateLimitedSenders*: int
       ## How many senders the rate limit tells apart at once; beyond it the
       ## senders that have been quiet longest are forgotten, which gives them
@@ -294,6 +300,10 @@ proc handleInitialized(server: McpServer, notification: JsonRpcNotification): Fu
 proc handleCancelled(server: McpServer, notification: JsonRpcNotification): Future[void] {.async.}
 proc extractClientCapabilities(json: JsonNode): McpClientCapabilities
 
+proc monotonicMs(): int64 =
+  ## The monotonic clock of the process, in milliseconds.
+  getMonoTime().ticks div 1_000_000
+
 proc newMcpServer*(
   serverInfo: McpServerInfo,
   protocolVersion: McpProtocolVersion = DefaultProtocolVersion,
@@ -309,6 +319,7 @@ proc newMcpServer*(
     maxSubscriptionsPerSession: DefaultMaxSubscriptionsPerSession,
     maxListenStreamsPerSession: DefaultMaxListenStreamsPerSession,
     maxProgressPerSecond: DefaultMaxProgressPerSecond,
+    progressClock: monotonicMs,
     maxRateLimitedSenders: DefaultMaxRateLimitedSenders,
     cachePolicy: UncachedPolicy,
     capabilities: capabilities,
@@ -742,10 +753,10 @@ func progressIntervalMs(ctx: McpRequestContext): int =
   let perSecond = ctx.server.maxProgressPerSecond
   if perSecond > 0: max(1, 1000 div perSecond) else: 0
 
-proc progressWanted(ctx: McpRequestContext, now: MonoTime): bool =
+proc progressWanted(ctx: McpRequestContext, now: int64): bool =
   ## Whether the interval since the last notification has passed.
-  ctx.progressSentAt == default(MonoTime) or
-    (now - ctx.progressSentAt).inMilliseconds >= ctx.progressIntervalMs
+  ctx.progressSentAt.isNone or
+    now - ctx.progressSentAt.get >= ctx.progressIntervalMs
 
 proc flushProgress(ctx: McpRequestContext): Future[void] {.async.} =
   ## Send the progress notification the rate limit held back, if one is held
@@ -755,7 +766,7 @@ proc flushProgress(ctx: McpRequestContext): Future[void] {.async.} =
   ctx.heldProgress = nil
   if held.isNil or ctx.finished or ctx.cancelled:
     return
-  ctx.progressSentAt = getMonoTime()
+  ctx.progressSentAt = some(ctx.server.progressClock())
   await ctx.server.transport.sendNotification(ctx.relatedNotification("notifications/progress", held))
 
 proc flushProgressLater(ctx: McpRequestContext, waitMs: int) {.async.} =
@@ -774,8 +785,8 @@ proc scheduleProgressFlush(ctx: McpRequestContext) =
   if ctx.progressFlushScheduled:
     return
   ctx.progressFlushScheduled = true
-  let sinceMs = (getMonoTime() - ctx.progressSentAt).inMilliseconds.int
-  asyncCheck ctx.flushProgressLater(max(1, ctx.progressIntervalMs - sinceMs))
+  let sinceMs = ctx.server.progressClock() - ctx.progressSentAt.get
+  asyncCheck ctx.flushProgressLater(max(1, int(ctx.progressIntervalMs - sinceMs)))
 
 proc reportProgress*(ctx: McpRequestContext, progress: float,
                      total: Option[float] = none(float),
@@ -796,7 +807,7 @@ proc reportProgress*(ctx: McpRequestContext, progress: float,
   if message.len > 0 and ctx.version.has(ftProgressMessage):
     params["message"] = %message
   let perSecond = ctx.server.maxProgressPerSecond
-  if perSecond > 0 and not ctx.progressWanted(getMonoTime()):
+  if perSecond > 0 and not ctx.progressWanted(ctx.server.progressClock()):
     # Too soon after the last one: this replaces what was held, so the newest
     # value is the one that goes out, as soon as the interval has passed or at
     # the latest when the request ends (`flushProgress`).
@@ -804,7 +815,7 @@ proc reportProgress*(ctx: McpRequestContext, progress: float,
     ctx.scheduleProgressFlush()
     return
   ctx.heldProgress = nil
-  ctx.progressSentAt = getMonoTime()
+  ctx.progressSentAt = some(ctx.server.progressClock())
   await ctx.server.transport.sendNotification(ctx.relatedNotification("notifications/progress", params))
 
 func logParams(level: McpLogLevel, data: JsonNode, logger: string): JsonNode =
