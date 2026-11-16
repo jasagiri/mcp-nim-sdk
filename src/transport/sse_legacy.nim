@@ -82,6 +82,8 @@ proc resolveEndpoint(t: SseLegacyTransport, data: string): string =
 
 proc readLoop(t: SseLegacyTransport, response: WireResponse,
               ready: Future[void]) {.async.} =
+  # The parser refuses an event longer than `maxResponseSize` bytes (SseLimitError),
+  # so no message that reaches `deliver` is over the limit.
   var parser = initSseParser(t.maxResponseSize, t.maxResponseSize)
   try:
     while true:
@@ -97,9 +99,6 @@ proc readLoop(t: SseLegacyTransport, response: WireResponse,
             except McpTransportError as e:
               ready.fail(e)
         elif event.event in ["", "message"] and event.data.len > 0:
-          if event.data.len > t.maxResponseSize:
-            raise failure("message from " & t.sseUrl & " exceeds " &
-                          $t.maxResponseSize & " bytes")
           t.deliver(parseJson(event.data))
   except CatchableError as e:
     # close() ends the stream on purpose; that is not a failure.
