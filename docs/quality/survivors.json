@@ -1121,16 +1121,6 @@
       "reason": "待ちが取り消しで終わるのは、`serveDetached` の `cancel` が呼ばれたときだけで、呼ぶのは `TaskStore.cancel` と `sweep` の `cancelWork` だけ (この ctx は `inFlight` に載らないので `notifications/cancelled` では止まらない)。どちらも同じ同期の呼び出しの中で、`statusChanged` か `onExpire` が `ext.inputs.del(taskId)` で `TaskInputs` ごと外す。`pending` を読む `detailed`・`fulfil`・次の `requestInput` はどれも `ext.inputs` を引いてから読むので、残った項目は誰にも読まれない。代表の決定「終端・期限切れの task がその後に出す質問は、送らずにその場で断る」(2026-11-12) が当たるのは `scope.taskId notin ext.inputs` の検査のほうで、この行ではない"
     },
     {
-      "fingerprint": "src/ext/tasks/server.nim:RVR:4aaabad6f446154f:0",
-      "file": "src/ext/tasks/server.nim",
-      "line": 214,
-      "mutator": "RVR",
-      "original": "return newJsonRpcErrorResponse(answer.id, ErrInternal, \"Internal error\")",
-      "replacement": "<return default>",
-      "class": "test_owed",
-      "reason": "代表の決定 (2026-11-15): 握った失敗 1 件につき stderr は 1 行 (MCP-ERRORS-3)。変異後は task の結果は同じだが stderr に「neither a result nor an error」の行が余分に出る。input_required の task の既存 E テストに、この行が出ないことの確かめを足して殺す"
-    },
-    {
       "fingerprint": "src/ext/tasks/server.nim:RVR:9bd38dfae0fced9f:0",
       "file": "src/ext/tasks/server.nim",
       "line": 352,
