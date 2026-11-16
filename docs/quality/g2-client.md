@@ -411,3 +411,11 @@ timeout は検出に数える。待ち続ける理由を 1 行ずつ書く。
 |---|---|---|---|
 | `cancel_token.nim:53` | SDL `result.complete()` → `discard` (すでに取り消されたトークンを見張る) | 2b | このジョブのテストからは届かない: `sendRequest` は取り消し済みのトークンを見張る前に断り、その間に await が無い。`listen` は要求の送信を待つので届く。`tests/test_subscriptions.nim` に「送信中に取り消されたトークン」のテストを足した (MCP-SUBSCRIBE-11)。変異を当てると `McpTimeoutError` で落ちる。このジョブは `test_subscriptions` を流さないので、ジョブの報告には残る |
 | `client.nim:900` | SDL `raiseAssert "server/discover was probed twice without a verdict"` → `discard` | 4 | 2 回目の探りは、サーバーが何を答えても return かエラーで終わる。表明に届く入力は無い |
+
+## 2 回目の測定 (拡張ブランチの b611e97d、2026-11-16)
+
+400 件のうち 357 件を検出、生き残り 19 件、時間切れ 14 件。1 回目に「テストが要る」とした 12 件はすべて検出されるようになった。新しい 1 件:
+
+| 場所 | 変異 | 分類 | 理由 |
+|---|---|---|---|
+| `src/client/client.nim:921` | SDL `client.requireUninitialized()` → `discard` (`initialize`) | 2 | 公開の `initialize` を接続済みのクライアントで直接呼ぶと、変異は 2 つ目の initialize 要求を送る。MCP-LIFECYCLE-3 に 1 句足し、E テストを足した |
