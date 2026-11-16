@@ -591,26 +591,6 @@
       "reason": "`int` の既定値は 0 / —"
     },
     {
-      "fingerprint": "src/compat/utf8.nim:AOR:da3355fa56ef9180:0",
-      "file": "src/compat/utf8.nim",
-      "line": 33,
-      "mutator": "AOR",
-      "original": "at + width",
-      "replacement": "<+ -> ->",
-      "class": "test_owed",
-      "reason": "輪が空になり、3 バイト目・4 バイト目が継続バイトかを確かめなくなる。既存の入力は 2 バイト目までで断られるものだけだった / MCP-STDIO-9・MCP-HTTP-43。`NotUtf8` に 3 バイト目・4 バイト目が継続バイトでない並びを足した (変異を手で当てて、テストが落ちることを確かめた)"
-    },
-    {
-      "fingerprint": "src/compat/utf8.nim:RVR:7018026ff64ed67b:2",
-      "file": "src/compat/utf8.nim",
-      "line": 35,
-      "mutator": "RVR",
-      "original": "return 0",
-      "replacement": "<return default>",
-      "class": "equivalent",
-      "reason": "`int` の既定値は 0 / —"
-    },
-    {
       "fingerprint": "src/ext/apps/host.nim:RVR:0c511227513989c7:0",
       "file": "src/ext/apps/host.nim",
       "line": 132,
@@ -2029,36 +2009,6 @@
       "replacement": "false",
       "class": "equivalent",
       "reason": "新しい変異。`finish` は `protocol/tasks` が export しておらず、呼ぶのは `task_methods.nim` の `finishWhenDone` だけで、`toolErrorsFail` を必ず渡す。`tests/external/` に `task_store` を import するファイルは無い。既定値はどこからも使われない / —"
-    },
-    {
-      "fingerprint": "src/protocol/task_store.nim:BLR:6ec2d660335697fb:2",
-      "file": "src/protocol/task_store.nim",
-      "line": 482,
-      "mutator": "BLR",
-      "original": "false",
-      "replacement": "true",
-      "class": "test_owed",
-      "reason": "上の行 (RVR f09e9e232af8b35b:2) と同じ変異。代表の決定 (2026-11-15) により同じ E テストで殺す"
-    },
-    {
-      "fingerprint": "src/protocol/task_store.nim:RVR:f09e9e232af8b35b:2",
-      "file": "src/protocol/task_store.nim",
-      "line": 482,
-      "mutator": "RVR",
-      "original": "return false",
-      "replacement": "<return default>",
-      "class": "test_owed",
-      "reason": "代表の決定 (2026-11-15): 期限切れで止められた task の仕事が後から例外で終わっても stderr に何も書かないことを MCP-TASKS-12 に足し、E テストで固定する。元は何も書かず、変異は「the request of task … raised …」を 1 行書く"
-    },
-    {
-      "fingerprint": "src/protocol/task_store.nim:SDL:131324adae4bf5f7:0",
-      "file": "src/protocol/task_store.nim",
-      "line": 490,
-      "mutator": "SDL",
-      "original": "stderr.writeLine(\"[mcp-tasks] the request of task \" & id &; \" ended with neither a result nor an error\")",
-      "replacement": "discard",
-      "class": "test_owed",
-      "reason": "新しいコード (2026-11-12 に足した置き換え)。結果も誤りも無い outcome を内部エラーに置き換えるとき、相手には「Internal error」としか伝えないので、原因はこの 1 行にしか残らない。握った失敗の原因を stderr の 1 行に書くことは仕様 (代表の決定 2026-11-13、MCP-ERRORS-3)。既存の E テストは状態と符号だけを確かめ、stderr を見ていない / MCP-ERRORS-3 (置き換えそのものは MCP-TASKS-8)。既存の test_tasks_store「Given work that answers with neither a result nor an error, when it ends, then the task failed with an internal error, whatever toolErrorsFail is」の `work.complete(...)` と `settle()` を `loggedWhile` で包み、`check \"the request of task \" & task.taskId & \" ended with neither a result nor an error\" in log` を足す。変異だと log が空で落ちる。MCP-ERRORS-3 の Given の列挙に task のこの場合は名指されていないので、tests.map に結ぶときに Scenario へ 1 句足すかは司会の判断"
     },
     {
       "fingerprint": "src/protocol/tasks.nim:RVR:115a88da64ad7c9b:0",
