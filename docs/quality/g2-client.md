@@ -419,3 +419,7 @@ timeout は検出に数える。待ち続ける理由を 1 行ずつ書く。
 | 場所 | 変異 | 分類 | 理由 |
 |---|---|---|---|
 | `src/client/client.nim:921` | SDL `client.requireUninitialized()` → `discard` (`initialize`) | 2 | 公開の `initialize` を接続済みのクライアントで直接呼ぶと、変異は 2 つ目の initialize 要求を送る。MCP-LIFECYCLE-3 に 1 句足し、E テストを足した |
+
+## 足したテストのあとの測り直し (2331e832、2026-11-16)
+
+`initialize` の変異 (`src/client/client.nim:921`) のテストを足したあと、913〜925 行だけを `--lines` で測った: 2 件とも検出。b611e97d から `src` は変えていない。台帳には、b611e97d の完全な報告のうちこの 2 件だけを部分の結果に置き換えた報告を取り込んだ (理由は `g2-server.md` の同じ日の節)。

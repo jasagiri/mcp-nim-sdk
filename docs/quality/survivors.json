@@ -381,16 +381,6 @@
       "reason": "周回が終わるのは `state == mlsShutdown` か transport が替わったときだけ。`keepAlive` を呼ぶのは `initialize` だけで、shutdown のあとは `renewSession` が何もせず (983 行)、`initialize` は `mlsUninitialized` 以外を断るので、終わったあとにこの旗を読む経路が無い / —"
     },
     {
-      "fingerprint": "src/client/client.nim:SDL:f0e297640041b11c:0",
-      "file": "src/client/client.nim",
-      "line": 921,
-      "mutator": "SDL",
-      "original": "client.requireUninitialized()",
-      "replacement": "discard",
-      "class": "test_owed",
-      "reason": "2 回目 (b611e97d) の新規。公開の `initialize` を接続済みのクライアントで直接呼ぶと、元は断り、変異は 2 つ目の initialize 要求を送る。`connect` 経由では先に同じ確かめがあるので見えない。MCP-LIFECYCLE-3 に 1 句足し、E テスト「Given a connected client, when initialize is called again, ...」で殺す (手で当てて落ちることを確かめた)"
-    },
-    {
       "fingerprint": "src/client/client.nim:SDL:835812ed87f5fb7a:0",
       "file": "src/client/client.nim",
       "line": 991,
@@ -2403,7 +2393,7 @@
     {
       "fingerprint": "src/server/server.nim:SDL:a83049649b1ae0f4:0",
       "file": "src/server/server.nim",
-      "line": 549,
+      "line": 560,
       "mutator": "SDL",
       "original": "doAssert negotiated.isSome,; \"initialize reached a server that speaks no version with a handshake\"",
       "replacement": "discard",
@@ -2413,7 +2403,7 @@
     {
       "fingerprint": "src/server/server.nim:SDL:932eac12f9b57944:0",
       "file": "src/server/server.nim",
-      "line": 580,
+      "line": 591,
       "mutator": "SDL",
       "original": "stderr.writeLine(\"[mcp-server] initialized notification in state \" &; $session.state &; \" ignored\")",
       "replacement": "discard",
@@ -2423,7 +2413,7 @@
     {
       "fingerprint": "src/server/server.nim:SDL:a0221c45aefc8214:0",
       "file": "src/server/server.nim",
-      "line": 596,
+      "line": 607,
       "mutator": "SDL",
       "original": "stderr.writeLine(\"[mcp-server] notifications/cancelled without a usable requestId ignored\")",
       "replacement": "discard",
@@ -2433,7 +2423,7 @@
     {
       "fingerprint": "src/server/server.nim:ROR:99ececf14e11d202:0",
       "file": "src/server/server.nim",
-      "line": 603,
+      "line": 614,
       "mutator": "ROR",
       "original": "reason.len > 0",
       "replacement": "<> -> >=>",
@@ -2443,7 +2433,7 @@
     {
       "fingerprint": "src/server/server.nim:RVR:55560fa5ef49175d:0",
       "file": "src/server/server.nim",
-      "line": 691,
+      "line": 702,
       "mutator": "RVR",
       "original": "return none(JsonRpcError)",
       "replacement": "<return default>",
@@ -2453,7 +2443,7 @@
     {
       "fingerprint": "src/server/server.nim:SDL:ac1cdc5394dff63c:0",
       "file": "src/server/server.nim",
-      "line": 702,
+      "line": 713,
       "mutator": "SDL",
       "original": "none(JsonRpcError)",
       "replacement": "discard",
@@ -2463,7 +2453,7 @@
     {
       "fingerprint": "src/server/server.nim:ROR:dc3839fe7e9db304:0",
       "file": "src/server/server.nim",
-      "line": 743,
+      "line": 754,
       "mutator": "ROR",
       "original": "perSecond > 0",
       "replacement": "<> -> >=>",
@@ -2471,39 +2461,19 @@
       "reason": "`progressIntervalMs` を呼ぶのは `reportProgress` の `perSecond > 0 and …` の内側 (`progressWanted` と `scheduleProgressFlush`) だけで、上限が 0 以下のときはこの func に来ない。`> 0` と `>= 0` は来る値すべてで同じ結果になる (else の枝は冗長な守り)"
     },
     {
-      "fingerprint": "src/server/server.nim:ROR:b614b41f99a310c4:0",
+      "fingerprint": "src/server/server.nim:ROR:dde49fb60df7d232:0",
       "file": "src/server/server.nim",
-      "line": 748,
-      "mutator": "ROR",
-      "original": "(now - ctx.progressSentAt).inMilliseconds >= ctx.progressIntervalMs",
-      "replacement": "<>= -> >>",
-      "class": "test_owed",
-      "reason": "進捗の間隔は 1 ミリ秒以上、と決めて MCP-PROGRESS-10 に書き、上限が 1000 を超えても制限が掛かるよう直す (代表の決定 2026-11-13)"
-    },
-    {
-      "fingerprint": "src/server/server.nim:BLR:d3d9dea44044874b:0",
-      "file": "src/server/server.nim",
-      "line": 776,
-      "mutator": "BLR",
-      "original": "true",
-      "replacement": "false",
-      "class": "test_owed",
-      "reason": "抑えた進捗を、ハンドラの実行中に間隔が明けた時点で送ることを仕様にする (代表の決定 2026-11-13)。E テストで確かめる"
-    },
-    {
-      "fingerprint": "src/server/server.nim:ROR:e470916accc3a50e:0",
-      "file": "src/server/server.nim",
-      "line": 799,
+      "line": 810,
       "mutator": "ROR",
       "original": "perSecond > 0",
       "replacement": "<> -> >=>",
       "class": "equivalent",
-      "reason": "違いが出るのは 0 のときだけ。そのとき `progressWanted` が呼ばれるが、`progressIntervalMs` は 0 を返し (742 行)、経過 >= 0 は常に真なので抑えない。前後とも 10 通すべて送る"
+      "reason": "`reportProgress` の `perSecond > 0 and not ctx.progressWanted(…)` → `>= 0`。上限が 0 のとき、変異は `progressWanted` を尋ねるが、`progressIntervalMs` は 0 以下の上限に 0 を返すので答えは必ず「送ってよい」で、保留されずに元と同じくすぐ送る。負の上限でも同じ。時計を差し替える前の同じ変異 (e470916accc3a50e、同値) が、式の文面が変わって指紋が変わったもの"
     },
     {
       "fingerprint": "src/server/server.nim:RVR:0c511227513989c7:0",
       "file": "src/server/server.nim",
-      "line": 941,
+      "line": 952,
       "mutator": "RVR",
       "original": "return none(string)",
       "replacement": "<return default>",
@@ -2513,7 +2483,7 @@
     {
       "fingerprint": "src/server/server.nim:SDL:2413a04126052c00:0",
       "file": "src/server/server.nim",
-      "line": 944,
+      "line": 955,
       "mutator": "SDL",
       "original": "none(string)",
       "replacement": "discard",
@@ -2523,7 +2493,7 @@
     {
       "fingerprint": "src/server/server.nim:LOR:da079c31597359f5:0",
       "file": "src/server/server.nim",
-      "line": 1062,
+      "line": 1073,
       "mutator": "LOR",
       "original": "tools.isNil or tools.kind != JArray",
       "replacement": "<or -> and>",
@@ -2533,7 +2503,7 @@
     {
       "fingerprint": "src/server/server.nim:RVR:3ac2bd94b4efe6f7:0",
       "file": "src/server/server.nim",
-      "line": 1112,
+      "line": 1123,
       "mutator": "RVR",
       "original": "return none(JsonNode)",
       "replacement": "<return default>",
@@ -2543,7 +2513,7 @@
     {
       "fingerprint": "src/server/server.nim:RVR:3ac2bd94b4efe6f7:1",
       "file": "src/server/server.nim",
-      "line": 1120,
+      "line": 1131,
       "mutator": "RVR",
       "original": "return none(JsonNode)",
       "replacement": "<return default>",
@@ -2553,7 +2523,7 @@
     {
       "fingerprint": "src/server/server.nim:SDL:f85418f42f56ae88:0",
       "file": "src/server/server.nim",
-      "line": 1124,
+      "line": 1135,
       "mutator": "SDL",
       "original": "none(JsonNode)",
       "replacement": "discard",
@@ -2563,7 +2533,7 @@
     {
       "fingerprint": "src/server/server.nim:RVR:0c511227513989c7:1",
       "file": "src/server/server.nim",
-      "line": 1135,
+      "line": 1146,
       "mutator": "RVR",
       "original": "return none(string)",
       "replacement": "<return default>",
@@ -2573,7 +2543,7 @@
     {
       "fingerprint": "src/server/server.nim:SDL:2413a04126052c00:1",
       "file": "src/server/server.nim",
-      "line": 1140,
+      "line": 1151,
       "mutator": "SDL",
       "original": "none(string)",
       "replacement": "discard",
@@ -2583,7 +2553,7 @@
     {
       "fingerprint": "src/server/server.nim:RVR:55560fa5ef49175d:1",
       "file": "src/server/server.nim",
-      "line": 1164,
+      "line": 1175,
       "mutator": "RVR",
       "original": "return none(JsonRpcError)",
       "replacement": "<return default>",
@@ -2593,7 +2563,7 @@
     {
       "fingerprint": "src/server/server.nim:RVR:55560fa5ef49175d:2",
       "file": "src/server/server.nim",
-      "line": 1167,
+      "line": 1178,
       "mutator": "RVR",
       "original": "return none(JsonRpcError)",
       "replacement": "<return default>",
@@ -2603,7 +2573,7 @@
     {
       "fingerprint": "src/server/server.nim:RVR:87aa8baa528c4cef:0",
       "file": "src/server/server.nim",
-      "line": 1176,
+      "line": 1187,
       "mutator": "RVR",
       "original": "return \"\"",
       "replacement": "<return default>",
@@ -2613,7 +2583,7 @@
     {
       "fingerprint": "src/server/server.nim:RVR:9bd38dfae0fced9f:0",
       "file": "src/server/server.nim",
-      "line": 1520,
+      "line": 1531,
       "mutator": "RVR",
       "original": "return none(JsonRpcResponse)",
       "replacement": "<return default>",
@@ -2623,7 +2593,7 @@
     {
       "fingerprint": "src/server/server.nim:RVR:9bd38dfae0fced9f:1",
       "file": "src/server/server.nim",
-      "line": 1526,
+      "line": 1537,
       "mutator": "RVR",
       "original": "return none(JsonRpcResponse)",
       "replacement": "<return default>",
@@ -2633,7 +2603,7 @@
     {
       "fingerprint": "src/server/server.nim:SDL:9167956a112233e6:1",
       "file": "src/server/server.nim",
-      "line": 1537,
+      "line": 1548,
       "mutator": "SDL",
       "original": "none(JsonRpcResponse)",
       "replacement": "discard",
@@ -2643,7 +2613,7 @@
     {
       "fingerprint": "src/server/server.nim:SDL:0eec084d1ec55604:0",
       "file": "src/server/server.nim",
-      "line": 1692,
+      "line": 1703,
       "mutator": "SDL",
       "original": "server.inFlight.del(key)",
       "replacement": "discard",
@@ -2653,7 +2623,7 @@
     {
       "fingerprint": "src/server/server.nim:SDL:393bb8d0d0b11c7e:0",
       "file": "src/server/server.nim",
-      "line": 1733,
+      "line": 1744,
       "mutator": "SDL",
       "original": "server.failPending(none(string), e)",
       "replacement": "discard",
@@ -2663,7 +2633,7 @@
     {
       "fingerprint": "src/server/server.nim:SDL:56d3852372d11e8a:0",
       "file": "src/server/server.nim",
-      "line": 1737,
+      "line": 1748,
       "mutator": "SDL",
       "original": "stderr.writeLine(\"[mcp-server] transport loop ended with \" & $e.name & \": \" &; peerText(e.msg))",
       "replacement": "discard",
@@ -2673,7 +2643,7 @@
     {
       "fingerprint": "src/server/server.nim:SDL:e0eb1207a5ec6a6b:0",
       "file": "src/server/server.nim",
-      "line": 1795,
+      "line": 1806,
       "mutator": "SDL",
       "original": "stderr.writeLine(\"[mcp-server] could not send \" & methodName &; \" to subscription \\'\" &; peerText(subscription.requestId) &; \"\\': \" &; peerText(e.msg))",
       "replacement": "discard",

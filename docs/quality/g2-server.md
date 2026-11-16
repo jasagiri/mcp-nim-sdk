@@ -626,3 +626,23 @@ runError はない。
 | `server.nim:743` | ROR `perSecond > 0` → `>= 0` | 1 | 新規。`progressIntervalMs` を呼ぶのは `reportProgress` の `perSecond > 0 and …` の内側だけで、0 以下ではここに来ない。else の枝は冗長な守り |
 | `server.nim:748` | ROR 間隔の比較 `>=` → `>` | 未決 | 間隔ちょうどの 1 ms だけ結果が変わる。時計を差し替えられないと E テストで固定できない |
 | `server.nim:776` | BLR `progressFlushScheduled = true` → `false` | 未決 | 同じ間隔の中で 2 回目に保留されたときに遅延の送信が 2 つ予約される。保留は送る前に空にするので送られるのは 1 回で、外から見える差は 1 ms 未満の競合だけ |
+
+## 時計を差し替えたあとの測り直し (2331e832、2026-11-16)
+
+`progressClock` を足して (b611e97d)、進捗の間隔の境界 (上の表の `748`) と待ちの数 (`776`) をテストで固定した。そのあと `server` を丸ごと測り直したが、ディスクが満杯になって 518 件のうち 338 件が実行エラーになり (nim-muter の終了コードは 0)、その報告は捨てた。機械の負荷が高く丸ごとの測り直しを待てなかったので、654cb11a から変えた行だけを `--lines` で測った (代表の決定 2026-11-17、案 A)。
+
+| 範囲 | 件数 | 検出 | 生き残り | コンパイルエラー |
+|---|---|---|---|---|
+| `src/server/server.nim` 745〜800 行 | 21 | 19 | 1 | 1 |
+| `src/server/server.nim` 300〜306、801〜822 行 | 8 | 7 | 1 | 0 |
+
+654cb11a から `src/server/server.nim` で変えたのは、この範囲と、変異の対象にならない行 (import、型の欄、既定値の 1 行) だけ。
+
+台帳への取り込み: `nim-muter-ledger sync` は、報告に載ったファイルの生き残りのうち報告に無いものを「もう生き残っていない」として外す。部分の報告をそのまま渡すと、測っていない行の記録まで消える。そこで、2 つの部分の報告の変異に、台帳にある `server.nim` の生き残りのうち今回測っていない行のもの 24 件を「survived」として足した報告を作り、それを取り込んだ (行は `nim-muter discover` のいまの結果から引いた)。654cb11a の完全な報告そのものは、捨てた実行に上書きされて残っていない。台帳がその結果を持っている。
+
+| 場所 | 変異 | 分類 | 理由 |
+|---|---|---|---|
+| `src/server/server.nim:759` (前の 748) | ROR 間隔の比較 `>=` → `>` | 検出 | 「Given a limit of 1 per second and a clock that stands exactly one interval after the last notification, ...」が落ちる |
+| `src/server/server.nim:787` (前の 776) | BLR `progressFlushScheduled = true` → `false` | 検出 | 「Given a value held back with a full interval to wait, ...」が落ちる |
+| `src/server/server.nim:754` (前の 743) | ROR `perSecond > 0` → `>= 0` | 1 | 記録済みのまま |
+| `src/server/server.nim:810` (前の 799) | ROR `perSecond > 0` → `>= 0` | 1 | 上限が 0 以下のとき間隔は 0 で、必ずすぐ送る。前の 799 行の同値の変異が、式の文面が変わって指紋が変わったもの |
