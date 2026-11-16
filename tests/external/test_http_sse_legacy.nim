@@ -795,6 +795,70 @@ suite "HTTP+SSE client, answers with a long body (the status decides)":
     waitFor transport.sendNotification(newJsonRpcNotification("x", newJObject()))
     waitFor transport.close()
 
+suite "HTTP+SSE client, a message event the size of maxResponseSize":
+
+  const Limit = 200
+
+  proc sizedMessage(eventBytes: int): string =
+    ## A `message` event whose data lines count `eventBytes` for the parser
+    ## (each value's length + 1). A padding line of spaces, which JSON
+    ## ignores, brings it to the size; the lines stay under the line limit.
+    let head = "{\"jsonrpc\":\"2.0\",\"method\":\"notifications/sized\"}"
+    let padding = eventBytes - (head.len + 1) - 1
+    doAssert padding >= 0 and padding + 6 < Limit
+    "data: " & head & "\ndata: " & repeat(' ', padding) & "\n\n"
+
+  proc serveAnswerOnStream(listener: AsyncSocket, onStream: string) =
+    ## Names `/post`, and sends `onStream` on the stream once a POST came.
+    let posted = newFuture[void]("serveAnswerOnStream.posted")
+    proc serveOne(socket: AsyncSocket) {.async.} =
+      let head = await socket.readHead()
+      if head.startsWith("get "):
+        await socket.send(StreamHead & formatSseEvent("/post", event = "endpoint"))
+        await posted
+        await socket.send(onStream)
+        discard await socket.peerClosed(2000)
+      else:
+        await socket.send("HTTP/1.1 202 Accepted\c\LContent-Length: 0\c\L\c\L")
+        if not posted.finished:
+          posted.complete()
+        discard await socket.peerClosed(2000)
+      socket.close()
+    proc acceptLoop() {.async.} =
+      while true:
+        asyncCheck serveOne(await listener.accept())
+    asyncCheck acceptLoop()
+
+  proc answerTo(eventBytes: int): tuple[message: JsonNode, closed: bool, logged: string] =
+    ## What the client's request gets back when the server answers it on the
+    ## stream with a message event of `eventBytes`.
+    let (listener, port) = listenLocal()
+    serveAnswerOnStream(listener, sizedMessage(eventBytes))
+    let transport = newSseLegacyTransport("http://127.0.0.1:" & $port & "/sse")
+    transport.maxResponseSize = Limit
+    var outcome: tuple[message: JsonNode, closed: bool]
+    result.logged = loggedWhile(proc() =
+      waitFor transport.sendRequest(newJsonRpcRequest("r1", "ping", newJObject()))
+      try:
+        outcome.message = waitFor transport.receiveMessage()
+      except McpTransportClosedError:
+        outcome.closed = true)
+    result.message = outcome.message
+    result.closed = outcome.closed
+    waitFor transport.close()
+
+  test "Given a message event of exactly maxResponseSize, when the server answers a request with it, then the client receives it":
+    let got = answerTo(Limit)
+    check not got.closed
+    check got.message["method"].getStr() == "notifications/sized"
+    check got.logged == ""
+
+  test "Given a message event one byte over maxResponseSize, when the server answers a request with it, then it is not delivered, the stream ends and stderr says why":
+    let got = answerTo(Limit + 1)
+    check got.closed
+    check got.message.isNil
+    check "longer than 200 bytes" in got.logged
+
 suite "client that tries Streamable HTTP first (mutation review, g2g-hc-b)":
 
   type Seen = ref object
