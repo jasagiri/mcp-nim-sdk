@@ -128,3 +128,10 @@ Feature: HTTP with Server-Sent Events (2024-11-05)
     Given a client that tries Streamable HTTP first
     When a notification or a response is sent after the fallback, a version is agreed, or the wrapper is closed with or without a session, or before it has chosen
     Then the chosen transport sends it, receives the agreed version, and ends its session or stream, and a receive that waits fails when the wrapper is closed
+
+  @spec:MCP-HTTPSSE-19 @feature:ftHttpSse
+  Scenario: A message event larger than the client allows is not delivered
+    Given a client of the old transport whose maxResponseSize is set
+    When the server sends a message event of exactly that size, or one a byte longer
+    Then the first is delivered
+    And the second is not delivered: the stream ends, a receive that waits fails, and a line on stderr says why

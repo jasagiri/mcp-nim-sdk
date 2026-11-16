@@ -606,6 +606,8 @@ MCP-HTTPSSE-18 | tests/external/test_http_sse_legacy.nim | Given a version agree
 MCP-HTTPSSE-18 | tests/external/test_http_sse_legacy.nim | Given a Streamable HTTP server that issued a session, when the wrapper closes, then the session is ended with DELETE
 MCP-HTTPSSE-18 | tests/external/test_http_sse_legacy.nim | Given a server of the old transport, when the wrapper closes, then the stream ends and the server's session with it
 MCP-HTTPSSE-18 | tests/external/test_http_sse_legacy.nim | Given a wrapper that has not decided, when it closes while a receive waits, then the receive fails with McpTransportError
+MCP-HTTPSSE-19 | tests/external/test_http_sse_legacy.nim | Given a message event of exactly maxResponseSize, when the server answers a request with it, then the client receives it
+MCP-HTTPSSE-19 | tests/external/test_http_sse_legacy.nim | Given a message event one byte over maxResponseSize, when the server answers a request with it, then it is not delivered, the stream ends and stderr says why
 MCP-SSE-1 | tests/external/test_event_stream.nim | Given a byte order mark after the first line, when read, then it stays part of that line's field name
 MCP-SSE-2 | tests/external/test_event_stream.nim | Given blank lines after an event, when read, then they dispatch nothing more
 MCP-SSE-3 | tests/external/test_event_stream.nim | Given a line of exactly the limit, when read, then it is accepted and one byte more raises SseLimitError
