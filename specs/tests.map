@@ -34,6 +34,7 @@ MCP-LIFECYCLE-3 | tests/external/test_legacy_handshake.nim | Given a client that
 MCP-LIFECYCLE-3 | tests/external/test_legacy_handshake.nim | Given a legacy client, when the handshake completes, then it sends notifications/initialized
 MCP-LIFECYCLE-3 | tests/external/test_legacy_handshake.nim | Given a client attached to a transport, when initialize is called, then it returns the capabilities the server declared
 MCP-LIFECYCLE-3 | tests/external/test_legacy_handshake.nim | Given a connected client, when connect is called again with another transport, then it is refused and the first connection is left as it was
+MCP-LIFECYCLE-3 | tests/external/test_legacy_handshake.nim | Given a connected client, when initialize is called again, then it is refused and no second initialize request is sent
 MCP-LIFECYCLE-4 | tests/external/test_era_matrix.nim | Given a legacy client, when it pings, then it gets an empty result
 MCP-LIFECYCLE-4 | tests/external/test_legacy_handshake.nim | Given a legacy client, when it pings with a string id or an integer id, then the answer is an empty result of JSON-RPC 2.0 under the same id
 MCP-LIFECYCLE-5 | tests/external/test_era_matrix.nim | Given the specification's discover request, when it is answered, then the result describes the server

@@ -254,6 +254,23 @@ suite "legacy handshake: client":
     check heard == 0
     waitFor client.close()
 
+  test "Given a connected client, when initialize is called again, then it is refused and no second initialize request is sent":
+    let pair = newLoopbackPair()
+    let server = newMcpServer(info())
+    waitFor server.attachTransport(pair.server)
+    let client = newMcpClient(clientInfo(), protocolVersion = LegacyDefault)
+    waitFor client.connect(pair.client)
+    let sentBefore = pair.client.sent.len
+    var refused = false
+    try:
+      discard waitFor client.initialize()
+    except ValueError:
+      refused = true
+    check refused
+    waitFor sleepAsync(20)
+    check pair.client.sent.len == sentBefore
+    waitFor client.close()
+
   test "Given a client newer than the server, when it connects, then both settle on the server's version":
     if LegacyDefault > mpv20241105:
       let pair = newLoopbackPair()

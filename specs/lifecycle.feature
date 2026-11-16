@@ -29,6 +29,7 @@ Feature: Starting a conversation
     And the client then sends notifications/initialized
     And initialize returns the capabilities the server declared
     And a client that is already connected refuses a second connect before it changes anything: the first transport still carries its requests, and the second is neither written to nor read
+    And a client that is already connected refuses initialize too, and sends no second initialize request
 
   @spec:MCP-LIFECYCLE-4 @feature:ftPing
   Scenario: A legacy client's ping gets an empty result
