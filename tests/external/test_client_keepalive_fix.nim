@@ -119,13 +119,13 @@ suite "a client pings an idle connection":
       let first = startPeer(recorder("first"))
       let second = startPeer(recorder("second"))
       let a = newMcpClient(McpClientInfo(name: "a", version: "1"), v)
-      a.pingIntervalMs = 400
+      a.pingIntervalMs = 1000
       waitFor a.connect(first.pair.client)
-      waitFor sleepAsync(200)
+      waitFor sleepAsync(500)
       discard waitFor a.callMethod("tools/list", newJObject())
-      waitFor sleepAsync(200)
+      waitFor sleepAsync(500)
       let b = newMcpClient(McpClientInfo(name: "b", version: "1"), v)
-      b.pingIntervalMs = 400
+      b.pingIntervalMs = 1000
       waitFor b.connect(second.pair.client)
       var waited = 0
       while order.len < 2 and waited < 20_000:

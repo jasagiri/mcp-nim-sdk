@@ -9,12 +9,26 @@ import transport/transport
 import ./loopback_transport
 import ./client_peer
 import ./stuck_transport
+from ./server_harness import untilTrue
 
 proc silentPeer(): Peer = startPeer(nil)
 
+proc logPath(): string =
+  getTempDir() / "mcp-client-requests-" & $getCurrentProcessId() & ".log"
+
+proc untilLogged(text: string) =
+  ## Inside `loggedWhile`: waits until the code under test wrote `text`.
+  untilTrue("stderr to say " & text, proc(): bool =
+    flushFile(stderr)
+    text in readFile(logPath()))
+
+proc sent(peer: Peer, methodName: string, atLeast = 1): proc(): bool =
+  ## Says whether the peer has received `atLeast` requests of `methodName`.
+  result = proc(): bool = peer.requestsFor(methodName).len >= atLeast
+
 proc loggedWhile(body: proc()): string =
   ## Everything the code under test wrote to stderr.
-  let path = getTempDir() / "mcp-client-requests-" & $getCurrentProcessId() & ".log"
+  let path = logPath()
   let saved = stderr
   stderr = open(path, fmWrite)
   try:
@@ -34,12 +48,13 @@ proc holdSending(peer: Peer, methodName: string): Future[void] =
   peer.pair.client.sendGate = gate
   gate
 
-proc timesOut(client: McpClient) =
-  ## A tools/list that gets no answer within 30 ms.
+proc timesOut(client: McpClient, settled: proc(): bool) =
+  ## A tools/list that gets no answer within 30 ms. Returns once `settled`
+  ## says what the client does after giving up has happened.
   expect McpTimeoutError:
     discard waitFor client.sendRequest("tools/list", newJObject(),
       McpRequestOptions(timeoutMs: some(30)))
-  waitFor sleepAsync(5)
+  untilTrue("the client to settle after the timeout", settled)
 
 proc lastCancelled(peer: Peer): JsonNode =
   let all = peer.requestsFor("notifications/cancelled")
@@ -119,7 +134,7 @@ suite "cancelling a request":
     let token = newMcpCancelToken()
     let pending = client.sendRequest("tools/call", %*{"name": "slow"},
       McpRequestOptions(cancel: token))
-    waitFor sleepAsync(5)
+    untilTrue("the request to be sent", peer.sent("tools/call"))
     token.cancel("user stopped it")
     expect McpCancelledError:
       discard waitFor pending
@@ -134,7 +149,7 @@ suite "cancelling a request":
     let token = newMcpCancelToken()
     let pending = client.sendRequest("tools/call", %*{"name": "slow"},
       McpRequestOptions(cancel: token))
-    waitFor sleepAsync(5)
+    untilTrue("the request to be sent", peer.sent("tools/call"))
     token.cancel()
     try:
       discard waitFor pending
@@ -173,13 +188,13 @@ suite "cancelling a request":
     let options = McpRequestOptions(cancel: token, timeoutMs: some(1000))
     let first = client.sendRequest("tools/call", %*{"name": "slow"}, options)
     let second = client.sendRequest("tools/list", newJObject(), options)
-    waitFor sleepAsync(5)
+    untilTrue("both requests to be sent", proc(): bool =
+      peer.sent("tools/call")() and peer.sent("tools/list")())
     token.cancel("stop both")
-    # Well before the timeout: a request that only noticed the cancellation
-    # when its timer ran out was not cancelled.
-    waitFor sleepAsync(50)
-    check first.finished
-    check second.finished
+    # Well before the timeout (and `expect` below names the error): a request
+    # that only noticed the cancellation when its timer ran out would raise
+    # McpTimeoutError, not McpCancelledError.
+    untilTrue("both requests to end", proc(): bool = first.finished and second.finished)
     expect McpCancelledError:
       discard waitFor first
     expect McpCancelledError:
@@ -194,7 +209,7 @@ suite "cancelling a request":
     token.whenCancelled.addCallback(proc() = inc told)
     let pending = client.sendRequest("tools/call", %*{"name": "slow"},
       McpRequestOptions(cancel: token, timeoutMs: some(400)))
-    waitFor sleepAsync(5)
+    untilTrue("the request to be sent", peer.sent("tools/call"))
     token.cancel()
     expect McpCancelledError:
       discard waitFor pending
@@ -236,7 +251,7 @@ suite "giving up a request over each transport":
   test "Given a legacy connection over HTTP, when a request that was sent times out, then notifications/cancelled is sent and the transport is not asked to cancel":
     let peer = startPeer(nil, kind = mtkStreamable)
     let client = peer.connectedClient(LegacyDefault)
-    client.timesOut()
+    client.timesOut(peer.sent("notifications/cancelled"))
     check peer.requestsFor("notifications/cancelled").len == 1
     check peer.pair.client.cancelRequested.len == 0
 
@@ -244,7 +259,8 @@ suite "giving up a request over each transport":
     let peer = startPeer(nil, kind = mtkStreamable)
     let client = peer.connectedClient(LegacyDefault)
     let gate = peer.holdSending("tools/list")
-    client.timesOut()
+    client.timesOut(proc(): bool =
+      peer.sent("notifications/cancelled")() and peer.pair.client.cancelRequested.len >= 1)
     check peer.pair.client.cancelRequested.len == 1
     check peer.requestsFor("tools/list").len == 0
     let told = peer.lastCancelled()
@@ -257,9 +273,9 @@ suite "giving up a request over each transport":
     let client = peer.connectedClient(LegacyDefault)
     let gate = peer.holdSending("tools/list")
     let logged = loggedWhile(proc() =
-      client.timesOut()
+      client.timesOut(peer.sent("notifications/cancelled"))
       gate.fail(newException(McpTransportError, "the connection broke"))
-      waitFor sleepAsync(20))
+      untilLogged("the connection broke"))
     check "tools/list" in logged
     check "the connection broke" in logged
     check client.pendingRequests.len == 0
@@ -270,7 +286,7 @@ suite "giving up a request over each transport":
     let gate = peer.holdSending("tools/list")
     let pending = client.sendRequest("tools/list", newJObject(),
       McpRequestOptions(timeoutMs: some(0)))
-    waitFor sleepAsync(5)
+    untilTrue("the request to be pending", proc(): bool = client.pendingRequests.len >= 1)
     check client.pendingRequests.len == 1
     gate.fail(newException(McpTransportError, "the connection broke"))
     expect McpTransportError:
@@ -281,7 +297,10 @@ suite "giving up a request over each transport":
     let peer = silentPeer()
     let client = peer.connectedClient(LegacyDefault)
     peer.pair.client.brokenNotifications = true
-    let logged = loggedWhile(proc() = client.timesOut())
+    let logged = loggedWhile(proc() =
+      client.timesOut(proc(): bool =
+        flushFile(stderr)
+        "loopback notifications are broken" in readFile(logPath())))
     check "could not cancel request" in logged
     check "loopback notifications are broken" in logged
 
@@ -305,7 +324,7 @@ if SpeaksModern:
     test "Given a connection over HTTP, when a request times out, then the transport is asked to cancel it and no notification is sent":
       let peer = startPeer(nil, modern = true, kind = mtkStreamable)
       let client = peer.connectedClient()
-      client.timesOut()
+      client.timesOut(proc(): bool = peer.pair.client.cancelRequested.len >= 1)
       check peer.pair.client.cancelRequested ==
         @[peer.requestsFor("tools/list")[0]["id"].getStr()]
       check peer.requestsFor("notifications/cancelled").len == 0
@@ -313,7 +332,7 @@ if SpeaksModern:
     test "Given a connection over stdio, when a request times out, then notifications/cancelled is sent and the transport is not asked to cancel":
       let peer = startPeer(nil, modern = true)
       let client = peer.connectedClient()
-      client.timesOut()
+      client.timesOut(peer.sent("notifications/cancelled"))
       check peer.requestsFor("notifications/cancelled").len == 1
       check peer.pair.client.cancelRequested.len == 0
 
@@ -390,14 +409,14 @@ suite "progress":
     let b = client.sendRequest("tools/call", %*{"name": "b"},
       McpRequestOptions(timeoutMs: some(0),
         onProgress: proc(update: McpProgress) = second.add update.progress))
-    waitFor sleepAsync(5)
+    untilTrue("both requests to be sent", peer.sent("tools/call", 2))
     let sent = peer.requestsFor("tools/call")
     check sent.len == 2
     peer.push("notifications/progress", %*{
       "progressToken": sent[0]["params"]["_meta"]["progressToken"], "progress": 1})
     peer.push("notifications/progress", %*{
       "progressToken": sent[1]["params"]["_meta"]["progressToken"], "progress": 2})
-    waitFor sleepAsync(5)
+    untilTrue("both updates to arrive", proc(): bool = first.len >= 1 and second.len >= 1)
     check first == @[1.0]
     check second == @[2.0]
     peer.reply(sent[0]["id"], %*{"content": []})
@@ -410,7 +429,7 @@ suite "progress":
     let client = peer.connectedClient(LegacyDefault)
     let pending = client.sendRequest("tools/list", newJObject(),
       McpRequestOptions(timeoutMs: some(0)))
-    waitFor sleepAsync(5)
+    untilTrue("the request to be sent", peer.sent("tools/list"))
     peer.push("notifications/progress", %*{"progressToken": "", "progress": 1})
     waitFor sleepAsync(5)
     peer.reply(peer.requestsFor("tools/list")[0]["id"], %*{"tools": []})
@@ -458,7 +477,7 @@ suite "the end of a connection":
     let client = peer.connectedClient(LegacyDefault)
     let pending = client.sendRequest("tools/list", newJObject(),
       McpRequestOptions(timeoutMs: some(0)))
-    waitFor sleepAsync(5)
+    untilTrue("the request to be sent", peer.sent("tools/list"))
     waitFor client.close()
     expect McpConnectionClosedError:
       discard waitFor pending
@@ -480,7 +499,7 @@ suite "the end of a connection":
     let client = peer.connectedClient(LegacyDefault)
     let pending = client.sendRequest("tools/list", newJObject(),
       McpRequestOptions(timeoutMs: some(0)))
-    waitFor sleepAsync(5)
+    untilTrue("the request to be sent", peer.sent("tools/list"))
     waitFor peer.pair.client.close()
     expect McpConnectionClosedError:
       discard waitFor pending
@@ -491,7 +510,7 @@ suite "the end of a connection":
     let client = peer.connectedClient(LegacyDefault)
     let pending = client.sendRequest("tools/list", newJObject(),
       McpRequestOptions(timeoutMs: some(0)))
-    waitFor sleepAsync(5)
+    untilTrue("the request to be sent", peer.sent("tools/list"))
     check client.pendingRequests.len == 1
     peer.pair.client.endStream()
     expect McpConnectionClosedError:

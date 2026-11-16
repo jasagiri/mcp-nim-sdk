@@ -13,7 +13,7 @@ export sessioned_transport, server, types, lifecycle, features
 
 const
   PollMs = 2
-  PatienceMs = 2000
+  PatienceMs = 20_000
 
 type
   Peer* = object

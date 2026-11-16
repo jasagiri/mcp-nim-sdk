@@ -15,6 +15,7 @@ import sse_reader
 import transport/event_stream
 import protocol/types
 import protocol/version
+from server_harness import untilTrue
 
 const SpeaksModern = isModern(DefaultProtocolVersion)
 
@@ -368,7 +369,8 @@ suite "GET stream (versions 2025-03-26 to 2025-11-25)":
       let reply = post(url, %*{"jsonrpc": "2.0", "id": asked["id"], "result": {"roots": []}},
                        legacyHeaders(session, version))
       check reply.code == Http202
-      waitFor sleepAsync(20)
+      untilTrue("the server to receive the answer", proc(): bool =
+        script.answered.anyIt(it{"id"}.getStr() == "srv-1"))
       check script.answered[^1]["id"].getStr() == "srv-1"
       listen.close()
 
@@ -521,12 +523,12 @@ if SpeaksModern:
       let stream = modernPost(url, 7, "wait")
       discard stream.next()
       stream.close()
-      waitFor sleepAsync(100)
+      untilTrue("the request to be cancelled", proc(): bool = script.cancelled.len >= 1)
       check script.cancelled.len == 1
       check script.cancelled[0].startsWith("http-")
 
     test "Given a request in progress with nothing sent yet, when the client closes the connection, then the server is told the request was cancelled":
-      let (_, url, script) = startRaw(DefaultProtocolVersion)
+      let (transport, url, script) = startRaw(DefaultProtocolVersion)
       let body = $(%*{"jsonrpc": "2.0", "id": 8, "method": "silent", "params": {"_meta": {
         "io.modelcontextprotocol/protocolVersion": "2026-07-28",
         "io.modelcontextprotocol/clientInfo": {"name": "c", "version": "0"},
@@ -535,9 +537,10 @@ if SpeaksModern:
       waitFor socket.send("POST /mcp HTTP/1.1\c\LHost: localhost\c\L" &
         "Content-Type: application/json\c\LMCP-Protocol-Version: 2026-07-28\c\L" &
         "Mcp-Method: silent\c\LContent-Length: " & $body.len & "\c\L\c\L" & body)
-      waitFor sleepAsync(50)
+      untilTrue("the server to take the request", proc(): bool =
+        transport.pendingExchangeCount == 1)
       socket.close()
-      waitFor sleepAsync(100)
+      untilTrue("the request to be cancelled", proc(): bool = script.cancelled.len >= 1)
       check script.cancelled.len == 1
 
     test "Given a cancelled request, when the server answers it anyway, then the answer is dropped without an error":
@@ -545,11 +548,10 @@ if SpeaksModern:
       let stream = modernPost(url, 7, "wait")
       discard stream.next()
       stream.close()
-      waitFor sleepAsync(100)
+      untilTrue("the request to be cancelled", proc(): bool = script.cancelled.len >= 1)
       script.release.complete()
-      waitFor sleepAsync(50)
+      untilTrue("the exchange to be gone", proc(): bool = transport.pendingExchangeCount == 0)
       check script.cancelled.len == 1
-      check transport.pendingExchangeCount == 0
 
     test "Given a 2026-07-28 endpoint, when GET is sent, then no stream opens and the answer is 400 or 405":
       let (_, url, _) = startRaw(DefaultProtocolVersion)
@@ -589,7 +591,7 @@ suite "JSON-RPC batches (version 2025-03-26 only)":
         [("Mcp-Session-Id", session)])
       check reply.code == Http202
       check reply.body == ""
-      waitFor sleepAsync(20)
+      untilTrue("both notifications to arrive", proc(): bool = script.notifications.len >= 2)
       check script.notifications == @["notifications/a", "notifications/b"]
 
     test "Given a batch of responses, when posted, then the answer is 202":
@@ -687,19 +689,21 @@ suite "idle sessions":
       let (transport, url, script) = startRaw(version)
       transport.sessionIdleTimeoutMs = 30
       let session = initialize(url, version)
-      waitFor sleepAsync(80)
-      transport.expireIdleSessions()
-      check transport.sessionCount == 0
+      untilTrue("the session to expire", proc(): bool =
+        transport.expireIdleSessions()
+        transport.sessionCount == 0)
       check script.ended == @[session]
       check post(url, rpc(2, "ping"), legacyHeaders(session, version)).code == Http404
 
     test "Given a session in use, when idle sessions are expired, then it stays":
       let (transport, url, _) = startRaw(version)
-      transport.sessionIdleTimeoutMs = 200
+      # Each wait is a sixth of the limit, and together they pass it: the
+      # session stays only because each ping counts as use.
+      transport.sessionIdleTimeoutMs = 1000
       let session = initialize(url, version)
-      waitFor sleepAsync(120)
-      check post(url, rpc(2, "ping"), legacyHeaders(session, version)).code == Http200
-      waitFor sleepAsync(120)
+      for round in 2 .. 8:
+        waitFor sleepAsync(160)
+        check post(url, rpc(round, "ping"), legacyHeaders(session, version)).code == Http200
       transport.expireIdleSessions()
       check transport.sessionCount == 1
 
@@ -773,15 +777,18 @@ proc startLedger(version: McpProtocolVersion): tuple[
   (transport, "http://127.0.0.1:" & $transport.port & "/mcp", ledger)
 
 proc postWithoutWaiting(url: string, body: JsonNode,
-                        headers: openArray[(string, string)]): AsyncHttpClient =
+                        headers: openArray[(string, string)],
+                        taken: proc(): bool): AsyncHttpClient =
   ## Posts and leaves the answer pending; closing the result is the client leaving.
+  ## Returns once `taken` says the server has the post, so that posts made one
+  ## after another reach it in that order.
   let http = newAsyncHttpClient()
   let all = newHttpHeaders({"Content-Type": "application/json",
                             "Accept": "application/json, text/event-stream"})
   for (name, value) in headers:
     all[name] = value
   discard http.request(url, HttpPost, $body, all)
-  waitFor sleepAsync(50)
+  untilTrue("the server to take the post", taken)
   http
 
 proc cancelNotice(requestId: int): JsonNode =
@@ -891,8 +898,10 @@ suite "the HTTP server transport's own rules (mutation review, g2f-hs-a)":
       asyncCheck transport.serve()
       transport.maxQueuedMessages = 2
       let url = "http://127.0.0.1:" & $transport.port & "/mcp"
-      let first = postWithoutWaiting(url, bareInitializeBody(version), [])
-      let second = postWithoutWaiting(url, bareInitializeBody(version), [])
+      let first = postWithoutWaiting(url, bareInitializeBody(version), [],
+        proc(): bool = transport.pendingExchangeCount == 1)
+      let second = postWithoutWaiting(url, bareInitializeBody(version), [],
+        proc(): bool = transport.pendingExchangeCount == 2)
       check transport.pendingExchangeCount == 2
       check post(url, bareInitializeBody(version)).code == Http503
       first.close()
@@ -940,16 +949,22 @@ suite "the HTTP server transport's own rules (mutation review, g2f-hs-a)":
       let (_, url, ledger) = startLedger(version)
       let a = initialize(url, version)
       let b = initialize(url, version)
+      proc silentSeen(): seq[McpIncoming] =
+        ledger.seen.filterIt(it.message{"method"}.getStr() == "silent")
       let held = @[
-        postWithoutWaiting(url, rpc(5, "silent"), legacyHeaders(a, version)),
-        postWithoutWaiting(url, rpc(5, "silent"), legacyHeaders(b, version)),
-        postWithoutWaiting(url, rpc(6, "silent"), legacyHeaders(a, version))]
-      let silent = ledger.seen.filterIt(it.message{"method"}.getStr() == "silent")
+        postWithoutWaiting(url, rpc(5, "silent"), legacyHeaders(a, version),
+          proc(): bool = silentSeen().len == 1),
+        postWithoutWaiting(url, rpc(5, "silent"), legacyHeaders(b, version),
+          proc(): bool = silentSeen().len == 2),
+        postWithoutWaiting(url, rpc(6, "silent"), legacyHeaders(a, version),
+          proc(): bool = silentSeen().len == 3)]
+      let silent = silentSeen()
       check silent.len == 3
       # (session, the id the client chose, which of the three requests it is)
       for (session, chosen, which) in [(a, 6, 2), (a, 5, 0), (b, 5, 1)]:
+        let before = ledger.seen.len
         check post(url, cancelNotice(chosen), legacyHeaders(session, version)).code == Http202
-        waitFor sleepAsync(30)
+        untilTrue("the cancel notice to arrive", proc(): bool = ledger.seen.len > before)
         let notice = ledger.seen[^1].message
         check notice{"method"}.getStr() == "notifications/cancelled"
         check notice{"params"}{"requestId"}.getStr() == silent[which].message["id"].getStr()
@@ -960,7 +975,8 @@ suite "the HTTP server transport's own rules (mutation review, g2f-hs-a)":
       let (transport, url, ledger) = startLedger(version)
       let session = initialize(url, version)
       let pending = openAsync(url, HttpPost, $rpc(5, "silent"), legacyHeaders(session, version))
-      waitFor sleepAsync(50)
+      untilTrue("the request to arrive", proc(): bool =
+        ledger.seen.anyIt(it.message{"method"}.getStr() == "silent"))
       let silent = ledger.seen.filterIt(it.message{"method"}.getStr() == "silent")
       check silent.len == 1
       waitFor transport.sendNotification(
@@ -979,7 +995,7 @@ suite "the HTTP server transport's own rules (mutation review, g2f-hs-a)":
       let (transport, url, ledger) = startLedger(DefaultProtocolVersion)
       let pending = openAsync(url, HttpPost, $modernBody(7, "silent"),
         @[("MCP-Protocol-Version", "2026-07-28"), ("Mcp-Method", "silent")])
-      waitFor sleepAsync(50)
+      untilTrue("the request to arrive", proc(): bool = ledger.seen.len >= 1)
       check ledger.seen.len == 1
       let exchangeId = ledger.seen[0].message["id"].getStr()
       let route = MessageRoute(requestId: exchangeId)
@@ -1122,17 +1138,17 @@ suite "GET stream and session lifetime (mutation review, g2f-hs-b)":
 
     test "Given a session whose GET stream has ended, when it then stays unused, then it stays only for the limit counted from the end of the stream, and then expires":
       let (transport, url, _) = startRaw(version)
-      transport.sessionIdleTimeoutMs = 300
+      transport.sessionIdleTimeoutMs = 600
       let session = initialize(url, version)
       let listen = open(url, HttpGet, "", legacyHeaders(session, version))
-      waitFor sleepAsync(350)
+      waitFor sleepAsync(700)  # longer than the limit, with the stream open
       listen.close()
-      waitFor sleepAsync(60)
+      waitFor sleepAsync(100)  # a sixth of the limit, counted from the end of the stream
       transport.expireIdleSessions()
       check transport.sessionCount == 1
-      waitFor sleepAsync(350)
-      transport.expireIdleSessions()
-      check transport.sessionCount == 0
+      untilTrue("the session to expire", proc(): bool =
+        transport.expireIdleSessions()
+        transport.sessionCount == 0)
 
     test "Given a session that has served a request, when it then stays unused beyond the limit, then it expires":
       let (transport, url, _) = startRaw(version)
@@ -1151,7 +1167,7 @@ suite "GET stream and session lifetime (mutation review, g2f-hs-b)":
         {"jsonrpc": "2.0", "method": "notifications/a", "params": {}}],
         [("Mcp-Session-Id", session)])
       check reply.code == Http200
-      waitFor sleepAsync(20)
+      untilTrue("the notification to arrive", proc(): bool = script.notifications.len >= 1)
       check script.notifications == @["notifications/a"]
 
 import std/times
@@ -1328,5 +1344,5 @@ when SpeaksModern:
       waitFor sleepAsync(50)
       check script.cancelled.len == 0
       sock.close()
-      waitFor sleepAsync(100)
+      untilTrue("the request to be cancelled", proc(): bool = script.cancelled.len >= 1)
       check script.cancelled.len == 1

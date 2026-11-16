@@ -8,6 +8,7 @@ import client/sampling
 import protocol/types
 import transport/transport
 import ./client_peer
+from ./server_harness import untilTrue
 
 proc loggedWhile(body: proc()): string =
   let path = getTempDir() / "mcp-client-silent-" & $getCurrentProcessId() & ".log"
@@ -35,13 +36,18 @@ suite "a client of 2026-07-28 writes no response":
     for v in SupportedProtocolVersions:
       if not isModern(v): continue
       for kind in [mtkStdio, mtkHttp]:
-        let peer = startPeer(nil, modern = true, kind = kind)
-        discard peer.connectedClient(v, proc(client: McpClient) =
+        let peer = startPeer(proc(peer: Peer, message: JsonNode) =
+          if message{"method"}.getStr() == "tools/list":
+            peer.reply(message["id"], %*{"resultType": "complete", "tools": []}),
+          modern = true, kind = kind)
+        let client = peer.connectedClient(v, proc(client: McpClient) =
           client.setSamplingHandler(sampler))
         let log = loggedWhile(proc() =
           for name in ["ping", "sampling/createMessage", "roots/list", "no/such/method"]:
             peer.ask(%name, name)
-          waitFor sleepAsync(20))
+          # The client takes its messages in the order they came: when the
+          # answer to its own request is in, the four above have been handled.
+          discard waitFor client.callMethod("tools/list", newJObject()))
         check peer.responses().len == 0
         for name in ["ping", "sampling/createMessage", "roots/list", "no/such/method"]:
           check ("request " & name & " from the server ignored") in log
@@ -55,7 +61,6 @@ suite "a client of 2026-07-28 writes no response":
         modern = true)
       let client = peer.connectedClient(v)
       peer.ask(%"s1", "ping")
-      waitFor sleepAsync(5)
       discard waitFor client.callMethod("tools/list", newJObject())
       check peer.responses().len == 0
 
@@ -65,7 +70,7 @@ suite "a client of 2026-07-28 writes no response":
       let peer = startPeer(nil)
       discard peer.connectedClient(v)
       peer.ask(%"p1", "ping")
-      waitFor sleepAsync(10)
+      untilTrue("the answer to the ping", proc(): bool = peer.responses().len >= 1)
       check peer.responses().len == 1
       check peer.responses()[0]["result"] == newJObject()
 
@@ -75,5 +80,5 @@ suite "a client of 2026-07-28 writes no response":
       let peer = startPeer(nil)
       discard peer.connectedClient(v)
       peer.ask(%"x1", "no/such/method")
-      waitFor sleepAsync(10)
+      untilTrue("the answer to the request", proc(): bool = peer.responses().len >= 1)
       check peer.responses()[0]["error"]["code"].getInt() == -32601
