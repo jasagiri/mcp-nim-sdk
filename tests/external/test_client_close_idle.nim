@@ -23,9 +23,6 @@ suite "a closed client":
       let client = newMcpClient(McpClientInfo(name: "c", version: "1"), v)
       client.pingIntervalMs = 50
       client.pingTimeoutMs = 100
-      # The timer of an answered request ends only at its timeout (60 s by
-      # default); a short one lets the test see the check of the connection.
-      client.requestTimeoutMs = 200
       waitFor client.connect(peer.pair.client)
       var waited = 0
       while peer.requestsFor("ping").len < 1 and waited < 20_000:
@@ -33,7 +30,8 @@ suite "a closed client":
         waited += 10
       require peer.requestsFor("ping").len >= 1
       waitFor client.close()
-      # Whatever was left is the client's own timers; they end by themselves.
+      # Whatever was left is the client's own timers (the check of the
+      # connection, the watcher of the time limits); they end by themselves.
       # The count only keeps a loop that never ends from hanging the test.
       var turns = 0
       while hasPendingOperations() and turns < 2_000:

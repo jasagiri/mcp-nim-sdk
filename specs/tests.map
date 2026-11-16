@@ -2905,3 +2905,11 @@ MCP-EXT-SKILLS-34 | tests/external/test_ext_skills_frontmatter.nim | Given a com
 MCP-EXT-SKILLS-34 | tests/external/test_ext_skills_frontmatter.nim | Given content after a line that ended a block scalar, when read, then FrontmatterError is raised
 MCP-EXT-TARGET-1 | tests/external/test_ext_targets.nim | Given each official extension and each version this build speaks as the ceiling, when every registration of the extension is made below its target, then each is refused naming the extension and the target
 MCP-EXT-TARGET-2 | tests/external/test_ext_targets.nim | Given each official extension and each version this build speaks as the ceiling, when the extension is registered at or above its target, then every registration is accepted and the first call is answered
+MCP-LIFECYCLE-28 | tests/external/test_client_deadline_watch.nim | Given a request with a 60 s limit, when its answer came, then the event loop has nothing pending within a short time
+MCP-LIFECYCLE-28 | tests/external/test_client_deadline_watch.nim | Given 200 requests with 60 s limits, when all were answered, then the event loop has nothing pending within a short time
+MCP-LIFECYCLE-28 | tests/external/test_client_deadline_watch.nim | Given a client that has just connected, when its probe was answered, then the event loop has nothing pending within a short time
+MCP-LIFECYCLE-28 | tests/external/test_client_deadline_watch.nim | Given a request that is answered, when its own short limit would have passed, then it still has its answer
+MCP-LIFECYCLE-28 | tests/external/test_client_deadline_watch.nim | Given a peer that never answers, when the limit passes, then the request raises McpTimeoutError
+MCP-LIFECYCLE-28 | tests/external/test_client_deadline_watch.nim | Given a far limit and then a nearer one, when time passes, then the nearer request times out at its own limit
+MCP-LIFECYCLE-28 | tests/external/test_client_deadline_watch.nim | Given a limit of 0, when time passes, then the request waits on and is answered later
+MCP-LIFECYCLE-28 | tests/external/test_client_deadline_watch.nim | Given a listen with a 60 s limit, when the acknowledgment came, then the event loop has nothing pending within a short time

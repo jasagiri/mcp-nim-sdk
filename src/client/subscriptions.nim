@@ -18,6 +18,7 @@ import std/[asyncdispatch, json, options, tables]
 import uuids
 import ./client
 import ./cancel_token
+import ./deadline_watch
 import ../transport/first_of
 import ../protocol/features
 import ../protocol/lifecycle
@@ -101,13 +102,13 @@ proc listen*(client: McpClient, filter: SubscriptionFilter,
       client.endSubscription(id, sbGraceful))
 
   let timeoutMs = options.timeoutMs.get(client.requestTimeoutMs)
-  let timer = if timeoutMs > 0: sleepAsync(timeoutMs)
-              else: newFuture[void]("McpClient.listen.noTimeout")
+  let deadline = client.deadlines.start(timeoutMs)
   let cancelled = if options.cancel.isNil: newFuture[void]("McpClient.listen.noCancel")
                   else: options.cancel.watchCancellation()
   try:
-    await firstOf(subscription.acknowledgement, subscription.ended, timer, cancelled)
+    await firstOf(subscription.acknowledgement, subscription.ended, deadline.due, cancelled)
   finally:
+    client.deadlines.release(deadline)
     if not options.cancel.isNil:
       options.cancel.unwatchCancellation(cancelled)
   if subscription.acknowledgement.finished:

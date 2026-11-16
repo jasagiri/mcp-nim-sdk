@@ -203,7 +203,7 @@ Feature: Starting a conversation
     And a server that answers the ping with an error is alive and the connection stays open
     And closing the client stops the pings, and a 2026-07-28 connection has none
     And a client that starts a new session keeps one check of the connection, not two, so an unanswered ping is sent once per interval
-    And a closed client's check of the connection ends, so once the timeouts of the requests it already made are over, nothing of it is left for the event loop
+    And a closed client's check of the connection ends: it is not woken again, and what it leaves for the event loop is at most the one sleep it is in, of at most 200 ms
 
   @spec:MCP-LIFECYCLE-27 @feature:ftPing
   Scenario: How often a client pings is configurable
@@ -211,3 +211,12 @@ Feature: Starting a conversation
     Then pingIntervalMs is 30000 (0 turns the pings off) and pingTimeoutMs is the default request timeout (60000)
     When the caller sets either before connect
     Then pings follow that interval and wait that long
+
+  @spec:MCP-LIFECYCLE-28
+  Scenario: The time limit of a request is not left in the event loop after its answer
+    Given a client whose requests have a time limit (the default is 60000 ms), including the subscriptions/listen request and the probe of connect
+    When a request is answered, cancelled or fails before its limit
+    Then its limit is taken back, so the event loop does not hold it until the limit would have passed
+    And once every request is done, what the client leaves for the event loop is the one sleep of its watcher, of at most 200 ms, so a program that runs the loop until it is empty ends within that time of the last answer
+    And a request whose limit passes ends with McpTimeoutError at its own limit, also when another request with a farther limit was made before it
+    And a limit of 0 waits without end
