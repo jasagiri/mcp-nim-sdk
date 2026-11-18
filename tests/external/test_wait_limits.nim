@@ -184,17 +184,20 @@ suite "the DELETE of a session that ends (transport/http)":
   test "Given a session and a server that answers the DELETE, when the client closes, then the event loop holds no timer due at the 5 s limit of the DELETE":
     # The limit of the DELETE is 5 s, so the bound is below it; no other limit
     # is on (connect 0 is none).
-    let server = startAnswering(empty())
-    let transport = newStreamableHttpTransport(server.url("/mcp"))
-    transport.listenForServerMessages = false
-    transport.connectTimeoutMs = 0
-    transport.sessionId = some("s-1")
-    transport.protocolVersionNegotiated(Speaks)
-    let before = timersDueAfter(2_000)
-    waitFor transport.close()
-    check server.requests.len == 1
-    check server.requests[0].startsWith("DELETE ")
-    untilQuiet(before, "the DELETE", bound = 2_000)
+    if not DefaultProtocolVersion.has(ftStreamableHttp):
+      skip()  # a build whose versions have no HTTP session to end
+    else:
+      let server = startAnswering(empty())
+      let transport = newStreamableHttpTransport(server.url("/mcp"))
+      transport.listenForServerMessages = false
+      transport.connectTimeoutMs = 0
+      transport.sessionId = some("s-1")
+      transport.protocolVersionNegotiated(Speaks)
+      let before = timersDueAfter(2_000)
+      waitFor transport.close()
+      check server.requests.len == 1
+      check server.requests[0].startsWith("DELETE ")
+      untilQuiet(before, "the DELETE", bound = 2_000)
 
 suite "the time limit of an OAuth request (auth/oauth/fetch)":
 

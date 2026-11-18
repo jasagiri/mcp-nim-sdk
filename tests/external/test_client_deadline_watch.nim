@@ -9,6 +9,8 @@ import client/client
 import client/subscriptions as clientSubs
 import protocol/subscriptions
 import protocol/types
+import protocol/version
+import protocol/features
 import ./client_peer
 from ./server_harness import untilTrue
 
@@ -101,12 +103,15 @@ suite "the time limit of a request that is not answered":
 suite "the time limit of a subscription's acknowledgment":
 
   test "Given a listen with a 60 s limit, when the acknowledgment came, then the event loop has nothing pending within a short time":
-    let peer = startPeer(proc(peer: Peer, message: JsonNode) =
-      if message{"method"}.getStr() == "subscriptions/listen":
-        peer.push("notifications/subscriptions/acknowledged", %*{
-          "_meta": {"io.modelcontextprotocol/subscriptionId": message["id"]},
-          "notifications": {"toolsListChanged": true}}), modern = true)
-    let client = quietClient(peer)
-    let subscription = waitFor client.listen(SubscriptionFilter(toolsListChanged: true))
-    check subscription.acknowledged.isSome
-    loopEmptiesSoon("the event loop to hold nothing after the acknowledgment")
+    if not DefaultProtocolVersion.has(ftSubscriptionsListen):
+      skip()  # a build whose default version has no subscriptions/listen
+    else:
+      let peer = startPeer(proc(peer: Peer, message: JsonNode) =
+        if message{"method"}.getStr() == "subscriptions/listen":
+          peer.push("notifications/subscriptions/acknowledged", %*{
+            "_meta": {"io.modelcontextprotocol/subscriptionId": message["id"]},
+            "notifications": {"toolsListChanged": true}}), modern = true)
+      let client = quietClient(peer)
+      let subscription = waitFor client.listen(SubscriptionFilter(toolsListChanged: true))
+      check subscription.acknowledged.isSome
+      loopEmptiesSoon("the event loop to hold nothing after the acknowledgment")
