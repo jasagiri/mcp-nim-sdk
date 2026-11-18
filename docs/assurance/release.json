@@ -82,6 +82,13 @@
      "kind": "measurement",
      "ref": "requires \"nim >= 2.2.12\" (2026-10-12)。欠陥の修正は v2.2.10 以降 (nim-advisory-check の NIM-25530)",
      "file": "../../mcp_nim_sdk.nimble"
+    },
+    {
+     "supports": true,
+     "kind": "measurement",
+     "ref": "2026-11-18: requires \"nim >= 2.4.2\" (代表の決定、9ce9dc9e)。2.4.2 は NIM-25530 の修正 (v2.2.10 以降) を含む",
+     "note": "2026-10-12 の下限 2.2.12 の証拠に代わる。上げた理由は TLS: 2.2.14 からの asyncnet がハンドシェイクで証明書の名前を確かめ、拒否の文言が版で変わっていた",
+     "file": "../../mcp_nim_sdk.nimble"
     }
    ]
   },
@@ -115,6 +122,12 @@
      "supports": true,
      "kind": "measurement",
      "ref": "2026-10-12: Nim 2.2.12 で advisory_check advisories.json を実行、\"no known defect among 1 listed\"、終了コード 0。一覧にあるのは Nim の 1 件だけで、uuids など依存パッケージの欠陥は一覧に無い"
+    },
+    {
+     "supports": true,
+     "kind": "measurement",
+     "ref": "2026-11-18: Nim 2.4.2 で advisory_check advisories.json (nim-advisory-check 2cbb9861) を実行、\"no known defect among 5 listed\"、終了コード 0。一覧の 5 件は Nim 1 件、zippy 2 件、openzeppelin-contracts 2 件で、この SDK はどちらの部品も使わない。--component を渡していないので、突き合わせたのは Nim の版だけ。uuids・nimcrypto の欠陥は一覧に無い",
+     "note": "2026-10-12 の Nim 2.2.12 での突き合わせに代わる"
     }
    ]
   },
@@ -157,6 +170,12 @@
      "kind": "test",
      "ref": "tests/internal/test_security_wire_tls.nim (-d:ssl)。nimble testSsl が本線 ulxvrxkt (2026-10-07) で通った。別のホストの証明書と、名前だけの証明書に IP アドレスでつなぐ場合を拒否する",
      "file": "../../tests/internal/test_security_wire_tls.nim"
+    },
+    {
+     "supports": true,
+     "kind": "test",
+     "ref": "2026-11-18、Nim 2.4.2: nimble test (-d:ssl のテストを含む) で tests/internal/test_security_wire_tls.nim が通る。2.4.2 の asyncnet はハンドシェイクで名前を確かめ、別のホストの証明書を「SSL Certificate check failed」で拒否する。標準ライブラリは SAN が合わなくても CN が合えば通す (X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT) ので、SDK の verifyPeerName が RFC 6125 6.4.4 に従って CN だけの証明書を「is not valid for」で拒否することを、別のテストで確かめる",
+     "file": "../../tests/internal/test_security_wire_tls.nim"
     }
    ]
   },
@@ -171,6 +190,13 @@
      "kind": "test",
      "ref": "2026-10-17: HttpServerTransport has readTimeoutMs (30 s unless given; 0 turns it off), the readTimeout of Nim's asynchttpserver (nim-lang/Nim#26352, Nim 2.3.1); with Nim 2.2.x a copy of that module (src/transport/vendor/asynchttpserver.nim). tests/external/test_security_http_read_timeout.nim (MCP-SEC-HTTP-10): a client that sends nothing is closed without an answer, one that stops after the request line gets 408 and is closed, a request in time is answered",
      "note": "the earlier evidence against was about Nim 2.2.8 without readTimeout; the handler's own time (an event stream) is not limited, by design"
+    },
+    {
+     "supports": true,
+     "kind": "test",
+     "ref": "2026-11-18、Nim 2.4.2: 標準ライブラリは readTimeout を持つが headerFields を持たないので、写し src/transport/vendor/asynchttpserver.nim が使われる。写しは nim-lang/Nim#26460 の 2 つ目のコミット (698a1a8f4) を含み、時間内に読めた要求は readTimeout のタイマーを残さない。tests/external/test_security_http_read_timeout.nim (MCP-SEC-HTTP-10) と tests/external/test_wait_limits.nim (MCP-LIFECYCLE-29) が nimble test で通る",
+     "note": "2026-10-17 の証拠の「Nim 2.2.x では写し」は、2.4.2 でも写しが使われる、に改まる",
+     "file": "../../src/transport/vendor/asynchttpserver.nim"
     }
    ]
   },
@@ -208,6 +234,12 @@
      "ref": "2026-10-14、Nim 2.2.12: nimble testSsl と testAllVersions、本線 d5cf3edd5ffc で 11165 通過・失敗 0・警告 2 (警告の 2 件は bb6744101764 で直し、直した 1 ファイルを 5 版で流して失敗 0・警告 0)。拡張 6ea91114887d は 13034、下書き 8c58809af01e は 14703、どちらも bb6744101764 の上で失敗 0・警告 0",
      "note": "本線の通しを流したコミットと先端 bb6744101764 の差は tests/external/test_security_address.nim の import の 1 行だけ。ソースかテストが変わったら取り直す",
      "file": "../quality/release-check-2026-10-14.md"
+    },
+    {
+     "supports": false,
+     "kind": "review",
+     "ref": "2026-11-18: 2026-10-14 の測定のあと、ソースとテストが変わり (Nim の下限 2.4.2、時間制限の見張り、vendor の asynchttpserver)、Nim も 2.4.2 になった。この主張の測定は取り直していない",
+     "note": "README の「ソースかテストが変わったら、この 4 つは取り直す」による"
     }
    ]
   },
@@ -223,6 +255,12 @@
      "ref": "2026-10-14、Nim 2.2.12: 本線 bb6744101764 と、その上の旧 4 版のコミットを git archive でリポジトリの外に展開して nimble test (examples のコンパイルを含む): 1770 / 1969 / 2134 / 2409 / 2911 通過、失敗 0、警告 0。既定版はどれも版の名前と一致",
      "note": "展開したのはタグを付ける前のコミット。タグの先のコミットとの差は docs/quality と docs/assurance のファイルだけになる",
      "file": "../quality/release-check-2026-10-14.md"
+    },
+    {
+     "supports": false,
+     "kind": "review",
+     "ref": "2026-11-18: 2026-10-14 の測定のあと、ソースとテストが変わり (Nim の下限 2.4.2、時間制限の見張り、vendor の asynchttpserver)、Nim も 2.4.2 になった。この主張の測定は取り直していない",
+     "note": "README の「ソースかテストが変わったら、この 4 つは取り直す」による"
     }
    ]
   },
@@ -260,6 +298,12 @@
      "kind": "measurement",
      "ref": "2026-10-14、Nim 2.2.12、本線 bb6744101764: 総当たり 312 行、合格 312、不合格 0 (stdio 175、HTTP 112、HTTP+SSE 25)",
      "file": "../quality/interop-matrix-2026-10-14.md"
+    },
+    {
+     "supports": false,
+     "kind": "review",
+     "ref": "2026-11-18: 2026-10-14 の測定のあと、ソースとテストが変わり (Nim の下限 2.4.2、時間制限の見張り、vendor の asynchttpserver)、Nim も 2.4.2 になった。この主張の測定は取り直していない",
+     "note": "README の「ソースかテストが変わったら、この 4 つは取り直す」による"
     }
    ]
   },
@@ -299,6 +343,12 @@
      "ref": "@modelcontextprotocol/conformance 0.2.0-alpha.12、2026-10-14、Nim 2.2.12、本線 bb6744101764: 212 シナリオ、合格 209、不合格 0、警告 0",
      "note": "実行されず 1 (2026-07-28 のクライアント検査 http-standard-headers)、記録のみ 2。2024-11-05 は道具が版を受け付けない",
      "file": "../quality/conformance-2026-10-14.md"
+    },
+    {
+     "supports": false,
+     "kind": "review",
+     "ref": "2026-11-18: 2026-10-14 の測定のあと、ソースとテストが変わり (Nim の下限 2.4.2、時間制限の見張り、vendor の asynchttpserver)、Nim も 2.4.2 になった。この主張の測定は取り直していない",
+     "note": "README の「ソースかテストが変わったら、この 4 つは取り直す」による"
     }
    ]
   },
