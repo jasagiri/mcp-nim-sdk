@@ -17,16 +17,20 @@ cp "$here/run_versions.py" "$dir/"
 
 # Python SDK: 2.x speaks every version; each 1.x release below is the last
 # whose newest protocol version is the one named.
-py_env() {  # py_env SUBDIR MCP_VERSION
-  mkdir -p "$dir/$1"
-  uv venv --quiet --python 3.13 "$dir/$1/.venv"
-  uv pip install --quiet --python "$dir/$1/.venv/bin/python" "mcp==$2"
+py_env() {  # py_env SUBDIR MCP_VERSION [MORE_REQUIREMENTS...]
+  sub=$1 version=$2
+  shift 2
+  mkdir -p "$dir/$sub"
+  uv venv --quiet --python 3.13 "$dir/$sub/.venv"
+  uv pip install --quiet --python "$dir/$sub/.venv/bin/python" "mcp==$version" "$@"
 }
 py_env py2 2.3.0
 py_env py1 1.30.0            # 2025-11-25
 py_env old/py-1.22.0 1.22.0  # 2025-06-18
-py_env old/py-1.9.4 1.9.4    # 2025-03-26
-py_env old/py-1.8.1 1.8.1    # 2024-11-05
+# mcp 1.9.4 and 1.8.1 import eval_type_backport from pydantic's private
+# _typing_extra, which pydantic 2.14 removed; they pin no upper bound.
+py_env old/py-1.9.4 1.9.4 "pydantic<2.14"    # 2025-03-26
+py_env old/py-1.8.1 1.8.1 "pydantic<2.14"    # 2024-11-05
 
 # TypeScript SDK: 2.x is published as separate packages.
 mkdir -p "$dir/ts"
