@@ -67,7 +67,7 @@ This checkout speaks MCP **2026-07-28** and every earlier version: `2024-11-05`,
 
 ## Install
 
-Nim 2.2.12 or newer. In your `.nimble` file:
+Nim 2.4.2 or newer. In your `.nimble` file:
 
 ```nim
 requires "https://github.com/jasagiri/mcp-nim-sdk#mcp-2026-07-28"
@@ -219,7 +219,7 @@ let server = newMcpServer(info, protocolVersion = mpv20250326, capabilities = ca
 
 When this SDK is a dependency, name the branch of the version you want in your `.nimble` file (see [Install](#install)); the branch sets the default, and the defines above still apply. When working in a checkout of this repository, `nim.cfg` already adds `src` to the path; elsewhere pass `--path:<checkout>/src`.
 
-Requirements: Nim 2.2.12 or newer, the default memory management (`--mm:orc`), and the `uuids` and `nimcrypto` packages (nimcrypto computes SHA-256 and HMAC-SHA256, which the standard library does not have, for PKCE, the sealed request state and the signed webhooks). No other define is needed; there is none per feature.
+Requirements: Nim 2.4.2 or newer, the default memory management (`--mm:orc`), and the `uuids` and `nimcrypto` packages (nimcrypto computes SHA-256 and HMAC-SHA256, which the standard library does not have, for PKCE, the sealed request state and the signed webhooks). No other define is needed; there is none per feature.
 
 Three more packages are not in the nimble registry, so the `.nimble` file names them by URL and nimble fetches them: [nim-bearer-challenge](https://github.com/jasagiri/nim-bearer-challenge) (reads `WWW-Authenticate` challenges, for the OAuth client and the resource server), [nim-secret](https://github.com/jasagiri/nim-secret) (compares secrets in constant time, for the HMAC checks) and [nim-loopback](https://github.com/jasagiri/nim-loopback) (decides whether a Host, an Origin or a bind address is loopback, for the HTTP server's checks). In a checkout of this repository, `nimble install -d` installs them.
 
@@ -539,7 +539,7 @@ A server on the HTTP transport refuses, by default, what one caller could use ag
 
 Behind a reverse proxy that passes the public name on, list that name: `transport.allowedHosts = @["mcp.example.com"]`. A header such as `X-Forwarded-For` is not trusted; the client address is the peer of the TCP connection, which behind a proxy is the proxy.
 
-A client has 30 seconds to send a whole request (`newHttpServerTransport(readTimeoutMs = ...)`; 0 turns the limit off). One that sends nothing, or stops halfway, loses the connection: with a `408` if its request line had arrived, without an answer otherwise. On a keep-alive connection the time also bounds the wait between requests; the time a handler takes, an event stream included, is not limited. The limit is `readTimeout` of Nim's `asynchttpserver` ([nim-lang/Nim#26352](https://github.com/nim-lang/Nim/pull/26352), Nim 2.3.1); with an older Nim the SDK uses a copy of that module (`src/transport/vendor/asynchttpserver.nim`, under Nim's MIT license).
+A client has 30 seconds to send a whole request (`newHttpServerTransport(readTimeoutMs = ...)`; 0 turns the limit off). One that sends nothing, or stops halfway, loses the connection: with a `408` if its request line had arrived, without an answer otherwise. On a keep-alive connection the time also bounds the wait between requests; the time a handler takes, an event stream included, is not limited. The limit is `readTimeout` of Nim's `asynchttpserver` ([nim-lang/Nim#26352](https://github.com/nim-lang/Nim/pull/26352), Nim 2.3.1). Until a release of Nim keeps each header line whole (`headerFields`, [nim-lang/Nim#26460](https://github.com/nim-lang/Nim/pull/26460)), the SDK uses a copy of that module that does (`src/transport/vendor/asynchttpserver.nim`, under Nim's MIT license).
 
 A client is guarded the other way round: what it fetches because a server said so (authorization metadata, icons) is refused when the address is loopback, link-local or reserved, and when it is private unless `allowPrivateNetworks` is set; a response is limited in size (`maxResponseSize`) and a connection in time (`connectTimeoutMs`).
 

@@ -10,7 +10,7 @@ srcDir        = "src"
 
 # Dependencies
 
-requires "nim >= 2.2.12"
+requires "nim >= 2.4.2"
 requires "uuids >= 0.1.12"  # UUID generation
 requires "nimcrypto >= 0.7.3"  # SHA-256 and HMAC-SHA256: the standard library has neither
 # Not in the nimble registry, so named by URL.

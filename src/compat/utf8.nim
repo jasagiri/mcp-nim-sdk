@@ -4,7 +4,7 @@
 ## and its continuation bytes) and one overlong form, C0 and C1. It lets
 ## through the overlong forms of three and four bytes (E0 80..9F, F0 80..8F),
 ## the surrogates (ED A0..BF), and what lies above U+10FFFF (F4 90.., F5..F7).
-## Seen on Nim 2.2.12 and 2.2.14.
+## Seen on Nim 2.2.12, 2.2.14 and 2.4.2.
 ##
 ## Delete this module, and call `validateUtf8` again, once the oldest Nim this
 ## package builds with has a `validateUtf8` that refuses those sequences.

@@ -28,15 +28,16 @@ else:
             (dir / "ca.key").quoteShell & " -out " & (dir / "ca.pem").quoteShell)
     dir / "ca.pem"
 
-  proc makeServerCert(dir, name, altNames: string): tuple[cert, key: string] =
+  proc makeServerCert(dir, name, altNames: string, commonName = ""): tuple[cert, key: string] =
     ## A certificate signed by the CA of `dir`, valid for `altNames`
-    ## ("DNS:a.example,IP:127.0.0.1").
+    ## ("DNS:a.example,IP:127.0.0.1"). Its subject's common name is
+    ## `commonName`, or `name` when that is empty.
     let key = dir / (name & ".key")
     let request = dir / (name & ".csr")
     let cert = dir / (name & ".pem")
     let extensions = dir / (name & ".ext")
     writeFile(extensions, "[ext]\nsubjectAltName=" & altNames & "\n")
-    openssl("req -newkey rsa:2048 -nodes -subj /CN=" & name & " -keyout " & key.quoteShell &
+    openssl("req -newkey rsa:2048 -nodes -subj /CN=" & (if commonName.len > 0: commonName else: name) & " -keyout " & key.quoteShell &
             " -out " & request.quoteShell)
     openssl("x509 -req -days 2 -in " & request.quoteShell & " -CA " & (dir / "ca.pem").quoteShell &
             " -CAkey " & (dir / "ca.key").quoteShell & " -CAcreateserial -extfile " &
@@ -113,8 +114,23 @@ else:
       defer:
         server.kill()
         server.close()
+      # The standard library's check of the name, in the handshake, refuses it
+      # before the SDK's own does.
       let result = outcome("https://wire.example:" & $port & "/", pki.caFile, "127.0.0.1")
-      check "is not valid for" in result
+      check "SSL Certificate check failed" in result
+
+    test "Given a certificate whose common name is the host but whose alternative names are not, when the request is sent, then it is refused":
+      # RFC 6125 6.4.4: with a DNS name among the alternative names, the
+      # common name is not looked at. The standard library's check also
+      # accepts the common name (X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT); the
+      # SDK's own check is what refuses this one.
+      let (cert, key) = makeServerCert(pki.dir, "cnonly", "DNS:other.example", "wire.example")
+      let (port, server) = serve(cert, key)
+      defer:
+        server.kill()
+        server.close()
+      let result = outcome("https://wire.example:" & $port & "/", pki.caFile, "127.0.0.1")
+      check "is not valid for wire.example" in result
 
     test "Given a certificate for the IP address in the URL, when the request is sent, then it is answered":
       let (cert, key) = makeServerCert(pki.dir, "address", "IP:127.0.0.1")
@@ -131,7 +147,7 @@ else:
         server.kill()
         server.close()
       let result = outcome("https://127.0.0.1:" & $port & "/", pki.caFile)
-      check "is not valid for" in result
+      check "SSL Certificate check failed" in result
 
   suite "TLS connection timeout":
 
@@ -227,11 +243,11 @@ else:
           server.kill()
           server.close()
         let url = "https://wire.example:" & $port & "/"
-        check "is not valid for" in outcome(url, pki.caFile, "127.0.0.1")
+        check "SSL Certificate check failed" in outcome(url, pki.caFile, "127.0.0.1")
         settle(200)
         let before = openDescriptors()
         for attempt in 1 .. 3:
-          check "is not valid for" in outcome(url, pki.caFile, "127.0.0.1")
+          check "SSL Certificate check failed" in outcome(url, pki.caFile, "127.0.0.1")
         settle(300)
         check openDescriptors() == before
 

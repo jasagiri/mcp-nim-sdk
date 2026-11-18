@@ -1,8 +1,8 @@
 # This file is lib/pure/asynchttpserver.nim of Nim at commit c149910c5e5b
 # (devel, 2026-10-16) with one change below this header: `Request` keeps each
 # header line whole in `headerFields` (nim-lang/Nim#26460, for #13514). It is
-# used only when the standard library lacks `readTimeout` (before 2.3.1) or
-# `headerFields` (see ../asynchttpserver_compat.nim). Nim's license (MIT)
+# used only when the standard library lacks `headerFields` (see
+# ../asynchttpserver_compat.nim). Nim's license (MIT)
 # applies to it:
 #
 #   Copyright (C) 2006-2026 Andreas Rumpf. All rights reserved.

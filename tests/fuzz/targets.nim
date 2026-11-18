@@ -20,7 +20,8 @@
 ##
 ## Not here, because they can only be given bytes through a socket: the
 ## request line, headers and body framing a server reads. Those are parsed by
-## std/asynchttpserver (or the copy in transport/vendor for Nim before 2.3.1);
+## std/asynchttpserver (or the copy in transport/vendor until a release keeps
+## each header line whole);
 ## what the SDK reads from a request after that is here (clientAnswers runs
 ## validateModernRequest and checkRequestHeaders).
 

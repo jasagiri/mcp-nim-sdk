@@ -63,12 +63,14 @@ proc httpFailure(message: string): ref McpTransportError =
 
 when defined(ssl):
   proc verifyPeerName(socket: AsyncSocket, host: string) {.async.} =
-    ## Raises unless the certificate the server presented is valid for `host`.
-    ## `asyncnet.wrapConnectedSocket` sets the SNI name but never compares the
-    ## certificate with it (Nim 2.2.8 lib/pure/asyncnet.nim:785-806; the
-    ## comparison `checkCertName` exists only for the blocking sockets, in
-    ## lib/pure/net.nim:833-854), so a certificate that chains to a trusted CA
-    ## is accepted for any name. Called before anything is sent.
+    ## Raises unless the certificate the server presented is valid for `host`
+    ## as RFC 6125 6.4.4 has it: with a DNS name among its alternative names,
+    ## the common name of its subject is not looked at. The handshake of
+    ## `asyncnet` (Nim 2.4.2, `checkCertName`) compares the certificate with
+    ## the SNI name too, and refuses a name that matches nothing, but it passes
+    ## X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT and so accepts a common name that
+    ## matches when the alternative names do not. Called before anything is
+    ## sent.
     # A write of no bytes completes the handshake and sends nothing.
     await socket.send(nil, 0)
     # The chain was verified by the handshake (CVerifyPeer); what is left is
