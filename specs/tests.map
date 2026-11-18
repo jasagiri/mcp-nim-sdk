@@ -2929,3 +2929,4 @@ MCP-LIFECYCLE-29 | tests/external/test_wait_limits.nim | Given a server request 
 MCP-LIFECYCLE-29 | tests/external/test_wait_limits.nim | Given a wait for a task that lives for ten minutes, when the task completed, then the event loop holds no timer due at its expiry
 MCP-LIFECYCLE-29 | tests/external/test_wait_limits.nim | Given a wait for a task whose time to live is 300 ms, when the clock passes it, then the wait ends at the expiry with McpTaskError
 MCP-LIFECYCLE-29 | tests/external/test_wait_limits.nim | Given an event stream with a 600 s keep-alive period, when the client left, then the event loop holds no timer due at that period
+MCP-LIFECYCLE-29 | tests/external/test_wait_limits.nim | Given an HTTP server with a read timeout of 600 s, when it has read and answered requests, then the event loop holds no timer due at that limit

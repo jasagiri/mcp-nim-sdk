@@ -1,6 +1,8 @@
 # This file is lib/pure/asynchttpserver.nim of Nim at commit c149910c5e5b
-# (devel, 2026-10-16) with one change below this header: `Request` keeps each
-# header line whole in `headerFields` (nim-lang/Nim#26460, for #13514). It is
+# (devel, 2026-10-16) with two changes below this header, the two commits of
+# nim-lang/Nim#26460: `Request` keeps each header line whole in
+# `headerFields` (for #13514), and a request read in time leaves no
+# `readTimeout` timer in the event loop (one loop keeps the limits). It is
 # used only when the standard library lacks `headerFields` (see
 # ../asynchttpserver_compat.nim). Nim's license (MIT)
 # applies to it:
@@ -66,7 +68,7 @@ runnableExamples("-r:off"):
 
   waitFor main()
 
-import std/[asyncnet, asyncdispatch, parseutils, uri, strutils]
+import std/[asyncnet, asyncdispatch, deques, monotimes, parseutils, times, uri, strutils]
 import std/httpcore
 from std/nativesockets import getLocalAddr, Domain, AF_INET, AF_INET6
 import std/private/since
@@ -99,6 +101,12 @@ type
     hostname*: string    ## The hostname of the client that made the request.
     body*: string
 
+  ReadLimit = ref object
+    ## The time a request has to arrive.
+    at: MonoTime
+    due: Future[void] ## Completes when the time is up.
+    done: bool ## The request was read: nothing waits for `due` any more.
+
   AsyncHttpServer* = ref object
     socket: AsyncSocket
     reuseAddr: bool
@@ -106,6 +114,8 @@ type
     maxBody: int ## The maximum number of bytes that will be read for the body.
     readTimeout: int ## Milliseconds a request may take to arrive; 0 or less: no limit.
     maxFDs: int
+    limits: Deque[ReadLimit] ## Oldest first, which is also the order they are due in.
+    watching: bool ## Whether `watchLimits` runs.
 
 proc getPort*(self: AsyncHttpServer): Port {.since: (1, 5, 1).} =
   ## Returns the port `self` was bound to.
@@ -231,6 +241,47 @@ func hasChunkedEncoding(request: Request): bool =
         return request.reqMethod == HttpPost
   return false
 
+const limitTick = 200
+  ## The longest `watchLimits` sleeps at a time, so the longest its last sleep
+  ## stays in the event loop after the last request was read.
+
+proc watchLimits(server: AsyncHttpServer) {.async.} =
+  ## Completes the limits that are due and drops the ones whose request was
+  ## read. `sleepAsync` cannot be taken back, so one timer per request would
+  ## stay in the event loop for `readTimeout` after its request was read; this
+  ## loop keeps one, of at most `limitTick`, and ends when no limit is left.
+  try:
+    while server.limits.len > 0:
+      let now = getMonoTime()
+      var waiting = initDeque[ReadLimit]()
+      for limit in server.limits:
+        if limit.done: continue
+        if limit.at <= now: limit.due.complete()
+        else: waiting.addLast limit
+      server.limits = waiting
+      if waiting.len == 0: break
+      # Below `readTimeout`, an int, so it fits one.
+      let wait = int((waiting.peekFirst.at - now).inMilliseconds) + 1
+      await sleepAsync(min(wait, limitTick))
+  finally:
+    server.watching = false
+
+proc startLimit(server: AsyncHttpServer): ReadLimit =
+  ## The time the next request has `readTimeout` from now, or `nil` without one.
+  if server.readTimeout <= 0:
+    return nil
+  result = ReadLimit(at: getMonoTime() + initDuration(milliseconds = server.readTimeout),
+                     due: newFuture[void]("asynchttpserver.readTimeout"))
+  server.limits.addLast result
+  if not server.watching:
+    server.watching = true
+    asyncCheck server.watchLimits()
+
+proc release(limit: ReadLimit) =
+  ## The request was read, or will not be: its limit is no longer watched.
+  if not limit.isNil:
+    limit.done = true
+
 proc processRequest(
   server: AsyncHttpServer,
   req: FutureVar[Request],
@@ -238,23 +289,22 @@ proc processRequest(
   address: sink string,
   lineFut: FutureVar[string],
   callback: proc (request: Request): Future[void] {.closure, gcsafe.},
+  limit: ReadLimit,
 ): Future[bool] {.async.} =
 
   # Alias `request` to `req.mget()` so we don't have to write `mget` everywhere.
   template request(): Request =
     req.mget()
 
-  # One timer bounds the request from the moment we start waiting for it until
+  # One limit bounds the request from the moment we start waiting for it until
   # its last byte, so that sending it in dribs does not extend the time.
   # `nil` when the server has no `readTimeout`.
-  let expiry = if server.readTimeout > 0: sleepAsync(server.readTimeout) else: nil
-
   template expired(read: untyped): bool =
-    ## Whether `expiry` passed before `read` finished. `read` is then still
+    ## Whether `limit` passed before `read` finished. `read` is then still
     ## pending: closing `client` ends it, and nothing waits for its outcome.
-    if not expiry.isNil:
-      await (read or expiry)
-    not expiry.isNil and not read.finished
+    if not limit.isNil:
+      await (read or limit.due)
+    not limit.isNil and not read.finished
 
   # GET /path HTTP/1.1
   # Header: val
@@ -438,7 +488,8 @@ proc processRequest(
     await request.respond(Http411, "Content-Length required.")
     return true
 
-  # Call the user's callback.
+  # The request has arrived; the time the callback takes is not limited.
+  release(limit)
   await callback(request)
 
   if "upgrade" in request.headers.getOrDefault("connection"):
@@ -471,9 +522,14 @@ proc processClient(server: AsyncHttpServer, client: AsyncSocket, address: string
   lineFut.mget() = newStringOfCap(80)
 
   while not client.isClosed:
-    let retry = await processRequest(
-      server, request, client, address, lineFut, callback
-    )
+    let limit = server.startLimit()
+    var retry = false
+    try:
+      retry = await processRequest(
+        server, request, client, address, lineFut, callback, limit
+      )
+    finally:
+      release(limit)
     if not retry:
       client.close()
       break

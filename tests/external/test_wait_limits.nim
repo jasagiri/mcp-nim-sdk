@@ -6,9 +6,10 @@
 ## through a public entrance of the site and reads the timers of the event
 ## loop afterwards (asyncdispatch exports them). No test waits for a long
 ## limit to pass in real time, and none uses std/withTimeout, which would put
-## a timer of its own in the loop. The HTTP servers here have no read timeout
-## (readTimeoutMs = 0): the server's own timer per request is not a limit of a
-## wait of the site under test.
+## a timer of its own in the loop. The HTTP servers that a test of another site
+## starts have no read timeout (readTimeoutMs = 0), so that only the limit of
+## the site under test is counted; the server's own limit has a suite of its
+## own.
 
 import std/[unittest, asyncdispatch, asyncnet, heapqueue, httpcore, json, monotimes,
             nativesockets, options, strutils, times]
@@ -148,6 +149,21 @@ suite "the limits of a connection and of a response head (transport/http_wire)":
     expect McpTransportError:
       discard waitFor wire.request(server.url, HttpGet, headerTimeoutMs = 100)
     check epochTime() - began < 2.0
+
+suite "the time a request has to arrive at the HTTP server (transport/http_server)":
+
+  test "Given an HTTP server with a read timeout of 600 s, when it has read and answered requests, then the event loop holds no timer due at that limit":
+    let transport = newHttpServerTransport(port = 0, readTimeoutMs = LongMs)
+    transport.listen()
+    asyncCheck transport.serve()
+    let before = farTimers()
+    for i in 1 .. 3:
+      let response = waitFor wire.request("http://127.0.0.1:" & $transport.port & "/mcp",
+        HttpGet, connectTimeoutMs = 0, headerTimeoutMs = 0)
+      checkpoint "request " & $i & " got " & $response.code
+      response.close()
+    untilQuiet(before, "the read timeout of the requests")
+    waitFor transport.close()
 
 suite "the wait for the endpoint event (transport/sse_legacy)":
 

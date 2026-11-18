@@ -223,8 +223,8 @@ Feature: Starting a conversation
 
   @spec:MCP-LIFECYCLE-29
   Scenario: The time limit of any other wait of the SDK is not left in the event loop after the wait ended
-    Given a wait of the SDK that has a time limit: the connection and the response head of an HTTP request, the endpoint event of a legacy SSE stream, the DELETE that ends an HTTP session, an OAuth request, the fetch and the reading of an icon, a request of a server to its client, the wait for the result of a task until it expires, and the keep-alive period of a server's event stream
+    Given a wait of the SDK that has a time limit: the connection and the response head of an HTTP request, the endpoint event of a legacy SSE stream, the DELETE that ends an HTTP session, an OAuth request, the fetch and the reading of an icon, a request of a server to its client, the wait for the result of a task until it expires, the keep-alive period of a server's event stream, and the time a request has to arrive at the HTTP server (readTimeoutMs)
     When the wait ends before its limit (the awaited thing came, failed, or the stream ended)
     Then its limit is taken back, so the event loop holds no timer that falls due at that limit
-    And what is left is the one sleep of the thread's watcher, of at most 200 ms, the same watcher that keeps the limits of a client's requests (MCP-LIFECYCLE-28)
+    And what is left is the one sleep of the thread's watcher, of at most 200 ms, the same watcher that keeps the limits of a client's requests (MCP-LIFECYCLE-28); for the HTTP server it is the server's own loop over its read limits, also of at most 200 ms
     And a wait whose limit passes ends at its own limit as before, and a limit of 0 or less is none
