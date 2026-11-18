@@ -61,40 +61,46 @@ suite "the cause of a failure the peer is not told is written to stderr (MCP-ERR
       check not log.raw()
 
   test "Given a filter that gives a result a negative ttlMs, when a 2026-07-28 client reads a resource, then the peer gets an internal error and one line names the method":
-    let server = scripted()
-    server.onResourceRead(proc(ctx: McpRequestContext, uri: string): Future[seq[JsonNode]] {.async.} =
-      return @[%*{"uri": uri, "text": "a"}])
-    server.addResponseFilter(proc(ctx: McpRequestContext, request: JsonRpcRequest,
-                                  response: JsonRpcResponse): Future[JsonRpcResponse] {.async.} =
-      response.result.get["ttlMs"] = %(-1)
-      return response)
-    let peer = server.connect(server.attach(), SupportedProtocolVersions[^1])
-    var reply: JsonNode
-    let log = loggedWhile(proc() =
-      reply = peer.ask("resources/read", %*{"uri": "file:///a"}))
-    check reply.errorCode == -32603
-    check log.linesOf().len == 1
-    check "resources/read" in log
-    check not log.raw()
+    if DefaultProtocolVersion < mpv20260728:
+      skip()  # a build that does not speak 2026-07-28
+    else:
+      let server = scripted()
+      server.onResourceRead(proc(ctx: McpRequestContext, uri: string): Future[seq[JsonNode]] {.async.} =
+        return @[%*{"uri": uri, "text": "a"}])
+      server.addResponseFilter(proc(ctx: McpRequestContext, request: JsonRpcRequest,
+                                    response: JsonRpcResponse): Future[JsonRpcResponse] {.async.} =
+        response.result.get["ttlMs"] = %(-1)
+        return response)
+      let peer = server.connect(server.attach(), SupportedProtocolVersions[^1])
+      var reply: JsonNode
+      let log = loggedWhile(proc() =
+        reply = peer.ask("resources/read", %*{"uri": "file:///a"}))
+      check reply.errorCode == -32603
+      check log.linesOf().len == 1
+      check "resources/read" in log
+      check not log.raw()
 
   test "Given a tool with an invalid x-mcp-header, when a 2026-07-28 client lists tools, then the tool is left out and one line names it":
-    let server = newServer(McpServerCapabilities(tools: some(McpToolsCapability())))
-    server.onToolsList(proc(cursor: Option[string]): Future[McpPage] {.async.} =
-      return McpPage(items: @[
-        %*{"name": "plain", "inputSchema": {"type": "object"}},
-        %*{"name": "bad-header", "inputSchema": {"type": "object", "properties": {
-             "r": {"type": "string", "x-mcp-header": "Bad Name"}}}}]))
-    let peer = server.connect(server.attach(), SupportedProtocolVersions[^1])
-    var reply: JsonNode
-    let log = loggedWhile(proc() =
-      reply = peer.ask("tools/list"))
-    var names: seq[string]
-    for tool in reply["result"]["tools"]:
-      names.add tool["name"].getStr()
-    check names == @["plain"]
-    check log.linesOf().len == 1
-    check "bad-header" in log
-    check not log.raw()
+    if DefaultProtocolVersion < mpv20260728:
+      skip()  # a build that does not speak 2026-07-28
+    else:
+      let server = newServer(McpServerCapabilities(tools: some(McpToolsCapability())))
+      server.onToolsList(proc(cursor: Option[string]): Future[McpPage] {.async.} =
+        return McpPage(items: @[
+          %*{"name": "plain", "inputSchema": {"type": "object"}},
+          %*{"name": "bad-header", "inputSchema": {"type": "object", "properties": {
+               "r": {"type": "string", "x-mcp-header": "Bad Name"}}}}]))
+      let peer = server.connect(server.attach(), SupportedProtocolVersions[^1])
+      var reply: JsonNode
+      let log = loggedWhile(proc() =
+        reply = peer.ask("tools/list"))
+      var names: seq[string]
+      for tool in reply["result"]["tools"]:
+        names.add tool["name"].getStr()
+      check names == @["plain"]
+      check log.linesOf().len == 1
+      check "bad-header" in log
+      check not log.raw()
 
   test "Given a tool handler that fails with a message of its own, when the tool is called, then the peer gets an internal error and one line holds the message, without its control characters":
     for v in eras():

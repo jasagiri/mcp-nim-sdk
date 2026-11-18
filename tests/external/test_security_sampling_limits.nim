@@ -10,6 +10,10 @@ import protocol/version
 import protocol/types
 import ./client_peer
 
+const Speaks = min(DefaultProtocolVersion, mpv20251125)
+  ## Sampling and its limits are in every version; a build speaks the
+  ## versions up to its default only.
+
 proc responseTo(peer: Peer, id: string): JsonNode =
   waitFor sleepAsync(5)
   for message in peer.received:
@@ -28,7 +32,7 @@ suite "a sampling request names a number of tokens a model can be asked for":
     for maxTokens in [JsonNode(nil), %"100", %1.5, %0, % -1]:
       var called = false
       let peer = startPeer(nil)
-      discard peer.connectedClient(mpv20251125, proc(client: McpClient) =
+      discard peer.connectedClient(Speaks, proc(client: McpClient) =
         client.setSamplingHandler(proc(request: McpSamplingRequest): Future[McpSamplingResult] {.async.} =
           called = true))
       peer.ask(%"s1", "sampling/createMessage", request(maxTokens))
@@ -39,7 +43,7 @@ suite "a sampling request names a number of tokens a model can be asked for":
   test "Given a positive integer, when the request arrives, then the handler sees it as it was sent":
     var seen = -1
     let peer = startPeer(nil)
-    discard peer.connectedClient(mpv20251125, proc(client: McpClient) =
+    discard peer.connectedClient(Speaks, proc(client: McpClient) =
       client.setSamplingHandler(proc(request: McpSamplingRequest): Future[McpSamplingResult] {.async.} =
         seen = request.maxTokens
         return McpSamplingResult(role: "assistant", model: "m",
@@ -54,7 +58,7 @@ suite "a server cannot keep any number of the client's handlers busy":
     var calls = 0
     var gate = newFuture[void]("gate")
     let peer = startPeer(nil)
-    discard peer.connectedClient(mpv20251125, proc(client: McpClient) =
+    discard peer.connectedClient(Speaks, proc(client: McpClient) =
       client.maxServerRequestsInProgress = 2
       client.setSamplingHandler(proc(request: McpSamplingRequest): Future[McpSamplingResult] {.async.} =
         inc calls
@@ -80,7 +84,7 @@ suite "a server cannot keep any number of the client's handlers busy":
     var calls = 0
     let gate = newFuture[void]("gate")
     let peer = startPeer(nil)
-    discard peer.connectedClient(mpv20251125, proc(client: McpClient) =
+    discard peer.connectedClient(Speaks, proc(client: McpClient) =
       client.maxServerRequestsInProgress = 0
       client.setSamplingHandler(proc(request: McpSamplingRequest): Future[McpSamplingResult] {.async.} =
         inc calls

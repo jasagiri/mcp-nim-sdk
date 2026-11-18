@@ -319,17 +319,23 @@ else:
       check server.requests == 0
 
     test "Given caFile in the fetch policy of authorization, when a challenge names resource metadata, then the metadata request reaches the server":
-      let server = startTlsServer(local.cert, local.key, NotFound)
-      let client = oauthClient(server, caFile)
-      discard eventuallyFails(client.handleChallenge(401,
-        @["Bearer resource_metadata=\"" & server.metadataUrl & "\""]))
-      check server.requests >= 1
+      if not DefaultProtocolVersion.has(ftAuthorization):
+        skip()  # a build whose versions have no authorization
+      else:
+        let server = startTlsServer(local.cert, local.key, NotFound)
+        let client = oauthClient(server, caFile)
+        discard eventuallyFails(client.handleChallenge(401,
+          @["Bearer resource_metadata=\"" & server.metadataUrl & "\""]))
+        check server.requests >= 1
 
     test "Given no caFile in the fetch policy of authorization, when a challenge names resource metadata, then it fails before any HTTP is sent":
-      let server = startTlsServer(local.cert, local.key, NotFound)
-      let client = oauthClient(server, "")
-      check eventuallyFails(client.handleChallenge(401,
-        @["Bearer resource_metadata=\"" & server.metadataUrl & "\""]))
-      check server.requests == 0
+      if not DefaultProtocolVersion.has(ftAuthorization):
+        skip()  # a build whose versions have no authorization
+      else:
+        let server = startTlsServer(local.cert, local.key, NotFound)
+        let client = oauthClient(server, "")
+        check eventuallyFails(client.handleChallenge(401,
+          @["Bearer resource_metadata=\"" & server.metadataUrl & "\""]))
+        check server.requests == 0
 
   removeDir(pki)
