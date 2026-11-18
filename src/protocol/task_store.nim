@@ -15,6 +15,7 @@
 import std/[asyncdispatch, json, math, options, strutils, sysrand, tables, times]
 import ./types
 import ./rfc3339
+import ../transport/deadline_watch
 
 const
   RelatedTaskKey* = "io.modelcontextprotocol/related-task"
@@ -535,7 +536,7 @@ proc awaitOutcome*(store: TaskStore, owner, id: string): Future[TaskOutcome] {.a
     let expiry = entry.expiresAtMs
     if expiry.isSome:
       let remaining = max(1'i64, expiry.get - store.clock())
-      if not await waiter.withTimeout(int(min(remaining, int64(high(int32))))):
+      if not await waiter.withLimit(int(min(remaining, int64(high(int32))))):
         continue  # the loop's lookup sweeps the task if its time is up
     else:
       await waiter

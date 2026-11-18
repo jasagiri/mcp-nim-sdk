@@ -18,6 +18,7 @@ import ../protocol/mrtr
 import ../protocol/subscriptions
 import ./subscriptions
 import ../transport/transport
+import ../transport/deadline_watch
 import ./errors
 import ./rate_limit
 import ./pagination
@@ -883,7 +884,7 @@ proc request*(server: McpServer, session: string, methodName: string,
   except CatchableError:
     server.pending.del(key)
     raise
-  if timeoutMs > 0 and not await answer.withTimeout(timeoutMs):
+  if timeoutMs > 0 and not await answer.withLimit(timeoutMs):
     server.pending.del(key)
     var cancelled = newJsonRpcNotification("notifications/cancelled",
       %*{"requestId": id, "reason": "timed out"})

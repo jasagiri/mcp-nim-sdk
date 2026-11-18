@@ -29,6 +29,7 @@ import std/[asyncdispatch, httpcore, json, options, strutils, deques, tables, se
 import ./transport
 import ./event_stream
 import ./http_wire as wire
+import ./deadline_watch
 import ./auth_hook
 export auth_hook  # the type of the `auth` field
 import ../protocol/types
@@ -613,7 +614,7 @@ proc endSession(t: StreamableHttpTransport) {.async.} =
   try:
     let attempt = wire.request(t.baseUrl, HttpDelete, headers, caFile = t.caFile,
       connectTimeoutMs = t.connectTimeoutMs, headerTimeoutMs = DeleteTimeoutMs)
-    if not await withTimeout(attempt, DeleteTimeoutMs):
+    if not await attempt.withLimit(DeleteTimeoutMs):
       stderr.writeLine("[mcp-http] DELETE " & t.baseUrl & " timed out")
       return
     let response = attempt.read()

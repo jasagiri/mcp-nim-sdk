@@ -151,9 +151,14 @@ else:
       inc result
 
   proc settle(limitMs: int) =
+    ## Runs the event loop for `limitMs`; an empty loop has nothing to run,
+    ## and `poll` refuses one, so the time then just passes.
     var waited = 0
     while waited < limitMs:
-      poll(20)
+      if hasPendingOperations():
+        poll(20)
+      else:
+        sleep(20)
       waited += 20
 
   type Delayed = ref object

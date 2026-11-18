@@ -217,6 +217,14 @@ Feature: Starting a conversation
     Given a client whose requests have a time limit (the default is 60000 ms), including the subscriptions/listen request and the probe of connect
     When a request is answered, cancelled or fails before its limit
     Then its limit is taken back, so the event loop does not hold it until the limit would have passed
-    And once every request is done, what the client leaves for the event loop is the one sleep of its watcher, of at most 200 ms, so a program that runs the loop until it is empty ends within that time of the last answer
+    And once every request is done, what the client leaves for the event loop is the one sleep of its thread's watcher, of at most 200 ms, so a program that runs the loop until it is empty ends within that time of the last answer
     And a request whose limit passes ends with McpTimeoutError at its own limit, also when another request with a farther limit was made before it
     And a limit of 0 waits without end
+
+  @spec:MCP-LIFECYCLE-29
+  Scenario: The time limit of any other wait of the SDK is not left in the event loop after the wait ended
+    Given a wait of the SDK that has a time limit: the connection and the response head of an HTTP request, the endpoint event of a legacy SSE stream, the DELETE that ends an HTTP session, an OAuth request, the fetch and the reading of an icon, a request of a server to its client, the wait for the result of a task until it expires, and the keep-alive period of a server's event stream
+    When the wait ends before its limit (the awaited thing came, failed, or the stream ended)
+    Then its limit is taken back, so the event loop holds no timer that falls due at that limit
+    And what is left is the one sleep of the thread's watcher, of at most 200 ms, the same watcher that keeps the limits of a client's requests (MCP-LIFECYCLE-28)
+    And a wait whose limit passes ends at its own limit as before, and a limit of 0 or less is none

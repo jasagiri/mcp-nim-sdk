@@ -24,6 +24,8 @@ type
       ## (cloud metadata services) and reserved ones are always refused.
     maxBodySize*: int
     timeoutMs*: int
+      ## The limit of one request, from the connection to the last byte of
+      ## the answer; 0 or less is none.
     resolver*: HostResolver
       ## How a host name is resolved before it is connected to; nil: the
       ## system resolver (blocking). Replaced in tests.

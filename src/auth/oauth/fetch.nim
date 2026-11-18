@@ -11,6 +11,7 @@ import ../../protocol/diagnostic
 import ./urls
 import ../../transport/guarded_wire
 import ../../transport/http_wire as wire
+import ../../transport/deadline_watch
 
 type
   HttpReply* = object
@@ -52,7 +53,7 @@ proc httpExchange*(httpMethod: HttpMethod, url: string, policy: FetchPolicy, wha
   let open = Connection()
   let pending = exchange(httpMethod, url, what, policy, body, sent, open)
   try:
-    let finished = await withTimeout(pending, policy.timeoutMs)
+    let finished = await pending.withLimit(policy.timeoutMs)
     if not finished:
       if not open.response.isNil:
         open.response.close()

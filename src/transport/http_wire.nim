@@ -14,6 +14,7 @@ import std/[asyncdispatch, asyncnet, httpcore, strutils, uri]
 import std/net except dial
 import ./transport
 import ./first_of
+import ./deadline_watch
 
 when defined(ssl):
   import std/openssl
@@ -236,9 +237,7 @@ proc connectWithin(target: Uri, url, connectTo, caFile: string,
   let attempt = connect(target, connectTo, caFile)
   try:
     if timeoutMs > 0:
-      let timer = sleepAsync(timeoutMs)
-      await firstOf(attempt, timer)
-      if not attempt.finished:
+      if not await attempt.withLimit(timeoutMs):
         # The connection is still being made: whoever finishes it closes it,
         # and a failure of an attempt nobody waits for is not news.
         attempt.addCallback(proc() =
@@ -289,9 +288,7 @@ proc requestOnce(url: string, httpMethod: HttpMethod, headers: HttpHeaders,
   try:
     let exchange = response.exchangeHead(url, httpMethod, target, headers, body)
     if headerTimeoutMs > 0:
-      let timer = sleepAsync(headerTimeoutMs)
-      await firstOf(exchange, timer)
-      if not exchange.finished:
+      if not await exchange.withLimit(headerTimeoutMs):
         # Closing wakes a read that waits (see `receive`); how the abandoned
         # exchange ends is of no interest, the caller is told of the timeout.
         response.close()

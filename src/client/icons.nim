@@ -20,6 +20,7 @@ import ./content
 import ../protocol/base64_shape
 import ../transport/transport
 import ../transport/http_wire as wire
+import ../transport/deadline_watch
 import ../transport/address_policy
 export address_policy.HostResolver  # the type of `IconFetchOptions.resolver`
 import ../transport/guarded_wire
@@ -47,6 +48,8 @@ type
   IconFetchOptions* = object
     maxBytes*: int = 256 * 1024
     timeoutMs*: int = 10_000
+      ## The limit of each of the connection, the answer and the reading of
+      ## the bytes; 0 or less is none.
     allowed*: set[IconType] = {itPng, itJpeg, itWebp}
     get*: IconGet
     allowPrivateNetworks*: bool
@@ -161,7 +164,7 @@ proc fetchIcon*(icon: McpIcon, serverOrigin: string,
   var response: WireResponse
   try:
     let asked = fetcher(src, headers)
-    if not await asked.withTimeout(options.timeoutMs):
+    if not await asked.withLimit(options.timeoutMs):
       # The request is still going on. Whatever it ends in, nobody will use
       # it: an answer that comes later is closed, a failure is already
       # reported here as the timeout.
@@ -183,7 +186,7 @@ proc fetchIcon*(icon: McpIcon, serverOrigin: string,
   var bytes: string
   try:
     let reading = response.readAll(options.maxBytes)
-    if not await reading.withTimeout(options.timeoutMs):
+    if not await reading.withLimit(options.timeoutMs):
       raise newException(McpIconError, "the icon took longer than " & $options.timeoutMs & " ms")
     bytes = reading.read()
   except McpTransportError as e:

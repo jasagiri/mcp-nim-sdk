@@ -11,6 +11,7 @@ import std/[asyncdispatch, httpcore, json, strutils, deques, uri]
 import ./transport
 import ./event_stream
 import ./http_wire as wire
+import ./deadline_watch
 import ../protocol/types
 import ../protocol/diagnostic
 
@@ -135,7 +136,7 @@ proc connect(t: SseLegacyTransport) {.async.} =
   t.stream = response
   let ready = newFuture[void]("SseLegacyTransport.endpoint")
   asyncCheck t.readLoop(response, ready)
-  if not await withTimeout(ready, t.connectTimeoutMs):
+  if not await ready.withLimit(t.connectTimeoutMs):
     response.close()
     raise failure(t.sseUrl & " sent no endpoint within " & $t.connectTimeoutMs & " ms")
   await ready
