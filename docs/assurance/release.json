@@ -236,10 +236,11 @@
      "file": "../quality/release-check-2026-10-14.md"
     },
     {
-     "supports": false,
-     "kind": "review",
-     "ref": "2026-11-18: 2026-10-14 の測定のあと、ソースとテストが変わり (Nim の下限 2.4.2、時間制限の見張り、vendor の asynchttpserver)、Nim も 2.4.2 になった。この主張の測定は取り直していない",
-     "note": "README の「ソースかテストが変わったら、この 4 つは取り直す」による"
+     "supports": true,
+     "kind": "measurement",
+     "ref": "2026-11-19、Nim 2.4.2、本線 60b104b50a86: nimble testSsl は通過 27・失敗 0・警告 0 (終了コード 0)。nimble testAllVersions は、2026-07-28・2024-11-05・2025-03-26・2025-06-18 の 4 版を流し終えた (失敗 0・警告 0)。2025-11-25 は途中で、実行を包んだコマンドの上限 2 時間で止まった (それまで失敗 0)。2025-11-25 の残りは VER-02 の展開で流した",
+     "note": "2026-10-14 の測定に代わる。ソースかテストが変わったら取り直す",
+     "file": "../quality/release-check-2026-11-19.md"
     }
    ]
   },
@@ -257,10 +258,11 @@
      "file": "../quality/release-check-2026-10-14.md"
     },
     {
-     "supports": false,
-     "kind": "review",
-     "ref": "2026-11-18: 2026-10-14 の測定のあと、ソースとテストが変わり (Nim の下限 2.4.2、時間制限の見張り、vendor の asynchttpserver)、Nim も 2.4.2 になった。この主張の測定は取り直していない",
-     "note": "README の「ソースかテストが変わったら、この 4 つは取り直す」による"
+     "supports": true,
+     "kind": "measurement",
+     "ref": "2026-11-19、Nim 2.4.2、本線 60b104b50a86 の追跡しているファイルを /private/tmp に展開し、既定版の 1 行を書き換えて genDocs をしてから nimble test を流した (examples のコンパイルと SSL のテストを含む)。通過は 2201 / 2419 / 2731 / 3022 / 3686、失敗 0、警告 0、どれも nimble 自身の終了コード 0。タグを付けるコミットはまだ作っていない",
+     "note": "2026-10-14 の測定に代わる",
+     "file": "../quality/release-check-2026-11-19.md"
     }
    ]
   },
@@ -300,10 +302,11 @@
      "file": "../quality/interop-matrix-2026-10-14.md"
     },
     {
-     "supports": false,
-     "kind": "review",
-     "ref": "2026-11-18: 2026-10-14 の測定のあと、ソースとテストが変わり (Nim の下限 2.4.2、時間制限の見張り、vendor の asynchttpserver)、Nim も 2.4.2 になった。この主張の測定は取り直していない",
-     "note": "README の「ソースかテストが変わったら、この 4 つは取り直す」による"
+     "supports": true,
+     "kind": "measurement",
+     "ref": "2026-11-19、Nim 2.4.2、本線 60b104b50a86: 総当たり 312 行、合格 312、不合格 0 (stdio 175、HTTP 112、HTTP+SSE 25)、nimble interop の終了コード 0。1 回目は Python SDK 1.8.1・1.9.4 の環境に pydantic 2.14.3 が入って 37 行が不合格になった。tests/interop/peers/setup.sh で pydantic<2.14 に固定し、環境を作り直して流し直した",
+     "note": "2026-10-14 の測定に代わる",
+     "file": "../quality/interop-matrix-2026-11-19.md"
     }
    ]
   },
@@ -345,10 +348,11 @@
      "file": "../quality/conformance-2026-10-14.md"
     },
     {
-     "supports": false,
-     "kind": "review",
-     "ref": "2026-11-18: 2026-10-14 の測定のあと、ソースとテストが変わり (Nim の下限 2.4.2、時間制限の見張り、vendor の asynchttpserver)、Nim も 2.4.2 になった。この主張の測定は取り直していない",
-     "note": "README の「ソースかテストが変わったら、この 4 つは取り直す」による"
+     "supports": true,
+     "kind": "measurement",
+     "ref": "@modelcontextprotocol/conformance 0.2.0-alpha.12、2026-11-19、Nim 2.4.2、本線 60b104b50a86: 212 シナリオ、合格 209、不合格 0、警告 0、nimble conformance の終了コード 0",
+     "note": "2026-10-14 の測定に代わる",
+     "file": "../quality/conformance-2026-11-19.md"
     }
    ]
   },
