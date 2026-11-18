@@ -1,17 +1,22 @@
-## The time limits of one client's requests, kept by one watcher.
+## Time limits of operations, kept by one watcher per thread.
 ##
-## `sleepAsync` cannot be taken back: asyncdispatch keeps its timer until the
-## time is up, so a request that used one for its limit left a timer (and its
-## callback) in the event loop for up to the whole limit (60 s by default)
-## after its answer came. Here a request enters its limit in a table and
-## takes it out when it is done; one loop sleeps for the nearest limit in the
-## table, and ends when the table is empty. What is left in the event loop
-## after the last answer is that loop's one sleep, at most `WatchTickMs` long.
+## `sleepAsync` cannot be taken back, and `withTimeout` uses one:
+## asyncdispatch keeps the timer until its time is up, so an operation that
+## used one for its limit left a timer (and its callback) in the event loop
+## for up to the whole limit after it ended (60 s for a request by default,
+## an hour for the wait on a task's result). Here an operation enters its
+## limit in a table and takes it out when it is done; one loop sleeps for the
+## nearest limit in the table, and ends when the table is empty. What is left
+## in the event loop after the last operation is that loop's one sleep, at
+## most `WatchTickMs` long.
+##
+## Use `withLimit` instead of `withTimeout`, and `start`/`release` on
+## `threadWatch()` instead of a `sleepAsync` that bounds a wait.
 ##
 ## Internal to the SDK: not exported from `mcp`.
 
 import std/[asyncdispatch, monotimes, tables, times]
-import ../transport/first_of
+import ./first_of
 
 const
   WatchTickMs* = 200
@@ -25,12 +30,12 @@ const
 
 type
   Deadline* = object
-    ## One request's limit. `due` completes when the limit is over; it never
+    ## One operation's limit. `due` completes when the limit is over; it never
     ## does for a request without one.
     id: int
     due*: Future[void]
 
-  DeadlineWatch* = ref object
+  DeadlineWatch = ref object
     entries: Table[int, tuple[at: MonoTime, due: Future[void]]]
     nextId: int
     running: bool
@@ -39,8 +44,15 @@ type
     wakeAt: MonoTime
       ## When the sleep in progress ends by itself.
 
-proc newDeadlineWatch*(): DeadlineWatch =
-  DeadlineWatch(entries: initTable[int, tuple[at: MonoTime, due: Future[void]]]())
+var current {.threadvar.}: DeadlineWatch
+  ## The watcher of this thread's event loop: asyncdispatch keeps one event
+  ## loop per thread, and one watcher per loop is enough.
+
+proc threadWatch*(): DeadlineWatch =
+  ## The watcher of the calling thread, made on first use.
+  if current.isNil:
+    current = DeadlineWatch(entries: initTable[int, tuple[at: MonoTime, due: Future[void]]]())
+  current
 
 proc milliseconds(span: Duration): int =
   ## Rounded up, and at least 1, so a limit a hair away is not slept for 0 ms
@@ -104,12 +116,20 @@ proc start*(watch: DeadlineWatch, timeoutMs: int): Deadline =
     wake.complete()
 
 proc release*(watch: DeadlineWatch, deadline: Deadline) =
-  ## Take a limit back, because its request is done (answered, cancelled or
+  ## Take a limit back, because its operation is done (answered, cancelled or
   ## failed). A limit that is over is already gone; that is not an error.
   if deadline.id != 0:
     watch.entries.del(deadline.id)
 
-proc dropAll*(watch: DeadlineWatch) =
-  ## The client is closed: the limits that are left are not kept. The loop,
-  ## if it is asleep, ends when it wakes next.
-  watch.entries.clear()
+proc withLimit*(future: FutureBase, timeoutMs: int): Future[bool] {.async.} =
+  ## `withTimeout` without the timer it leaves: true when `future` finished
+  ## within `timeoutMs`, false when the limit passed first (`future` is left
+  ## as it is). Fails with the error of a `future` that failed in time. A
+  ## `timeoutMs` of 0 or less is no limit.
+  let watch = threadWatch()
+  let deadline = watch.start(timeoutMs)
+  try:
+    await firstOf(future, deadline.due)
+  finally:
+    watch.release(deadline)
+  return future.finished

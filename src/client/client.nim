@@ -14,7 +14,7 @@ import ../protocol/subscriptions
 import ../transport/transport
 import ../transport/first_of
 import ./cancel_token
-import ./deadline_watch
+import ../transport/deadline_watch
 
 export cancel_token.McpCancelToken, cancel_token.newMcpCancelToken,
   cancel_token.cancel, cancel_token.isCancelled, cancel_token.whenCancelled,
@@ -147,9 +147,6 @@ type
       ## When a message last went out or came in; the connection is idle when
       ## that was `pingIntervalMs` ago.
     keepAliveRunning: bool
-    deadlines*: DeadlineWatch
-      ## The time limits of this client's requests (SDK-internal; `listen`
-      ## in client/subscriptions uses it too).
     awaitingInitialize: bool
       ## initialize is sent and not answered: nothing but ping may go out.
     chosenRequestIds: HashSet[string]
@@ -213,7 +210,6 @@ proc newMcpClient*(
     maxInputRounds: DefaultMaxInputRounds,
     subscriptions: initTable[string, McpSubscription](),
     pendingRequests: initTable[string, Future[JsonRpcResponse]](),
-    deadlines: newDeadlineWatch(),
     chosenRequestIds: initHashSet[string](),
     progressCallbacks: initTable[string, McpProgressCallback](),
     requestHandlers: initTable[string, McpServerRequestHandler](),
@@ -589,7 +585,7 @@ proc sendOnce(client: McpClient, methodName: string, params: JsonNode,
   try:
     let started = client.beginRequest(methodName, wireParams)
     let timeoutMs = options.timeoutMs.get(client.requestTimeoutMs)
-    deadline = client.deadlines.start(timeoutMs)
+    deadline = threadWatch().start(timeoutMs)
     let cancelled = if options.cancel.isNil: newFuture[void]("McpClient.noCancel")
                     else: options.cancel.watchCancellation()
     if not options.cancel.isNil:
@@ -608,7 +604,7 @@ proc sendOnce(client: McpClient, methodName: string, params: JsonNode,
       raise newException(McpTimeoutError,
         methodName & ": no response within " & $timeoutMs & " ms")
   finally:
-    client.deadlines.release(deadline)
+    threadWatch().release(deadline)
     if not watching.isNil:
       options.cancel.unwatchCancellation(watching)
     if progressKey.len > 0:
@@ -1048,7 +1044,7 @@ proc discover(client: McpClient, timeoutMs: int): Future[ProbeVerdict] {.async.}
                            client.capabilities.forVersion(version).toJson())
     let started = client.beginRequest(DiscoverMethod, withRequestMeta(nil, meta))
     var answered = false
-    let deadline = client.deadlines.start(timeoutMs)
+    let deadline = threadWatch().start(timeoutMs)
     try:
       await firstOf(started.response, deadline.due)
       answered = started.response.finished
@@ -1060,7 +1056,7 @@ proc discover(client: McpClient, timeoutMs: int): Future[ProbeVerdict] {.async.}
       # A legacy HTTP server rejects the probe without a JSON-RPC body.
       return pvLegacy
     finally:
-      client.deadlines.release(deadline)
+      threadWatch().release(deadline)
     if not answered:
       # A legacy stdio server may not answer a request before initialize.
       client.pendingRequests.del(started.id)
@@ -1143,7 +1139,6 @@ proc connect*(client: McpClient, transport: McpTransport): Future[void] {.async.
 
 proc close*(client: McpClient): Future[void] {.async.} =
   client.state = mlsShutdown
-  client.deadlines.dropAll()
   client.failPending("the client was closed")
   if not client.transport.isNil:
     await client.transport.close()
