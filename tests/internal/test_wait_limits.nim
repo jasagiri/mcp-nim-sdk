@@ -10,6 +10,13 @@
 ## starts have no read timeout (readTimeoutMs = 0), so that only the limit of
 ## the site under test is counted; the server's own limit has a suite of its
 ## own.
+##
+## Internal (I), not external: what each test reads is the timer queue of
+## asyncdispatch, and it reaches the HTTP wire (transport/http_wire), the
+## SSE client and the HTTP server by their own modules, which no entry of the
+## SDK exports whole. A limit left in the loop shows outside only as a process
+## that keeps a timer for ten minutes after its work ended, and a test that
+## waits for that from the entries would have to run for as long as the limit.
 
 import std/[unittest, asyncdispatch, asyncnet, heapqueue, httpcore, json, monotimes,
             nativesockets, options, strutils, times]
@@ -25,7 +32,7 @@ import protocol/tasks
 import protocol/task_methods
 import client/icons
 import auth/client
-import ./server_harness
+import ../external/server_harness
 
 const
   LongMs = 600_000

@@ -2915,20 +2915,20 @@ MCP-LIFECYCLE-28 | tests/external/test_client_deadline_watch.nim | Given a peer 
 MCP-LIFECYCLE-28 | tests/external/test_client_deadline_watch.nim | Given a far limit and then a nearer one, when time passes, then the nearer request times out at its own limit
 MCP-LIFECYCLE-28 | tests/external/test_client_deadline_watch.nim | Given a limit of 0, when time passes, then the request waits on and is answered later
 MCP-LIFECYCLE-28 | tests/external/test_client_deadline_watch.nim | Given a listen with a 60 s limit, when the acknowledgment came, then the event loop has nothing pending within a short time
-MCP-LIFECYCLE-29 | tests/external/test_wait_limits.nim | Given a request with a 600 s limit to connect and to be answered, when the answer came, then the event loop holds no timer due at those limits
-MCP-LIFECYCLE-29 | tests/external/test_wait_limits.nim | Given a request with a 600 s limit to connect and none for the head, when the connection was made, then the event loop holds no timer due at that limit
-MCP-LIFECYCLE-29 | tests/external/test_wait_limits.nim | Given a request with a 600 s limit for the head and none to connect, when the head came, then the event loop holds no timer due at that limit
-MCP-LIFECYCLE-29 | tests/external/test_wait_limits.nim | Given a server that never answers, when the head limit of 100 ms passes, then the request fails at that limit with McpTransportError
-MCP-LIFECYCLE-29 | tests/external/test_wait_limits.nim | Given a legacy SSE server and a 600 s limit for the endpoint, when the client connected, then the event loop holds no timer due at that limit
-MCP-LIFECYCLE-29 | tests/external/test_wait_limits.nim | Given a session and a server that answers the DELETE, when the client closes, then the event loop holds no timer due at the 5 s limit of the DELETE
-MCP-LIFECYCLE-29 | tests/external/test_wait_limits.nim | Given a metadata request with a 600 s limit, when the answer came, then the event loop holds no timer due at that limit
-MCP-LIFECYCLE-29 | tests/external/test_wait_limits.nim | Given a metadata request with a limit of 0, when the server answers after 400 ms, then the request is answered and does not time out
-MCP-LIFECYCLE-29 | tests/external/test_wait_limits.nim | Given a metadata request with a limit of 100 ms, when the server answers after 5 s, then the request ends at its limit with a timeout
-MCP-LIFECYCLE-29 | tests/external/test_wait_limits.nim | Given an icon fetch with a 600 s limit, when the icon was read, then the event loop holds no timer due at that limit
-MCP-LIFECYCLE-29 | tests/external/test_wait_limits.nim | Given an icon fetch with a limit of 0, when the server answers after 400 ms, then the icon is fetched
-MCP-LIFECYCLE-29 | tests/external/test_wait_limits.nim | Given an icon fetch with a limit of 100 ms, when the server answers after 5 s, then McpIconError is raised at the limit
-MCP-LIFECYCLE-29 | tests/external/test_wait_limits.nim | Given a server request with a 600 s limit, when the client answered, then the event loop holds no timer due at that limit
-MCP-LIFECYCLE-29 | tests/external/test_wait_limits.nim | Given a wait for a task that lives for ten minutes, when the task completed, then the event loop holds no timer due at its expiry
-MCP-LIFECYCLE-29 | tests/external/test_wait_limits.nim | Given a wait for a task whose time to live is 300 ms, when the clock passes it, then the wait ends at the expiry with McpTaskError
-MCP-LIFECYCLE-29 | tests/external/test_wait_limits.nim | Given an event stream with a 600 s keep-alive period, when the client left, then the event loop holds no timer due at that period
-MCP-LIFECYCLE-29 | tests/external/test_wait_limits.nim | Given an HTTP server with a read timeout of 600 s, when it has read and answered requests, then the event loop holds no timer due at that limit
+MCP-LIFECYCLE-29 | tests/internal/test_wait_limits.nim | Given a request with a 600 s limit to connect and to be answered, when the answer came, then the event loop holds no timer due at those limits
+MCP-LIFECYCLE-29 | tests/internal/test_wait_limits.nim | Given a request with a 600 s limit to connect and none for the head, when the connection was made, then the event loop holds no timer due at that limit
+MCP-LIFECYCLE-29 | tests/internal/test_wait_limits.nim | Given a request with a 600 s limit for the head and none to connect, when the head came, then the event loop holds no timer due at that limit
+MCP-LIFECYCLE-29 | tests/internal/test_wait_limits.nim | Given a server that never answers, when the head limit of 100 ms passes, then the request fails at that limit with McpTransportError
+MCP-LIFECYCLE-29 | tests/internal/test_wait_limits.nim | Given a legacy SSE server and a 600 s limit for the endpoint, when the client connected, then the event loop holds no timer due at that limit
+MCP-LIFECYCLE-29 | tests/internal/test_wait_limits.nim | Given a session and a server that answers the DELETE, when the client closes, then the event loop holds no timer due at the 5 s limit of the DELETE
+MCP-LIFECYCLE-29 | tests/internal/test_wait_limits.nim | Given a metadata request with a 600 s limit, when the answer came, then the event loop holds no timer due at that limit
+MCP-LIFECYCLE-29 | tests/internal/test_wait_limits.nim | Given a metadata request with a limit of 0, when the server answers after 400 ms, then the request is answered and does not time out
+MCP-LIFECYCLE-29 | tests/internal/test_wait_limits.nim | Given a metadata request with a limit of 100 ms, when the server answers after 5 s, then the request ends at its limit with a timeout
+MCP-LIFECYCLE-29 | tests/internal/test_wait_limits.nim | Given an icon fetch with a 600 s limit, when the icon was read, then the event loop holds no timer due at that limit
+MCP-LIFECYCLE-29 | tests/internal/test_wait_limits.nim | Given an icon fetch with a limit of 0, when the server answers after 400 ms, then the icon is fetched
+MCP-LIFECYCLE-29 | tests/internal/test_wait_limits.nim | Given an icon fetch with a limit of 100 ms, when the server answers after 5 s, then McpIconError is raised at the limit
+MCP-LIFECYCLE-29 | tests/internal/test_wait_limits.nim | Given a server request with a 600 s limit, when the client answered, then the event loop holds no timer due at that limit
+MCP-LIFECYCLE-29 | tests/internal/test_wait_limits.nim | Given a wait for a task that lives for ten minutes, when the task completed, then the event loop holds no timer due at its expiry
+MCP-LIFECYCLE-29 | tests/internal/test_wait_limits.nim | Given a wait for a task whose time to live is 300 ms, when the clock passes it, then the wait ends at the expiry with McpTaskError
+MCP-LIFECYCLE-29 | tests/internal/test_wait_limits.nim | Given an event stream with a 600 s keep-alive period, when the client left, then the event loop holds no timer due at that period
+MCP-LIFECYCLE-29 | tests/internal/test_wait_limits.nim | Given an HTTP server with a read timeout of 600 s, when it has read and answered requests, then the event loop holds no timer due at that limit
