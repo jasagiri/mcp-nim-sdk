@@ -2,7 +2,7 @@
 
 表は `nimble specCoverage` の出力で、`build/g1-spec-coverage.md` に書かれる。2026-10-13 から追跡していない
 (生成物をコミットすると、測ったときと違う状態のコミットに古い表が残るため)。読みたいときに生成する。
-道具は `../nim-spec-coverage` で、`specs/*.feature` の `@spec:ID` を宣言として読み、`specs/tests.map`
+道具は仕様網羅の道具 (環境変数 `NIM_SPEC_COVERAGE` で渡す) で、`specs/*.feature` の `@spec:ID` を宣言として読み、`specs/tests.map`
 (`ID | テストのファイル | テストの名前`) の行でテストと結ぶ (`--scenarios specs`、ADR-SPC-0001 の SCN-01〜06)。
 系列ごとに仕様の数が違うので、表は系列 (本線、拡張、下書き) ごとに生成し直す。
 

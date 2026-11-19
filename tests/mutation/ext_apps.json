@@ -22,6 +22,6 @@
     "console",
     "json"
   ],
-  "outputDir": ".nim-muter/ext_apps",
+  "outputDir": ".mutation/ext_apps",
   "incremental": false
 }

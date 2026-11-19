@@ -1,11 +1,11 @@
 # G2 変異検出: プロトコル版まわり
 
-`nim-muter` による測定は、実装が落ち着いてから push の前に 1 回流す。
+変異検査の道具 による測定は、実装が落ち着いてから push の前に 1 回流す。
 それまでは、変更したモジュールをここに「未測定」として足していく。
 
 ## 記録の訂正: リテラルを返す `return` の変異 (2026-10-10)
 
-nim-muter 0.2.5 の RVR は、戻り値がリテラルのとき `default(typeof(X))` ではなく別の値にする: `true` と `false` は入れ替え、整数と小数は 0 なら 1・ほかは 0、文字列は `""`。報告の `replacement` はどの場合も `<return default>` と表示される (`foundation/nim-muter/src/nim_muter/mutators/return_value.nim`)。
+変異検査の道具 0.2.5 の RVR は、戻り値がリテラルのとき `default(typeof(X))` ではなく別の値にする: `true` と `false` は入れ替え、整数と小数は 0 なら 1・ほかは 0、文字列は `""`。報告の `replacement` はどの場合も `<return default>` と表示される (変異検査の道具の RVR の実装)。
 
 2026-10-07 の分類は、`return false` の生き残りを「`bool` の既定値は `false` だから同値」としていた。これは誤りで、実際の変異は `return true` である。該当は 10 文書の 29 行で、それぞれの行を訂正した。
 
@@ -143,7 +143,7 @@ nim-muter 0.2.5 の RVR は、戻り値がリテラルのとき `default(typeof(
 | `src/protocol/extensions.nim` (`takesOver`)、`src/server/extensions.nim`、`src/server/server.nim` (取り戻されたメソッド、`ListenFilterHook`、`notifySubscribers`) | `tests/test_ext_tasks.nim` | 2026-10-06 |
 | `src/protocol/subscriptions.nim` (`taskIds`)、`src/client/subscriptions.nim` (`unsupported`)、`src/protocol/modern.nim` (Mcp-Name の taskId) | `tests/test_ext_tasks.nim`, `tests/test_ext_tasks_client.nim` | 2026-10-06 |
 
-## 手で確かめたもの (nim-muter の測定ではない)
+## 手で確かめたもの (変異検査の道具 の測定ではない)
 
 `src/protocol/modern.nim` は実装をテストより先に書いたため、2026-10-05 に規則を
 1 つずつ壊した版を 20 通り作り、`tests/test_modern_protocol.nim` が落ちるかを確かめた。
@@ -214,7 +214,7 @@ nim-muter 0.2.5 の RVR は、戻り値がリテラルのとき `default(typeof(
 | `src/server/pagination.nim` | 形が base64 でない cursor を復号の前に断る (Nim 2.2.8 までの `base64.decode` が `IndexDefect` を出す。nim-lang/Nim#25530) | `tests/test_server_pagination.nim` (MCP-SEC-WIRE-9) |
 | `src/client/icons.nim` | data URI の中身が base64 でなければ復号の前に断る | `tests/test_icon_fetch.nim` (MCP-SEC-WIRE-9) |
 | `src/protocol/modern.nim` | 自前の `isPaddedBase64` を消し、`base64_shape` のものを使う (内容は同じ) | `tests/test_modern_protocol.nim`、`tests/test_param_headers.nim` |
-| `src/jsonschema/json_schema_regex.nim` | U+00FF を超える文字を文字クラスの外に持つパターンが `RangeDefect` になっていたのを修正 (ファジングで発見)。`\b` の読み取りを普通の `if` に (nim-muter の書き直しがコンパイル不能にしていた。36a4c8a5 の測定ではこのジョブは 1 件も試せていない) | `tests/test_security_schema.nim` (MCP-SEC-SCHEMA-9)、`tests/test_fuzz_regressions.nim` (MCP-SEC-SWEEP-6) |
+| `src/jsonschema/json_schema_regex.nim` | U+00FF を超える文字を文字クラスの外に持つパターンが `RangeDefect` になっていたのを修正 (ファジングで発見)。`\b` の読み取りを普通の `if` に (変異検査の道具 の書き直しがコンパイル不能にしていた。36a4c8a5 の測定ではこのジョブは 1 件も試せていない) | `tests/test_security_schema.nim` (MCP-SEC-SCHEMA-9)、`tests/test_fuzz_regressions.nim` (MCP-SEC-SWEEP-6) |
 | `src/auth/oauth/discovery.nim` | 探索の失敗を並べるとき、例外の文面から async の追跡を外す (2 番目以降の失敗が消えていた) | `tests/test_auth_oauth_basics.nim` |
 | `src/protocol/diagnostic.nim` | `plainMessage` をここへ移した (`server/errors.nim` は再 export) | `tests/test_server_errors.nim`、`tests/test_auth_oauth_basics.nim` |
 | `src/auth/oauth/jsonfield.nim` | 呼び出し元の無い `intField` を削除 | (なし) |

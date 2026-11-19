@@ -2,7 +2,7 @@
 
 ## 測り直し (拡張ブランチの b04fcb9c、2026-11-11)
 
-測定: `nim-muter` 0.2.15、ジョブ `tests/mutation/auth_client.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。
+測定: 変異検査の道具 0.2.15、ジョブ `tests/mutation/auth_client.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。
 
 | 全体 | killed | timeout | survived | runError | compileError |
 |---|---|---|---|---|---|
@@ -31,7 +31,7 @@ MCP-AUTH-29 の Scenario の文面は「更新する」「使えなくなった�
 | `src/auth/client.nim:RVR:069257ddf8f1c04f:0` | client.nim:240 | `return ClientCredentials(issuer: issuer, clientId: c.config.clientIdMetadataUrl.get, authMethod: "none", redirectUris: @[c.config.redirectUri])` → `<return default>` | test_owed | 構築子を返すので `default(ClientCredentials)` になり、`client_id` が空のまま認可の要求が出る (登録はしないまま)。偽の認可サーバーはどの `client_id` にも code を出すので、流れは最後まで通る。`client_id` を見るテストは内部に移った (上の行と同じテスト)。 | MCP-AUTH-26。上の行と同じ 1 本 (`client_id` が URL に等しい、の検査が検出する)。 |
 | `src/auth/client.nim:SDL:d1c59a1b624273ac:1` | client.nim:330 | `c.config.tokenStore.remove(c.tokenKey)` → `discard` | test_owed | `handleChallenge` で更新が断られたあと、認可が成功すれば 346 行の `save` が上書きするので違いは出ない。認可が失敗する (利用者が拒む) と、取り消されたトークンが保存に残り、次の要求でまた出される。前に検出していた `Given a refresh token the server rejects and a user who then refuses …` は内部に移った。 | MCP-AUTH-29。「when a stored token cannot be refreshed」の suite に足す。認可を済ませ、`env.authServer.refreshTokens.clear()`、`authorize` を `denyingAuthorizer()` に替えた設定 (保存は共有) の client で `handleChallenge(401, env.resourceChallenge)` が例外。そのあと `newOAuthClient(env.config).authorizationHeader()` が none (変異だと、残った古いトークンの `Bearer …` が返る)。補助 `denyingAuthorizer`・`resourceChallenge` は外部のファイルに既にある。 |
 
-測定: `nim-muter`、ジョブ `tests/mutation/auth_client.json` (`src/auth/client.nim`、`src/auth/policy.nim`)、本線の 36a4c8a5 (2026-10-07)。
+測定: 変異検査の道具、ジョブ `tests/mutation/auth_client.json` (`src/auth/client.nim`、`src/auth/policy.nim`)、本線の 36a4c8a5 (2026-10-07)。
 2026-10-12 に `client.nim` の `newOAuthClient` の raises を狭めた (`OAuthSecurityError` は `OAuthError` の子で、Nim 2.2.12 の `XCannotRaiseY` が重複と指した)。次の測定で測り直す。
 行番号は 36a4c8a5 のもの (`client.nim` はその後 `resource` 指標 (`indicator`) の分だけ変わった。手で当てるときは文面で探した)。
 
@@ -52,8 +52,8 @@ MCP-AUTH-29 の Scenario の文面は「更新する」「使えなくなった�
 | 63 | client.nim:141 | RVR | 同上 | 1 同値 | 同上。 |
 | 64 | client.nim:147 | RVR | 同上 | 1 同値 | 同上。 |
 | 65 | client.nim:159 | RVR | 同上 | 1 同値 | 同上。 |
-| 74 | client.nim:300 | RVR | `return false` → `return default` | 2 | **訂正 (2026-10-10)**: 同値ではない。nim-muter の RVR はリテラルの戻り値を反対の値にする (`return false` → `return true`。報告の表示だけが `<return default>`)。`return true` を手で当てると `tests/test_auth_client_flow.nim` が落ちる (「Given a 403 that is not an insufficient_scope challenge …」「Given a status other than 401 or 403 …」、本線 qzktpvsz、2026-10-10)。 |
-| 75 | client.nim:302 | RVR | 同上 | 2 | **訂正 (2026-10-10)**: 同値ではない。nim-muter の RVR はリテラルの戻り値を反対の値にする (`return false` → `return true`。報告の表示だけが `<return default>`)。`return true` を手で当てると `tests/test_auth_client_flow.nim` が落ちる (「Given a 403 that is not an insufficient_scope challenge …」「Given a status other than 401 or 403 …」、本線 qzktpvsz、2026-10-10)。 |
+| 74 | client.nim:300 | RVR | `return false` → `return default` | 2 | **訂正 (2026-10-10)**: 同値ではない。変異検査の道具 の RVR はリテラルの戻り値を反対の値にする (`return false` → `return true`。報告の表示だけが `<return default>`)。`return true` を手で当てると `tests/test_auth_client_flow.nim` が落ちる (「Given a 403 that is not an insufficient_scope challenge …」「Given a status other than 401 or 403 …」、本線 qzktpvsz、2026-10-10)。 |
+| 75 | client.nim:302 | RVR | 同上 | 2 | **訂正 (2026-10-10)**: 同値ではない。変異検査の道具 の RVR はリテラルの戻り値を反対の値にする (`return false` → `return true`。報告の表示だけが `<return default>`)。`return true` を手で当てると `tests/test_auth_client_flow.nim` が落ちる (「Given a 403 that is not an insufficient_scope challenge …」「Given a status other than 401 or 403 …」、本線 qzktpvsz、2026-10-10)。 |
 | 41 | client.nim:101 | SDL | 既定の時計 `getTime()` → `discard` | 3 穴 | 既定の設定の時計は実時刻。`Given a configuration made with the defaults, when its clock is read, then it is the system clock` (これまでのテストは時計を差し替えていた)。 |
 | 18 | client.nim:137 | LOR | `refreshToken.isNone or metadata.isNone` の `or` → `and` | 3 穴 | 更新トークンが無い、または探索をまだしていないなら、期限切れのトークンから見出しを作らず何も送らない (変異後は `none` の値取得で例外)。`Given an expired access token without a refresh token ...` と `Given an expired access token and a client that has not discovered the server yet ...` |
 | 4 | client.nim:146 | ROR | `creds.get.issuer != tokens.issuer` → `==` | 3 穴 | 資格情報の発行者がトークンの発行者と違うなら、更新トークンを送らない。`Given credentials whose issuer is not the one that issued the token ...` (送信数が増えない、を確かめる)。 |

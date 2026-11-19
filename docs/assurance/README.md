@@ -3,7 +3,7 @@
 この SDK の本線 (日付版のコア) を push し、版ごとのタグを付け替える前に、成り立っていなければならない主張と、その根拠の台帳。
 
 - `release.json` — 台帳。主張ごとに、支持する証拠と否定する証拠を書く。
-- `release.md` — 台帳を判定した結果。`assurance check docs/assurance/release.json > docs/assurance/release.md` で作り直す (`foundation/nim-assurance`)。
+- `release.md` — 台帳を判定した結果。`assurance check docs/assurance/release.json > docs/assurance/release.md` で作り直す。
 - 判定は四値である: 成り立つ / 成り立たない / 証拠が食い違っている / 誰も確かめていない。必須の主張がすべて「成り立つ」になるまで、公開できない。
 
 公式拡張 (`mcp-2026-07-28-ext`) と下書き (`mcp-draft`) の主張は、まだここに無い。

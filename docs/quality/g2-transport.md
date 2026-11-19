@@ -2,7 +2,7 @@
 
 ## 測り直し (拡張ブランチの b04fcb9c、2026-11-11)
 
-測定: `nim-muter` 0.2.15、ジョブ `tests/mutation/transport.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。
+測定: 変異検査の道具 0.2.15、ジョブ `tests/mutation/transport.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。
 状態: 測定済み。行番号は b04fcb9c のもの。その後 8e0c1321 で私的な `isUtf8` を `src/compat/utf8.nim` に移したので、今のファイルとは数行ずれる。
 
 | 全体 | killed | timeout | survived | runError | compileError |
@@ -50,7 +50,7 @@ b04fcb9c の 239 行 (今の `toJson(response)` の `notUtf8(id, "")`) は、id 
 
 ## 2026-10-07 の測定 (mainline の 36a4c8a5)
 
-測定: `nim-muter`、ジョブ `tests/mutation/transport.json`、mainline の 36a4c8a5 (2026-10-07)。
+測定: 変異検査の道具、ジョブ `tests/mutation/transport.json`、mainline の 36a4c8a5 (2026-10-07)。
 2026-10-12 に `transport.nim` を変えた。次の測定で測り直す。
 
 | 全体 | killed | timeout | survived | runError | compileError |

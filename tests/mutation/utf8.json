@@ -18,7 +18,7 @@
     "console",
     "json"
   ],
-  "outputDir": ".nim-muter/utf8",
+  "outputDir": ".mutation/utf8",
   "incremental": false,
   "network": "loopback",
   "testOutput": "unittest"

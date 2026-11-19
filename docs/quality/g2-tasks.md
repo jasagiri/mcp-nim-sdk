@@ -2,7 +2,7 @@
 
 ## 2 回目の測定 (拡張ブランチの 654cb11a、2026-11-14)
 
-測定: `nim-muter` 0.2.15、ジョブ `tests/mutation/tasks.json`。状態: 測定済み。全体 300、killed 238、timeout 12、survived 28、runError 0、compileError 22。
+測定: 変異検査の道具 0.2.15、ジョブ `tests/mutation/tasks.json`。状態: 測定済み。全体 300、killed 238、timeout 12、survived 28、runError 0、compileError 22。
 
 ここに書くのは、台帳にまだ無い指紋 18 件 (すべて `src/protocol/task_store.nim`)。store のコードが `src/protocol/tasks.nim` から `task_store.nim` に移り、`protocol/tasks` は公開する名前だけを export する形になった (`finish`・`setResultStream`・`onResultStream=` は公開から外れた)。仕分けは式と呼び出し元を読んで行った (変異を当てて流してはいない)。「引き継ぎ」は、下の節「測り直し (拡張ブランチの b04fcb9c、2026-11-11)」の同じ変異の判定を、今のコードで理由が成り立つことを確かめて引いたもの。
 
@@ -31,7 +31,7 @@
 
 ## 測り直し (拡張ブランチの b04fcb9c、2026-11-11)
 
-測定: `nim-muter` 0.2.15、ジョブ `tests/mutation/tasks.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。状態: 測定済み。
+測定: 変異検査の道具 0.2.15、ジョブ `tests/mutation/tasks.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。状態: 測定済み。
 
 | 全体 | killed | timeout | survived | runError | compileError |
 |---|---|---|---|---|---|
@@ -95,7 +95,7 @@
 | `src/protocol/tasks.nim:SDL:c74c22393c54b1c4:0` | protocol/tasks.nim:518 | `await waiter` → `discard` | ttl 無しの task の待ちが、譲らない循環になる (無限の循環) |
 | `src/server/tasks.nim:RVR:f84cc25beb6a1bac:0` | server/tasks.nim:217 | `getClientTask` の return → 既定値 | 既定の `McpTask` は `working` で、`awaitClientTask` の poll が終わらない (無限の循環) |
 
-測定: `nim-muter`、ジョブ `tests/mutation/tasks.json`、本線の 36a4c8a5 (2026-10-07)。対象は `src/protocol/tasks.nim`、`src/protocol/task_methods.nim`、`src/server/tasks.nim`、`src/client/tasks.nim`。
+測定: 変異検査の道具、ジョブ `tests/mutation/tasks.json`、本線の 36a4c8a5 (2026-10-07)。対象は `src/protocol/tasks.nim`、`src/protocol/task_methods.nim`、`src/server/tasks.nim`、`src/client/tasks.nim`。
 
 | 全変異 | killed | timeout | survived | runError | compileError |
 |---:|---:|---:|---:|---:|---:|
@@ -169,12 +169,12 @@
 | 87 | protocol/tasks.nim:367 | ROR | `requestedTtlMs.get < 0` → `<= 0` | 3 | store: Given a ttl of 0, when a task is created, then it has ttl 0 |
 | 94 | protocol/tasks.nim:377 | ROR | `ttl.get > maxTtlMs.get` → `>=` | 1 | 上の根拠 |
 | 96 | protocol/tasks.nim:407 | ROR | `requestId.len > 0` → `>= 0` | 3 | 結びを解くときにも hook が呼ばれ、保留の質問が stream 無しで送られる。store: Given a hook for result streams, when a stream is set and then cleared, then the hook hears only of the set |
-| 193 | protocol/tasks.nim:431 | RVR | `return false` → 既定値 | 2 | **訂正 (2026-10-10)**: 同値ではない。nim-muter の RVR はリテラルの戻り値を反対の値にする (`return false` → `return true`。報告の表示だけが `<return default>`)。76a08c6a の測り直しで検出された。 |
+| 193 | protocol/tasks.nim:431 | RVR | `return false` → 既定値 | 2 | **訂正 (2026-10-10)**: 同値ではない。変異検査の道具 の RVR はリテラルの戻り値を反対の値にする (`return false` → `return true`。報告の表示だけが `<return default>`)。76a08c6a の測り直しで検出された。 |
 | 136 | protocol/tasks.nim:431 | BLR | `return false` → `true` | 3 | 無い id の `transition` が真を返す。store: Given an id the store does not hold, ... |
 | 97 | protocol/tasks.nim:435 | ROR | `status != entry.task.status` → `==` | 3 | 同じ状態の再設定が `McpTaskError` になる。store: Given a working task, when working is set again with a message, then only the message changes |
 | 132 | protocol/tasks.nim:445 | LOR | `not content.isNil and kind == JArray` → `or` | 3 | `content` が無い・配列でない `isError` の結果で nil の参照・`FieldDefect`。store: Given a tool result with isError and no text, ... |
 | 179 | protocol/tasks.nim:449 | SDL | `none(string)` → `discard` | 1 | 上の根拠 |
-| 197 | protocol/tasks.nim:463 | RVR | `return false` → 既定値 | 2 | **訂正 (2026-10-10)**: 同値ではない。nim-muter の RVR はリテラルの戻り値を反対の値にする (`return false` → `return true`。報告の表示だけが `<return default>`)。76a08c6a の測り直しで検出された。 |
+| 197 | protocol/tasks.nim:463 | RVR | `return false` → 既定値 | 2 | **訂正 (2026-10-10)**: 同値ではない。変異検査の道具 の RVR はリテラルの戻り値を反対の値にする (`return false` → `return true`。報告の表示だけが `<return default>`)。76a08c6a の測り直しで検出された。 |
 | 141 | protocol/tasks.nim:463 | BLR | `return false` → `true` | 3 | 無い id の `finish` が真を返す。store: Given an id the store does not hold, ... |
 | 58 | protocol/tasks.nim:508 | AOR | `expiry.get - store.clock()` → `+` | 3 | 待ち手の時計が 2^31 ミリ秒に伸び、他の操作が無ければ期限切れに気づかない。store: Given a result awaited on a task with a short ttl, when the ttl elapses, then the wait fails by itself |
 | 185 | protocol/tasks.nim:512 | SDL | `await waiter` → `discard` | 3 | ttl 無しの task の待ちが、譲らないループになる (呼び出しが戻らない。ジョブでは timeout になる)。store: Given a task with unlimited ttl, when its result is awaited, then the wait ends when the task does。それまでは ttl 無しの待ちを試すテストが無かった |

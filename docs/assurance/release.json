@@ -9,13 +9,13 @@
     {
      "supports": true,
      "kind": "measurement",
-     "ref": "2026-10-14、本線 bb6744101764: nimble specCoverage (nim-spec-coverage) で宣言した仕様 ID のすべてに対応表の行があり、入口の外を import する外部仕様テストは無い。終了コード 1 は下の 6 件 (外部仕様テストの無い ID) による。tests/internal/test_spec_coverage.nim が d5cf3edd5ffc の通しで通る",
+     "ref": "2026-10-14、本線 bb6744101764: nimble specCoverage (仕様網羅の道具) で宣言した仕様 ID のすべてに対応表の行があり、入口の外を import する外部仕様テストは無い。終了コード 1 は下の 6 件 (外部仕様テストの無い ID) による。tests/internal/test_spec_coverage.nim が d5cf3edd5ffc の通しで通る",
      "note": "これが言うのは「対応表に行があり、その名前のテストが実在する」まで。そのテストが外部仕様テストかどうかは言わない"
     },
     {
      "supports": true,
      "kind": "measurement",
-     "ref": "2026-10-17: nimble specCoverage (nim-spec-coverage, --external tests/external): Declared 591, with an external test 591, without 0; no external test reaches past the entries. The 6 IDs without one were given external tests (MCP-SEC-WIRE-1, -7, -10, -19) or taken out of the external specification by the user's decision (MCP-SEC-SWEEP-6, MCP-CONTENT-FIELDS-15)",
+     "ref": "2026-10-17: nimble specCoverage (the specification coverage tool, --external tests/external): Declared 591, with an external test 591, without 0; no external test reaches past the entries. The 6 IDs without one were given external tests (MCP-SEC-WIRE-1, -7, -10, -19) or taken out of the external specification by the user's decision (MCP-SEC-SWEEP-6, MCP-CONTENT-FIELDS-15)",
      "note": "supersedes the 2026-10-14 evidence against (6 IDs without an external test)"
     }
    ]
@@ -30,7 +30,7 @@
      "supports": true,
      "kind": "test",
      "ref": "tests/internal/test_fuzz_regressions.nim が 192f0a46 (2026-10-08) で通る",
-     "note": "ファジング (nim-fuzz、2026-10-07) が見つけた RangeDefect (正規表現、U+00FF を超える文字) は 638f7cf6 で修正し、入力を corpus に保存した。入口ごとに流した入力の数は記録していない",
+     "note": "ファジング (2026-10-07) が見つけた RangeDefect (正規表現、U+00FF を超える文字) は 638f7cf6 で修正し、入力を corpus に保存した。入口ごとに流した入力の数は記録していない",
      "file": "../../tests/internal/test_fuzz_regressions.nim"
     }
    ]
@@ -52,7 +52,7 @@
     {
      "supports": true,
      "kind": "measurement",
-     "ref": "2026-10-18/19: tests/fuzz/http_wire_targets.nim (httpResponse, httpChunked) と peer_targets.nim (serverDispatch, clientAnswers, oauthDocuments, stdioLines) を nim-fuzz で 20 万入力ずつ、libFuzzer + AddressSanitizer で 1200〜3600 秒ずつ流した。見つかった Defect 6 件はすべて直し、入力を tests/fuzz/corpus に残した。docs/quality/fuzz-2026-10-18.md",
+     "ref": "2026-10-18/19: tests/fuzz/http_wire_targets.nim (httpResponse, httpChunked) と peer_targets.nim (serverDispatch, clientAnswers, oauthDocuments, stdioLines) をファジングの道具で 20 万入力ずつ、libFuzzer + AddressSanitizer で 1200〜3600 秒ずつ流した。見つかった Defect 6 件はすべて直し、入力を tests/fuzz/corpus に残した。docs/quality/fuzz-2026-10-18.md",
      "note": "HTTP の要求の行・ヘッダ・本文の区切りは std/asynchttpserver (または transport/vendor の写し) が読み、ソケット越しにしか渡せないので入っていない (tests/fuzz/targets.nim の冒頭)。SDK がその後に要求から読むもの (validateModernRequest, checkRequestHeaders) は clientAnswers に入っている"
     }
    ]
@@ -80,7 +80,7 @@
     {
      "supports": true,
      "kind": "measurement",
-     "ref": "requires \"nim >= 2.2.12\" (2026-10-12)。欠陥の修正は v2.2.10 以降 (nim-advisory-check の NIM-25530)",
+     "ref": "requires \"nim >= 2.2.12\" (2026-10-12)。欠陥の修正は v2.2.10 以降 (既知の欠陥の一覧の NIM-25530)",
      "file": "../../mcp_nim_sdk.nimble"
     },
     {
@@ -116,7 +116,7 @@
    "id": "DEP-03",
    "layer": "dependency",
    "required": false,
-   "text": "コンパイラと依存の版を、既知の欠陥の一覧 (nim-advisory-check) と突き合わせた",
+   "text": "コンパイラと依存の版を、既知の欠陥の一覧の道具と突き合わせた",
    "evidence": [
     {
      "supports": true,
@@ -126,7 +126,7 @@
     {
      "supports": true,
      "kind": "measurement",
-     "ref": "2026-11-18: Nim 2.4.2 で advisory_check advisories.json (nim-advisory-check 2cbb9861) を実行、\"no known defect among 5 listed\"、終了コード 0。一覧の 5 件は Nim 1 件、zippy 2 件、openzeppelin-contracts 2 件で、この SDK はどちらの部品も使わない。--component を渡していないので、突き合わせたのは Nim の版だけ。uuids・nimcrypto の欠陥は一覧に無い",
+     "ref": "2026-11-18: Nim 2.4.2 で advisory_check advisories.json (一覧の道具 2cbb9861) を実行、\"no known defect among 5 listed\"、終了コード 0。一覧の 5 件は Nim 1 件、zippy 2 件、openzeppelin-contracts 2 件で、この SDK はどちらの部品も使わない。--component を渡していないので、突き合わせたのは Nim の版だけ。uuids・nimcrypto の欠陥は一覧に無い",
      "note": "2026-10-12 の Nim 2.2.12 での突き合わせに代わる"
     }
    ]

@@ -20,7 +20,7 @@
     "console",
     "json"
   ],
-  "outputDir": ".nim-muter/extensions",
+  "outputDir": ".mutation/extensions",
   "incremental": false,
   "testOutput": "unittest"
 }

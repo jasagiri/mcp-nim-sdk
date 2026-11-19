@@ -2,7 +2,7 @@
 
 ## 測り直し (拡張ブランチの b04fcb9c、2026-11-11)
 
-測定: `nim-muter` 0.2.15、ジョブ `tests/mutation/jsonschema.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。状態: 測定済み。
+測定: 変異検査の道具 0.2.15、ジョブ `tests/mutation/jsonschema.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。状態: 測定済み。
 
 | 全体 | killed | timeout | survived | runError | compileError |
 |---|---|---|---|---|---|
@@ -48,7 +48,7 @@
 
  `tests/mutation/jsonschema.json`、本線の 7d32c165 (2026-10-07)。
 2026-10-12 に `json_schema_regex.nim` と `json_schema.nim` を変えた。次の測定で測り直す。
-36a4c8a5 の測定ではこのジョブは 1 件も試せなかった (nim-muter の書き直しが `(inc p.pos; 8'i32)` をコンパイル不能にした。
+36a4c8a5 の測定ではこのジョブは 1 件も試せなかった (変異検査の道具 の書き直しが `(inc p.pos; 8'i32)` をコンパイル不能にした。
 その 1 行を直して測り直した)。
 
 | 全変異 | killed | timeout | survived | runError | compileError |
@@ -126,14 +126,14 @@
 | 17 | json_schema.nim:155 | ROR | `value >= -9.223372036854776e+18` → `<>= -> >>` | 3 | 2^63 の両端: 隣の整数と同じ文字列にならないこと | `tests/test_json_schema.nim` の "Given integers at the edge of 64 bits, ..." |
 | 18 | json_schema.nim:156 | ROR | `value < 9.223372036854776e+18` → `<< -> <=>` | 3 | 2^63 の両端: 隣の整数と同じ文字列にならないこと | `tests/test_json_schema.nim` の "Given integers at the edge of 64 bits, ..." |
 | 19 | json_schema.nim:164 | ROR | `a.kind == JInt` → `<== -> !=>` | 3 | JFloat と JInt の比較で `a.num` に触れて FieldDefect | `tests/test_json_schema.nim` の "Given 1 and 1.0, when compared by const and enum in either direction, ..." |
-| 261 | json_schema.nim:170 | RVR | `return false` → `<return default>` | 検出 (測り直し) | **訂正 (2026-10-10)**: 同値ではない。nim-muter の RVR はリテラルの戻り値を反対の値にする (`return false` → `return true`。報告の表示だけが `<return default>`)。測り直し (e79ebbd8) で検出された。 |  |
+| 261 | json_schema.nim:170 | RVR | `return false` → `<return default>` | 検出 (測り直し) | **訂正 (2026-10-10)**: 同値ではない。変異検査の道具 の RVR はリテラルの戻り値を反対の値にする (`return false` → `return true`。報告の表示だけが `<return default>`)。測り直し (e79ebbd8) で検出された。 |  |
 | 132 | json_schema.nim:170 | BLR | `false` → `true` | 3 | 配列の長さが違うとき等しいと答える | `tests/test_json_schema.nim` の "Given const arrays, ..." |
-| 262 | json_schema.nim:172 | RVR | `return false` → `<return default>` | 検出 (測り直し) | **訂正 (2026-10-10)**: 同値ではない。nim-muter の RVR はリテラルの戻り値を反対の値にする (`return false` → `return true`。報告の表示だけが `<return default>`)。測り直し (e79ebbd8) で検出された。 |  |
+| 262 | json_schema.nim:172 | RVR | `return false` → `<return default>` | 検出 (測り直し) | **訂正 (2026-10-10)**: 同値ではない。変異検査の道具 の RVR はリテラルの戻り値を反対の値にする (`return false` → `return true`。報告の表示だけが `<return default>`)。測り直し (e79ebbd8) で検出された。 |  |
 | 133 | json_schema.nim:172 | BLR | `false` → `true` | 3 | 配列の要素が違うとき等しいと答える | `tests/test_json_schema.nim` の "Given const arrays, ..." |
-| 263 | json_schema.nim:175 | RVR | `return false` → `<return default>` | 検出 (測り直し) | **訂正 (2026-10-10)**: 同値ではない。nim-muter の RVR はリテラルの戻り値を反対の値にする (`return false` → `return true`。報告の表示だけが `<return default>`)。測り直し (e79ebbd8) で検出された。 |  |
+| 263 | json_schema.nim:175 | RVR | `return false` → `<return default>` | 検出 (測り直し) | **訂正 (2026-10-10)**: 同値ではない。変異検査の道具 の RVR はリテラルの戻り値を反対の値にする (`return false` → `return true`。報告の表示だけが `<return default>`)。測り直し (e79ebbd8) で検出された。 |  |
 | 135 | json_schema.nim:175 | BLR | `false` → `true` | 3 | オブジェクトの大きさが違うとき等しいと答える | `tests/test_json_schema.nim` の "Given const objects, ..." |
 | 98 | json_schema.nim:177 | LOR | `not b.hasKey(key) or not jsonEquals(value, b[key])` → `<or -> and>` | 3 | キーが無い・値が違うオブジェクトを等しいと答える (98 は無い鍵で KeyError) | `tests/test_json_schema.nim` の "Given const objects, ..." |
-| 264 | json_schema.nim:177 | RVR | `return false` → `<return default>` | 検出 (測り直し) | **訂正 (2026-10-10)**: 同値ではない。nim-muter の RVR はリテラルの戻り値を反対の値にする (`return false` → `return true`。報告の表示だけが `<return default>`)。測り直し (e79ebbd8) で検出された。 |  |
+| 264 | json_schema.nim:177 | RVR | `return false` → `<return default>` | 検出 (測り直し) | **訂正 (2026-10-10)**: 同値ではない。変異検査の道具 の RVR はリテラルの戻り値を反対の値にする (`return false` → `return true`。報告の表示だけが `<return default>`)。測り直し (e79ebbd8) で検出された。 |  |
 | 136 | json_schema.nim:177 | BLR | `false` → `true` | 3 | キーが無い・値が違うオブジェクトを等しいと答える (98 は無い鍵で KeyError) | `tests/test_json_schema.nim` の "Given const objects, ..." |
 | 32 | json_schema.nim:205 | ROR | `depth <= 0` → `<<= -> <>` | 3 | uniqueItems の比較は maxDepth と同じ深さで SchemaLimitError。32 は境界 (深さ丁度)、1/2 は配列/オブジェクトで深さが減らない変異 | `tests/test_security_schema.nim` の "Given uniqueItems, when an item nests as deep as maxDepth, ..." と "..., however the nesting is built" |
 | 154 | json_schema.nim:208 | SDL | `into.add 'n'` → `discard` | 3 | canonical の文字列から一部を落とすと、異なる値が同じ文字列になる: `[null]` と `[]` | `tests/test_json_schema.nim` の "Given uniqueItems, when items of different type or content could be told apart only by a part of their text, then they are distinct" |

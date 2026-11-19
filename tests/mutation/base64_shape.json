@@ -18,7 +18,7 @@
     "console",
     "json"
   ],
-  "outputDir": ".nim-muter/base64_shape",
+  "outputDir": ".mutation/base64_shape",
   "incremental": false,
   "testOutput": "unittest"
 }

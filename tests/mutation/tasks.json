@@ -21,7 +21,7 @@
     "console",
     "json"
   ],
-  "outputDir": ".nim-muter/tasks",
+  "outputDir": ".mutation/tasks",
   "incremental": false,
   "testOutput": "unittest"
 }

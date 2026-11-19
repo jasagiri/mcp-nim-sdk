@@ -121,7 +121,7 @@ suite "protocol version: initialize negotiation":
 
   test "Given every requested version and every set of spoken versions, when negotiated, then the answer is the requested legacy version when spoken and otherwise the newest spoken legacy version":
     # All 6 x 32 inputs, so the two Scenarios hold for every input and not
-    # only for the examples above (ADR-KURA-0019 §2, enumeration). The
+    # only for the examples above (by enumeration). The
     # expectation is built from the Scenarios' words: the legacy versions are
     # the four before 2026-07-28 (MCP-VERSION-4), in date order.
     const legacy = ["2024-11-05", "2025-03-26", "2025-06-18", "2025-11-25"]

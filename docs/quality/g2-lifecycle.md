@@ -1,6 +1,6 @@
 # G2 変異検出: `src/protocol/lifecycle.nim`
 
-測定: `nim-muter`、ジョブ `tests/mutation/lifecycle.json` (対象は `lifecycle.nim` と `types.nim`、この記録は `lifecycle.nim` の分)、mainline の 36a4c8a5 (2026-10-07)。
+測定: 変異検査の道具、ジョブ `tests/mutation/lifecycle.json` (対象は `lifecycle.nim` と `types.nim`、この記録は `lifecycle.nim` の分)、mainline の 36a4c8a5 (2026-10-07)。
 
 | 全体 | killed | timeout | survived | runError | compileError |
 |---|---|---|---|---|---|

@@ -2,7 +2,7 @@
 
 ## 測り直し (拡張ブランチの b04fcb9c、2026-11-11)
 
-測定: `nim-muter` 0.2.15、ジョブ `tests/mutation/auth_oauth.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。
+測定: 変異検査の道具 0.2.15、ジョブ `tests/mutation/auth_oauth.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。
 状態: 測定済み (仕分けは 2026-11-12、コードを読んだ結論。変異を手では当てていない)。
 
 | 全体 | killed | timeout | survived | runError | compileError |
@@ -69,7 +69,7 @@
 
 timeout は無い。
 
-測定: `nim-muter`、ジョブ `tests/mutation/auth_oauth.json`、本線の 36a4c8a5 (2026-10-07)。
+測定: 変異検査の道具、ジョブ `tests/mutation/auth_oauth.json`、本線の 36a4c8a5 (2026-10-07)。
 2026-10-12 に `tokens.nim` のコメントと `metadata.nim` の raises を変えた (`OAuthSecurityError` は `OAuthError` の子で、Nim 2.2.12 の `XCannotRaiseY` が重複と指した)。次の測定で測り直す。
 
 | 全変異 | killed | timeout | survived | runError | compileError |
@@ -109,7 +109,7 @@ timeout は無い。
 
 ## G2 変異検出: auth_oauth ジョブ、前半 (g2f-oauth-a)
 
-測定: `nim-muter`、ジョブ `tests/mutation/auth_oauth.json`、本線の 36a4c8a5 (2026-10-07)。
+測定: 変異検査の道具、ジョブ `tests/mutation/auth_oauth.json`、本線の 36a4c8a5 (2026-10-07)。
 ジョブ全体の数: 全変異 333、killed 228、timeout 5、survived 81、runError 0、compileError 19。
 このファイルは 81 件のうち、`src/auth/oauth/` の `challenge.nim` (16)、`discovery.nim` (14)、`fetch.nim` (5)、`urls.nim` (8)、`sha256.nim` (1) の 44 件を扱う。
 残り (`authcode.nim`、`jsonfield.nim`、`metadata.nim`、`registration.nim`、`tokens.nim`) は g2f-oauth-b の担当で、リードが 2 つの記録を 1 つにする。
@@ -126,7 +126,7 @@ timeout は無い。
 認可のある版 (2025-03-26 以降) に限らず、このファイルのテストは版に依存しない部品 (チャレンジの解析、URL、ループバックの待ち受け) だけを使う。
 `-d:mcpDefaultProtocolVersion=2024-11-05` と `2025-11-25` でも通ることを確かめた。
 
-「ハング」は、変異後のプログラムが `while` から出なくなり、テストが終わらないことを指す (nim-muter では timeout で検出)。
+「ハング」は、変異後のプログラムが `while` から出なくなり、テストが終わらないことを指す (変異検査の道具 では timeout で検出)。
 `header[i]` は `i == header.len` でも `IndexDefect` になる (Nim の string は添字検査が `< len`) ので、`i <= header.len` への変異は、入力がその位置で終わるときに落ちる。
 
 ### challenge.nim
@@ -218,7 +218,7 @@ timeout は無い。
 
 ## G2 変異検出: `src/auth/oauth/` の後半 (authcode / jsonfield / metadata / registration / tokens)
 
-測定: `nim-muter`、ジョブ `tests/mutation/auth_oauth.json`、mainline の 36a4c8a5 (2026-10-07)。
+測定: 変異検査の道具、ジョブ `tests/mutation/auth_oauth.json`、mainline の 36a4c8a5 (2026-10-07)。
 ジョブ全体の数字は次のとおり。この文書は、そのうち下の 5 ファイルの survived 37 件を扱う (残りの `challenge.nim`、`discovery.nim`、`fetch.nim`、`urls.nim`、`sha256.nim` は別の文書)。
 
 | 全体 | killed | timeout | survived | runError | compileError |

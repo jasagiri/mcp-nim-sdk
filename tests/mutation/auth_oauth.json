@@ -28,7 +28,7 @@
     "console",
     "json"
   ],
-  "outputDir": ".nim-muter/auth_oauth",
+  "outputDir": ".mutation/auth_oauth",
   "incremental": false,
   "network": "loopback",
   "testOutput": "unittest"

@@ -2,7 +2,7 @@
 
 ## 測り直し (拡張ブランチの b04fcb9c、2026-11-11)
 
-測定: nim-muter 0.2.15、全 517 変異。killed 414、survived 71、timeout 3、compileError 29。
+測定: 変異検査の道具 0.2.15、全 517 変異。killed 414、survived 71、timeout 3、compileError 29。
 生き残りは 2 人で分担して仕分けた (server.nim の 1119 行より前と、それ以降およびほかのファイル)。
 
 ### server.nim の 1118 行までの生き残り
@@ -129,7 +129,7 @@ timeout の 3 件 (どれも待ちが終わらなくなる変異で、ただ遅�
 
 ## 最初の測定 (本線の 36a4c8a5、2026-10-07)
 
-測定: `nim-muter`、ジョブ `tests/mutation/server.json`、本線の 36a4c8a5 (2026-10-07)。
+測定: 変異検査の道具、ジョブ `tests/mutation/server.json`、本線の 36a4c8a5 (2026-10-07)。
 
 | 全変異 | killed | timeout | survived | runError | compileError |
 |---:|---:|---:|---:|---:|---:|
@@ -177,7 +177,7 @@ timeout の 3 件 (どれも待ちが終わらなくなる変異で、ただ遅�
 
 ## src/server/server.nim の 338〜899 行
 
-測定: `nim-muter`、ジョブ `tests/mutation/server.json`、本線の 36a4c8a5 (2026-10-07)。ジョブ全体の数字 (7 ファイル):
+測定: 変異検査の道具、ジョブ `tests/mutation/server.json`、本線の 36a4c8a5 (2026-10-07)。ジョブ全体の数字 (7 ファイル):
 
 | 全変異 | killed | timeout | survived | runError | compileError |
 |---:|---:|---:|---:|---:|---:|
@@ -201,10 +201,10 @@ timeout の 3 件 (どれも待ちが終わらなくなる変異で、ただ遅�
 
 | id | 場所 | 変異子 | 変異 | 分類 | 理由 | 検出するテスト |
 |---:|---|---|---|---:|---|---|
-| 328 | `server.nim:338` | RVR | `return false` → `<return default>` | 2 | **訂正 (2026-10-10)**: 同値ではない。nim-muter の RVR はリテラルの戻り値を反対の値にする (`return false` → `return true`。報告の表示だけが `<return default>`)。76a08c6a の測り直しで検出された。 |  |
+| 328 | `server.nim:338` | RVR | `return false` → `<return default>` | 2 | **訂正 (2026-10-10)**: 同値ではない。変異検査の道具 の RVR はリテラルの戻り値を反対の値にする (`return false` → `return true`。報告の表示だけが `<return default>`)。76a08c6a の測り直しで検出された。 |  |
 | 162 | `server.nim:338` | BLR | `false` → `true` | 3 | 未知の要求の取り消しが `true` を返さないこと (docstring の第 1 句) を直接呼んで確かめる。 | test_server_progress_cancel `cancelRequest called directly` |
 | 87 | `server.nim:340` | LOR | `ctx.cancelled or ctx.finished` → `<or -> and>` | 3 | 同じ要求を 2 度取り消すと 2 度目は `false`。変異では `cancelSignal.complete()` を 2 度呼び FutureError になる。 | test_server_progress_cancel `cancelRequest called directly` |
-| 329 | `server.nim:341` | RVR | `return false` → `<return default>` | 2 | **訂正 (2026-10-10)**: 同値ではない。nim-muter の RVR はリテラルの戻り値を反対の値にする (`return false` → `return true`。報告の表示だけが `<return default>`)。76a08c6a の測り直しで検出された。 |  |
+| 329 | `server.nim:341` | RVR | `return false` → `<return default>` | 2 | **訂正 (2026-10-10)**: 同値ではない。変異検査の道具 の RVR はリテラルの戻り値を反対の値にする (`return false` → `return true`。報告の表示だけが `<return default>`)。76a08c6a の測り直しで検出された。 |  |
 | 163 | `server.nim:341` | BLR | `false` → `true` | 3 | 既に取り消した要求・initialize の取り消しが `false` であること。 | test_server_progress_cancel `cancelRequest called directly` |
 | 165 | `server.nim:345` | BLR | `true` → `false` | 3 | 生きている要求の取り消しが `true` を返すこと。 | test_server_progress_cancel `cancelRequest called directly` |
 | 191 | `server.nim:373` | SDL | `server.listenFilterHooks.add hook` → `discard` | 3 | 4 つの拡張口のうち listen hook・interceptor・transform は、どのテストにも登録されていなかった。登録順に効くことを確かめる。 | test_request_hooks `hooks run in the order they were added` の listen filter hooks |
@@ -275,7 +275,7 @@ id 200、205、207、223 は stderr に診断を 1 行書くだけの文、id 37
 
 ## src/server/server.nim の 901〜1291 行
 
-測定: `nim-muter`、ジョブ `tests/mutation/server.json`、本線の 36a4c8a5 (2026-10-07)。ジョブ全体の数字 (4 人で分担):
+測定: 変異検査の道具、ジョブ `tests/mutation/server.json`、本線の 36a4c8a5 (2026-10-07)。ジョブ全体の数字 (4 人で分担):
 
 | 全変異 | killed | timeout | survived | runError | compileError |
 |---:|---:|---:|---:|---:|---:|
@@ -381,7 +381,7 @@ MCP-RESOURCES-13・14、MCP-TOOLS-6、MCP-PROMPTS-5、MCP-TASKS-14 の追加行�
 
 ## src/server/server.nim の 1302 行以降
 
-測定: `nim-muter`、ジョブ `tests/mutation/server.json`、本線の 36a4c8a5。担当は `src/server/server.nim` の 1302 行から末尾の生き残りと、server.nim の timeout 2 件 (id 239 と 296)。
+測定: 変異検査の道具、ジョブ `tests/mutation/server.json`、本線の 36a4c8a5。担当は `src/server/server.nim` の 1302 行から末尾の生き残りと、server.nim の timeout 2 件 (id 239 と 296)。
 総数はリードが g2-server.md にまとめる。ここでは担当分の 55 件 + timeout 2 件を 1 件ずつ記録する。
 
 分類の件数 (timeout 2 件を含む 57 行):
@@ -473,7 +473,7 @@ MCP-RESOURCES-13・14、MCP-TOOLS-6、MCP-PROMPTS-5、MCP-TASKS-14 の追加行�
 
 ## server.nim 以外 (pagination / completion / log_level、および削除した resources / prompts)
 
-測定: `nim-muter`、ジョブ `tests/mutation/server.json`、本線の 36a4c8a5 (2026-10-07)。担当は `resources.nim`、`prompts.nim`、`pagination.nim`、`completion.nim`、`log_level.nim`。`server.nim` は別の記録 (リードが `g2-server.md` にまとめる)。
+測定: 変異検査の道具、ジョブ `tests/mutation/server.json`、本線の 36a4c8a5 (2026-10-07)。担当は `resources.nim`、`prompts.nim`、`pagination.nim`、`completion.nim`、`log_level.nim`。`server.nim` は別の記録 (リードが `g2-server.md` にまとめる)。
 
 | ファイル | survived | killed | compileError |
 |---|---:|---:|---:|
@@ -629,7 +629,7 @@ runError はない。
 
 ## 時計を差し替えたあとの測り直し (2331e832、2026-11-16)
 
-`progressClock` を足して (b611e97d)、進捗の間隔の境界 (上の表の `748`) と待ちの数 (`776`) をテストで固定した。そのあと `server` を丸ごと測り直したが、ディスクが満杯になって 518 件のうち 338 件が実行エラーになり (nim-muter の終了コードは 0)、その報告は捨てた。機械の負荷が高く丸ごとの測り直しを待てなかったので、654cb11a から変えた行だけを `--lines` で測った (代表の決定 2026-11-17、案 A)。
+`progressClock` を足して (b611e97d)、進捗の間隔の境界 (上の表の `748`) と待ちの数 (`776`) をテストで固定した。そのあと `server` を丸ごと測り直したが、ディスクが満杯になって 518 件のうち 338 件が実行エラーになり (変異検査の道具 の終了コードは 0)、その報告は捨てた。機械の負荷が高く丸ごとの測り直しを待てなかったので、654cb11a から変えた行だけを `--lines` で測った (代表の決定 2026-11-17、案 A)。
 
 | 範囲 | 件数 | 検出 | 生き残り | コンパイルエラー |
 |---|---|---|---|---|
@@ -638,7 +638,7 @@ runError はない。
 
 654cb11a から `src/server/server.nim` で変えたのは、この範囲と、変異の対象にならない行 (import、型の欄、既定値の 1 行) だけ。
 
-台帳への取り込み: `nim-muter-ledger sync` は、報告に載ったファイルの生き残りのうち報告に無いものを「もう生き残っていない」として外す。部分の報告をそのまま渡すと、測っていない行の記録まで消える。そこで、2 つの部分の報告の変異に、台帳にある `server.nim` の生き残りのうち今回測っていない行のもの 24 件を「survived」として足した報告を作り、それを取り込んだ (行は `nim-muter discover` のいまの結果から引いた)。654cb11a の完全な報告そのものは、捨てた実行に上書きされて残っていない。台帳がその結果を持っている。
+台帳への取り込み: 台帳の取り込み (`ledger sync`) は、報告に載ったファイルの生き残りのうち報告に無いものを「もう生き残っていない」として外す。部分の報告をそのまま渡すと、測っていない行の記録まで消える。そこで、2 つの部分の報告の変異に、台帳にある `server.nim` の生き残りのうち今回測っていない行のもの 24 件を「survived」として足した報告を作り、それを取り込んだ (行は 変異検査の道具の `discover` のいまの結果から引いた)。654cb11a の完全な報告そのものは、捨てた実行に上書きされて残っていない。台帳がその結果を持っている。
 
 | 場所 | 変異 | 分類 | 理由 |
 |---|---|---|---|

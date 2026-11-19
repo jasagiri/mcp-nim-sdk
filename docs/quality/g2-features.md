@@ -2,7 +2,7 @@
 
 ## 測り直し (拡張ブランチの b04fcb9c、2026-11-11)
 
-測定: `nim-muter` 0.2.15、ジョブ `tests/mutation/features.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。状態: 測定済み。
+測定: 変異検査の道具 0.2.15、ジョブ `tests/mutation/features.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。状態: 測定済み。
 
 | 全体 | killed | timeout | survived | runError | compileError |
 |---|---|---|---|---|---|
@@ -32,7 +32,7 @@
 - 境界の 2 件は、どちらも 1 つの機能でしか確かめられない (始まりちょうどは `ftSamplingTools`・`ftTasks` の 2025-11-25、終わりちょうどは `ftTasks` の 2026-07-28)。式は全機能で共通なので変異の検出には足りるが、表の各行 (`span` の `case`) の正しさを確かめるものではない。
 - どちらのファイルも、変異したコードで実際に流してはいない (仕分けは読んで行う)。検出は次の測定で確かめる。
 
-測定: `nim-muter`、ジョブ `tests/mutation/features.json`、本線の 36a4c8a5 (2026-10-07)。対象は `src/protocol/features.nim` と `src/protocol/implementation_status.nim`。
+測定: 変異検査の道具、ジョブ `tests/mutation/features.json`、本線の 36a4c8a5 (2026-10-07)。対象は `src/protocol/features.nim` と `src/protocol/implementation_status.nim`。
 
 | 全変異 | killed | timeout | survived | runError | compileError |
 |---:|---:|---:|---:|---:|---:|
@@ -53,7 +53,7 @@ compileError の 49 件は、機能表 (`McpFeature` の列挙、`span`・`displ
 
 ## 2026-10-13: ジョブを外部仕様テストで組み直した (未測定)
 
-テストを置き場で分けた結果、このジョブが走らせていた `test_features` と `test_spec_coverage` は内部実装テスト (文書と表の整合を見る門) になった。変異検査は外部仕様テストだけで測る (ADR-MUTER-0004 §3.1) ので、ジョブを、版の交渉を確かめる外部仕様テスト (`test_version`、`test_legacy_handshake`、`test_era_matrix`) を 5 つの版の既定で流す形に組み直した。対象から `src/protocol/implementation_status.nim` を外した: 文書を作る道具の表で、利用者から見える振る舞いが無く、外部仕様テストでは測れない。
+テストを置き場で分けた結果、このジョブが走らせていた `test_features` と `test_spec_coverage` は内部実装テスト (文書と表の整合を見る門) になった。変異検査は外部仕様テストだけで測るので、ジョブを、版の交渉を確かめる外部仕様テスト (`test_version`、`test_legacy_handshake`、`test_era_matrix`) を 5 つの版の既定で流す形に組み直した。対象から `src/protocol/implementation_status.nim` を外した: 文書を作る道具の表で、利用者から見える振る舞いが無く、外部仕様テストでは測れない。
 
 **この組み直しのあとは未測定。** 上の記録は、組み直す前のジョブでの測定である。機能の表 (`features.nim`) の 1 行を誤らせる変異を、版の交渉のテストがどこまで捕まえるかは、測ってみないと分からない。
 

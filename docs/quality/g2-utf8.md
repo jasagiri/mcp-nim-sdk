@@ -1,6 +1,6 @@
 # G2 変異検出: utf8 ジョブ
 
-測定: nim-muter 0.2.15、ジョブ `tests/mutation/utf8.json`、拡張ブランチの 654cb11a (2026-11-14)。
+測定: 変異検査の道具 0.2.15、ジョブ `tests/mutation/utf8.json`、拡張ブランチの 654cb11a (2026-11-14)。
 対象は `src/compat/utf8.nim`。UTF-8 の検査が `src/transport/transport.nim` から移ったあと、どのジョブも対象にしていなかったので足した。
 
 | 全変異 | killed | timeout | survived | runError | compileError |

@@ -18,7 +18,7 @@
     "console",
     "json"
   ],
-  "outputDir": ".nim-muter/rate_limit",
+  "outputDir": ".mutation/rate_limit",
   "incremental": false,
   "network": "loopback",
   "testOutput": "unittest"

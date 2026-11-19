@@ -45,7 +45,7 @@ proc nimFilesIn(dir, pattern: string): seq[string] =
         result.add(file)
 
 const testDirs = ["tests/external", "tests/internal"]
-  ## Where the tests are (ADR-KURA-0008): the external tests, which reach
+  ## Where the tests are: the external tests, which reach
   ## the SDK through its entries only, and the internal ones.
 
 proc testFiles(): seq[string] =
@@ -200,11 +200,13 @@ task affectedTests, "List the tests that testAllVersions runs for the other vers
 task genDocs, "Regenerate README.md and docs/ from templates/":
   generateDocs("")
 
-task specCoverage, "Measure specification coverage (G1) with ../nim-spec-coverage and write build/g1-spec-coverage.md":
+task specCoverage, "Measure specification coverage (G1) with the tool NIM_SPEC_COVERAGE names and write build/g1-spec-coverage.md":
   # Fails when a declared specification has no external test in specs/tests.map,
   # or when an external test reads a module no entry exports.
-  # The tool is a sibling package; NIM_SPEC_COVERAGE names it from a checkout that has no such sibling.
-  let tool = getEnv("NIM_SPEC_COVERAGE", "../nim-spec-coverage")
+  # NIM_SPEC_COVERAGE names the checkout of the tool.
+  let tool = getEnv("NIM_SPEC_COVERAGE")
+  if tool.len == 0:
+    quit("set NIM_SPEC_COVERAGE to the checkout of the specification coverage tool", 1)
   exec "nim c --hints:off --nimcache:build/nimcache/spec_coverage -o:build/bin/spec_coverage " & tool & "/src/spec_coverage.nim"
   # An identifier counts as covered by an external test only: a test under
   # tests/external, which may read the entries below and what they export

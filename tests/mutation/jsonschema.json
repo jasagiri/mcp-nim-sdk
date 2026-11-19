@@ -19,7 +19,7 @@
     "console",
     "json"
   ],
-  "outputDir": ".nim-muter/jsonschema",
+  "outputDir": ".mutation/jsonschema",
   "incremental": false,
   "network": "loopback",
   "testOutput": "unittest"

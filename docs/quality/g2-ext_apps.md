@@ -2,7 +2,7 @@
 
 ## 測り直し (拡張ブランチの b04fcb9c、2026-11-11)
 
-状態: 測定済み。測定: `nim-muter` 0.2.15、ジョブ `tests/mutation/ext_apps.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。仕分けはソースの読解だけで行い、変異を当てて流してはいない。
+状態: 測定済み。測定: 変異検査の道具 0.2.15、ジョブ `tests/mutation/ext_apps.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。仕分けはソースの読解だけで行い、変異を当てて流してはいない。
 
 | 全体 | killed | timeout | survived | runError | compileError |
 |---|---|---|---|---|---|
@@ -44,7 +44,7 @@
 | `src/ext/apps/provider.nim:RVR:15e83655371f19db:0` | provider.nim:114 | `readHandler` の `return await fallback(ctx, uri)` → `return default(...)` | 遅いだけと見る (未確認) | 変異は空の `contents` を返す。`tests/external/test_ext_apps_server.nim` の `Given a fallback read handler, ...` は `["contents"][0]` で落ちるはずで、待ちは `untilTrue` の上限つき。待ち続ける経路は読んだ範囲に無い。変異後の式に `await` が残る形 (`default(typeof(await ...))`) だと async の展開がどうなるかは、読むだけでは決められない |
 | `src/ext/apps/provider.nim:BLR:18e3c696a8b17b86:0` | provider.nim:121 | `appToolInfo` の既定値 `legacyKey = false` → `true` | 遅いだけと見る | 既定で `_meta["ui/resourceUri"]` が付くだけで、繰り返しも待ちも無い。`Given legacyKey, ...` の `check not ... hasKey(LegacyResourceUriKey)` と `Given a registered resource, ...` の `_meta ==` が落ちるはず |
 
-測定: `nim-muter`、ジョブ `tests/mutation/ext_apps.json`、拡張ブランチの c9b5c264 (初回の測定。比べる記録は無い)。対象は `src/ext/apps/{host,messages,model,provider}.nim` と `src/ext/apps.nim`。
+測定: 変異検査の道具、ジョブ `tests/mutation/ext_apps.json`、拡張ブランチの c9b5c264 (初回の測定。比べる記録は無い)。対象は `src/ext/apps/{host,messages,model,provider}.nim` と `src/ext/apps.nim`。
 
 | 全変異 | killed | timeout | survived | runError | compileError |
 |---:|---:|---:|---:|---:|---:|
@@ -65,7 +65,7 @@
 
 ## timeout の 1 件
 
-id 137 (`host.nim:229`、`fetchUiResource` の `requireServerCapability(... resources ...)` の削除): `resources` capability を持たない相手に `resources/read` を送り、相手 (`startPeer(nil, ...)`) は答えない。クライアントの既定の要求タイムアウトは 60 秒 (`DefaultRequestTimeoutMs`) で、テスト `Given a server without the resources capability, when fetched, ...` は版ごとに 1 回ずつ待つので、`nim-muter` の制限を超える。つまり変異が「待ちが終わらない」状態を作り、テストが無制限に待つのではなく、クライアントの 60 秒で `McpTimeoutError` に落ちる。検出済みとして数える。同じ形の id 133 (`tools/list`) は、今回足したテストで `McpTimeoutError` と `requestsFor("tools/list").len == 1` の失敗を確かめた。id 137 そのものは 240 秒の待ちを避けて当てていない (同じ形の 133 からの推定)。
+id 137 (`host.nim:229`、`fetchUiResource` の `requireServerCapability(... resources ...)` の削除): `resources` capability を持たない相手に `resources/read` を送り、相手 (`startPeer(nil, ...)`) は答えない。クライアントの既定の要求タイムアウトは 60 秒 (`DefaultRequestTimeoutMs`) で、テスト `Given a server without the resources capability, when fetched, ...` は版ごとに 1 回ずつ待つので、変異検査の道具 の制限を超える。つまり変異が「待ちが終わらない」状態を作り、テストが無制限に待つのではなく、クライアントの 60 秒で `McpTimeoutError` に落ちる。検出済みとして数える。同じ形の id 133 (`tools/list`) は、今回足したテストで `McpTimeoutError` と `requestsFor("tools/list").len == 1` の失敗を確かめた。id 137 そのものは 240 秒の待ちを避けて当てていない (同じ形の 133 からの推定)。
 
 ## 分類 1 (同値) の理由
 

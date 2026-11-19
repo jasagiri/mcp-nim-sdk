@@ -43,7 +43,7 @@
     {
       "stage": "proofs",
       "ending": "done",
-      "evidence": "MCP-VERSION-5 and -6 (the version an initialize response carries) are checked over every input, 6 requested versions x 32 sets of spoken versions, by enumeration (ADR-KURA-0019 \u00a72) in tests/external/test_version.nim; address_policy and rate_limit are not proved: nim-verify is not used, because the SDK cannot depend on interpretation-graph under its license"
+      "evidence": "MCP-VERSION-5 and -6 (the version an initialize response carries) are checked over every input, 6 requested versions x 32 sets of spoken versions, by enumeration in tests/external/test_version.nim; address_policy and rate_limit are not proved: no prover is used, because the one at hand cannot be a dependency under the SDK's license"
     }
   ]
 }

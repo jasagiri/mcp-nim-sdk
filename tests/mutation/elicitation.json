@@ -21,7 +21,7 @@
     "console",
     "json"
   ],
-  "outputDir": ".nim-muter/elicitation",
+  "outputDir": ".mutation/elicitation",
   "incremental": false,
   "testOutput": "unittest"
 }

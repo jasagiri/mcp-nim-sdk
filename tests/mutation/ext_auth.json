@@ -22,6 +22,6 @@
     "console",
     "json"
   ],
-  "outputDir": ".nim-muter/ext_auth",
+  "outputDir": ".mutation/ext_auth",
   "incremental": false
 }

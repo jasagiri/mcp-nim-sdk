@@ -18,7 +18,7 @@
     "console",
     "json"
   ],
-  "outputDir": ".nim-muter/version",
+  "outputDir": ".mutation/version",
   "incremental": false,
   "testOutput": "unittest"
 }

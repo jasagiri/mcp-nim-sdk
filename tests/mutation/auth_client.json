@@ -19,7 +19,7 @@
     "console",
     "json"
   ],
-  "outputDir": ".nim-muter/auth_client",
+  "outputDir": ".mutation/auth_client",
   "incremental": false,
   "network": "loopback",
   "testOutput": "unittest"

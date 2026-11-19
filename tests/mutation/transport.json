@@ -18,7 +18,7 @@
     "console",
     "json"
   ],
-  "outputDir": ".nim-muter/transport",
+  "outputDir": ".mutation/transport",
   "incremental": false,
   "network": "loopback",
   "testOutput": "unittest"

@@ -2,7 +2,7 @@
 
 ## 測り直し (拡張ブランチの b04fcb9c、2026-11-11)
 
-測定: `nim-muter` 0.2.15、ジョブ `tests/mutation/modern.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。
+測定: 変異検査の道具 0.2.15、ジョブ `tests/mutation/modern.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。
 
 | 全体 | killed | timeout | survived | runError | compileError |
 |---|---|---|---|---|---|
@@ -21,7 +21,7 @@
 | `src/protocol/modern.nim:RVR:0c511227513989c7:2` | modern.nim:251 | `headerNameSource` の `return none(string)` (名前を持たないメソッド、params がオブジェクトでない) → `return default(Option[string])` | equivalent | 同上。`Option[string]` の既定値は none で、呼び手 (`modernRequestHeaders` の `name.isSome`、`checkRequestHeaders` の `bodyName.isNone`) の分岐は変わらない。 | 無し |
 | `src/protocol/modern.nim:SDL:ac1cdc5394dff63c:1` | modern.nim:315 | `checkRequestHeaders` の末尾の式 `none(JsonRpcError)` → `discard` | equivalent | 食い違いの経路はすべて手前の `return headerMismatch(...)` で抜ける。末尾の式を消すと暗黙の `result` (`Option[JsonRpcError]` の既定値 = none) が返り、同じ値になる。 | 無し |
 
-測定: `nim-muter`、ジョブ `tests/mutation/modern.json` (`src/protocol/modern.nim`)、本線の 36a4c8a5 (2026-10-07)。
+測定: 変異検査の道具、ジョブ `tests/mutation/modern.json` (`src/protocol/modern.nim`)、本線の 36a4c8a5 (2026-10-07)。
 行番号は 36a4c8a5 のもの。
 
 | 全変異 | killed | timeout | survived | runError | compileError |

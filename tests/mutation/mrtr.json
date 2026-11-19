@@ -21,7 +21,7 @@
     "console",
     "json"
   ],
-  "outputDir": ".nim-muter/mrtr",
+  "outputDir": ".mutation/mrtr",
   "incremental": false,
   "network": "loopback",
   "testOutput": "unittest"

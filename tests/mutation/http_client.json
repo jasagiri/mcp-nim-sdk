@@ -22,7 +22,7 @@
     "console",
     "json"
   ],
-  "outputDir": ".nim-muter/http_client",
+  "outputDir": ".mutation/http_client",
   "incremental": false,
   "network": "loopback",
   "testOutput": "unittest"

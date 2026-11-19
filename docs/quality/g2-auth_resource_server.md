@@ -2,7 +2,7 @@
 
 ## 測り直し (拡張ブランチの b04fcb9c、2026-11-11)
 
-測定: `nim-muter` 0.2.15、ジョブ `tests/mutation/auth_resource_server.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。
+測定: 変異検査の道具 0.2.15、ジョブ `tests/mutation/auth_resource_server.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。
 
 | 全体 | killed | timeout | survived | runError | compileError |
 |---|---|---|---|---|---|
@@ -23,7 +23,7 @@ test_owed の 2 件は、前の測定で足したテスト (「the challenge nam
 | `src/auth/resource_server.nim:RVR:0c511227513989c7:1` | resource_server.nim:117 | `return none(string)` → `return default` | equivalent | 114 行と同じ (前の仕分けの id 33) | なし |
 | `src/auth/resource_server.nim:RVR:0c511227513989c7:2` | resource_server.nim:120 | `return none(string)` → `return default` | equivalent | 114 行と同じ (前の仕分けの id 34) | なし |
 
-測定: `nim-muter`、ジョブ `tests/mutation/auth_resource_server.json` (`src/auth/resource_server.nim`、`src/transport/auth_hook.nim`)、本線の 36a4c8a5 (2026-10-07)。
+測定: 変異検査の道具、ジョブ `tests/mutation/auth_resource_server.json` (`src/auth/resource_server.nim`、`src/transport/auth_hook.nim`)、本線の 36a4c8a5 (2026-10-07)。
 行番号は 36a4c8a5 のもの (`resource_server.nim` はその後変わっていない)。
 
 | 全変異 | killed | timeout | survived | runError | compileError |

@@ -2,7 +2,7 @@
 
 ## 測り直し (拡張ブランチの b04fcb9c、2026-11-11)
 
-測定: `nim-muter` 0.2.15、ジョブ `tests/mutation/trace_context.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。
+測定: 変異検査の道具 0.2.15、ジョブ `tests/mutation/trace_context.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。
 
 | 全体 | killed | timeout | survived | runError | compileError |
 |---|---|---|---|---|---|
@@ -44,7 +44,7 @@
 - 下の 2026-10-07 の節は、追加したテストの置き場を `tests/test_trace_context.nim` と書いている。今は `tests/external/test_trace_context.nim` にある (2026-10-13 の分け直し)。
 - 下の節の id 74 の理由「1 項目しかない値が検査を通って `fields[1]` を読む」は、コードと合わない。変異は `return` を残して none を返すので、`fields[1]` には進まない (上の表の 3 行目)。
 
-測定: `nim-muter`、ジョブ `tests/mutation/trace_context.json`、本線の 36a4c8a5 (2026-10-07)。対象は `src/protocol/trace_context.nim`。
+測定: 変異検査の道具、ジョブ `tests/mutation/trace_context.json`、本線の 36a4c8a5 (2026-10-07)。対象は `src/protocol/trace_context.nim`。
 
 | 全変異 | killed | timeout | survived | runError | compileError |
 |---:|---:|---:|---:|---:|---:|

@@ -20,7 +20,7 @@
     "console",
     "json"
   ],
-  "outputDir": ".nim-muter/address_policy",
+  "outputDir": ".mutation/address_policy",
   "incremental": false,
   "network": "loopback",
   "testOutput": "unittest"

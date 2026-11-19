@@ -2,7 +2,7 @@
 
 ## 測り直し (拡張ブランチの b04fcb9c、2026-11-11)
 
-測定: `nim-muter` 0.2.15、ジョブ `tests/mutation/extensions.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。
+測定: 変異検査の道具 0.2.15、ジョブ `tests/mutation/extensions.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。
 
 | 全体 | killed | timeout | survived | runError | compileError |
 |---|---|---|---|---|---|
@@ -28,7 +28,7 @@
 
 時間切れに頼らずに落とすなら、そのテストに `check peer.requestsFor("widgets/make").len == 0` と短い `timeoutMs` を足すことになるが、検出はできているので、ここでは求めない。
 
-測定: `nim-muter`、ジョブ `tests/mutation/extensions.json`、本線の 36a4c8a5 (2026-10-07)。対象は `src/protocol/extensions.nim`、`src/server/extensions.nim`、`src/client/extensions.nim`。
+測定: 変異検査の道具、ジョブ `tests/mutation/extensions.json`、本線の 36a4c8a5 (2026-10-07)。対象は `src/protocol/extensions.nim`、`src/server/extensions.nim`、`src/client/extensions.nim`。
 
 | 全変異 | killed | timeout | survived | runError | compileError |
 |---:|---:|---:|---:|---:|---:|

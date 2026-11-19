@@ -26,7 +26,7 @@
     "console",
     "json"
   ],
-  "outputDir": ".nim-muter/client",
+  "outputDir": ".mutation/client",
   "incremental": false,
   "network": "loopback",
   "testOutput": "unittest"

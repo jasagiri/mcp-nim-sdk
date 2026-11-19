@@ -2,7 +2,7 @@
 
 ## 4 回目の測定 (26dbed90、2026-10-25)
 
-測定: `nim-muter` 0.2.11、ジョブ `tests/mutation/ext_skills.json`、拡張ブランチの 26dbed90 (テスト用の偽サーバーと loopback の修正を含む)。所要 1 時間 34 分 (3 回目は 2 時間 8 分)。
+測定: 変異検査の道具 0.2.11、ジョブ `tests/mutation/ext_skills.json`、拡張ブランチの 26dbed90 (テスト用の偽サーバーと loopback の修正を含む)。所要 1 時間 34 分 (3 回目は 2 時間 8 分)。
 
 | 全変異 | killed | timeout | survived | runError | compileError |
 |---:|---:|---:|---:|---:|---:|
@@ -13,7 +13,7 @@
 
 ## 3 回目の測定 (635eb853、2026-10-24)
 
-測定: `nim-muter` 0.2.11、ジョブ `tests/mutation/ext_skills.json`、拡張ブランチの 635eb853 (2 回目の仕分けで足したテストと、`1_0` を数と読む欠陥の修正を含む)。
+測定: 変異検査の道具 0.2.11、ジョブ `tests/mutation/ext_skills.json`、拡張ブランチの 635eb853 (2 回目の仕分けで足したテストと、`1_0` を数と読む欠陥の修正を含む)。
 
 | 全変異 | killed | timeout | survived | runError | compileError |
 |---:|---:|---:|---:|---:|---:|
@@ -26,7 +26,7 @@
 
 ## 2 回目の測定 (60cbfdb5、2026-10-19)
 
-測定: `nim-muter` 0.2.11、ジョブ `tests/mutation/ext_skills.json`、拡張ブランチの 60cbfdb5 (初回の後の修正と追加したテストをすべて含む)。
+測定: 変異検査の道具 0.2.11、ジョブ `tests/mutation/ext_skills.json`、拡張ブランチの 60cbfdb5 (初回の後の修正と追加したテストをすべて含む)。
 
 | 全変異 | killed | timeout | survived | runError | compileError |
 |---:|---:|---:|---:|---:|---:|
@@ -49,7 +49,7 @@
 
 ## 初回の測定 (c9b5c264、2026-10-11)
 
-測定: `nim-muter`、ジョブ `tests/mutation/ext_skills.json`、拡張ブランチの c9b5c264 (2026-10-11、初回)。
+測定: 変異検査の道具、ジョブ `tests/mutation/ext_skills.json`、拡張ブランチの c9b5c264 (2026-10-11、初回)。
 2026-10-15 に登録の版の確かめを `official_common.requireTargetSpoken` (公式拡張ごとの対象の版) に替えたので、それ以後の行番号はずれている (`g2-protocol-versions.md` の「未測定 (公式拡張の対象の版)」)。
 
 | 全変異 | killed | timeout | survived | runError | compileError |
@@ -74,7 +74,7 @@
 
 ## frontmatter.nim (担当 g2x-skills-fm)
 
-測定: `nim-muter`、ジョブ `tests/mutation/ext_skills.json`、拡張ブランチの c9b5c264。このファイルが扱うのは `src/ext/skills/frontmatter.nim` の変異だけ。`catalog.nim` `consumer.nim` `model.nim` は別の担当 (g2x-skills-rest)。
+測定: 変異検査の道具、ジョブ `tests/mutation/ext_skills.json`、拡張ブランチの c9b5c264。このファイルが扱うのは `src/ext/skills/frontmatter.nim` の変異だけ。`catalog.nim` `consumer.nim` `model.nim` は別の担当 (g2x-skills-rest)。
 
 | 全変異 (frontmatter.nim) | killed | timeout | survived | runError | compileError |
 |---:|---:|---:|---:|---:|---:|
@@ -235,7 +235,7 @@ id: 239 (行 186), 244 (行 325), 247 (行 333), 272 (行 103), 275 (行 107), 2
 
 ## model.nim / catalog.nim / consumer.nim (担当 g2x-skills-rest)
 
-測定: `nim-muter`、ジョブ `tests/mutation/ext_skills.json`、拡張ブランチの c9b5c264 (初回の測定)。この文書が扱うのは `src/ext/skills/catalog.nim`、`consumer.nim`、`model.nim` の生き残り 53 件。`frontmatter.nim` (96 件) と `src/ext/skills.nim` は `g2x-skills-fm` の担当で、ここでは触れない。
+測定: 変異検査の道具、ジョブ `tests/mutation/ext_skills.json`、拡張ブランチの c9b5c264 (初回の測定)。この文書が扱うのは `src/ext/skills/catalog.nim`、`consumer.nim`、`model.nim` の生き残り 53 件。`frontmatter.nim` (96 件) と `src/ext/skills.nim` は `g2x-skills-fm` の担当で、ここでは触れない。
 
 | ファイル | 全変異 | killed | timeout | survived | runError | compileError |
 |---|---:|---:|---:|---:|---:|---:|

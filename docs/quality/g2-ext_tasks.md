@@ -2,7 +2,7 @@
 
 ## 2 回目の測定 (拡張ブランチの 654cb11a、2026-11-14)
 
-測定: `nim-muter` 0.2.15、ジョブ `tests/mutation/ext_tasks.json`。状態: 測定済み。全体 149、killed 127、timeout 2、survived 8、runError 0、compileError 12。
+測定: 変異検査の道具 0.2.15、ジョブ `tests/mutation/ext_tasks.json`。状態: 測定済み。全体 149、killed 127、timeout 2、survived 8、runError 0、compileError 12。
 
 ここに書くのは、台帳にまだ無い指紋 1 件。仕分けはコードと呼び出し元を読んで行った (変異を当てて流してはいない)。
 
@@ -16,7 +16,7 @@
 
 ## 測り直し (拡張ブランチの b04fcb9c、2026-11-11)
 
-測定: `nim-muter` 0.2.15、ジョブ `tests/mutation/ext_tasks.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。
+測定: 変異検査の道具 0.2.15、ジョブ `tests/mutation/ext_tasks.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。
 状態: 測定済み (仕分けは 2026-11-12、コードを読んだ結論。変異を手では当てていない)。
 
 | 全体 | killed | timeout | survived | runError | compileError |
@@ -44,7 +44,7 @@
 
 ## 初回の測定 (拡張ブランチの c9b5c264)
 
-測定: `nim-muter`、ジョブ `tests/mutation/ext_tasks.json`、拡張ブランチの c9b5c264 (初回の測定。比べる記録は無い)。
+測定: 変異検査の道具、ジョブ `tests/mutation/ext_tasks.json`、拡張ブランチの c9b5c264 (初回の測定。比べる記録は無い)。
 対象は `src/ext/tasks.nim` と `src/ext/tasks/{client,server,wire}.nim`。`src/ext/**` は測定後に変わっていないので、行番号は今のものと同じ。 (2026-10-12 より前の話。下記。)
 
 2026-10-12 に `src/ext/tasks/client.nim` と `src/ext/tasks/server.nim` を変えた (冗長な削除と届かない枝を消した)。次の測定で測り直す。以降の行番号はずれる。
@@ -67,7 +67,7 @@
 | 計 | 40 |
 
 `RVR` (戻り値の変異) は、`return none(T)` では `default(Option[T])` (= `none`)、`return (McpTask(), some("..."))` のような構築式では
-`default(タプル)` (= 問題なし) になる。後者は手で `default(typeof(...))` を当てて確認した (nim-muter 0.2.5 の規則は `build/G2_EXT_BRIEF.md`)。
+`default(タプル)` (= 問題なし) になる。後者は手で `default(typeof(...))` を当てて確認した (変異検査の道具 0.2.5 の規則は `build/G2_EXT_BRIEF.md`)。
 
 ## 生き残り 1 件ずつ
 

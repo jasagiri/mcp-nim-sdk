@@ -18,7 +18,7 @@
     "console",
     "json"
   ],
-  "outputDir": ".nim-muter/modern",
+  "outputDir": ".mutation/modern",
   "incremental": false,
   "testOutput": "unittest"
 }

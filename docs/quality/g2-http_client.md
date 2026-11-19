@@ -2,7 +2,7 @@
 
 ## 測り直し (拡張ブランチの b04fcb9c、2026-11-11)
 
-測定: nim-muter 0.2.15、全 414 変異。killed 279、survived 73、timeout 39、compileError 23。
+測定: 変異検査の道具 0.2.15、全 414 変異。killed 279、survived 73、timeout 39、compileError 23。
 生き残りは 2 人で分担して仕分けた (http_wire.nim と、それ以外)。
 
 ### http_wire.nim の生き残り
@@ -175,7 +175,7 @@ W15・W16 は、`sse_legacy.nim` の `connect` が `readAll` の失敗のとき�
 
 ## 最初の測定 (本線の 36a4c8a5、2026-10-07)
 
-測定: `nim-muter`、ジョブ `tests/mutation/http_client.json`、本線の 36a4c8a5 (2026-10-07)。
+測定: 変異検査の道具、ジョブ `tests/mutation/http_client.json`、本線の 36a4c8a5 (2026-10-07)。
 
 | 全変異 | killed | timeout | survived | runError | compileError |
 |---:|---:|---:|---:|---:|---:|
@@ -251,7 +251,7 @@ W15・W16 は、`sse_legacy.nim` の `connect` が `readAll` の失敗のとき�
 
 分類の件数: 1 (等価) 3、2b (測定後に足されたテストが検出) 1、3 (穴。テストを足して確認) 37、4 (冗長なコード) 1、6 (受け入れ) 3、runError 0。クラス 5 (欠陥) は変異の分類ではなく、読解中に見つけた 1 件を別に直した (後述)。
 
-穴 (クラス 3) の 37 件は、変異を 1 件ずつ手で当て、名指しのテストが落ちることを見たうえで `jj restore` で戻した。確認の欠けたものはない。報告 (`~/.kuratsugi/runs/.../http_client.report.json`) は作業の途中で消えたため、id・行・変異は着手時に控えた一覧による。
+穴 (クラス 3) の 37 件は、変異を 1 件ずつ手で当て、名指しのテストが落ちることを見たうえで `jj restore` で戻した。確認の欠けたものはない。報告 (待ち行列の実行記録にあった `http_client.report.json`) は作業の途中で消えたため、id・行・変異は着手時に控えた一覧による。
 
 テストはどれも、ジョブの testCommand に入っている `tests/test_http_client_streams.nim` と `tests/test_param_headers_http.nim` に足した (新しい suite、名前の末尾が `(mutation review, g2g-hc-a)`)。ジョブ定義 `tests/mutation/http_client.json` は変えていない。仕様 ID は `MCP-HTTP-26` から `-6` (リードが付け替える)。版の確認は既定版 (2026-07-28) と `-d:mcpDefaultProtocolVersion=2024-11-05`、`=2025-11-25` で行った。
 
@@ -361,7 +361,7 @@ W15・W16 は、`sse_legacy.nim` の `connect` が `readAll` の失敗のとき�
 | 188 | http.nim:452 | SDL | `t.inflight.del requestId` → `discard` | 1 | `pumpAnswer` を足した後は、取り消された要求の表の項目は 380 行・407 行・`pumpAnswer` のどれかが必ず消す。`abandoned` は集合なので、同じ id の 2 回目の取り消しは何も変えない。当てても全部のテストが通ることを確認した |
 | 88 | http.nim:464 | ROR | `retries >= MaxAuthRetries` → `>` | 3 | 4 回目の再試行を許す。A "a hook that always says it improved things ... three times" |
 | 138 | http.nim:468 | BLR | `var retry = false` → `true` | 1 | 直後の `try` は `retry` に必ず代入するか、例外で抜ける |
-| 213 | http.nim:484 | RVR | `return false` → `<return default>` | 検出 (測り直し) | **訂正 (2026-10-10)**: 同値ではない。nim-muter の RVR はリテラルの戻り値を反対の値にする (`return false` → `return true`。報告の表示だけが `<return default>`)。測り直し (76a08c6a) で検出された (現在の 505 行)。 |
+| 213 | http.nim:484 | RVR | `return false` → `<return default>` | 検出 (測り直し) | **訂正 (2026-10-10)**: 同値ではない。変異検査の道具 の RVR はリテラルの戻り値を反対の値にする (`return false` → `return true`。報告の表示だけが `<return default>`)。測り直し (76a08c6a) で検出された (現在の 505 行)。 |
 | 139 | http.nim:484 | BLR | `false` → `true` | 3 | `_meta` に版が無い・文字列でない呼び出しにも Mcp-Param が付く。P "a call that does not name 2026-07-28 ..." |
 | 124 | http.nim:486 | LOR | `parsed.isSome and ...` → `or` | 3 | 版 2025-11-25 の呼び出しに付く。知らない版では `parsed.get` が UnpackDefect。P 同上 |
 | 126 | http.nim:493 | LOR | `name.isNil or kind != JString` → `and` | 3 | 名前の無い tools/call で nil を参照して落ちる (テストプロセスがクラッシュ)。P "a 2026-07-28 tools/call without a tool name ..." |
@@ -494,7 +494,7 @@ class 3 の変異はすべて作業場所 `build/ws/g2g-hc-c` で手で当て、
 
 ## G2 変異検出: http_client ジョブ、sse_legacy.nim の分 (g2g-hc-d)
 
-測定: `nim-muter`、ジョブ `tests/mutation/http_client.json`、本線の 36a4c8a5 (2026-10-07)。ジョブ全体は全変異 369 / killed 173 / timeout 29 / survived 149 / runError 0 / compileError 18。このファイルは、そのうち `src/transport/sse_legacy.nim` の生き残り 18 件の記録である (`http.nim`、`http_compat.nim`、`http_wire.nim` は別の担当)。
+測定: 変異検査の道具、ジョブ `tests/mutation/http_client.json`、本線の 36a4c8a5 (2026-10-07)。ジョブ全体は全変異 369 / killed 173 / timeout 29 / survived 149 / runError 0 / compileError 18。このファイルは、そのうち `src/transport/sse_legacy.nim` の生き残り 18 件の記録である (`http.nim`、`http_compat.nim`、`http_wire.nim` は別の担当)。
 
 測定後に `sse_legacy.nim` は変わった。使われていない private の `port` (測定時の 49〜52 行) が消え、それより後ろは 5 行上がった。表の行番号は測定時のもので、現在の行は括弧に書いた。
 

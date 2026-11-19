@@ -2,7 +2,7 @@
 
 ## 測り直し (拡張ブランチの b04fcb9c、2026-11-11)
 
-測定: `nim-muter` 0.2.15、ジョブ `tests/mutation/mrtr.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。
+測定: 変異検査の道具 0.2.15、ジョブ `tests/mutation/mrtr.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。
 
 | 全体 | killed | timeout | survived | runError | compileError |
 |---|---|---|---|---|---|
@@ -47,7 +47,7 @@
 - 案 B (MCP-MRTR-10、同じ suite): 内部のテストと同じことを、公開の入口だけで確かめる。署名の原始関数は公開ではないので、`tests/external/ext_auth_fixtures.nim` の `hmacSha256` (openssl を使う試験用の実装) で `body & "." & base64.encode(hmacSha256(Key, body), safe = true)` を作る。モジュールの冒頭の文書が「HMAC-SHA256 で署名し、base64url の本文に点で区切った署名を付ける」と述べているので、この形は文書にある範囲。見るのは `problem.isSome` で、文面は比べない。request_state.nim:69・71 の 2 件。足したら `specs/tests.map` の MCP-MRTR-10 の内部を指す行を、このテストに向け直す。
 - 案 C (MCP-MRTR-17、`tests/external/test_mrtr.nim` の「Given a URL elicitation or sampling with tools, when compared with a client's capabilities…」に 1 行、または隣に 1 本): params の無い sampling の入力要求は、sampling を宣言したクライアントに足りないものが無い。mrtr.nim:147 の 1 件。
 
-測定: `nim-muter`、ジョブ `tests/mutation/mrtr.json`、本線の 36a4c8a5 (2026-10-07)。対象は `src/protocol/mrtr.nim`、`src/server/mrtr.nim`、`src/server/request_state.nim`。
+測定: 変異検査の道具、ジョブ `tests/mutation/mrtr.json`、本線の 36a4c8a5 (2026-10-07)。対象は `src/protocol/mrtr.nim`、`src/server/mrtr.nim`、`src/server/request_state.nim`。
 
 | 全変異 | killed | timeout | survived | runError | compileError |
 |---:|---:|---:|---:|---:|---:|

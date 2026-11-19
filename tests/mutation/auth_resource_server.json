@@ -19,7 +19,7 @@
     "console",
     "json"
   ],
-  "outputDir": ".nim-muter/auth_resource_server",
+  "outputDir": ".mutation/auth_resource_server",
   "incremental": false,
   "testOutput": "unittest"
 }

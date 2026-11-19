@@ -2,7 +2,7 @@
 
 ## 測り直し (拡張ブランチの 2b8a56aa、2026-10-25)
 
-測定: `nim-muter` 0.2.11、ジョブ `tests/mutation/param_headers.json` (テストは `tests/external/` に移した後の 2 本)。
+測定: 変異検査の道具 0.2.11、ジョブ `tests/mutation/param_headers.json` (テストは `tests/external/` に移した後の 2 本)。
 
 | 全体 | killed | timeout | survived | runError | compileError |
 |---|---|---|---|---|---|
@@ -12,7 +12,7 @@
 
 ## 初回の測定 (mainline の 36a4c8a5、2026-10-07)
 
-測定: `nim-muter`、ジョブ `tests/mutation/param_headers.json`、mainline の 36a4c8a5 (2026-10-07)。
+測定: 変異検査の道具、ジョブ `tests/mutation/param_headers.json`、mainline の 36a4c8a5 (2026-10-07)。
 
 | 全体 | killed | timeout | survived | runError | compileError |
 |---|---|---|---|---|---|
@@ -28,7 +28,7 @@ Scenario は `MCP-HTTP-24` と `-2` (`specs/streamable_http.feature`、対応は
 
 | id | file:line | mutator | 変異 | class | 理由 / 検出するテスト |
 |---|---|---|---|---|---|
-| 70 | param_headers.nim:49 | RVR | `return false` → `<return default>` | 4 | **訂正 (2026-10-10)**: 同値ではない。nim-muter の RVR はリテラルの戻り値を反対の値にする (`return false` → `return true`。報告の表示だけが `<return default>`)。`return true` を手で当てても 2 本のテストは通る。`isToken` の呼び出しは 1 か所で、その前に空の名前を断っている (`must be a non-empty string`) ので、この行に届く入力が無い。`1*tchar` の定義として残す。 |
+| 70 | param_headers.nim:49 | RVR | `return false` → `<return default>` | 4 | **訂正 (2026-10-10)**: 同値ではない。変異検査の道具 の RVR はリテラルの戻り値を反対の値にする (`return false` → `return true`。報告の表示だけが `<return default>`)。`return true` を手で当てても 2 本のテストは通る。`isToken` の呼び出しは 1 か所で、その前に空の名前を断っている (`must be a non-empty string`) ので、この行に届く入力が無い。`1*tchar` の定義として残す。 |
 | 40 | param_headers.nim:49 | BLR | `return false` → `return true` | 4 | `isToken("")` は private で、呼び出しは 112 行目だけ。その前の 109 行目が空の名前を `len == 0` で先に退けるので、`isToken` に空文字列は届かない。109 行目の検査と 48 行目の検査が重なっている。消すかどうかはリードが決める。 |
 | 2 | param_headers.nim:57 | ROR | `path.len == 0` → `!=` | 3 | 理由の文面で、根を「the schema root」、それ以外を `'a.b'` と書き分けている。それが逆になる。T: `Given an invalid declaration, when declarations are read, then the reason names where it was found` (`'target.zone'` を含むことを見て落ちる)。理由は tools/list を出さなかった旨とともに stderr に出て、ツールの作者が場所を探す手がかりになる。 |
 | 3 | param_headers.nim:66 | ROR | `key == ParamHeaderKeyword` → `!=` | 3 | 注釈の無い `items` などの中の `type: string` までが「注釈」と見なされ、有効なツールが無効になる。T: `Given keywords that hold schemas but no annotation, when declarations are read, then the tool stays valid`。 |

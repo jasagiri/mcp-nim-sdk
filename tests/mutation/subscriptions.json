@@ -20,7 +20,7 @@
     "console",
     "json"
   ],
-  "outputDir": ".nim-muter/subscriptions",
+  "outputDir": ".mutation/subscriptions",
   "incremental": false,
   "testOutput": "unittest"
 }

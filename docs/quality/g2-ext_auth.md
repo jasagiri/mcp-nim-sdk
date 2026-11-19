@@ -2,7 +2,7 @@
 
 ## 測り直し (拡張ブランチの b04fcb9c、2026-11-11)
 
-測定: `nim-muter` 0.2.15、ジョブ `tests/mutation/ext_auth.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。
+測定: 変異検査の道具 0.2.15、ジョブ `tests/mutation/ext_auth.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。
 状態: 測定済み (仕分けは 2026-11-12、コードを読んだ結論。変異を手では当てていない)。
 
 | 全体 | killed | timeout | survived | runError | compileError |
@@ -52,7 +52,7 @@ timeout は無い。
 
 ## 初回の測定 (拡張ブランチの c9b5c264)
 
-測定: `nim-muter`、ジョブ `tests/mutation/ext_auth.json`、拡張ブランチの c9b5c264 (初回の測定。比べる記録はない)。
+測定: 変異検査の道具、ジョブ `tests/mutation/ext_auth.json`、拡張ブランチの c9b5c264 (初回の測定。比べる記録はない)。
 対象は `src/ext/auth_client_credentials.nim`、`src/ext/auth_enterprise_managed.nim`、`src/ext/auth_shared.nim`、
 `src/auth/oauth/grants.nim`、`src/auth/oauth/jwt.nim`。
 2026-10-12 に `src/auth/oauth/jwt.nim` を変えた (`decodeSegment` の埋めるループを消した)。次の測定で測り直す。
@@ -81,7 +81,7 @@ timeout は無い。
 
 ## 変異の当て方についての注意
 
-nim-muter は `a or b or c` の `or` を 1 つずつ `and` にする。構文木の上では内側の `or` を変えると `(a and b) or c`、
+変異検査の道具 は `a or b or c` の `or` を 1 つずつ `and` にする。構文木の上では内側の `or` を変えると `(a and b) or c`、
 外側を変えると `(a or b) and c` になる。文字列として `a or b and c` と書くと `and` が強く結ぶので別の式になる。
 手で当てるときは括弧を付けて両方を試した (id 118 / 119、60 / 61、121、198、52、48)。
 `RVR` の `return false` は `return true` として当てた。`BLR` の `false` → `true` と同じ編集なので、

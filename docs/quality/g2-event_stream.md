@@ -2,7 +2,7 @@
 
 ## 測り直し (拡張ブランチの b04fcb9c、2026-11-11)
 
-測定: `nim-muter` 0.2.15、ジョブ `tests/mutation/event_stream.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。状態: 測定済み。
+測定: 変異検査の道具 0.2.15、ジョブ `tests/mutation/event_stream.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。状態: 測定済み。
 
 | 全体 | killed | timeout | survived | runError | compileError |
 |---|---|---|---|---|---|
@@ -17,7 +17,7 @@
 
 時間切れは無い。
 
-測定: `nim-muter`、ジョブ `tests/mutation/event_stream.json`、mainline の 36a4c8a5 (2026-10-07)。
+測定: 変異検査の道具、ジョブ `tests/mutation/event_stream.json`、mainline の 36a4c8a5 (2026-10-07)。
 
 | 全体 | killed | timeout | survived | runError | compileError |
 |---|---|---|---|---|---|

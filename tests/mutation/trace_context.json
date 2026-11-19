@@ -18,7 +18,7 @@
     "console",
     "json"
   ],
-  "outputDir": ".nim-muter/trace_context",
+  "outputDir": ".mutation/trace_context",
   "incremental": false,
   "testOutput": "unittest"
 }

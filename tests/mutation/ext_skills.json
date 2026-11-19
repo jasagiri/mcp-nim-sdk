@@ -22,6 +22,6 @@
     "console",
     "json"
   ],
-  "outputDir": ".nim-muter/ext_skills",
+  "outputDir": ".mutation/ext_skills",
   "incremental": false
 }

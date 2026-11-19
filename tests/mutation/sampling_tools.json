@@ -18,7 +18,7 @@
     "console",
     "json"
   ],
-  "outputDir": ".nim-muter/sampling_tools",
+  "outputDir": ".mutation/sampling_tools",
   "incremental": false,
   "testOutput": "unittest"
 }

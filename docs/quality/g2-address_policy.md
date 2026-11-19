@@ -4,7 +4,7 @@
 
 状態: 測定済み (仕分けは読んで行った。変異は当てていない。テストも実装も足していない)。
 
-測定: `nim-muter` 0.2.15、ジョブ `tests/mutation/address_policy.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。
+測定: 変異検査の道具 0.2.15、ジョブ `tests/mutation/address_policy.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。
 
 | 全体 | killed | timeout | survived | runError | compileError |
 |---|---|---|---|---|---|
@@ -68,7 +68,7 @@
 2. `isGloballyRoutable` は公開の印 (`*`) が付いているが、呼ぶコードも export する入口も無い。docstring は「webhook の宛先の既定の検査」と言うが、その webhook のコードはこのブランチに無い。
 3. `parseHostLiteral` の「`[` `]` で囲んだ IPv6 を受ける」(address_policy.nim:182-183) は、公開の入口から届くホストが `parseUri` の hostname だけなので、今は通らない。MCP-SEC-WIRE-13 の表 (`specs/tests.map`) でこれを確かめているのは内部のテストだけ。
 
-測定: `nim-muter`、ジョブ `tests/mutation/address_policy.json`、本線の 36a4c8a5 (2026-10-07)。
+測定: 変異検査の道具、ジョブ `tests/mutation/address_policy.json`、本線の 36a4c8a5 (2026-10-07)。
 2026-10-12 に `address_policy.nim` を変えた。次の測定で測り直す。
 
 | 全変異 | killed | timeout | survived | runError | compileError |
@@ -206,7 +206,7 @@ Scenario は `MCP-ICONS-7` `MCP-ICONS-8` `MCP-SEC-WIRE-10` `MCP-SEC-WIRE-11` を
 - 変異を当てて確認した 35 件はすべて、当てたあとに `jj restore` で戻した。`jj diff --stat` に `src/` のファイルは無い。
 - `nim c -r` で `test_icon_fetch` `test_security_icons` `test_security_address` `test_spec_coverage` を流し、既定の版で合格。
   `-d:mcpDefaultProtocolVersion=2024-11-05` と `=2025-11-25` でも、`test_icon_fetch` `test_security_icons` `test_security_address` は合格 (`test_security_address` は版で 15 件と 16 件。版で出し分ける既存の 1 件のため)。
-- 変異検査 (nim-muter) は流していない。`docs/quality/g2-protocol-versions.md` は触っていない。
+- 変異検査 (変異検査の道具) は流していない。`docs/quality/g2-protocol-versions.md` は触っていない。
 
 ### 残っているもの
 

@@ -2,7 +2,7 @@
 
 ## 測り直し (拡張ブランチの b04fcb9c、2026-11-11)
 
-測定: `nim-muter` 0.2.15、ジョブ `tests/mutation/diagnostic.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。
+測定: 変異検査の道具 0.2.15、ジョブ `tests/mutation/diagnostic.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。
 
 | 全体 | killed | timeout | survived | runError | compileError |
 |---|---|---|---|---|---|
@@ -81,7 +81,7 @@ id は JSON の文字列で、長さも文字種も相手が決める。受け�
 つまり前の記録が「決して真にならない」とした `c < 0x20` の項は、いまこの穴を塞いでいる。
 MCP-SEC-HTTP-7 の 2 つ目の Then (「不正な UTF-8 のバイトはエスケープで示す」) とは食い違う。直すかどうか、直すなら `isUtf8` と検査を 1 つにするかは、実装担当と司会の判断。
 
-測定: `nim-muter`、ジョブ `tests/mutation/diagnostic.json` (`src/protocol/diagnostic.nim`: `peerText`)、本線の 36a4c8a5 (2026-10-07)。
+測定: 変異検査の道具、ジョブ `tests/mutation/diagnostic.json` (`src/protocol/diagnostic.nim`: `peerText`)、本線の 36a4c8a5 (2026-10-07)。
 行番号は 36a4c8a5 のもの (`diagnostic.nim` はその後変わっていない)。
 
 | 全変異 | killed | timeout | survived | runError | compileError |

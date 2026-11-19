@@ -18,7 +18,7 @@
     "console",
     "json"
   ],
-  "outputDir": ".nim-muter/event_stream",
+  "outputDir": ".mutation/event_stream",
   "incremental": false,
   "testOutput": "unittest"
 }

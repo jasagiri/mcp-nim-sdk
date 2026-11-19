@@ -2,7 +2,7 @@
 
 ## 測り直し (拡張ブランチの b04fcb9c、2026-11-11)
 
-測定: `nim-muter` 0.2.15、ジョブ `tests/mutation/http_server.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。状態: 測定済み (仕分けは 2026-11-12、コードを読んで行った。変異を当てて流してはいない)。
+測定: 変異検査の道具 0.2.15、ジョブ `tests/mutation/http_server.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。状態: 測定済み (仕分けは 2026-11-12、コードを読んで行った。変異を当てて流してはいない)。
 
 | 全体 | killed | timeout | survived | runError | compileError |
 |---|---|---|---|---|---|
@@ -95,7 +95,7 @@
 
 ## 最初の測定 (本線の 36a4c8a5、2026-10-07)
 
-測定: `nim-muter`、ジョブ `tests/mutation/http_server.json`、本線の 36a4c8a5 (2026-10-07)。
+測定: 変異検査の道具、ジョブ `tests/mutation/http_server.json`、本線の 36a4c8a5 (2026-10-07)。
 
 | 全変異 | killed | timeout | survived | runError | compileError |
 |---:|---:|---:|---:|---:|---:|
@@ -176,7 +176,7 @@ push の前の測り直しの対象。
 | 75 | http_server.nim:503 | ROR | `close < 0` → `<= 0` | 1 | `value.startsWith("[")` の後なので `value[0]` は `[` で、`]` は 0 番にならない。`find(']')` の結果は -1 か 1 以上で、`0` は出ない。両者は同じ結果になる |
 | 76 | http_server.nim:505 | ROR | `colon >= 0` → `> 0` | 6 | 受け入れ。違いが出るのは Host の値が `:` で始まる (名前が空の) ときだけで、どちらでも拒まれる。差が出る唯一の場合は `allowedHosts` に空文字列を入れたときで、原文は `:80` を通し、変異は通さない。空の名前を許す設定は意味がないので、その挙動は固定しない |
 | 143 | http_server.nim:505 | LOR | `colon >= 0 and value.count(':') == 1` → `or` | 3 | 角括弧のない IPv6 (`::1`) を名前として切り刻まない。`S` "Given a transport bound to loopback, when a request names the bare IPv6 loopback address, then it is served"。確認: 変異すると `::1` が `:` に切られて 403 |
-| 377 | http_server.nim:515 | RVR | `return false` → `return default` | 検出 (測り直し) | **訂正 (2026-10-10)**: 同値ではない。nim-muter の RVR はリテラルの戻り値を反対の値にする (`return false` → `return true`。報告の表示だけが `<return default>`)。測り直し (76a08c6a) で検出された。 |
+| 377 | http_server.nim:515 | RVR | `return false` → `return default` | 検出 (測り直し) | **訂正 (2026-10-10)**: 同値ではない。変異検査の道具 の RVR はリテラルの戻り値を反対の値にする (`return false` → `return true`。報告の表示だけが `<return default>`)。測り直し (76a08c6a) で検出された。 |
 | 206 | http_server.nim:515 | BLR | `return false` → `return true` | 3 | Host のない要求は 403 (DNS rebinding の対策)。`S` "Given a transport bound to loopback, when a request carries no Host header at all, then the answer is 403"。確認: 変異すると 400 になる (通ってしまう) |
 | 150 | http_server.nim:576 | LOR | `owner == session and exchange.idNode == clientId` → `or` | 3 | 取り消しは、送り手のセッションの、その id の要求だけを名指す。`H` "Given two sessions that chose the same request ids, when one cancels its requests, then each notification names that session's own request"。既存の `test_security_http.nim` の同種のテストは `pendingExchangeCount` だけを見ていて、どの要求が取り消されたかは見ていなかった。新しいテストは、サーバーが受け取る通知の requestId が、どの交換 id かを見る。確認: 変異すると `http-3` を指す (正しくは `http-4`) |
 | 260 | http_server.nim:578 | SDL | `exchangeOf` の最後の `none(string)` → `discard` | 1 | 結果の `Option[string]` の既定値は none で、`none(string)` と同じ |
@@ -201,14 +201,14 @@ push の前の測り直しの対象。
 
 ## G2 変異検出: http_server ジョブ (g2f-hs-b の分)
 
-測定: `nim-muter`、ジョブ `tests/mutation/http_server.json` (`src/transport/http_server.nim`、`src/transport/sse_stream.nim`)、本線の 36a4c8a5 (2026-10-07)。
+測定: 変異検査の道具、ジョブ `tests/mutation/http_server.json` (`src/transport/http_server.nim`、`src/transport/sse_stream.nim`)、本線の 36a4c8a5 (2026-10-07)。
 ジョブ全体の数: 全変異 391、killed 218、timeout 64、survived 94、runError 0、compileError 15。
 このファイルは、そのうち `http_server.nim` の 679〜1036 行 (36a4c8a5 の行番号) にある生き残り 27 件の分。
 ほかの行 (229〜668 行、1050〜1175 行、`sse_stream.nim`) は別の担当で、リードが 3 つの記録を 1 つにまとめる。
 測定後に `http_server.nim` は変わった (待ちを `or` から `firstOf` へ: import が 1 行増えた) ので、現在の行は測定時の行 + 1。
 文面で探して当てた。測定後に消えた文は無い。
 
-`nim-muter` の `original` 欄は式全体ではなく、変異した部分式を指す。
+変異検査の道具 の `original` 欄は式全体ではなく、変異した部分式を指す。
 `not modern and isRpcRequest and methodName == "initialize"` の `and` は左結合なので、変異は
 `(not modern or isRpcRequest) and methodName == "initialize"` であって `not modern or (isRpcRequest and ...)` ではない
 (後者を当てると既存のテストが多数落ちる。最初に後者で当ててしまい、前者でやり直した)。
@@ -339,7 +339,7 @@ push の前の測り直しの対象。
 
 | id | 行 (測定時) | 変異 | 元 → 変異 | クラス | 理由と検出するテスト |
 |---|---|---|---|---|---|
-| 49 | 66 | RVR | `return false` → `<return default>` | 検出 (測り直し) | **訂正 (2026-10-10)**: 同値ではない。nim-muter の RVR はリテラルの戻り値を反対の値にする (`return false` → `return true`。報告の表示だけが `<return default>`)。測り直し (76a08c6a) で検出された。 |
+| 49 | 66 | RVR | `return false` → `<return default>` | 検出 (測り直し) | **訂正 (2026-10-10)**: 同値ではない。変異検査の道具 の RVR はリテラルの戻り値を反対の値にする (`return false` → `return true`。報告の表示だけが `<return default>`)。測り直し (76a08c6a) で検出された。 |
 | 22 | 66 | BLR | `return false` の `false` → `true` | 3 | 終わったストリームへの `push` が真を返す。S (g2f-hs-c) の「finished stream ... refused」。 |
 | 23 | 72 | BLR | 末尾の `true` → `false` | 3 | 受け付けた `push` が偽を返す。同じテストと「remembers its last two of three」が落ちる。 |
 | 5 | 86 | ROR | `dash <= 0` → `< 0` | 3 | `-5` が空のストリーム id の event id になる。S (g2f-hs-c) の「not the id of an event」。 |

@@ -19,7 +19,7 @@
     "console",
     "json"
   ],
-  "outputDir": ".nim-muter/lifecycle",
+  "outputDir": ".mutation/lifecycle",
   "incremental": false,
   "network": "loopback",
   "testOutput": "unittest"

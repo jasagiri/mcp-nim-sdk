@@ -2,7 +2,7 @@
 
 ## 2 回目の測定 (拡張ブランチの 654cb11a、2026-11-14)
 
-測定: `nim-muter` 0.2.15、ジョブ `tests/mutation/result_shape.json`。状態: 測定済み。全体 96、killed 82、timeout 0、survived 13、runError 0、compileError 1。
+測定: 変異検査の道具 0.2.15、ジョブ `tests/mutation/result_shape.json`。状態: 測定済み。全体 96、killed 82、timeout 0、survived 13、runError 0、compileError 1。
 
 ここに書くのは、台帳にまだ無い指紋 2 件。どちらも `promptResultProblems` の先頭の検査で、b04fcb9c の後に書き換えられた行: b04fcb9c では 63 行の 1 つの条件 (`prompt.isNil or prompt.kind != JObject or prompt{"messages"}.isNil or prompt{"messages"}.kind != JArray`) が黙って return していたが、今は「オブジェクトでない」(64〜65 行) と「messages が配列でない」(67〜68 行) に分かれ、それぞれ問題を返す (下の節の問い 1 に「断る」と答えた直し)。仕分けはコードと呼び出し元を読んで行った。
 
@@ -15,7 +15,7 @@
 
 ## 測り直し (拡張ブランチの b04fcb9c、2026-11-11)
 
-測定: `nim-muter` 0.2.15、ジョブ `tests/mutation/result_shape.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。
+測定: 変異検査の道具 0.2.15、ジョブ `tests/mutation/result_shape.json`。テストは 2026-10-13 に外部と内部に分け直した後のもの。
 
 | 全体 | killed | timeout | survived | runError | compileError |
 |---|---|---|---|---|---|
