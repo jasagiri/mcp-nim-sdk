@@ -1,5 +1,11 @@
 # G2 変異検出: http_client ジョブ
 
+## 変えた行の測定 (拡張ブランチの f9fe8f50、2026-11-19)
+
+測定: 変異検査の道具 0.2.18、ジョブ `tests/mutation/http_client.json` を `--lines` で、e0f12dd9 (リダイレクトの Location と SSE の endpoint を RFC 3986 で解く変更) が変えた範囲に絞った: `http_wire.nim` の 15〜24 行と 351〜365 行、`sse_legacy.nim` の 12〜19 行と 76〜90 行。
+状態: 測定済み。範囲の変異 5 件 (すべて `http_wire.nim` の 352〜355 行)、killed 5、survived 0、timeout 0、compileError 0。score 100%。範囲の外の 409 件は測っていない。
+`sse_legacy.nim` の範囲 (`resolveEndpoint`) には、道具が変異を作らなかった。endpoint の解決は E テスト `test_http_sse_legacy.nim` (MCP-HTTPSSE-12、`messages/.` が `/messages/` に解かれる) で確かめている。
+
 ## 測り直し (拡張ブランチの b04fcb9c、2026-11-11)
 
 測定: 変異検査の道具 0.2.15、全 414 変異。killed 279、survived 73、timeout 39、compileError 23。
