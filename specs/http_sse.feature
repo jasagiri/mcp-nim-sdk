@@ -91,6 +91,7 @@ Feature: HTTP with Server-Sent Events (2024-11-05)
     Given a client that connects
     When the endpoint event names another scheme, another host or another port
     Then the client refuses it with a transport error naming the endpoint, as soon as it is read
+    And a relative endpoint is resolved against the stream's URL by RFC 3986 section 5.2, its dot segments removed
 
   @spec:MCP-HTTPSSE-13 @feature:ftHttpSse
   Scenario: A stream that ends before it names an endpoint fails the connection at once

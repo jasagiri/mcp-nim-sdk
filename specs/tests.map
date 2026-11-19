@@ -588,6 +588,7 @@ MCP-HTTPSSE-12 | tests/external/test_http_sse_legacy.nim | Given an endpoint on 
 MCP-HTTPSSE-12 | tests/external/test_http_sse_legacy.nim | Given an endpoint on another host at the same port, when the client connects, then it refuses it as another origin
 MCP-HTTPSSE-12 | tests/external/test_http_sse_legacy.nim | Given an endpoint on the same host at another port, when the client connects, then it refuses it as another origin
 MCP-HTTPSSE-12 | tests/external/test_http_sse_legacy.nim | Given an endpoint on another origin while the stream stays open, when the client connects, then it fails at once and says why
+MCP-HTTPSSE-12 | tests/external/test_http_sse_legacy.nim | Given a relative endpoint ending in a dot segment, when the client posts, then the endpoint is resolved by RFC 3986 with the dot segment removed
 MCP-HTTPSSE-13 | tests/external/test_http_sse_legacy.nim | Given a stream that ends before it names an endpoint, when the client connects, then it fails at once and says so
 MCP-HTTPSSE-14 | tests/external/test_http_sse_legacy.nim | Given events that are not messages, when the client reads the stream, then it skips them and delivers the next message
 MCP-HTTPSSE-14 | tests/external/test_http_sse_legacy.nim | Given message events without data, when the client reads the stream, then it skips them and delivers the next message
@@ -2143,6 +2144,7 @@ MCP-SEC-WIRE-16 | tests/external/test_security_wire_headers.nim | Given a 204, w
 MCP-SEC-WIRE-16 | tests/external/test_security_wire_headers.nim | Given a 1xx or a 304, when the server keeps the connection open, then the request fails as an HTTP failure at once and the client ends the connection
 MCP-SEC-WIRE-16 | tests/internal/test_security_wire_headers_internal.nim | Given a server that never answers, when the header timeout passes, then the connection is closed
 MCP-SEC-WIRE-17 | tests/external/test_security_wire_headers.nim | Given a redirect within the server, when it is followed, then the connection that gave it is closed
+MCP-SEC-WIRE-17 | tests/external/test_security_wire_headers.nim | Given a relative location ending in a dot segment, when it is followed, then it is resolved by RFC 3986 with the dot segment removed
 MCP-SEC-WIRE-17 | tests/external/test_security_wire_headers.nim | Given a redirect to another server, when it is refused, then the connection that gave it is closed
 MCP-SEC-WIRE-17 | tests/external/test_security_wire_headers.nim | Given a redirect to another host name on the same port, when a request is sent, then it is refused and nothing is sent there
 MCP-SEC-WIRE-17 | tests/external/test_security_wire_headers.nim | Given a redirect to the same host and port under another scheme, when a request is sent, then it is refused

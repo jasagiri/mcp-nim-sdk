@@ -288,6 +288,12 @@ suite "redirects (mutation review, g2g-hc-c)":
     check server.requests.len == 2
     check server.ended[0]
 
+  test "Given a relative location ending in a dot segment, when it is followed, then it is resolved by RFC 3986 with the dot segment removed":
+    let server = startScripted(redirecting("two/."))
+    check outcome(transportTo(server.scriptedUrl("/one")).notify()) == "ok"
+    check server.requests.len == 2
+    check server.requests[1].splitLines()[0].split(' ')[1] == "/two/"
+
   test "Given a redirect to another server, when it is refused, then the connection that gave it is closed":
     let server = startScripted(redirecting("http://evil.example/steal"))
     check "redirects to another server" in outcome(transportTo(server.scriptedUrl("/one")).notify())

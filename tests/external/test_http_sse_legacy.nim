@@ -301,6 +301,41 @@ suite "HTTP+SSE client (2024-11-05)":
     check seen == @["auth", "auth"]
     waitFor transport.close()
 
+  test "Given a relative endpoint ending in a dot segment, when the client posts, then the endpoint is resolved by RFC 3986 with the dot segment removed":
+    let listener = newAsyncSocket()
+    listener.setSockOpt(OptReuseAddr, true)
+    listener.bindAddr(Port(0), "127.0.0.1")
+    listener.listen()
+    let port = listener.getLocalAddr()[1].int
+    var posted: seq[string] = @[]
+    proc serveOne(socket: AsyncSocket) {.async.} =
+      let first = await socket.recvLine()
+      var length = 0
+      while true:
+        let line = await socket.recvLine()
+        if line.strip().len == 0:
+          break
+        if line.toLowerAscii().startsWith("content-length:"):
+          length = parseInt(line.split(':')[1].strip())
+      if length > 0:
+        discard await socket.recv(length)
+      if first.startsWith("GET "):
+        await socket.send("HTTP/1.1 200 OK\c\LContent-Type: text/event-stream\c\L" &
+          "Connection: close\c\L\c\L" & formatSseEvent("messages/.", event = "endpoint"))
+        await sleepAsync(200)
+      else:
+        posted.add first.split(' ')[1]
+        await socket.send("HTTP/1.1 202 Accepted\c\LContent-Length: 0\c\L\c\L")
+      socket.close()
+    proc acceptLoop() {.async.} =
+      while true:
+        asyncCheck serveOne(await listener.accept())
+    asyncCheck acceptLoop()
+    let transport = newSseLegacyTransport("http://127.0.0.1:" & $port & "/sse")
+    waitFor transport.sendNotification(newJsonRpcNotification("x", newJObject()))
+    check posted == @["/messages/"]
+    waitFor transport.close()
+
   test "Given an endpoint event naming another host, when the client connects, then it refuses to post there":
     let listener = newAsyncSocket()
     listener.setSockOpt(OptReuseAddr, true)

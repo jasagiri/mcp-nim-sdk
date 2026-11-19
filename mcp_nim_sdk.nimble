@@ -17,6 +17,7 @@ requires "nimcrypto >= 0.7.3"  # SHA-256 and HMAC-SHA256: the standard library h
 requires "https://github.com/jasagiri/nim-bearer-challenge >= 0.1.0"  # WWW-Authenticate challenges
 requires "https://github.com/jasagiri/nim-secret >= 0.1.0"  # constant-time equality
 requires "https://github.com/jasagiri/nim-loopback >= 0.1.0"  # whether a host or an address is loopback
+requires "https://github.com/jasagiri/nim-url-resolve >= 0.1.0"  # RFC 3986 reference resolution (std/uri combine mishandles dot segments)
 
 # The property tests (tests/external/test_*_prop.nim); a program that uses the SDK does not need it.
 taskRequires "test", "https://github.com/jasagiri/nim-propcheck >= 0.1.0"

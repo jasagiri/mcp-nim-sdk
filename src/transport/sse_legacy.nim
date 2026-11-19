@@ -12,6 +12,8 @@ import ./transport
 import ./event_stream
 import ./http_wire as wire
 import ./deadline_watch
+from nim_url_resolve import resolveReference
+from nim_outcome import isOk, get, error
 import ../protocol/types
 import ../protocol/diagnostic
 
@@ -74,12 +76,15 @@ proc endStream(t: SseLegacyTransport) =
 proc resolveEndpoint(t: SseLegacyTransport, data: string): string =
   ## The POST URL the server named. It must be on the server that was
   ## asked: an `endpoint` event must not send what we post elsewhere.
-  let base = parseUri(t.sseUrl)
-  let target = combine(base, parseUri(data.strip()))
-  if not sameOrigin(base, target):
+  let resolved = resolveReference(t.sseUrl, data.strip())
+  if not resolved.isOk:
+    raise failure("the endpoint " & data[0 ..< min(data.len, 100)] &
+                  " cannot be resolved against " & t.sseUrl & ": " & resolved.error)
+  let target = resolved.get
+  if not sameOrigin(parseUri(t.sseUrl), parseUri(target)):
     raise failure("the endpoint " & data[0 ..< min(data.len, 100)] &
                   " is not on the server " & t.sseUrl & " answered from")
-  $target
+  target
 
 proc readLoop(t: SseLegacyTransport, response: WireResponse,
               ready: Future[void]) {.async.} =

@@ -15,6 +15,10 @@ import std/net except dial
 import ./transport
 import ./first_of
 import ./deadline_watch
+# std/uri `combine` keeps trailing `.`/`..` and folds `..` inside a segment
+# (nim-lang/Nim PR #26290 is open), so a Location is resolved by RFC 3986 here.
+from nim_url_resolve import resolveReference
+from nim_outcome import isOk, get, error
 
 when defined(ssl):
   import std/openssl
@@ -347,11 +351,15 @@ proc request*(url: string, httpMethod: HttpMethod, headers: HttpHeaders = nil,
     let location = response.headers.getOrDefault("Location")
     if not followRedirects or not isRedirect(response.code, httpMethod) or location.len == 0:
       return response
-    let next = combine(parseUri(current), parseUri(location))
+    let resolved = resolveReference(current, location)
     response.close()
-    if not sameOrigin(parseUri(current), next):
-      raise httpFailure(current & " redirects to another server, " & $next)
-    current = $next
+    if not resolved.isOk:
+      raise httpFailure(current & " redirects to " & location[0 ..< min(location.len, 100)] &
+                        ", which cannot be resolved: " & resolved.error)
+    let next = resolved.get
+    if not sameOrigin(parseUri(current), parseUri(next)):
+      raise httpFailure(current & " redirects to another server, " & next)
+    current = next
   raise httpFailure("more than " & $MaxRedirects & " redirects from " & url)
 
 

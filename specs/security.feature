@@ -406,6 +406,7 @@ Feature: Security properties
     When the location is on the same origin, on another host name with the same port, or under another scheme
     Then only the first is followed, the others are refused without anything sent there
     And the connection that gave the redirect is closed in every case
+    And a relative location is resolved by RFC 3986 section 5.2, its dot segments removed
 
   @spec:MCP-SEC-WIRE-18
   Scenario: Limits on a response, and the ends of a body
