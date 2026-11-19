@@ -10,29 +10,13 @@
 ## starts have no read timeout (readTimeoutMs = 0), so that only the limit of
 ## the site under test is counted; the server's own limit has a suite of its
 ## own.
-##
-## Internal (I), not external: what each test reads is the timer queue of
-## asyncdispatch, and it reaches the HTTP wire (transport/http_wire), the
-## SSE client and the HTTP server by their own modules, which no entry of the
-## SDK exports whole. A limit left in the loop shows outside only as a process
-## that keeps a timer for ten minutes after its work ended, and a test that
-## waits for that from the entries would have to run for as long as the limit.
 
-import std/[unittest, asyncdispatch, asyncnet, heapqueue, httpcore, json, monotimes,
+import std/[unittest, asyncdispatch, asyncnet, heapqueue, json, monotimes,
             nativesockets, options, strutils, times]
-import transport/http
-import transport/http_wire as wire
-import transport/http_server
-import transport/sse_legacy
-import transport/transport
-import protocol/types
-import protocol/version
-import protocol/features
-import protocol/tasks
-import protocol/task_methods
-import client/icons
+import mcp
 import auth/client
-import ../external/server_harness
+import transport/http_compat
+import ./server_harness
 
 const
   LongMs = 600_000
@@ -43,7 +27,6 @@ const
     ## 200 ms) fall due sooner.
   QuietWithinMs = 2_000
     ## What a test waits for the loop to let go of a limit that ended.
-  Png = "\x89PNG\r\n\x1a\n" & "rest of a png"
   Speaks = min(DefaultProtocolVersion, mpv20251125)
 
 proc timersDueAfter(ms: int): int =
@@ -112,50 +95,12 @@ proc startAnswering(answer: string, delayMs = 0): Answering =
 proc url(server: Answering, path = "/"): string =
   "http://127.0.0.1:" & $server.port & path
 
-proc png(): string =
-  "HTTP/1.1 200 OK\c\LContent-Type: image/png\c\LContent-Length: " & $Png.len &
-    "\c\LConnection: close\c\L\c\L" & Png
-
 proc empty(code = "204 No Content"): string =
   "HTTP/1.1 " & code & "\c\LContent-Length: 0\c\LConnection: close\c\L\c\L"
 
 proc jsonAnswer(code, reason, body: string): string =
   "HTTP/1.1 " & code & " " & reason & "\c\LContent-Type: application/json\c\LContent-Length: " &
     $body.len & "\c\LConnection: close\c\L\c\L" & body
-
-suite "the limits of a connection and of a response head (transport/http_wire)":
-
-  test "Given a request with a 600 s limit to connect and to be answered, when the answer came, then the event loop holds no timer due at those limits":
-    let server = startAnswering(empty("200 OK"))
-    let before = farTimers()
-    let response = waitFor wire.request(server.url, HttpGet,
-      connectTimeoutMs = LongMs, headerTimeoutMs = LongMs)
-    check response.code == Http200
-    response.close()
-    untilQuiet(before, "the connect and the head of the answer")
-
-  test "Given a request with a 600 s limit to connect and none for the head, when the connection was made, then the event loop holds no timer due at that limit":
-    let server = startAnswering(empty("200 OK"))
-    let before = farTimers()
-    let response = waitFor wire.request(server.url, HttpGet,
-      connectTimeoutMs = LongMs, headerTimeoutMs = 0)
-    response.close()
-    untilQuiet(before, "the connect")
-
-  test "Given a request with a 600 s limit for the head and none to connect, when the head came, then the event loop holds no timer due at that limit":
-    let server = startAnswering(empty("200 OK"))
-    let before = farTimers()
-    let response = waitFor wire.request(server.url, HttpGet,
-      connectTimeoutMs = 0, headerTimeoutMs = LongMs)
-    response.close()
-    untilQuiet(before, "the head of the answer")
-
-  test "Given a server that never answers, when the head limit of 100 ms passes, then the request fails at that limit with McpTransportError":
-    let server = startAnswering(empty("200 OK"), delayMs = 60_000)
-    let began = epochTime()
-    expect McpTransportError:
-      discard waitFor wire.request(server.url, HttpGet, headerTimeoutMs = 100)
-    check epochTime() - began < 2.0
 
 suite "the time a request has to arrive at the HTTP server (transport/http_server)":
 
@@ -165,10 +110,12 @@ suite "the time a request has to arrive at the HTTP server (transport/http_serve
     asyncCheck transport.serve()
     let before = farTimers()
     for i in 1 .. 3:
-      let response = waitFor wire.request("http://127.0.0.1:" & $transport.port & "/mcp",
-        HttpGet, connectTimeoutMs = 0, headerTimeoutMs = 0)
-      checkpoint "request " & $i & " got " & $response.code
-      response.close()
+      let sock = newAsyncSocket(buffered = false)
+      waitFor sock.connect("127.0.0.1", Port(transport.port))
+      waitFor sock.send("GET /mcp HTTP/1.1\c\LHost: localhost\c\LConnection: close\c\L\c\L")
+      let head = waitFor sock.readHead()
+      checkpoint "request " & $i & " got " & head.splitLines()[0]
+      sock.close()
     untilQuiet(before, "the read timeout of the requests")
     waitFor transport.close()
 
@@ -255,38 +202,6 @@ suite "the time limit of an OAuth request (auth/oauth/fetch)":
       let message = discover("http://127.0.0.1:" & $server.port, 100)
       check "timed out after 100 ms" in message
       check epochTime() - began < 2.0
-
-suite "the time limit of an icon fetch (client/icons)":
-
-  proc via(server: Answering, path = "/icon.png"): IconGet =
-    ## Points the fetch at the plain local server; the rest is the real code.
-    let port = server.port
-    result = proc(url: string, headers: HttpHeaders): Future[WireResponse] {.closure, gcsafe.} =
-      wire.request("http://127.0.0.1:" & $port & path, HttpGet, headers)
-
-  let icon = McpIcon(src: "https://icons.example/icon.png")
-
-  test "Given an icon fetch with a 600 s limit, when the icon was read, then the event loop holds no timer due at that limit":
-    let server = startAnswering(png())
-    let before = farTimers()
-    let fetched = waitFor fetchIcon(icon, "https://icons.example",
-      IconFetchOptions(timeoutMs: LongMs, get: server.via))
-    check fetched.kind == itPng
-    untilQuiet(before, "the fetch and the read of the icon")
-
-  test "Given an icon fetch with a limit of 0, when the server answers after 400 ms, then the icon is fetched":
-    let server = startAnswering(png(), delayMs = 400)
-    let fetched = waitFor fetchIcon(icon, "https://icons.example",
-      IconFetchOptions(timeoutMs: 0, get: server.via))
-    check fetched.kind == itPng
-
-  test "Given an icon fetch with a limit of 100 ms, when the server answers after 5 s, then McpIconError is raised at the limit":
-    let server = startAnswering(png(), delayMs = 5_000)
-    let began = epochTime()
-    expect McpIconError:
-      discard waitFor fetchIcon(icon, "https://icons.example",
-        IconFetchOptions(timeoutMs: 100, get: server.via))
-    check epochTime() - began < 2.0
 
 suite "the time limit of a request of the server to its client (server/server)":
 

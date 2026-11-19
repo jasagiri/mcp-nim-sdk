@@ -194,7 +194,7 @@
     {
      "supports": true,
      "kind": "test",
-     "ref": "2026-11-18、Nim 2.4.2: 標準ライブラリは readTimeout を持つが headerFields を持たないので、写し src/transport/vendor/asynchttpserver.nim が使われる。写しは nim-lang/Nim#26460 の 2 つ目のコミット (698a1a8f4) を含み、時間内に読めた要求は readTimeout のタイマーを残さない。tests/external/test_security_http_read_timeout.nim (MCP-SEC-HTTP-10) と tests/internal/test_wait_limits.nim (MCP-LIFECYCLE-29) が nimble test で通る",
+     "ref": "2026-11-18、Nim 2.4.2: 標準ライブラリは readTimeout を持つが headerFields を持たないので、写し src/transport/vendor/asynchttpserver.nim が使われる。写しは nim-lang/Nim#26460 の 2 つ目のコミット (698a1a8f4) を含み、時間内に読めた要求は readTimeout のタイマーを残さない。tests/external/test_security_http_read_timeout.nim (MCP-SEC-HTTP-10) と tests/external/test_wait_limits.nim (MCP-LIFECYCLE-29) が nimble test で通る",
      "note": "2026-10-17 の証拠の「Nim 2.2.x では写し」は、2.4.2 でも写しが使われる、に改まる",
      "file": "../../src/transport/vendor/asynchttpserver.nim"
     }
